@@ -1,0 +1,11 @@
+Manifest-Version: 1.0
+Built-By: Jhonny
+Build-Jdk: 13.0.2
+Class-Path: lib/javafx-controls-12.jar lib/javafx-controls-12-win.jar li
+ b/javafx-web-12.jar lib/javafx-web-12-win.jar lib/javafx-media-12.jar l
+ ib/javafx-media-12-win.jar lib/javafx-graphics-12.jar lib/javafx-graphi
+ cs-12-win.jar lib/javafx-base-12.jar lib/javafx-base-12-win.jar lib/jav
+ afx-fxml-12.jar lib/javafx-fxml-12-win.jar lib/jfoenix-9.0.9.jar
+Main-Class: ordenarArquivos.App
+Created-By: Maven Integration for Eclipse
+
