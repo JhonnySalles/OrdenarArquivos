@@ -12,7 +12,7 @@ import javafx.stage.StageStyle;
 import javafx.stage.WindowEvent;
 import ordenarArquivos.controller.TelaInicialController;
 
-public class run extends Application {
+public class Run extends Application {
 	
 	private static Scene mainScene;
 	private static TelaInicialController mainController;

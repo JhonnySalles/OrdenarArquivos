@@ -222,7 +222,7 @@
                                        </image></ImageView>
                                  </graphic>
                               </JFXButton>
-                              <JFXButton fx:id="btnImportar" onAction="#onBtnIporta" prefHeight="30.0" prefWidth="100.0" styleClass="background-Purple2" text="Importar" textFill="WHITE">
+                              <JFXButton fx:id="btnImportar" onAction="#onBtnImporta" prefHeight="30.0" prefWidth="100.0" styleClass="background-Purple2" text="Importar" textFill="WHITE">
                                  <graphic>
                                     <ImageView fitHeight="23.0" fitWidth="23.0" pickOnBounds="true" preserveRatio="true">
                                        <image>

@@ -454,7 +454,7 @@ public class TelaInicialController implements Initializable {
 	}
 
 	@FXML
-	private void onBtnIporta() {
+	private void onBtnImporta() {
 		if (!txtAreaImportar.getText().trim().isEmpty()) {
 
 			String separador = txtSeparador.getText().trim();
