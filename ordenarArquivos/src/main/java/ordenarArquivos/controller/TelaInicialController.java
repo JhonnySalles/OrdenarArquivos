@@ -458,10 +458,10 @@ public class TelaInicialController implements Initializable {
 		if (!txtAreaImportar.getText().trim().isEmpty()) {
 
 			String separador = txtSeparador.getText().trim();
-			
+
 			if (separador.isEmpty())
 				separador = " ";
-			
+
 			txtSeparador.setText(separador);
 
 			String linhas[] = txtAreaImportar.getText().split("\\r?\\n");
@@ -481,8 +481,11 @@ public class TelaInicialController implements Initializable {
 
 	private void editaColunas() {
 		clCapitulo.setCellFactory(TextFieldTableCell.forTableColumn());
-		clCapitulo.setOnEditCommit(
-				e -> e.getTableView().getItems().get(e.getTablePosition().getRow()).setCapitulo(e.getNewValue()));
+		clCapitulo.setOnEditCommit(e -> {
+			e.getTableView().getItems().get(e.getTablePosition().getRow()).setCapitulo(e.getNewValue());
+			e.getTableView().getItems().get(e.getTablePosition().getRow())
+					.setNomePasta(txtNomePastaCapitulo.getText().trim() + " " + e.getNewValue());
+		});
 
 		clNumeroPagina.setCellFactory(TextFieldTableCell.forTableColumn());
 		clNumeroPagina.setOnEditCommit(
@@ -490,7 +493,7 @@ public class TelaInicialController implements Initializable {
 
 		clNomePasta.setCellFactory(TextFieldTableCell.forTableColumn());
 		clNomePasta.setOnEditCommit(
-				e -> e.getTableView().getItems().get(e.getTablePosition().getRow()).setNumeroPagina(e.getNewValue()));
+				e -> e.getTableView().getItems().get(e.getTablePosition().getRow()).setNomePasta(e.getNewValue()));
 	}
 
 	private void linkaCelulas() {
