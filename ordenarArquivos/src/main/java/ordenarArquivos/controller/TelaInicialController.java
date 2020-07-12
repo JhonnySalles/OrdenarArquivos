@@ -224,14 +224,9 @@ public class TelaInicialController implements Initializable {
 			valida = false;
 		}
 
-		if (lsVwListaImagens.getSelectionModel().getSelectedItem() == null) {
-			Alert a = new Alert(AlertType.NONE);
-			a.setAlertType(AlertType.INFORMATION);
-			a.setContentText("Necessário selecionar o primeiro capitulo na grid de imagens.");
-			a.show();
-			valida = false;
-		}
-
+		if (lsVwListaImagens.getSelectionModel().getSelectedItem() == null)
+			lsVwListaImagens.getSelectionModel().select(0);
+		
 		return valida;
 	}
 
