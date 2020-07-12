@@ -147,6 +147,7 @@ public class TelaInicialController implements Initializable {
 		txtNomePastaManga.setText("[JPN] Manga -");
 		txtVolume.setText("Volume 01");
 		txtNomePastaCapitulo.setText("Capítulo");
+		txtSeparador.setText(";");
 		onBtnLimpar();
 
 		lblProgresso.setText("");
@@ -226,7 +227,7 @@ public class TelaInicialController implements Initializable {
 
 		if (lsVwListaImagens.getSelectionModel().getSelectedItem() == null)
 			lsVwListaImagens.getSelectionModel().select(0);
-		
+
 		return valida;
 	}
 
@@ -255,7 +256,7 @@ public class TelaInicialController implements Initializable {
 					updateProgress(i, max);
 					updateMessage("Criando diretórios...");
 
-					String nomePasta = caminhoDestino.getPath() + "\\" + txtNomePastaManga.getText().trim() + " "
+					String nomePasta = caminhoDestino.getPath().trim() + "\\" + txtNomePastaManga.getText().trim() + " "
 							+ txtVolume.getText().trim();
 
 					updateMessage("Criando diretórios - " + nomePasta + " Capa\\");
@@ -451,7 +452,7 @@ public class TelaInicialController implements Initializable {
 	@FXML
 	private void onBtnImporta() {
 		if (!txtAreaImportar.getText().trim().isEmpty()) {
-
+			String nomePasta = "";
 			String separador = txtSeparador.getText().trim();
 
 			if (separador.isEmpty())
@@ -464,7 +465,14 @@ public class TelaInicialController implements Initializable {
 
 			for (String ls : linhas) {
 				linha = ls.split(txtSeparador.getText());
-				lista.add(new Caminhos(linha[0], linha[1], txtNomePastaCapitulo.getText() + " " + linha[0]));
+
+				if (txtNomePastaCapitulo.getText().trim().equalsIgnoreCase("Capítulo")
+						&& linha[0].toUpperCase().contains("EXTRA"))
+					nomePasta = linha[0].trim();
+				else
+					nomePasta = txtNomePastaCapitulo.getText().trim() + " " + linha[0].trim();
+
+				lista.add(new Caminhos(linha[0], linha[1], nomePasta));
 			}
 
 			obsLCaminhos = FXCollections.observableArrayList(lista);
