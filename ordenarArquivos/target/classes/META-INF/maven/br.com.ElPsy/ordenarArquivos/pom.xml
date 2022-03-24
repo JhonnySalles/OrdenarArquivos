@@ -5,7 +5,7 @@
 
 	<groupId>br.com.ElPsy</groupId>
 	<artifactId>ordenarArquivos</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.2-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>ordenarArquivos</name>
@@ -41,6 +41,33 @@
 							<mainClass>ordenarArquivos.App</mainClass>
 						</manifest>
 					</archive>
+					
+					<options>
+						<option>--add-opens</option>
+                        <option>javafx.graphics/javafx.css=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>javafx.base/com.sun.javafx.runtime=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>javafx.controls/com.sun.javafx.scene.control.behavior=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>javafx.base/com.sun.javafx.binding=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>javafx.base/com.sun.javafx.event=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED</option>
+                        <option>--add-exports</option>
+                        <option>javafx.controls/com.sun.javafx.scene.control.behavior=com.jfoenix</option>
+                        <option>--add-exports</option>
+                        <option>javafx.controls/com.sun.javafx.scene.control=com.jfoenix</option>
+                        <option>--add-exports</option>
+                        <option>javafx.base/com.sun.javafx.binding=com.jfoenix</option>
+                        <option>--add-exports</option>
+                        <option>javafx.graphics/com.sun.javafx.stage=com.jfoenix</option>
+                        <option>--add-exports</option>
+                        <option>javafx.base/com.sun.javafx.event=com.jfoenix</option>
+					</options>
 				</configuration>
 			</plugin>
 
@@ -58,6 +85,13 @@
 			</plugin>
 		</plugins>
 	</build>
+	
+	<repositories>
+		<repository>
+			<id>jitpack.io</id>
+			<url>https://jitpack.io</url>
+		</repository>
+	</repositories>
 
 	<dependencies>
 		<dependency>
@@ -67,38 +101,41 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- Bibliotecas do JavaFX -->
-		<dependency>
-			<groupId>org.openjfx</groupId>
-			<artifactId>javafx-controls</artifactId>
-			<version>15</version>
-		</dependency>
-		<dependency>
-			<groupId>org.openjfx</groupId>
-			<artifactId>javafx-web</artifactId>
-			<version>15</version>
-		</dependency>
-		<dependency>
-			<groupId>org.openjfx</groupId>
-			<artifactId>javafx-media</artifactId>
-			<version>15</version>
-		</dependency>
-		<dependency>
-			<groupId>org.openjfx</groupId>
-			<artifactId>javafx-graphics</artifactId>
-			<version>15</version>
-		</dependency>
+		<!-- Biblioteca JavaFX Base -->
 		<dependency>
 			<groupId>org.openjfx</groupId>
 			<artifactId>javafx-base</artifactId>
-			<version>15</version>
+			<version>18-ea+2</version>
 		</dependency>
+
+		<!-- Biblioteca JavaFX Graphics -->
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-graphics</artifactId>
+			<version>18-ea+2</version>
+		</dependency>
+
+		<!-- Biblioteca JavaFX Controle -->
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-controls</artifactId>
+			<version>18-ea+2</version>
+		</dependency>
+
+		<!-- Bibliotecas para animacao no javafx -->
 		<dependency>
 			<groupId>org.openjfx</groupId>
 			<artifactId>javafx-fxml</artifactId>
-			<version>15</version>
+			<version>18-ea+2</version>
 		</dependency>
-
+		
+		<!-- Biblioteca JavaFX WebView -->
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-web</artifactId>
+			<version>18-ea+2</version>
+		</dependency>
+		
 		<!-- Botoes e componentes estilizados para o javafx -->
 		<dependency>
 			<groupId>com.jfoenix</groupId>

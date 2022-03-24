@@ -89,6 +89,12 @@ public class TelaInicialController implements Initializable {
 
 	@FXML
 	private JFXTextField txtNumeroPaginaCapitulo;
+	
+	@FXML
+	private JFXTextField txtGerarInicio;
+	
+	@FXML
+	private JFXTextField txtGerarFim;
 
 	@FXML
 	private JFXTextField txtSeparador;
@@ -147,7 +153,7 @@ public class TelaInicialController implements Initializable {
 		txtNomePastaManga.setText("[JPN] Manga -");
 		txtVolume.setText("Volume 01");
 		txtNomePastaCapitulo.setText("Capítulo");
-		txtSeparador.setText(";");
+		txtSeparador.setText("-");
 		onBtnLimpar();
 
 		lblProgresso.setText("");
@@ -481,6 +487,32 @@ public class TelaInicialController implements Initializable {
 
 		}
 	}
+	
+	@FXML
+	private void onBtnGerarCapitulos() {
+		if (!txtGerarInicio.getText().trim().isEmpty() && !txtGerarFim.getText().trim().isEmpty()) {
+			Integer inicio = Integer.parseInt(txtGerarInicio.getText().trim());
+			Integer fim = Integer.parseInt(txtGerarFim.getText().trim());
+			
+			if (inicio <= fim) {
+				String texto = txtAreaImportar.getText();
+				if (!texto.isEmpty())
+					texto += "\r\n";
+				
+				for (Integer i=inicio;i<=fim;i++)
+					texto += i.toString() + "-" + (i<fim? "\r\n":"");
+
+				txtAreaImportar.setText(texto);
+			} else
+				txtGerarInicio.setUnFocusColor(Color.GRAY);
+		} else {
+			if (txtGerarInicio.getText().trim().isEmpty())
+				txtGerarInicio.setUnFocusColor(Color.GRAY);
+			
+			if (txtGerarFim.getText().trim().isEmpty())
+				txtGerarFim.setUnFocusColor(Color.GRAY);
+		}
+	}
 
 	private void editaColunas() {
 		clCapitulo.setCellFactory(TextFieldTableCell.forTableColumn());
@@ -603,6 +635,48 @@ public class TelaInicialController implements Initializable {
 			if (e.getCode().toString().equals("ENTER"))
 				clickTab();
 		});
+		
+		
+		txtGerarInicio.focusedProperty().addListener(new ChangeListener<Boolean>() {
+			@Override
+			public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
+					Boolean newPropertyValue) {
+				txtPastaDestino.setUnFocusColor(Color.GRAY);
+			}
+		});
+		
+		txtGerarInicio.textProperty().addListener((obs, oldValue, newValue) -> {
+			if (newValue != null && !newValue.matches("\\d*"))
+				txtGerarInicio.setText(oldValue);
+			else if (newValue != null && newValue.isEmpty())
+				txtGerarInicio.setText("0");
+		});
+		
+		txtGerarInicio.setOnKeyPressed(e -> {
+			if (e.getCode().toString().equals("ENTER"))
+				clickTab();
+		});
+		
+		txtGerarFim.focusedProperty().addListener(new ChangeListener<Boolean>() {
+			@Override
+			public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
+					Boolean newPropertyValue) {
+				txtPastaDestino.setUnFocusColor(Color.GRAY);
+			}
+		});
+		
+		txtGerarFim.textProperty().addListener((obs, oldValue, newValue) -> {
+			if (newValue != null && !newValue.matches("\\d*"))
+				txtGerarFim.setText(oldValue);
+			else if (newValue != null && newValue.isEmpty())
+				txtGerarFim.setText("0");
+		});
+		
+		txtGerarFim.setOnKeyPressed(e -> {
+			if (e.getCode().toString().equals("ENTER"))
+				clickTab();
+		});
+		
 	}
 
 	private void clickTab() {
