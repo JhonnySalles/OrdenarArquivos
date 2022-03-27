@@ -495,9 +495,9 @@ public class TelaInicialController implements Initializable {
 			Integer fim = Integer.parseInt(txtGerarFim.getText().trim());
 			
 			if (inicio <= fim) {
-				String texto = txtAreaImportar.getText();
-				if (!texto.isEmpty())
-					texto += "\r\n";
+				String texto = ""; //txtAreaImportar.getText();
+				//if (!texto.isEmpty())
+					//texto += "\r\n";
 				
 				String padding = "%0" + (fim.toString().length() > 3 ? String.valueOf(fim.toString().length()) : "3") + "d";
 				for (Integer i=inicio;i<=fim;i++)

@@ -222,9 +222,9 @@
                            <children>
                               <JFXButton fx:id="btnInserir" onAction="#onBtnInserir" prefHeight="30.0" prefWidth="110.0" styleClass="background-Green2" text="Inserir" textFill="WHITE" />
                               <JFXButton fx:id="btnExcluir" onAction="#onBtnExcluir" prefHeight="25.0" prefWidth="110.0" styleClass="background-Red2" text="Excluir" textFill="WHITE" />
+                              <JFXButton fx:id="btnGerar" onAction="#onBtnGerarCapitulos" prefHeight="25.0" prefWidth="140.0" styleClass="background-White1" text="Gerar Capitulos" />
                               <JFXButton fx:id="btnLimpar" onAction="#onBtnLimpar" prefHeight="25.0" prefWidth="110.0" styleClass="background-Blue3" text="Limpar" textFill="WHITE" />
                               <JFXButton fx:id="btnImportar" onAction="#onBtnImporta" prefHeight="25.0" prefWidth="120.0" styleClass="background-Purple2" text="Importar" textFill="WHITE" />
-                              <JFXButton fx:id="btnGerar" onAction="#onBtnGerarCapitulos" prefHeight="25.0" prefWidth="140.0" styleClass="background-White1" text="Gerar Capitulos" />
                            </children>
                         </HBox>
                         <TableView fx:id="tbViewTabela" editable="true" prefHeight="400.0" prefWidth="400.0" VBox.vgrow="ALWAYS">
