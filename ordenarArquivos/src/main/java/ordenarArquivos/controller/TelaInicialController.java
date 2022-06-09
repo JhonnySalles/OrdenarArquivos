@@ -233,6 +233,9 @@ public class TelaInicialController implements Initializable {
 
 		if (lsVwListaImagens.getSelectionModel().getSelectedItem() == null)
 			lsVwListaImagens.getSelectionModel().select(0);
+		
+		if (obsLCaminhos.isEmpty())
+			valida = false;
 
 		return valida;
 	}
@@ -398,10 +401,9 @@ public class TelaInicialController implements Initializable {
 	}
 
 	private void listaItens() {
-		if ((caminhoOrigem != null) && (caminhoOrigem.list() != null)) {
-
+		if ((caminhoOrigem != null) && (caminhoOrigem.list() != null))
 			obsLListaItens = FXCollections.<String>observableArrayList(caminhoOrigem.list(getFilterNameFile()));
-		} else
+		else
 			obsLListaItens = FXCollections.<String>observableArrayList("");
 		lsVwListaImagens.setItems(obsLListaItens);
 	}
