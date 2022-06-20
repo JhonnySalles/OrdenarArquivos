@@ -8,6 +8,7 @@ module ordenarArquivos {
 	requires javafx.fxml;
 	requires transitive com.jfoenix;
 	requires transitive javafx.controls;
+	requires java.desktop;
 
 	opens ordenarArquivos.controller to javafx.fxml, javafx.graphics;
 	opens ordenarArquivos.model to javafx.base;

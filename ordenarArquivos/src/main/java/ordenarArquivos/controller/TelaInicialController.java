@@ -1,5 +1,6 @@
 package ordenarArquivos.controller;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -13,16 +14,23 @@ import java.util.List;
 import java.util.ResourceBundle;
 import java.util.regex.Pattern;
 
+import javax.imageio.ImageIO;
+
 import com.jfoenix.controls.JFXButton;
+import com.jfoenix.controls.JFXCheckBox;
+import com.jfoenix.controls.JFXListCell;
 import com.jfoenix.controls.JFXListView;
 import com.jfoenix.controls.JFXTextArea;
 import com.jfoenix.controls.JFXTextField;
 
+import javafx.beans.InvalidationListener;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
+import javafx.css.PseudoClass;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Cursor;
@@ -35,11 +43,14 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
 import javafx.scene.robot.Robot;
 import javafx.stage.DirectoryChooser;
 import ordenarArquivos.model.Caminhos;
+import ordenarArquivos.model.Capa;
+import ordenarArquivos.model.TipoCapa;
 
 public class TelaInicialController implements Initializable {
 
@@ -89,10 +100,10 @@ public class TelaInicialController implements Initializable {
 
 	@FXML
 	private JFXTextField txtNumeroPaginaCapitulo;
-	
+
 	@FXML
 	private JFXTextField txtGerarInicio;
-	
+
 	@FXML
 	private JFXTextField txtGerarFim;
 
@@ -101,6 +112,9 @@ public class TelaInicialController implements Initializable {
 
 	@FXML
 	private JFXTextArea txtAreaImportar;
+
+	@FXML
+	private JFXCheckBox cbVerificaPaginaDupla;
 
 	@FXML
 	private JFXButton btnLimpar;
@@ -138,6 +152,7 @@ public class TelaInicialController implements Initializable {
 	private File caminhoOrigem;
 	private File caminhoDestino;
 	private String selecionada;
+	private ObservableList<Capa> obsLImagesSelected;
 
 	private void limpaCampos() {
 		lista = new ArrayList<>();
@@ -192,6 +207,7 @@ public class TelaInicialController implements Initializable {
 		txtNomePastaManga.setDisable(true);
 		txtVolume.setDisable(true);
 
+		btnImportar.setDisable(true);
 		btnLimpar.setDisable(true);
 		btnExcluir.setDisable(true);
 		btnInserir.setDisable(true);
@@ -208,6 +224,7 @@ public class TelaInicialController implements Initializable {
 		txtNomePastaManga.setDisable(false);
 		txtVolume.setDisable(false);
 
+		btnImportar.setDisable(false);
 		btnLimpar.setDisable(false);
 		btnExcluir.setDisable(false);
 		btnInserir.setDisable(false);
@@ -233,7 +250,7 @@ public class TelaInicialController implements Initializable {
 
 		if (lsVwListaImagens.getSelectionModel().getSelectedItem() == null)
 			lsVwListaImagens.getSelectionModel().select(0);
-		
+
 		if (obsLCaminhos.isEmpty())
 			valida = false;
 
@@ -246,10 +263,28 @@ public class TelaInicialController implements Initializable {
 			arquivo.mkdir();
 	}
 
-	private void copiaItem(File arquivo, File destino) throws IOException {
+	private Path copiaItem(File arquivo, File destino) throws IOException {
 		Path arquivoDestino = Paths.get(destino.toPath() + "/" + arquivo.getName());
 		Files.copy(arquivo.toPath(), arquivoDestino, StandardCopyOption.COPY_ATTRIBUTES,
 				StandardCopyOption.REPLACE_EXISTING);
+		return arquivoDestino;
+	}
+
+	private void renomeiaItem(Path arquivo, String nome) throws IOException {
+		Files.move(arquivo, arquivo.resolveSibling(nome), StandardCopyOption.REPLACE_EXISTING);
+	}
+
+	private Boolean verificaPaginaDupla(File arquivo) {
+		boolean result = false;
+		try {
+			BufferedImage img = null;
+			img = ImageIO.read(arquivo);
+
+			result = (img.getWidth() / img.getHeight()) > 0.9;
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return result;
 	}
 
 	private void processar() {
@@ -261,6 +296,7 @@ public class TelaInicialController implements Initializable {
 
 					int i = 0;
 					int max = caminhoOrigem.listFiles(getFilterNameFile()).length;
+					boolean verificaPagDupla = cbVerificaPaginaDupla.isSelected();
 
 					updateProgress(i, max);
 					updateMessage("Criando diretórios...");
@@ -270,6 +306,48 @@ public class TelaInicialController implements Initializable {
 
 					updateMessage("Criando diretórios - " + nomePasta + " Capa\\");
 					criaPasta(nomePasta + " Capa\\");
+
+					if (!obsLImagesSelected.isEmpty()) {
+						File destinoCapa = new File(nomePasta + " Capa\\");
+						for (File arquivoCapa : caminhoOrigem.listFiles(getFilterNameFile())) {
+							if (obsLImagesSelected.isEmpty())
+								break;
+
+							Capa item = obsLImagesSelected.stream()
+									.filter(capa -> capa.getArquivo().equalsIgnoreCase(arquivoCapa.getName()))
+									.findFirst().orElse(null);
+
+							if (item == null)
+								continue;
+
+							String nome = txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim();
+							if (nome.contains("]"))
+								nome = nome.substring(nome.indexOf(']')+1, nome.length());
+
+							nome = nome.trim();
+
+							switch (item.getTipo()) {
+							case CAPA:
+								nome += " Frente";
+								break;
+							case PAGINA_DUPLA:
+								nome += " Tudo";
+								break;
+							case SUMARIO:
+								nome += " zSumário";
+								break;
+							default:
+							}
+							
+							nome += arquivoCapa.getName().substring(arquivoCapa.getName().lastIndexOf("."), arquivoCapa.getName().length());
+
+							System.out.println("Copiando capa: " + arquivoCapa.getName() + " - Tipo: " + item.getTipo()
+									+ " - Nome: " + nome);
+							Path novoArquivo = copiaItem(arquivoCapa, destinoCapa);
+							renomeiaItem(novoArquivo, nome);
+							obsLImagesSelected.remove(item);
+						}
+					}
 
 					int pagina = 0, proxCapitulo, contadorCapitulo = 0;
 					boolean contar = false;
@@ -287,6 +365,11 @@ public class TelaInicialController implements Initializable {
 								+ proxCapitulo + " - Nome Imagem: " + arquivos.getName());
 						if (arquivos.getName().equalsIgnoreCase(selecionada))
 							contar = true;
+
+						if (contar && verificaPagDupla) {
+							if (verificaPaginaDupla(arquivos))
+								contadorCapitulo++;
+						}
 
 						if ((contadorCapitulo >= proxCapitulo) && (pagina < lista.size())) {
 
@@ -313,6 +396,7 @@ public class TelaInicialController implements Initializable {
 							break;
 					}
 
+					obsLImagesSelected.clear();
 				} catch (Exception e) {
 					e.printStackTrace();
 					Alert a = new Alert(AlertType.NONE);
@@ -471,6 +555,7 @@ public class TelaInicialController implements Initializable {
 			String linhas[] = txtAreaImportar.getText().split("\\r?\\n");
 			String linha[];
 
+			lista = new ArrayList<>();
 			for (String ls : linhas) {
 				linha = ls.split(txtSeparador.getText());
 
@@ -489,21 +574,22 @@ public class TelaInicialController implements Initializable {
 
 		}
 	}
-	
+
 	@FXML
 	private void onBtnGerarCapitulos() {
 		if (!txtGerarInicio.getText().trim().isEmpty() && !txtGerarFim.getText().trim().isEmpty()) {
 			Integer inicio = Integer.parseInt(txtGerarInicio.getText().trim());
 			Integer fim = Integer.parseInt(txtGerarFim.getText().trim());
-			
+
 			if (inicio <= fim) {
-				String texto = ""; //txtAreaImportar.getText();
-				//if (!texto.isEmpty())
-					//texto += "\r\n";
-				
-				String padding = "%0" + (fim.toString().length() > 3 ? String.valueOf(fim.toString().length()) : "3") + "d";
-				for (Integer i=inicio;i<=fim;i++)
-					texto += String.format(padding, i) + "-" + (i<fim? "\r\n":"");
+				String texto = ""; // txtAreaImportar.getText();
+				// if (!texto.isEmpty())
+				// texto += "\r\n";
+
+				String padding = "%0" + (fim.toString().length() > 3 ? String.valueOf(fim.toString().length()) : "3")
+						+ "d";
+				for (Integer i = inicio; i <= fim; i++)
+					texto += String.format(padding, i) + "-" + (i < fim ? "\r\n" : "");
 
 				txtAreaImportar.setText(texto);
 			} else
@@ -511,10 +597,83 @@ public class TelaInicialController implements Initializable {
 		} else {
 			if (txtGerarInicio.getText().trim().isEmpty())
 				txtGerarInicio.setUnFocusColor(Color.GRAY);
-			
+
 			if (txtGerarFim.getText().trim().isEmpty())
 				txtGerarFim.setUnFocusColor(Color.GRAY);
 		}
+	}
+
+	public Boolean contemTipoSelecionado(TipoCapa tipo, String caminho) {
+		if (obsLImagesSelected.isEmpty())
+			return false;
+		return obsLImagesSelected.stream()
+				.filter(capa -> capa.getTipo().equals(tipo) && capa.getArquivo().equalsIgnoreCase(caminho)).findFirst()
+				.isPresent();
+	}
+
+	private void selecionaImagens() {
+		obsLImagesSelected = FXCollections.observableArrayList();
+
+		lsVwListaImagens.setOnMouseClicked(new EventHandler<MouseEvent>() {
+			@Override
+			public void handle(MouseEvent click) {
+				if (click.getClickCount() > 1) {
+					if (click.isControlDown())
+						obsLImagesSelected.clear();
+					else {
+						String item = lsVwListaImagens.getSelectionModel().getSelectedItem();
+
+						if (item != null) {
+							obsLImagesSelected.removeIf(capa -> capa.getArquivo().equalsIgnoreCase(item));
+							TipoCapa tipo = TipoCapa.CAPA;
+							if (click.isShiftDown())
+								tipo = TipoCapa.PAGINA_DUPLA;
+							else if (click.isAltDown())
+								tipo = TipoCapa.SUMARIO;
+
+							obsLImagesSelected.add(new Capa(item, tipo));
+						}
+					}
+
+				}
+			}
+		});
+
+		PseudoClass capaSelected = PseudoClass.getPseudoClass("capaSelected");
+		PseudoClass capaDualSelected = PseudoClass.getPseudoClass("capaDualSelected");
+		PseudoClass sumarioDualSelected = PseudoClass.getPseudoClass("sumarioDualSelected");
+
+		lsVwListaImagens.setCellFactory(lv -> {
+
+			JFXListCell<String> cell = new JFXListCell<String>() {
+
+				@Override
+				protected void updateItem(String images, boolean empty) {
+					super.updateItem(images, empty);
+					setText(images);
+				}
+
+			};
+
+			InvalidationListener listenerCapa = obs -> cell.pseudoClassStateChanged(capaSelected,
+					cell.getItem() != null && contemTipoSelecionado(TipoCapa.CAPA, cell.getItem()));
+			InvalidationListener listenerPaginaDupla = obs -> cell.pseudoClassStateChanged(capaDualSelected,
+					cell.getItem() != null && contemTipoSelecionado(TipoCapa.PAGINA_DUPLA, cell.getItem()));
+			InvalidationListener listenerSumario = obs -> cell.pseudoClassStateChanged(sumarioDualSelected,
+					cell.getItem() != null && contemTipoSelecionado(TipoCapa.SUMARIO, cell.getItem()));
+
+			cell.itemProperty().addListener(listenerCapa);
+			cell.itemProperty().addListener(listenerPaginaDupla);
+			cell.itemProperty().addListener(listenerSumario);
+
+			obsLImagesSelected.addListener(listenerCapa);
+			obsLImagesSelected.addListener(listenerPaginaDupla);
+			obsLImagesSelected.addListener(listenerSumario);
+
+			return cell;
+
+		});
+
 	}
 
 	private void editaColunas() {
@@ -539,6 +698,7 @@ public class TelaInicialController implements Initializable {
 		clNumeroPagina.setCellValueFactory(new PropertyValueFactory<>("numeroPagina"));
 		clNomePasta.setCellValueFactory(new PropertyValueFactory<>("nomePasta"));
 		editaColunas();
+		selecionaImagens();
 	}
 
 	@SuppressWarnings("unused")
@@ -616,7 +776,7 @@ public class TelaInicialController implements Initializable {
 			@Override
 			public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
 					Boolean newPropertyValue) {
-				if (newPropertyValue)
+				if (oldPropertyValue)
 					simulaNome();
 			}
 		});
@@ -638,8 +798,7 @@ public class TelaInicialController implements Initializable {
 			if (e.getCode().toString().equals("ENTER"))
 				clickTab();
 		});
-		
-		
+
 		txtGerarInicio.focusedProperty().addListener(new ChangeListener<Boolean>() {
 			@Override
 			public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
@@ -647,19 +806,19 @@ public class TelaInicialController implements Initializable {
 				txtPastaDestino.setUnFocusColor(Color.GRAY);
 			}
 		});
-		
+
 		txtGerarInicio.textProperty().addListener((obs, oldValue, newValue) -> {
 			if (newValue != null && !newValue.matches("\\d*"))
 				txtGerarInicio.setText(oldValue);
 			else if (newValue != null && newValue.isEmpty())
 				txtGerarInicio.setText("0");
 		});
-		
+
 		txtGerarInicio.setOnKeyPressed(e -> {
 			if (e.getCode().toString().equals("ENTER"))
 				clickTab();
 		});
-		
+
 		txtGerarFim.focusedProperty().addListener(new ChangeListener<Boolean>() {
 			@Override
 			public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
@@ -667,19 +826,23 @@ public class TelaInicialController implements Initializable {
 				txtPastaDestino.setUnFocusColor(Color.GRAY);
 			}
 		});
-		
+
 		txtGerarFim.textProperty().addListener((obs, oldValue, newValue) -> {
 			if (newValue != null && !newValue.matches("\\d*"))
 				txtGerarFim.setText(oldValue);
 			else if (newValue != null && newValue.isEmpty())
 				txtGerarFim.setText("0");
 		});
-		
+
 		txtGerarFim.setOnKeyPressed(e -> {
-			if (e.getCode().toString().equals("ENTER"))
-				clickTab();
+			if (e.getCode().toString().equals("ENTER")) {
+				onBtnGerarCapitulos();
+				txtAreaImportar.requestFocus();
+				int position = txtAreaImportar.getText().indexOf('-') + 1;
+				txtAreaImportar.positionCaret(position);
+			}
 		});
-		
+
 	}
 
 	private void clickTab() {

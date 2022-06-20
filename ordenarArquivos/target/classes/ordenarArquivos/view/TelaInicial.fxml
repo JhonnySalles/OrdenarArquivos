@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import com.jfoenix.controls.JFXButton?>
+<?import com.jfoenix.controls.JFXCheckBox?>
 <?import com.jfoenix.controls.JFXListView?>
 <?import com.jfoenix.controls.JFXTextArea?>
 <?import com.jfoenix.controls.JFXTextField?>
@@ -19,7 +20,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane fx:id="apGlobal" minHeight="450.0" minWidth="540.0" prefHeight="700.0" prefWidth="700.0" styleClass="background-Black1" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ordenarArquivos.controller.TelaInicialController">
+<AnchorPane fx:id="apGlobal" minHeight="450.0" minWidth="540.0" prefHeight="700.0" prefWidth="700.0" styleClass="background-Black1" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ordenarArquivos.controller.TelaInicialController">
    <children>
       <VBox layoutX="129.0" layoutY="37.0" prefHeight="200.0" prefWidth="100.0" styleClass="background-Blue4" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
@@ -137,13 +138,37 @@
                      <children>
                         <VBox>
                            <children>
-                              <Label fx:id="lblTitulo22" styleClass="texto-stilo-1" text="Nome da pasta do capítulo" textFill="WHITE" />
-                              <JFXTextField fx:id="txtNomePastaCapitulo" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY" VBox.vgrow="ALWAYS">
-                                 <styleClass>
-                                    <String fx:value="texto-stilo-1" />
-                                    <String fx:value="background-Black1" />
-                                 </styleClass>
-                              </JFXTextField>
+                              <HBox spacing="5.0">
+                                 <children>
+                                    <Label fx:id="lblTitulo22" prefHeight="17.0" prefWidth="213.0" styleClass="texto-stilo-1" text="Nome da pasta do capítulo" textFill="WHITE" />
+                                    <Label fx:id="lblTitulo221" styleClass="texto-stilo-capa" text="Capa - Click" textFill="#05420f">
+                                       <font>
+                                          <Font size="10.0" />
+                                       </font>
+                                    </Label>
+                                    <Label fx:id="lblTitulo222" styleClass="texto-stilo-pagina-dupla" text="Pagina dupla - Shift" textFill="WHITE">
+                                       <font>
+                                          <Font size="10.0" />
+                                       </font>
+                                    </Label>
+                                    <Label fx:id="lblTitulo223" styleClass="texto-stilo-sumario" text="Sumário - Alt" textFill="WHITE">
+                                       <font>
+                                          <Font size="10.0" />
+                                       </font>
+                                    </Label>
+                                 </children>
+                              </HBox>
+                              <HBox alignment="CENTER_LEFT" spacing="10.0" VBox.vgrow="ALWAYS">
+                                 <children>
+                                    <JFXTextField fx:id="txtNomePastaCapitulo" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY">
+                                       <styleClass>
+                                          <String fx:value="texto-stilo-1" />
+                                          <String fx:value="background-Black1" />
+                                       </styleClass>
+                                    </JFXTextField>
+                                    <JFXCheckBox fx:id="cbVerificaPaginaDupla" checkedColor="#4059a9" selected="true" text="Verifica página dupla" textFill="WHITE" unCheckedColor="GREY" />
+                                 </children>
+                              </HBox>
                            </children>
                         </VBox>
                         <HBox spacing="10.0">

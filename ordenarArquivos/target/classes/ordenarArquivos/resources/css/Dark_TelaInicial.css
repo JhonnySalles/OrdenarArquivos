@@ -22,6 +22,21 @@
     -fx-background-color:  #ffffff;
 }
 
+.texto-stilo-capa {
+    -fx-text-fill: #28f04a;
+}
+
+
+.texto-stilo-pagina-dupla {
+    -fx-text-fill: #6ba60c;
+}
+
+
+.texto-stilo-sumario {
+    -fx-text-fill: #7d8acf;
+}
+
+
 /*---------- Text Area ----------*/
 /*----------  Cadastro endereço ----------*/
 .textArea {
@@ -216,6 +231,48 @@
 }
 
 .list-view .list-cell:selected {
+    -fx-background-color: #4052ab;
+}
+
+.list-view .list-cell:capaSelected {
+-fx-background-color: #0ca626;
+-fx-text-fill: white;
+}
+
+.list-view .list-cell:capaSelected:odd {
+-fx-background-color: #05420f;
+-fx-text-fill: white;
+}
+
+.list-view .list-cell:capaSelected:selected {
+    -fx-background-color: #4052ab;
+}
+
+.list-view .list-cell:capaDualSelected {
+-fx-background-color: #4d7709;
+-fx-text-fill: white;
+}
+
+.list-view .list-cell:capaDualSelected:odd {
+-fx-background-color: #2e4705;
+-fx-text-fill: white;
+}
+
+.list-view .list-cell:capaDualSelected:selected {
+    -fx-background-color: #4052ab;
+}
+
+.list-view .list-cell:sumarioDualSelected {
+-fx-background-color: #3e50a8;
+-fx-text-fill: white;
+}
+
+.list-view .list-cell:sumarioDualSelected:odd {
+-fx-background-color: #293570;
+-fx-text-fill: white;
+}
+
+.list-view .list-cell:sumarioDualSelected:selected {
     -fx-background-color: #4052ab;
 }
 
