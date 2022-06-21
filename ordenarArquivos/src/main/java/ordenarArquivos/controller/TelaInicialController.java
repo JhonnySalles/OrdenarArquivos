@@ -301,7 +301,9 @@ public class TelaInicialController implements Initializable {
 			@Override
 			protected Boolean call() throws Exception {
 				try {
-					selecionada = lsVwListaImagens.getSelectionModel().getSelectedItem();
+					
+					if (lsVwListaImagens.getSelectionModel().getSelectedItem() != null)
+						selecionada = lsVwListaImagens.getSelectionModel().getSelectedItem();
 
 					int i = 0;
 					int max = caminhoOrigem.listFiles(getFilterNameFile()).length;
@@ -501,6 +503,7 @@ public class TelaInicialController implements Initializable {
 			obsLListaItens = FXCollections.<String>observableArrayList("");
 		lsVwListaImagens.setItems(obsLListaItens);
 		obsLImagesSelected.clear();
+		selecionada = obsLListaItens.get(0);
 	}
 
 	private void simulaNome() {
@@ -674,14 +677,17 @@ public class TelaInicialController implements Initializable {
 						String item = lsVwListaImagens.getSelectionModel().getSelectedItem();
 
 						if (item != null) {
-							obsLImagesSelected.removeIf(capa -> capa.getArquivo().equalsIgnoreCase(item));
-							TipoCapa tipo = TipoCapa.CAPA;
-							if (click.isShiftDown())
-								tipo = TipoCapa.PAGINA_DUPLA;
-							else if (click.isAltDown())
-								tipo = TipoCapa.SUMARIO;
-
-							obsLImagesSelected.add(new Capa(item, tipo));
+							if (obsLImagesSelected.stream().filter(e -> e.getArquivo().equalsIgnoreCase(item)).findFirst().isPresent())
+								obsLImagesSelected.removeIf(capa -> capa.getArquivo().equalsIgnoreCase(item));
+							else {
+								TipoCapa tipo = TipoCapa.CAPA;
+								if (click.isShiftDown())
+									tipo = TipoCapa.PAGINA_DUPLA;
+								else if (click.isAltDown())
+									tipo = TipoCapa.SUMARIO;
+	
+								obsLImagesSelected.add(new Capa(item, tipo));
+							}
 						}
 					}
 
@@ -797,7 +803,7 @@ public class TelaInicialController implements Initializable {
 		txtPastaOrigem.setOnKeyPressed(e -> {
 			if (e.getCode().equals(KeyCode.ENTER))
 				txtVolume.requestFocus();
-			else if (e.getCode().equals(KeyCode.TAB)) {
+			else if (e.getCode().equals(KeyCode.TAB) && !e.isControlDown() && !e.isAltDown() && !e.isShiftDown()) {
 				txtPastaDestino.requestFocus();
 				e.consume();
 			}
@@ -817,7 +823,7 @@ public class TelaInicialController implements Initializable {
 		txtPastaDestino.setOnKeyPressed(e -> {
 			if (e.getCode().equals(KeyCode.ENTER))
 				txtNomePastaManga.requestFocus();
-			else if (e.getCode().equals(KeyCode.TAB)) {
+			else if (e.getCode().equals(KeyCode.TAB) && !e.isControlDown() && !e.isAltDown() && !e.isShiftDown()) {
 				txtNomePastaManga.requestFocus();
 				e.consume();
 			}
@@ -849,7 +855,7 @@ public class TelaInicialController implements Initializable {
 		txtVolume.setOnKeyPressed(e -> {
 			if (e.getCode().equals(KeyCode.ENTER))
 				txtGerarInicio.requestFocus();
-			else if (e.getCode().equals(KeyCode.TAB)) {
+			else if (e.getCode().equals(KeyCode.TAB) && !e.isControlDown() && !e.isAltDown() && !e.isShiftDown()) {
 				txtGerarInicio.requestFocus();
 				e.consume();
 			}
@@ -936,6 +942,9 @@ public class TelaInicialController implements Initializable {
 
 		scene.addEventFilter(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
 			public void handle(KeyEvent ke) {
+				if (ke.isControlDown() && lsVwListaImagens.getSelectionModel().getSelectedItem() != null)
+					selecionada = lsVwListaImagens.getSelectionModel().getSelectedItem();
+				
 				if (kcInicioFocus.match(ke))
 					txtGerarInicio.requestFocus();
 
@@ -948,10 +957,7 @@ public class TelaInicialController implements Initializable {
 				if (kcImportar.match(ke))
 					btnImportar.fire();
 
-				if (kcProcessar.match(ke))
-					btnProcessar.fire();
-
-				if (kcProcessarAlter.match(ke))
+				if (kcProcessar.match(ke) || kcProcessarAlter.match(ke))
 					btnProcessar.fire();
 			}
 		});
