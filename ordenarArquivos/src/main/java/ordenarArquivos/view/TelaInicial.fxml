@@ -29,7 +29,7 @@
                   <VBox HBox.hgrow="ALWAYS">
                      <children>
                         <Label fx:id="lblTitulo26" styleClass="texto-stilo-1" text="Simulação do caminho" textFill="WHITE" />
-                        <JFXTextField fx:id="txtSimularPasta" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY" VBox.vgrow="ALWAYS">
+                        <JFXTextField fx:id="txtSimularPasta" alignment="CENTER_RIGHT" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY" VBox.vgrow="ALWAYS">
                            <styleClass>
                               <String fx:value="texto-stilo-1" />
                               <String fx:value="background-Black2" />
@@ -54,7 +54,7 @@
                         <Label fx:id="lblTitulo" styleClass="texto-stilo-1" text="Pasta de origem" textFill="WHITE" />
                         <HBox alignment="CENTER" prefHeight="36.0" prefWidth="431.0" spacing="2.0">
                            <children>
-                              <JFXTextField fx:id="txtPastaOrigem" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY" HBox.hgrow="ALWAYS">
+                              <JFXTextField fx:id="txtPastaOrigem" alignment="CENTER_RIGHT" prefHeight="25.0" prefWidth="344.0" promptText="C:\Users\Jhonny\Downloads\Compressed\KonoSubarashiiSekaiNi Shukufuku v06-08\[暁なつめ×渡真仁] この素晴らしい世界に祝福を！ 第08巻" unFocusColor="GREY" HBox.hgrow="ALWAYS">
                                  <styleClass>
                                     <String fx:value="texto-stilo-1" />
                                     <String fx:value="background-Black2" />

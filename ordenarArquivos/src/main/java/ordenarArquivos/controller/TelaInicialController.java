@@ -750,8 +750,12 @@ public class TelaInicialController implements Initializable {
 		});
 
 		txtPastaOrigem.setOnKeyPressed(e -> {
-			if (e.getCode().toString().equals("ENTER"))
-				clickTab();
+			if (e.getCode().equals(KeyCode.ENTER))
+				txtVolume.requestFocus();
+			else if(e.getCode().equals(KeyCode.TAB)) {
+				txtPastaDestino.requestFocus();
+				e.consume();
+			}
 		});
 
 		txtPastaDestino.focusedProperty().addListener(new ChangeListener<Boolean>() {
@@ -766,8 +770,12 @@ public class TelaInicialController implements Initializable {
 		});
 
 		txtPastaDestino.setOnKeyPressed(e -> {
-			if (e.getCode().toString().equals("ENTER"))
-				clickTab();
+			if (e.getCode().equals(KeyCode.ENTER))
+				txtNomePastaManga.requestFocus();
+			else if(e.getCode().equals(KeyCode.TAB)) {
+				txtNomePastaManga.requestFocus();
+				e.consume();
+			}
 		});
 
 		txtNomePastaManga.focusedProperty().addListener(new ChangeListener<Boolean>() {
@@ -780,7 +788,7 @@ public class TelaInicialController implements Initializable {
 		});
 
 		txtNomePastaManga.setOnKeyPressed(e -> {
-			if (e.getCode().toString().equals("ENTER"))
+			if (e.getCode().equals(KeyCode.ENTER))
 				clickTab();
 		});
 
@@ -794,8 +802,12 @@ public class TelaInicialController implements Initializable {
 		});
 
 		txtVolume.setOnKeyPressed(e -> {
-			if (e.getCode().toString().equals("ENTER"))
-				clickTab();
+			if (e.getCode().equals(KeyCode.ENTER))
+				txtGerarInicio.requestFocus();
+			else if(e.getCode().equals(KeyCode.TAB)) {
+				txtGerarInicio.requestFocus();
+				e.consume();
+			}
 		});
 
 		txtNomePastaCapitulo.focusedProperty().addListener(new ChangeListener<Boolean>() {
@@ -806,6 +818,7 @@ public class TelaInicialController implements Initializable {
 					simulaNome();
 			}
 		});
+		
 		txtNomePastaCapitulo.setOnKeyPressed(e -> {
 			if (e.getCode().toString().equals("ENTER"))
 				clickTab();
@@ -847,7 +860,7 @@ public class TelaInicialController implements Initializable {
 		});
 
 		txtGerarFim.setOnKeyPressed(e -> {
-			if (e.getCode().toString().equals("ENTER")) {
+			if (e.getCode().equals(KeyCode.ENTER)) {
 				onBtnGerarCapitulos();
 				txtAreaImportar.requestFocus();
 				int position = txtAreaImportar.getText().indexOf('-') + 1;
