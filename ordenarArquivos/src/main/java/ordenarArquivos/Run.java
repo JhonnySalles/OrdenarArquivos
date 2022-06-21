@@ -23,9 +23,10 @@ public class Run extends Application {
 			FXMLLoader loader = new FXMLLoader(getClass().getResource("view/TelaInicial.fxml"));
 			AnchorPane scPnTelaPrincipal = loader.load();
 			mainController = loader.getController();
-
+			
 			mainScene = new Scene(scPnTelaPrincipal); // Carrega a scena
 			mainScene.setFill(Color.BLACK);
+			mainController.configurarAtalhos(mainScene);
 
 			primaryStage.setScene(mainScene); // Seta a cena principal
 			primaryStage.setTitle("Ordena Arquivos");

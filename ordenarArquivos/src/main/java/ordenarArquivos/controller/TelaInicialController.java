@@ -34,6 +34,7 @@ import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Cursor;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Label;
@@ -43,6 +44,10 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.Mnemonic;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
@@ -322,7 +327,7 @@ public class TelaInicialController implements Initializable {
 
 							String nome = txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim();
 							if (nome.contains("]"))
-								nome = nome.substring(nome.indexOf(']')+1, nome.length());
+								nome = nome.substring(nome.indexOf(']') + 1, nome.length());
 
 							nome = nome.trim();
 
@@ -338,8 +343,9 @@ public class TelaInicialController implements Initializable {
 								break;
 							default:
 							}
-							
-							nome += arquivoCapa.getName().substring(arquivoCapa.getName().lastIndexOf("."), arquivoCapa.getName().length());
+
+							nome += arquivoCapa.getName().substring(arquivoCapa.getName().lastIndexOf("."),
+									arquivoCapa.getName().length());
 
 							System.out.println("Copiando capa: " + arquivoCapa.getName() + " - Tipo: " + item.getTipo()
 									+ " - Nome: " + nome);
@@ -490,6 +496,7 @@ public class TelaInicialController implements Initializable {
 		else
 			obsLListaItens = FXCollections.<String>observableArrayList("");
 		lsVwListaImagens.setItems(obsLListaItens);
+		obsLImagesSelected.clear();
 	}
 
 	private void simulaNome() {
@@ -724,13 +731,18 @@ public class TelaInicialController implements Initializable {
 		tbViewTabela.refresh();
 	}
 
+	private String pastaAnterior = "";
+
 	private void configuraTextEdit() {
 
 		txtPastaOrigem.focusedProperty().addListener(new ChangeListener<Boolean>() {
 			@Override
 			public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
 					Boolean newPropertyValue) {
-				if (oldPropertyValue)
+				if (newPropertyValue)
+					pastaAnterior = txtPastaOrigem.getText();
+
+				if (oldPropertyValue && txtPastaOrigem.getText().compareToIgnoreCase(pastaAnterior) != 0)
 					carregaPastaOrigem();
 
 				txtPastaOrigem.setUnFocusColor(Color.GRAY);
@@ -840,6 +852,39 @@ public class TelaInicialController implements Initializable {
 				txtAreaImportar.requestFocus();
 				int position = txtAreaImportar.getText().indexOf('-') + 1;
 				txtAreaImportar.positionCaret(position);
+			}
+		});
+
+		txtAreaImportar.setOnKeyPressed(e -> {
+			if (e.isControlDown() && e.getCode().equals(KeyCode.ENTER))
+				onBtnImporta();
+		});
+
+	}
+
+	public void configurarAtalhos(Scene scene) {
+		KeyCombination kcInicioFocus = new KeyCodeCombination(KeyCode.I, KeyCombination.CONTROL_DOWN);
+		KeyCombination kcFimFocus = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN);
+		KeyCombination kcImportFocus = new KeyCodeCombination(KeyCode.M, KeyCombination.CONTROL_DOWN);
+
+		KeyCombination kcProcessar = new KeyCodeCombination(KeyCode.P, KeyCombination.CONTROL_DOWN);
+		Mnemonic mnProcessar = new Mnemonic(btnProcessar, kcProcessar);
+		scene.addMnemonic(mnProcessar);
+
+		KeyCombination kcProcessarAlter = new KeyCodeCombination(KeyCode.SPACE, KeyCombination.CONTROL_DOWN);
+		Mnemonic mnProcessarAlter = new Mnemonic(btnProcessar, kcProcessarAlter);
+		scene.addMnemonic(mnProcessarAlter);
+
+		scene.addEventFilter(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
+			public void handle(KeyEvent ke) {
+				if (kcInicioFocus.match(ke))
+					txtGerarInicio.requestFocus();
+
+				if (kcFimFocus.match(ke))
+					txtGerarFim.requestFocus();
+
+				if (kcImportFocus.match(ke))
+					txtAreaImportar.requestFocus();
 			}
 		});
 
