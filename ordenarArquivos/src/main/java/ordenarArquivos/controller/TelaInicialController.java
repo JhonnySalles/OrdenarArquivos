@@ -10,8 +10,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ResourceBundle;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
@@ -24,6 +26,7 @@ import com.jfoenix.controls.JFXTextArea;
 import com.jfoenix.controls.JFXTextField;
 
 import javafx.beans.InvalidationListener;
+import javafx.beans.property.ReadOnlyProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -41,6 +44,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.KeyCode;
@@ -480,7 +484,7 @@ public class TelaInicialController implements Initializable {
 		if (txtPastaDestino != null)
 			txtPastaDestino.setText(caminhoDestino.getAbsolutePath());
 		else
-			txtPastaOrigem.setText("");
+			txtPastaDestino.setText("");
 
 		simulaNome();
 	}
@@ -501,8 +505,8 @@ public class TelaInicialController implements Initializable {
 
 	private void simulaNome() {
 		if (!txtPastaDestino.getText().trim().isEmpty()) {
-			txtSimularPasta.setText(txtPastaDestino.getText().trim() + "\\" + txtNomePastaManga.getText().trim()
-					+ " " + txtVolume.getText().trim() + " " + txtNomePastaCapitulo.getText().trim() + " 00");
+			txtSimularPasta.setText(txtPastaDestino.getText().trim() + "\\" + txtNomePastaManga.getText().trim() + " "
+					+ txtVolume.getText().trim() + " " + txtNomePastaCapitulo.getText().trim() + " 00");
 		}
 	}
 
@@ -608,6 +612,45 @@ public class TelaInicialController implements Initializable {
 			if (txtGerarFim.getText().trim().isEmpty())
 				txtGerarFim.setUnFocusColor(Color.GRAY);
 		}
+	}
+
+	final Set<TextField> mostraFinalTexto = new HashSet<TextField>();
+	private void textFieldMostraFinalTexto(JFXTextField txt) {
+		mostraFinalTexto.add(txt);
+		final Set<TextField> onFocus = new HashSet<TextField>();
+		final Set<TextField> overrideNextCaratChange = new HashSet<TextField>();
+		final ChangeListener<Boolean> onLoseFocus = new ChangeListener<Boolean>() {
+			@Override
+			public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) {
+				ReadOnlyProperty<? extends Boolean> property = (ReadOnlyProperty<? extends Boolean>) observable;
+				TextField tf = (TextField) property.getBean();
+
+				if (oldValue && onFocus.contains(tf))
+					onFocus.remove(tf);
+				
+				if (newValue)
+					onFocus.add(tf);
+				
+				if (!newValue.booleanValue())
+					overrideNextCaratChange.add(tf);
+			}
+		};
+
+		final ChangeListener<Number> onCaratChange = new ChangeListener<Number>() {
+			@Override
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+				ReadOnlyProperty<? extends Number> property = (ReadOnlyProperty<? extends Number>) observable;
+				TextField tf = (TextField) property.getBean();
+				if (overrideNextCaratChange.contains(tf)) {
+					tf.end();
+					overrideNextCaratChange.remove(tf);
+				} else if (!onFocus.contains(tf) && mostraFinalTexto.contains(tf))
+					tf.end();
+			}
+		};
+
+		txt.focusedProperty().addListener(onLoseFocus);
+		txt.caretPositionProperty().addListener(onCaratChange);
 	}
 
 	public Boolean contemTipoSelecionado(TipoCapa tipo, String caminho) {
@@ -734,6 +777,8 @@ public class TelaInicialController implements Initializable {
 	private String pastaAnterior = "";
 
 	private void configuraTextEdit() {
+		textFieldMostraFinalTexto(txtSimularPasta);
+		textFieldMostraFinalTexto(txtPastaOrigem);
 
 		txtPastaOrigem.focusedProperty().addListener(new ChangeListener<Boolean>() {
 			@Override
@@ -752,7 +797,7 @@ public class TelaInicialController implements Initializable {
 		txtPastaOrigem.setOnKeyPressed(e -> {
 			if (e.getCode().equals(KeyCode.ENTER))
 				txtVolume.requestFocus();
-			else if(e.getCode().equals(KeyCode.TAB)) {
+			else if (e.getCode().equals(KeyCode.TAB)) {
 				txtPastaDestino.requestFocus();
 				e.consume();
 			}
@@ -772,7 +817,7 @@ public class TelaInicialController implements Initializable {
 		txtPastaDestino.setOnKeyPressed(e -> {
 			if (e.getCode().equals(KeyCode.ENTER))
 				txtNomePastaManga.requestFocus();
-			else if(e.getCode().equals(KeyCode.TAB)) {
+			else if (e.getCode().equals(KeyCode.TAB)) {
 				txtNomePastaManga.requestFocus();
 				e.consume();
 			}
@@ -804,7 +849,7 @@ public class TelaInicialController implements Initializable {
 		txtVolume.setOnKeyPressed(e -> {
 			if (e.getCode().equals(KeyCode.ENTER))
 				txtGerarInicio.requestFocus();
-			else if(e.getCode().equals(KeyCode.TAB)) {
+			else if (e.getCode().equals(KeyCode.TAB)) {
 				txtGerarInicio.requestFocus();
 				e.consume();
 			}
@@ -818,7 +863,7 @@ public class TelaInicialController implements Initializable {
 					simulaNome();
 			}
 		});
-		
+
 		txtNomePastaCapitulo.setOnKeyPressed(e -> {
 			if (e.getCode().toString().equals("ENTER"))
 				clickTab();
@@ -899,13 +944,13 @@ public class TelaInicialController implements Initializable {
 
 				if (kcImportFocus.match(ke))
 					txtAreaImportar.requestFocus();
-				
+
 				if (kcImportar.match(ke))
 					btnImportar.fire();
-				
+
 				if (kcProcessar.match(ke))
 					btnProcessar.fire();
-				
+
 				if (kcProcessarAlter.match(ke))
 					btnProcessar.fire();
 			}
