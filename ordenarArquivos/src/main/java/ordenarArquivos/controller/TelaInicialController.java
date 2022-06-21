@@ -502,7 +502,7 @@ public class TelaInicialController implements Initializable {
 	private void simulaNome() {
 		if (!txtPastaDestino.getText().trim().isEmpty()) {
 			txtSimularPasta.setText(txtPastaDestino.getText().trim() + "\\" + txtNomePastaManga.getText().trim()
-					+ txtVolume.getText().trim() + " " + txtNomePastaCapitulo.getText().trim() + " 00");
+					+ " " + txtVolume.getText().trim() + " " + txtNomePastaCapitulo.getText().trim() + " 00");
 		}
 	}
 
@@ -866,6 +866,7 @@ public class TelaInicialController implements Initializable {
 		KeyCombination kcInicioFocus = new KeyCodeCombination(KeyCode.I, KeyCombination.CONTROL_DOWN);
 		KeyCombination kcFimFocus = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN);
 		KeyCombination kcImportFocus = new KeyCodeCombination(KeyCode.M, KeyCombination.CONTROL_DOWN);
+		KeyCombination kcImportar = new KeyCodeCombination(KeyCode.ENTER, KeyCombination.CONTROL_DOWN);
 
 		KeyCombination kcProcessar = new KeyCodeCombination(KeyCode.P, KeyCombination.CONTROL_DOWN);
 		Mnemonic mnProcessar = new Mnemonic(btnProcessar, kcProcessar);
@@ -885,6 +886,15 @@ public class TelaInicialController implements Initializable {
 
 				if (kcImportFocus.match(ke))
 					txtAreaImportar.requestFocus();
+				
+				if (kcImportar.match(ke))
+					btnImportar.fire();
+				
+				if (kcProcessar.match(ke))
+					btnProcessar.fire();
+				
+				if (kcProcessarAlter.match(ke))
+					btnProcessar.fire();
 			}
 		});
 
