@@ -13,6 +13,7 @@
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.AnchorPane?>
@@ -38,7 +39,10 @@
                      </children>
                   </VBox>
                   <JFXButton fx:id="btnLimparTudo" onAction="#onBtnLimparTudo" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Limpar Tudo" textFill="WHITE" />
-                  <JFXButton fx:id="btnProcessar" accessibleText="PROCESSA" onAction="#onBtnProcessa" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Processar" textFill="WHITE" />
+                  <JFXButton fx:id="btnProcessar" accessibleText="PROCESSA" onAction="#onBtnProcessa" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Processar" textFill="WHITE">
+                     <tooltip>
+                        <Tooltip text="Ctrl + Espaço" />
+                     </tooltip></JFXButton>
                </children>
                <VBox.margin>
                   <Insets />
@@ -138,15 +142,22 @@
                      <children>
                         <VBox>
                            <children>
-                              <HBox spacing="5.0">
+                              <HBox spacing="5.0" VBox.vgrow="ALWAYS">
                                  <children>
-                                    <Label fx:id="lblTitulo22" prefHeight="17.0" prefWidth="213.0" styleClass="texto-stilo-1" text="Nome da pasta do capítulo" textFill="WHITE" />
+                                    <VBox HBox.hgrow="ALWAYS">
+                                       <HBox.margin>
+                                          <Insets />
+                                       </HBox.margin>
+                                       <children>
+                                          <Label fx:id="lblTitulo22" styleClass="texto-stilo-1" text="Nome da pasta do capítulo" textFill="WHITE" />
+                                       </children>
+                                    </VBox>
                                     <Label fx:id="lblTitulo221" styleClass="texto-stilo-capa" text="Capa - Click" textFill="#05420f">
                                        <font>
                                           <Font size="10.0" />
                                        </font>
                                     </Label>
-                                    <Label fx:id="lblTitulo222" styleClass="texto-stilo-pagina-dupla" text="Pagina dupla - Shift" textFill="WHITE">
+                                    <Label fx:id="lblTitulo222" styleClass="texto-stilo-pagina-dupla" text="Pagina capa tudo - Shift" textFill="WHITE">
                                        <font>
                                           <Font size="10.0" />
                                        </font>
@@ -217,6 +228,9 @@
                                           <String fx:value="texto-stilo-1" />
                                           <String fx:value="background-Black1" />
                                        </styleClass>
+                                       <tooltip>
+                                          <Tooltip text="Ctrl + I" />
+                                       </tooltip>
                                     </JFXTextField>
                                  </children>
                               </VBox>
@@ -228,6 +242,9 @@
                                           <String fx:value="texto-stilo-1" />
                                           <String fx:value="background-Black1" />
                                        </styleClass>
+                                       <tooltip>
+                                          <Tooltip text="Ctrl + F" />
+                                       </tooltip>
                                     </JFXTextField>
                                  </children>
                               </VBox>
@@ -240,6 +257,9 @@
                                     <String fx:value="textArea" />
                                     <String fx:value="texto-stilo-1" />
                                  </styleClass>
+                                 <tooltip>
+                                    <Tooltip text="Ctrl + M" />
+                                 </tooltip>
                               </JFXTextArea>
                            </children>
                         </HBox>
@@ -249,7 +269,10 @@
                               <JFXButton fx:id="btnExcluir" onAction="#onBtnExcluir" prefHeight="25.0" prefWidth="110.0" styleClass="background-Red2" text="Excluir" textFill="WHITE" />
                               <JFXButton fx:id="btnGerar" onAction="#onBtnGerarCapitulos" prefHeight="25.0" prefWidth="140.0" styleClass="background-White1" text="Gerar Capitulos" />
                               <JFXButton fx:id="btnLimpar" onAction="#onBtnLimpar" prefHeight="25.0" prefWidth="110.0" styleClass="background-Blue3" text="Limpar" textFill="WHITE" />
-                              <JFXButton fx:id="btnImportar" onAction="#onBtnImporta" prefHeight="25.0" prefWidth="120.0" styleClass="background-Purple2" text="Importar" textFill="WHITE" />
+                              <JFXButton fx:id="btnImportar" onAction="#onBtnImporta" prefHeight="25.0" prefWidth="120.0" styleClass="background-Purple2" text="Importar" textFill="WHITE">
+                                 <tooltip>
+                                    <Tooltip text="Ctrl + Enter ou Ctrl + P" />
+                                 </tooltip></JFXButton>
                            </children>
                         </HBox>
                         <TableView fx:id="tbViewTabela" editable="true" prefHeight="400.0" prefWidth="400.0" VBox.vgrow="ALWAYS">
