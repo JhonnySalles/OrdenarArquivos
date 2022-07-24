@@ -220,6 +220,7 @@ public class TelaInicialController implements Initializable {
 		btnLimpar.setDisable(true);
 		btnExcluir.setDisable(true);
 		btnInserir.setDisable(true);
+		btnImportar.setDisable(true);
 		tbViewTabela.setDisable(true);
 	}
 
@@ -237,6 +238,7 @@ public class TelaInicialController implements Initializable {
 		btnLimpar.setDisable(false);
 		btnExcluir.setDisable(false);
 		btnInserir.setDisable(false);
+		btnImportar.setDisable(false);
 		tbViewTabela.setDisable(false);
 
 		btnProcessar.accessibleTextProperty().set("PROCESSA");
@@ -682,9 +684,9 @@ public class TelaInicialController implements Initializable {
 							else {
 								TipoCapa tipo = TipoCapa.CAPA;
 								if (click.isShiftDown())
-									tipo = TipoCapa.PAGINA_DUPLA;
-								else if (click.isAltDown())
 									tipo = TipoCapa.SUMARIO;
+								else if (click.isAltDown())
+									tipo = TipoCapa.PAGINA_DUPLA;
 	
 								obsLImagesSelected.add(new Capa(item, tipo));
 							}
