@@ -21,7 +21,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane fx:id="apGlobal" minHeight="450.0" minWidth="540.0" prefHeight="700.0" prefWidth="700.0" styleClass="background-Black1" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ordenarArquivos.controller.TelaInicialController">
+<AnchorPane fx:id="apGlobal" minHeight="450.0" minWidth="540.0" prefHeight="700.0" prefWidth="700.0" styleClass="background-Black1" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ordenarArquivos.controller.TelaInicialController">
    <children>
       <VBox layoutX="129.0" layoutY="37.0" prefHeight="200.0" prefWidth="100.0" styleClass="background-Blue4" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
@@ -157,12 +157,12 @@
                                           <Font size="10.0" />
                                        </font>
                                     </Label>
-                                    <Label fx:id="lblTitulo222" styleClass="texto-stilo-pagina-dupla" text="Pagina capa tudo - Shift" textFill="WHITE">
+                                    <Label fx:id="lblTitulo222" styleClass="texto-stilo-pagina-dupla" text="Capa tudo - Alt" textFill="WHITE">
                                        <font>
                                           <Font size="10.0" />
                                        </font>
                                     </Label>
-                                    <Label fx:id="lblTitulo223" styleClass="texto-stilo-sumario" text="Sumário - Alt" textFill="WHITE">
+                                    <Label fx:id="lblTitulo223" styleClass="texto-stilo-sumario" text="Sumário - Shift" textFill="WHITE">
                                        <font>
                                           <Font size="10.0" />
                                        </font>
