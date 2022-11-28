@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
@@ -97,6 +98,12 @@ public class TelaInicialController implements Initializable {
 
 	@FXML
 	private JFXTextField txtVolume;
+
+	@FXML
+	private JFXButton btnVolumeMenos;
+
+	@FXML
+	private JFXButton btnVolumeMais;
 
 	@FXML
 	private JFXListView<String> lsVwListaImagens;
@@ -206,6 +213,63 @@ public class TelaInicialController implements Initializable {
 		limpaCampos();
 	}
 
+	private static final String NUMBER_PATTERN = "[\\d.]+$";
+
+	@FXML
+	private void onBtnVolumeMenos() {
+		//Matches retorna se toda a string for o patern, no caso utiliza-se o inicio para mostrar que tenha em toda a string.
+		if (txtVolume.getText().matches(".*" + NUMBER_PATTERN)) {
+			String texto = txtVolume.getText().trim();
+			String volume = texto.replaceAll(texto.replaceAll(NUMBER_PATTERN, ""), "").trim();
+			Integer padding = volume.length();
+			
+			try { 
+				Integer number = Integer.valueOf(volume);
+				texto = texto.substring(0, texto.lastIndexOf(volume));
+				number--;
+				volume = texto + String.format("%0" + padding + "d", number);
+				txtVolume.setText(volume);
+		    } catch(NumberFormatException e) { 
+		    	try { 
+			    	Double number = Double.valueOf(volume);
+					texto = texto.substring(0, texto.lastIndexOf(volume));
+					number--;
+					volume = texto + String.format("%0" + padding + ".1f", number).replaceAll("\\.", "").replaceAll("\\,", ".");
+					txtVolume.setText(volume);
+			    } catch(NumberFormatException e1) {
+			    	System.out.println("Erro ao incrementar valor.");
+			    }
+		    }
+		}
+	}
+
+	@FXML
+	private void onBtnVolumeMais() {
+		if (txtVolume.getText().matches(".*" + NUMBER_PATTERN)) {
+			String texto = txtVolume.getText().trim();
+			String volume = texto.replaceAll(texto.replaceAll(NUMBER_PATTERN, ""), "").trim();
+			Integer padding = volume.length();
+			
+			try { 
+				Integer number = Integer.valueOf(volume);
+				texto = texto.substring(0, texto.lastIndexOf(volume));
+				number++;
+				volume = texto + String.format("%0" + padding + "d", number);
+				txtVolume.setText(volume);
+		    } catch(NumberFormatException e) { 
+		    	try { 
+			    	Double number = Double.valueOf(volume);
+					texto = texto.substring(0, texto.lastIndexOf(volume));
+					number++;
+					volume = texto + String.format("%0" + padding + ".1f", number).replaceAll("\\.", "").replaceAll("\\,", ".");
+					txtVolume.setText(volume);
+			    } catch(NumberFormatException e1) {
+			    	System.out.println("Erro ao incrementar valor.");
+			    }
+		    }
+		}
+	}
+
 	private void desabilita() {
 		btnLimparTudo.setDisable(true);
 
@@ -303,7 +367,7 @@ public class TelaInicialController implements Initializable {
 			@Override
 			protected Boolean call() throws Exception {
 				try {
-					
+
 					if (lsVwListaImagens.getSelectionModel().getSelectedItem() != null)
 						selecionada = lsVwListaImagens.getSelectionModel().getSelectedItem();
 
@@ -620,6 +684,7 @@ public class TelaInicialController implements Initializable {
 	}
 
 	final Set<TextField> mostraFinalTexto = new HashSet<TextField>();
+
 	private void textFieldMostraFinalTexto(JFXTextField txt) {
 		mostraFinalTexto.add(txt);
 		final Set<TextField> onFocus = new HashSet<TextField>();
@@ -632,10 +697,10 @@ public class TelaInicialController implements Initializable {
 
 				if (oldValue && onFocus.contains(tf))
 					onFocus.remove(tf);
-				
+
 				if (newValue)
 					onFocus.add(tf);
-				
+
 				if (!newValue.booleanValue())
 					overrideNextCaratChange.add(tf);
 			}
@@ -679,7 +744,8 @@ public class TelaInicialController implements Initializable {
 						String item = lsVwListaImagens.getSelectionModel().getSelectedItem();
 
 						if (item != null) {
-							if (obsLImagesSelected.stream().filter(e -> e.getArquivo().equalsIgnoreCase(item)).findFirst().isPresent())
+							if (obsLImagesSelected.stream().filter(e -> e.getArquivo().equalsIgnoreCase(item))
+									.findFirst().isPresent())
 								obsLImagesSelected.removeIf(capa -> capa.getArquivo().equalsIgnoreCase(item));
 							else {
 								TipoCapa tipo = TipoCapa.CAPA;
@@ -687,7 +753,7 @@ public class TelaInicialController implements Initializable {
 									tipo = TipoCapa.SUMARIO;
 								else if (click.isAltDown())
 									tipo = TipoCapa.PAGINA_DUPLA;
-	
+
 								obsLImagesSelected.add(new Capa(item, tipo));
 							}
 						}
@@ -946,7 +1012,7 @@ public class TelaInicialController implements Initializable {
 			public void handle(KeyEvent ke) {
 				if (ke.isControlDown() && lsVwListaImagens.getSelectionModel().getSelectedItem() != null)
 					selecionada = lsVwListaImagens.getSelectionModel().getSelectedItem();
-				
+
 				if (kcInicioFocus.match(ke))
 					txtGerarInicio.requestFocus();
 

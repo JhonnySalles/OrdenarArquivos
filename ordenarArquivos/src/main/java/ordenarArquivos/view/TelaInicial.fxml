@@ -122,12 +122,32 @@
                   <VBox HBox.hgrow="ALWAYS">
                      <children>
                         <Label fx:id="lblTitulo21" styleClass="texto-stilo-1" text="Volume" textFill="WHITE" />
-                        <JFXTextField fx:id="txtVolume" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY" VBox.vgrow="ALWAYS">
-                           <styleClass>
-                              <String fx:value="texto-stilo-1" />
-                              <String fx:value="background-Black2" />
-                           </styleClass>
-                        </JFXTextField>
+                        <HBox spacing="5.0">
+                           <children>
+                              <JFXTextField fx:id="txtVolume" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY">
+                                 <styleClass>
+                                    <String fx:value="texto-stilo-1" />
+                                    <String fx:value="background-Black2" />
+                                 </styleClass>
+                              </JFXTextField>
+                              <JFXButton fx:id="btnVolumeMenos" alignment="CENTER" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnVolumeMenos" styleClass="background-Black2">
+                                 <graphic>
+                                    <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
+                                       <image>
+                                          <Image url="@../resources/imagens/icoMenos_48.png" />
+                                       </image></ImageView>
+                                 </graphic>
+                              </JFXButton>
+                              <JFXButton fx:id="btnVolumeMais" alignment="CENTER" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnVolumeMais" styleClass="background-Black2">
+                                 <graphic>
+                                    <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
+                                       <image>
+                                          <Image url="@../resources/imagens/icoMais_48.png" />
+                                       </image></ImageView>
+                                 </graphic>
+                              </JFXButton>
+                           </children>
+                        </HBox>
                      </children>
                   </VBox>
                </children>
