@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -20,6 +21,9 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.jfoenix.controls.JFXButton;
 import com.jfoenix.controls.JFXCheckBox;
@@ -64,13 +68,14 @@ import javafx.stage.DirectoryChooser;
 import ordenarArquivos.configuration.Configuracao;
 import ordenarArquivos.model.Caminhos;
 import ordenarArquivos.model.Capa;
+import ordenarArquivos.model.Manga;
 import ordenarArquivos.model.TipoCapa;
+import ordenarArquivos.service.MangaServices;
 
 public class TelaInicialController implements Initializable {
 
-	// private final static Logger LOGGER =
-	// Logger.getLogger(TelaInicialController.class.getName());
-	
+	private static final Logger LOG = LoggerFactory.getLogger(TelaInicialController.class);
+
 	private static String WINRAR;
 
 	private static final String IMAGE_PATTERN = "(.*/)*.+\\.(png|jpg|gif|bmp|jpeg|PNG|JPG|GIF|BMP|JPEG)$";
@@ -83,7 +88,7 @@ public class TelaInicialController implements Initializable {
 
 	@FXML
 	private JFXButton btnProcessar;
-	
+
 	@FXML
 	private JFXButton btnCompactar;
 
@@ -113,19 +118,19 @@ public class TelaInicialController implements Initializable {
 
 	@FXML
 	private JFXButton btnVolumeMais;
-	
+
 	@FXML
 	private JFXTextField txtNomeArquivo;
-	
+
 	@FXML
 	private JFXTextField txtNomePastaCapitulo;
-	
+
 	@FXML
 	private JFXCheckBox cbVerificaPaginaDupla;
-	
+
 	@FXML
 	private JFXCheckBox cbCompactarArquivo;
-	
+
 	@FXML
 	private JFXCheckBox cbMesclarCapaTudo;
 
@@ -175,6 +180,12 @@ public class TelaInicialController implements Initializable {
 	private TableColumn<Caminhos, String> clNomePasta;
 
 	@FXML
+	private Label lblAviso;
+
+	@FXML
+	private Label lblAlerta;
+
+	@FXML
 	private Label lblProgresso;
 
 	@FXML
@@ -188,6 +199,8 @@ public class TelaInicialController implements Initializable {
 	private String selecionada;
 	private ObservableList<Capa> obsLImagesSelected;
 
+	private MangaServices service = new MangaServices();
+
 	private void limpaCampos() {
 		lista = new ArrayList<>();
 		obsLCaminhos = FXCollections.observableArrayList(lista);
@@ -195,6 +208,11 @@ public class TelaInicialController implements Initializable {
 
 		caminhoOrigem = null;
 		caminhoDestino = null;
+
+		lblAlerta.setText("");
+		lblAviso.setText("");
+
+		manga = null;
 
 		txtSimularPasta.setText("");
 		txtPastaOrigem.setText("");
@@ -204,7 +222,7 @@ public class TelaInicialController implements Initializable {
 		txtNomePastaCapitulo.setText("Capítulo");
 		txtSeparador.setText("-");
 		onBtnLimpar();
-		
+
 		obsLListaItens = FXCollections.<String>observableArrayList("");
 		lsVwListaImagens.setItems(obsLListaItens);
 		obsLImagesSelected.clear();
@@ -235,42 +253,45 @@ public class TelaInicialController implements Initializable {
 	private void onBtnLimparTudo() {
 		limpaCampos();
 	}
-	
+
 	private static List<File> LAST_PROCESS_FOLDERS = new ArrayList<File>();
-	
+
 	@FXML
 	private void onBtnCompactar() {
 		if (caminhoDestino.exists() && !txtNomeArquivo.getText().isEmpty() && !LAST_PROCESS_FOLDERS.isEmpty())
-			compactaArquivo(new File(caminhoDestino.getPath().trim() + "\\" + txtNomeArquivo.getText().trim()), LAST_PROCESS_FOLDERS);
+			compactaArquivo(new File(caminhoDestino.getPath().trim() + "\\" + txtNomeArquivo.getText().trim()),
+					LAST_PROCESS_FOLDERS);
 	}
 
 	private static final String NUMBER_PATTERN = "[\\d.]+$";
 
 	@FXML
 	private void onBtnVolumeMenos() {
-		//Matches retorna se toda a string for o patern, no caso utiliza-se o inicio para mostrar que tenha em toda a string.
+		// Matches retorna se toda a string for o patern, no caso utiliza-se o inicio
+		// para mostrar que tenha em toda a string.
 		if (txtVolume.getText().matches(".*" + NUMBER_PATTERN)) {
 			String texto = txtVolume.getText().trim();
 			String volume = texto.replaceAll(texto.replaceAll(NUMBER_PATTERN, ""), "").trim();
 			Integer padding = volume.length();
-			
-			try { 
+
+			try {
 				Integer number = Integer.valueOf(volume);
 				texto = texto.substring(0, texto.lastIndexOf(volume));
 				number--;
 				volume = texto + String.format("%0" + padding + "d", number);
 				txtVolume.setText(volume);
-		    } catch(NumberFormatException e) { 
-		    	try { 
-			    	Double number = Double.valueOf(volume);
+			} catch (NumberFormatException e) {
+				try {
+					Double number = Double.valueOf(volume);
 					texto = texto.substring(0, texto.lastIndexOf(volume));
 					number--;
-					volume = texto + String.format("%0" + padding + ".1f", number).replaceAll("\\.", "").replaceAll("\\,", ".");
+					volume = texto + String.format("%0" + padding + ".1f", number).replaceAll("\\.", "")
+							.replaceAll("\\,", ".");
 					txtVolume.setText(volume);
-			    } catch(NumberFormatException e1) {
-			    	System.out.println("Erro ao incrementar valor.");
-			    }
-		    }
+				} catch (NumberFormatException e1) {
+					LOG.info("Erro ao incrementar valor.", e);
+				}
+			}
 		}
 	}
 
@@ -280,24 +301,25 @@ public class TelaInicialController implements Initializable {
 			String texto = txtVolume.getText().trim();
 			String volume = texto.replaceAll(texto.replaceAll(NUMBER_PATTERN, ""), "").trim();
 			Integer padding = volume.length();
-			
-			try { 
+
+			try {
 				Integer number = Integer.valueOf(volume);
 				texto = texto.substring(0, texto.lastIndexOf(volume));
 				number++;
 				volume = texto + String.format("%0" + padding + "d", number);
 				txtVolume.setText(volume);
-		    } catch(NumberFormatException e) { 
-		    	try { 
-			    	Double number = Double.valueOf(volume);
+			} catch (NumberFormatException e) {
+				try {
+					Double number = Double.valueOf(volume);
 					texto = texto.substring(0, texto.lastIndexOf(volume));
 					number++;
-					volume = texto + String.format("%0" + padding + ".1f", number).replaceAll("\\.", "").replaceAll("\\,", ".");
+					volume = texto + String.format("%0" + padding + ".1f", number).replaceAll("\\.", "")
+							.replaceAll("\\,", ".");
 					txtVolume.setText(volume);
-			    } catch(NumberFormatException e1) {
-			    	System.out.println("Erro ao incrementar valor.");
-			    }
-		    }
+				} catch (NumberFormatException e1) {
+					LOG.info("Erro ao incrementar valor.", e);
+				}
+			}
 		}
 	}
 
@@ -363,26 +385,83 @@ public class TelaInicialController implements Initializable {
 
 		if (obsLCaminhos.isEmpty())
 			valida = false;
-		
+
 		if ((cbCompactarArquivo.isSelected()) && (txtNomeArquivo.getText().isEmpty())) {
 			txtSimularPasta.setText("Não informado nome do arquivo.");
 			txtNomeArquivo.setUnFocusColor(Color.RED);
 			valida = false;
 		}
-		
+
 		if ((cbCompactarArquivo.isSelected()) && (WINRAR == null || WINRAR.isEmpty())) {
 			txtSimularPasta.setText("Winrar não configurado.");
 			valida = false;
 		}
-		
+
 		return valida;
+	}
+
+	private Manga manga = null;
+
+	private Manga geraManga(Long id) {
+		String nome = txtNomePastaManga.getText();
+		if (nome.contains("]"))
+			nome = nome.substring(nome.indexOf("]")).replace("]", "").trim();
+
+		if (nome.substring(nome.length() - 1).equalsIgnoreCase("-"))
+			nome = nome.substring(0, nome.length() - 1).trim();
+
+		Integer quantidade = obsLListaItens == null ? 0 : obsLListaItens.size();
+
+		return new Manga(id, nome, txtVolume.getText(), txtNomePastaCapitulo.getText().trim(),
+				txtNomeArquivo.getText().trim(), quantidade, txtAreaImportar.getText(), LocalDateTime.now());
+	}
+
+	private void carregaManga() {
+		manga = service.find(geraManga(null));
+
+		if (manga != null) {
+			txtNomePastaManga.setText("[JPN] " + manga.getNome() + " - ");
+			txtVolume.setText(manga.getVolume());
+			txtNomePastaCapitulo.setText(manga.getCapitulo());
+			txtNomeArquivo.setText(manga.getArquivo());
+			txtAreaImportar.setText(manga.getCapitulos());
+
+			Integer quantidade = obsLListaItens == null ? 0 : obsLListaItens.size();
+			if (manga.getQuantidade().compareTo(quantidade) != 0)
+				lblAlerta.setText("Difereça na quantidade de imagens.");
+			else
+				lblAlerta.setText("");
+
+			lista = new ArrayList<>(manga.getCaminhos());
+			obsLCaminhos = FXCollections.observableArrayList(lista);
+			tbViewTabela.setItems(obsLCaminhos);
+
+			lblAviso.setText("Manga localizado.");
+		} else
+			lblAviso.setText("Manga não localizado.");
+	}
+
+	private void salvaManga() {
+		if (manga == null)
+			manga = geraManga(null);
+		else
+			manga = geraManga(manga.getId());
+
+		manga.getCaminhos().clear();
+
+		for (Caminhos caminho : lista)
+			manga.addCaminhos(caminho);
+
+		service.save(manga);
+
+		Platform.runLater(() -> lblAviso.setText("Manga salvo."));
 	}
 
 	private File criaPasta(String caminho) {
 		File arquivo = new File(caminho);
 		if (!arquivo.exists())
 			arquivo.mkdir();
-		
+
 		return arquivo;
 	}
 
@@ -405,17 +484,20 @@ public class TelaInicialController implements Initializable {
 
 			result = (img.getWidth() / img.getHeight()) > 0.9;
 		} catch (IOException e) {
-			e.printStackTrace();
+			LOG.error("Erro ao verificar a página dupla.", e);
 		}
 		return result;
 	}
 
 	private Boolean CANCELAR = false;
+
 	private void processar() {
 		Task<Boolean> movimentaArquivos = new Task<Boolean>() {
 			@Override
 			protected Boolean call() throws Exception {
 				try {
+
+					salvaManga();
 
 					if (lsVwListaImagens.getSelectionModel().getSelectedItem() != null)
 						selecionada = lsVwListaImagens.getSelectionModel().getSelectedItem();
@@ -423,12 +505,12 @@ public class TelaInicialController implements Initializable {
 					CANCELAR = false;
 					int i = 0;
 					int max = caminhoOrigem.listFiles(getFilterNameFile()).length;
-					
+
 					List<File> pastasCompactar = new ArrayList<File>();
 					LAST_PROCESS_FOLDERS.clear();
-					
+
 					String arquivoZip = caminhoDestino.getPath().trim() + "\\" + txtNomeArquivo.getText().trim();
-					
+
 					boolean mesclarCapaTudo = cbMesclarCapaTudo.isSelected();
 					boolean gerarArquivo = cbCompactarArquivo.isSelected();
 					boolean verificaPagDupla = cbVerificaPaginaDupla.isSelected();
@@ -444,15 +526,15 @@ public class TelaInicialController implements Initializable {
 
 					if (!obsLImagesSelected.isEmpty()) {
 						File destinoCapa = new File(nomePasta + " Capa\\");
-						
+
 						if (mesclarCapaTudo) {
 							List<Capa> capas = obsLImagesSelected.parallelStream()
 									.filter(capa -> capa.getTipo().equals(TipoCapa.CAPA_COMPLETA)).toList();
-							
+
 							if (capas.size() > 1) {
 								File capaFrente = null;
 								File capaTras = null;
-								
+
 								for (Capa capa : capas) {
 									for (File arquivoCapa : caminhoOrigem.listFiles(getFilterNameFile())) {
 										if (capa.getArquivo().equalsIgnoreCase(arquivoCapa.getName())) {
@@ -460,42 +542,46 @@ public class TelaInicialController implements Initializable {
 												capaFrente = arquivoCapa;
 											else if (capaTras == null)
 												capaTras = arquivoCapa;
-											
+
 											if (capaFrente != null && capaTras != null)
 												break;
 										}
-										
+
 										if (capaFrente != null && capaTras != null)
 											break;
 									}
 								}
-								
+
 								if (capaFrente != null && capaTras != null) {
 									String nome = txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim();
 									if (nome.contains("]"))
 										nome = nome.substring(nome.indexOf(']') + 1, nome.length()).trim();
-									
+
 									nome += " Tudo";
-									nome += capaFrente.getName().substring(capaFrente.getName().lastIndexOf("."),capaFrente.getName().length());
-									if (mesclarImagens(new File( destinoCapa.getPath() + "\\" + nome), capaFrente, capaTras))
-										obsLImagesSelected.removeIf(capa -> capa.getTipo().equals(TipoCapa.CAPA_COMPLETA));
+									nome += capaFrente.getName().substring(capaFrente.getName().lastIndexOf("."),
+											capaFrente.getName().length());
+									if (mesclarImagens(new File(destinoCapa.getPath() + "\\" + nome), capaFrente,
+											capaTras))
+										obsLImagesSelected
+												.removeIf(capa -> capa.getTipo().equals(TipoCapa.CAPA_COMPLETA));
 									else {
-										Platform.runLater(
-												() -> txtSimularPasta.setText("Não foi possível gravar a nova imagem da junção."));
+										Platform.runLater(() -> txtSimularPasta
+												.setText("Não foi possível gravar a nova imagem da junção."));
 										renomeiaItem(copiaItem(capaFrente, destinoCapa), nome);
 									}
-									
+
 									nome = txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim();
 									if (nome.contains("]"))
 										nome = nome.substring(nome.indexOf(']') + 1, nome.length()).trim();
-									
+
 									nome += " Tras";
-									nome += capaFrente.getName().substring(capaFrente.getName().lastIndexOf("."),capaFrente.getName().length());
+									nome += capaFrente.getName().substring(capaFrente.getName().lastIndexOf("."),
+											capaFrente.getName().length());
 									renomeiaItem(copiaItem(capaTras, destinoCapa), nome);
 								} else
 									Platform.runLater(
 											() -> txtSimularPasta.setText("Não localizado duas capas para junção."));
-								
+
 							} else
 								Platform.runLater(
 										() -> txtSimularPasta.setText("Não foi selecionado duas capas para junção."));
@@ -549,17 +635,18 @@ public class TelaInicialController implements Initializable {
 					pastasCompactar.add(destino);
 					contadorCapitulo = Integer.valueOf(lista.get(pagina).getNumeroPagina());
 					pagina++;
-					
+
 					if (lista.size() > 1)
-						proxCapitulo = Integer.valueOf(lista.get(pagina).getNumeroPagina());
+						proxCapitulo = lista.get(pagina).getNumero();
 
 					for (File arquivos : caminhoOrigem.listFiles(getFilterNameFile())) {
-						
+
 						if (CANCELAR)
 							return true;
 
-						System.out.println("Contar: " + contar + " - Contador: " + contadorCapitulo + " - Prox cap: "
+						LOG.info("Contar: " + contar + " - Contador: " + contadorCapitulo + " - Prox cap: "
 								+ proxCapitulo + " - Nome Imagem: " + arquivos.getName());
+
 						if (arquivos.getName().equalsIgnoreCase(selecionada))
 							contar = true;
 
@@ -574,7 +661,7 @@ public class TelaInicialController implements Initializable {
 									"Criando diretório - " + nomePasta + " " + lista.get(pagina).getNomePasta() + "\\");
 							destino = criaPasta(nomePasta + " " + lista.get(pagina).getNomePasta() + "\\");
 							pastasCompactar.add(destino);
-							
+
 							pagina++;
 
 							if ((pagina < lista.size()))
@@ -593,22 +680,22 @@ public class TelaInicialController implements Initializable {
 						if (!btnProcessar.accessibleTextProperty().getValue().equalsIgnoreCase("CANCELA"))
 							break;
 					}
-					
+
 					if (gerarArquivo) {
 						updateMessage("Compactando arquivo: " + arquivoZip);
-						
+
 						destino = new File(arquivoZip);
 						if (destino.exists())
 							destino.delete();
 						LAST_PROCESS_FOLDERS = pastasCompactar;
 						if (!compactaArquivo(destino, pastasCompactar))
-							Platform.runLater(
-									() -> txtSimularPasta.setText("Erro ao gerar o arquivo, necessário compacta-lo manualmente."));
+							Platform.runLater(() -> txtSimularPasta
+									.setText("Erro ao gerar o arquivo, necessário compacta-lo manualmente."));
 					}
 
 					obsLImagesSelected.clear();
 				} catch (Exception e) {
-					e.printStackTrace();
+					LOG.error("Erro ao processar.", e);
 					Alert a = new Alert(AlertType.NONE);
 					a.setAlertType(AlertType.ERROR);
 					a.setContentText(e.toString());
@@ -649,26 +736,27 @@ public class TelaInicialController implements Initializable {
 		t.setDaemon(true);
 		t.start();
 	}
-	
+
 	private Process proc = null;
+
 	@SuppressWarnings("unused")
 	private boolean compactaArquivo(File rar, File arquivos) {
 		boolean success = true;
 		String comando = "cmd.exe /C cd \"" + WINRAR + "\" &&rar a -ep1 " + '"' + rar.getPath() + '"' + " " + '"'
 				+ arquivos.getPath() + '"';
-		
-		System.out.println("rar a -ep1 " + '"' + rar.getPath() + '"' + " " + '"' + arquivos.getPath() + '"');
-		
+
+		LOG.info("rar a -ep1 " + '"' + rar.getPath() + '"' + " " + '"' + arquivos.getPath() + '"');
+
 		proc = null;
 		try {
 			Runtime rt = Runtime.getRuntime();
 			proc = rt.exec(comando);
-			
-			Platform.runLater(() ->{
+
+			Platform.runLater(() -> {
 				try {
-					System.out.println("Resultado: " + proc.waitFor());
+					LOG.info("Resultado: " + proc.waitFor());
 				} catch (InterruptedException e) {
-					e.printStackTrace();
+					LOG.error("Erro ao executar o comando cmd.", e);
 				}
 			});
 
@@ -681,7 +769,7 @@ public class TelaInicialController implements Initializable {
 				resultado += s + "\n";
 
 			if (!resultado.isEmpty())
-				System.out.println("Output comand:\n" + resultado);
+				LOG.info("Output comand:\n" + resultado);
 
 			s = null;
 			resultado = "";
@@ -692,39 +780,40 @@ public class TelaInicialController implements Initializable {
 
 			if (!resultado.isEmpty()) {
 				success = false;
-				System.out.println("Error comand:\n" + resultado + "\nNecessário adicionar o rar no path e reiniciar a aplicação.");
+				LOG.info("Error comand:\n" + resultado
+						+ "\nNecessário adicionar o rar no path e reiniciar a aplicação.");
 			}
-			
+
 			return success;
 		} catch (Exception e) {
-			System.out.println(e);
-			e.printStackTrace();
+			LOG.error("Erro ao compactar o arquivo.", e);
 			return false;
 		} finally {
 			if (proc != null)
 				proc.destroy();
 		}
 	}
-	
+
 	private boolean compactaArquivo(File rar, List<File> arquivos) {
 		boolean success = true;
 		String compactar = "";
 		for (File arquivo : arquivos)
 			compactar += '"' + arquivo.getPath() + '"' + ' ';
-		
+
 		String comando = "cmd.exe /C cd \"" + WINRAR + "\" &&rar a -ep1 " + '"' + rar.getPath() + '"' + " " + compactar;
-		
-		System.out.println("rar a -ep1 " + '"' + rar.getPath() + '"' + " " + compactar);
-				
+
+		LOG.info("rar a -ep1 " + '"' + rar.getPath() + '"' + " " + compactar);
+
 		try {
 			Runtime rt = Runtime.getRuntime();
 			proc = rt.exec(comando);
-			
-			Platform.runLater(() ->{
+
+			Platform.runLater(() -> {
 				try {
-					System.out.println("Resultado: " + proc.waitFor());
+					LOG.info("Resultado: " + proc.waitFor());
 				} catch (InterruptedException e) {
 					e.printStackTrace();
+					LOG.error("Erro ao executar o comando.", e);
 				}
 			});
 
@@ -737,7 +826,7 @@ public class TelaInicialController implements Initializable {
 				resultado += s + "\n";
 
 			if (!resultado.isEmpty())
-				System.out.println("Output comand:\n" + resultado);
+				LOG.info("Output comand:\n" + resultado);
 
 			s = null;
 			resultado = "";
@@ -748,47 +837,46 @@ public class TelaInicialController implements Initializable {
 
 			if (!resultado.isEmpty()) {
 				success = false;
-				System.out.println("Error comand:\n" + resultado + "\nNecessário adicionar o rar no path e reiniciar a aplicação.");
+				LOG.info("Error comand:\n" + resultado
+						+ "\nNecessário adicionar o rar no path e reiniciar a aplicação.");
 			}
-			
+
 			return success;
 		} catch (Exception e) {
-			System.out.println(e);
-			e.printStackTrace();
+			LOG.error("Erro ao compactar o arquivo.", e);
 			return false;
 		} finally {
 			if (proc != null)
 				proc.destroy();
 		}
 	}
-	
+
 	private boolean mesclarImagens(File arquivoDestino, File frente, File tras) {
 		if (arquivoDestino == null || frente == null || tras == null)
 			return false;
 
 		BufferedImage img1;
-	    BufferedImage img2;
+		BufferedImage img2;
 		try {
 			img1 = ImageIO.read(frente);
 			img2 = ImageIO.read(tras);
-			
+
 			int offset = 0;
-		    int width = img1.getWidth() + img2.getWidth() + offset;
-		    int height = Math.max(img1.getHeight(), img2.getHeight()) + offset;
-		    BufferedImage newImage = new BufferedImage(width, height,
-		        BufferedImage.TYPE_INT_ARGB);
-		    Graphics2D g2 = newImage.createGraphics();
-		    java.awt.Color oldColor = g2.getColor();
-		    g2.setPaint(java.awt.Color.WHITE);
-		    g2.fillRect(0, 0, width, height);
-		    g2.setColor(oldColor);
-		    g2.drawImage(img1, null, 0, 0);
-		    g2.drawImage(img2, null, img1.getWidth() + offset, 0);
-		    g2.dispose();
-		    
+			int width = img1.getWidth() + img2.getWidth() + offset;
+			int height = Math.max(img1.getHeight(), img2.getHeight()) + offset;
+			BufferedImage newImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+			Graphics2D g2 = newImage.createGraphics();
+			java.awt.Color oldColor = g2.getColor();
+			g2.setPaint(java.awt.Color.WHITE);
+			g2.fillRect(0, 0, width, height);
+			g2.setColor(oldColor);
+			g2.drawImage(img1, null, 0, 0);
+			g2.drawImage(img2, null, img1.getWidth() + offset, 0);
+			g2.dispose();
+
 			return ImageIO.write(newImage, "png", arquivoDestino);
 		} catch (IOException e) {
-			e.printStackTrace();
+			LOG.error("Erro ao mesclar as imagens.", e);
 		}
 		return false;
 	}
@@ -804,7 +892,7 @@ public class TelaInicialController implements Initializable {
 				processar();
 			} else
 				CANCELAR = true;
-				
+
 		}
 	}
 
@@ -850,10 +938,13 @@ public class TelaInicialController implements Initializable {
 	}
 
 	private void simulaNome() {
-		txtSimularPasta.setText(txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim() + " " + txtNomePastaCapitulo.getText().trim() + " 00");
-		
-		String nome = txtNomePastaManga.getText().contains("]") ? txtNomePastaManga.getText().substring(txtNomePastaManga.getText().indexOf("]") + 1).trim() : txtNomePastaManga.getText().trim();
-		txtNomeArquivo.setText(nome  + " " + txtVolume.getText().trim() + ".cbr");
+		txtSimularPasta.setText(txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim() + " "
+				+ txtNomePastaCapitulo.getText().trim() + " 00");
+
+		String nome = txtNomePastaManga.getText().contains("]")
+				? txtNomePastaManga.getText().substring(txtNomePastaManga.getText().indexOf("]") + 1).trim()
+				: txtNomePastaManga.getText().trim();
+		txtNomeArquivo.setText(nome + " " + txtVolume.getText().trim() + ".cbr");
 	}
 
 	private File selecionaPasta(String pasta) {
@@ -935,6 +1026,9 @@ public class TelaInicialController implements Initializable {
 	@FXML
 	private void onBtnGerarCapitulos() {
 		if (!txtGerarInicio.getText().trim().isEmpty() && !txtGerarFim.getText().trim().isEmpty()) {
+			if (manga == null)
+				manga = geraManga(null);
+
 			Integer inicio = Integer.parseInt(txtGerarInicio.getText().trim());
 			Integer fim = Integer.parseInt(txtGerarFim.getText().trim());
 
@@ -1087,7 +1181,7 @@ public class TelaInicialController implements Initializable {
 
 		clNumeroPagina.setCellFactory(TextFieldTableCell.forTableColumn());
 		clNumeroPagina.setOnEditCommit(
-				e -> e.getTableView().getItems().get(e.getTablePosition().getRow()).setNumeroPagina(e.getNewValue()));
+				e -> e.getTableView().getItems().get(e.getTablePosition().getRow()).setNumero(e.getNewValue()));
 
 		clNomePasta.setCellFactory(TextFieldTableCell.forTableColumn());
 		clNomePasta.setOnEditCommit(
@@ -1187,7 +1281,7 @@ public class TelaInicialController implements Initializable {
 			if (e.getCode().equals(KeyCode.ENTER))
 				clickTab();
 		});
-		
+
 		txtNomeArquivo.focusedProperty().addListener(new ChangeListener<Boolean>() {
 			@Override
 			public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
@@ -1195,18 +1289,31 @@ public class TelaInicialController implements Initializable {
 				txtPastaDestino.setUnFocusColor(Color.GRAY);
 			}
 		});
-		
+
 		txtNomeArquivo.setOnKeyPressed(e -> {
 			if (e.getCode().equals(KeyCode.ENTER))
 				clickTab();
+		});
+
+		txtNomeArquivo.focusedProperty().addListener(new ChangeListener<Boolean>() {
+			@Override
+			public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
+					Boolean newPropertyValue) {
+				if (oldPropertyValue) {
+					if (manga == null)
+						manga = geraManga(null);
+				}
+			}
 		});
 
 		txtVolume.focusedProperty().addListener(new ChangeListener<Boolean>() {
 			@Override
 			public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
 					Boolean newPropertyValue) {
-				if (oldPropertyValue)
+				if (oldPropertyValue) {
 					simulaNome();
+					carregaManga();
+				}
 			}
 		});
 
@@ -1297,7 +1404,7 @@ public class TelaInicialController implements Initializable {
 		KeyCombination kcProcessarAlter = new KeyCodeCombination(KeyCode.SPACE, KeyCombination.CONTROL_DOWN);
 		Mnemonic mnProcessarAlter = new Mnemonic(btnProcessar, kcProcessarAlter);
 		scene.addMnemonic(mnProcessarAlter);
-		
+
 		KeyCombination kcCompactar = new KeyCodeCombination(KeyCode.R, KeyCombination.CONTROL_DOWN);
 		Mnemonic mnCompactar = new Mnemonic(btnCompactar, kcCompactar);
 		scene.addMnemonic(mnCompactar);
@@ -1321,9 +1428,9 @@ public class TelaInicialController implements Initializable {
 
 				if (kcProcessar.match(ke) || kcProcessarAlter.match(ke))
 					btnProcessar.fire();
-				
+
 				if (kcCompactar.match(ke))
-					btnCompactar.fire();			
+					btnCompactar.fire();
 			}
 		});
 
@@ -1339,12 +1446,20 @@ public class TelaInicialController implements Initializable {
 		linkaCelulas();
 		limpaCampos();
 		configuraTextEdit();
-		
+
 		try {
 			WINRAR = Configuracao.loadProperties().getProperty("caminho_winrar");
 		} catch (Exception e) {
-			e.printStackTrace();
+			LOG.error("Erro ao obter o caminho do winrar.", e);
 		}
+	}
+
+	public static URL getFxmlLocate() {
+		return TelaInicialController.class.getResource("/view/TelaInicial.fxml");
+	}
+
+	public static String getIconLocate() {
+		return "/images/icoProcessar_512.png";
 	}
 
 }

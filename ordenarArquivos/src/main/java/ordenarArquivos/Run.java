@@ -20,7 +20,7 @@ public class Run extends Application {
 	public void start(Stage primaryStage) {
 		try {
 			// Classe inicial
-			FXMLLoader loader = new FXMLLoader(getClass().getResource("view/TelaInicial.fxml"));
+			FXMLLoader loader = new FXMLLoader(TelaInicialController.getFxmlLocate());
 			AnchorPane scPnTelaPrincipal = loader.load();
 			mainController = loader.getController();
 			
@@ -30,7 +30,8 @@ public class Run extends Application {
 
 			primaryStage.setScene(mainScene); // Seta a cena principal
 			primaryStage.setTitle("Ordena Arquivos");
-			primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("resources/imagens/icoProcessar_512.png")));
+			primaryStage.getIcons()
+			.add(new Image(Run.class.getResourceAsStream(TelaInicialController.getIconLocate())));
 			primaryStage.initStyle(StageStyle.DECORATED);
 			//primaryStage.setMaximized(true);
 			primaryStage.setMinWidth(700);

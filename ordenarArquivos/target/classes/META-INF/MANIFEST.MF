@@ -6,7 +6,19 @@ Class-Path: javafx-base-18-ea+2.jar javafx-base-18-ea+2-win.jar javafx-g
  ea+2.jar javafx-controls-18-ea+2-win.jar javafx-fxml-18-ea+2.jar javafx
  -fxml-18-ea+2-win.jar javafx-web-18-ea+2.jar javafx-web-18-ea+2-win.jar
   javafx-media-18-ea+2.jar javafx-media-18-ea+2-win.jar jfoenix-9.0.10.j
- ar
+ ar sqlite-jdbc-3.41.2.0.jar jooq-3.16.4.jar r2dbc-spi-0.9.0.RELEASE.jar
+  reactive-streams-1.0.3.jar jakarta.xml.bind-api-3.0.0.jar jakarta.acti
+ vation-2.0.0.jar flyway-core-8.5.0.jar slf4j-api-1.7.32.jar logback-cla
+ ssic-1.0.13.jar logback-core-1.0.13.jar jdbi3-core-3.1.0.jar antlr-runt
+ ime-3.4.jar stringtemplate-3.2.1.jar antlr-2.7.7.jar expiringmap-0.5.6.
+ jar spark-core-2.9.3.jar jetty-server-9.4.31.v20200723.jar javax.servle
+ t-api-3.1.0.jar jetty-http-9.4.31.v20200723.jar jetty-util-9.4.31.v2020
+ 0723.jar jetty-io-9.4.31.v20200723.jar jetty-webapp-9.4.31.v20200723.ja
+ r jetty-xml-9.4.31.v20200723.jar jetty-servlet-9.4.31.v20200723.jar jet
+ ty-security-9.4.31.v20200723.jar websocket-server-9.4.31.v20200723.jar 
+ websocket-common-9.4.31.v20200723.jar websocket-client-9.4.31.v20200723
+ .jar jetty-client-9.4.31.v20200723.jar websocket-servlet-9.4.31.v202007
+ 23.jar websocket-api-9.4.31.v20200723.jar
 Main-Class: ordenarArquivos.App
 Created-By: Maven Integration for Eclipse
 

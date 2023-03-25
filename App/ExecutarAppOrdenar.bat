@@ -1,4 +1,3 @@
 set JAVA_HOME="%JAVA_14%"
 PATH=%JAVA_HOME%\bin
-java --version
-java -Dfile.encoding=utf-8 -jar ordenarArquivos-0.0.3-SNAPSHOT-jar-with-dependencies.jar 
+java -Dfile.encoding=utf-8 --add-exports javafx.controls/com.sun.javafx.scene.control.behavior=ALL-UNNAMED --add-exports javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED --add-exports javafx.base/com.sun.javafx.binding=ALL-UNNAMED --add-exports javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED --add-exports javafx.base/com.sun.javafx.event=ALL-UNNAMED --add-exports javafx.graphics/com.sun.glass.ui=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED  -jar ordenarArquivos-0.0.4-SNAPSHOT-jar-with-dependencies.jar 
