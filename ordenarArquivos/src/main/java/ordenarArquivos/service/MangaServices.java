@@ -32,6 +32,14 @@ public class MangaServices {
 	public MangaServices() {
 		this.conn = DataBase.getInstancia();
 	}
+	
+	public void closeConnection() {
+		try {
+			this.conn.close();
+		} catch (SQLException e) {
+			LOG.error("Erro ao finalizar conexão.", e);
+		}
+	}
 
 	private static LocalDateTime toDateTime(String dateTime) {
 		if (dateTime == null)

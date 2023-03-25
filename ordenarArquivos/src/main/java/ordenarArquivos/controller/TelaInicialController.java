@@ -138,12 +138,6 @@ public class TelaInicialController implements Initializable {
 	private JFXListView<String> lsVwListaImagens;
 
 	@FXML
-	private JFXTextField txtNumeroCapitulo;
-
-	@FXML
-	private JFXTextField txtNumeroPaginaCapitulo;
-
-	@FXML
 	private JFXTextField txtGerarInicio;
 
 	@FXML
@@ -157,15 +151,18 @@ public class TelaInicialController implements Initializable {
 
 	@FXML
 	private JFXButton btnLimpar;
-
-	@FXML
-	private JFXButton btnExcluir;
-
-	@FXML
-	private JFXButton btnInserir;
-
+	
 	@FXML
 	private JFXButton btnImportar;
+	
+	@FXML
+	private JFXTextField txtQuantidade;
+
+	@FXML
+	private JFXButton btnSubtrair;
+
+	@FXML
+	private JFXButton btnSomar;
 
 	@FXML
 	private TableView<Caminhos> tbViewTabela;
@@ -336,8 +333,6 @@ public class TelaInicialController implements Initializable {
 
 		btnImportar.setDisable(true);
 		btnLimpar.setDisable(true);
-		btnExcluir.setDisable(true);
-		btnInserir.setDisable(true);
 		btnImportar.setDisable(true);
 		tbViewTabela.setDisable(true);
 	}
@@ -355,8 +350,6 @@ public class TelaInicialController implements Initializable {
 
 		btnImportar.setDisable(false);
 		btnLimpar.setDisable(false);
-		btnExcluir.setDisable(false);
-		btnInserir.setDisable(false);
 		btnImportar.setDisable(false);
 		tbViewTabela.setDisable(false);
 
@@ -965,28 +958,32 @@ public class TelaInicialController implements Initializable {
 	}
 
 	@FXML
-	private void onBtnExcluir() {
-		Caminhos selectedItem = tbViewTabela.getSelectionModel().getSelectedItem();
-		if (selectedItem != null)
-			tbViewTabela.getItems().remove(selectedItem);
+	private void onBtnSubtrair() {
+		if (!txtQuantidade.getText().isEmpty())
+			modificaNumeroPaginas(Integer.valueOf(txtQuantidade.getText()) * -1);
 	}
 
 	@FXML
-	private void onBtnInserir() {
-		if ((!txtNumeroCapitulo.getText().isEmpty()) || (!txtNumeroPaginaCapitulo.getText().isEmpty())) {
-			lista.add(new Caminhos(txtNumeroCapitulo.getText(), txtNumeroPaginaCapitulo.getText(),
-					txtNomePastaCapitulo.getText() + " " + txtNumeroCapitulo.getText()));
-			obsLCaminhos = FXCollections.observableArrayList(lista);
-			tbViewTabela.setItems(obsLCaminhos);
-			tbViewTabela.refresh();
-			limpaCampo();
+	private void onBtnSomar() {
+		if (!txtQuantidade.getText().isEmpty())
+			modificaNumeroPaginas(Integer.valueOf(txtQuantidade.getText()));
+	}
+	
+	private void modificaNumeroPaginas(Integer quantidade) {
+		for (Caminhos caminho : lista) {
+			int qtde = caminho.getNumero() + quantidade;
+			if (qtde < 1)
+				qtde = 1;
+			caminho.setNumero(qtde);
 		}
+		
+		obsLCaminhos = FXCollections.observableArrayList(lista);
+		tbViewTabela.setItems(obsLCaminhos);
+		txtQuantidade.setText("");
 	}
 
 	private void limpaCampo() {
-		txtNumeroCapitulo.clear();
-		txtNumeroCapitulo.requestFocus();
-		txtNumeroPaginaCapitulo.clear();
+		txtGerarInicio.requestFocus();
 	}
 
 	@FXML
