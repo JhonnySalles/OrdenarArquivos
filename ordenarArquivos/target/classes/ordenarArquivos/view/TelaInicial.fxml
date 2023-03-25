@@ -38,6 +38,7 @@
                         </JFXTextField>
                      </children>
                   </VBox>
+                  <JFXButton fx:id="btnCompactar" onAction="#onBtnCompactar" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Compactar" textFill="WHITE" />
                   <JFXButton fx:id="btnLimparTudo" onAction="#onBtnLimparTudo" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Limpar Tudo" textFill="WHITE" />
                   <JFXButton fx:id="btnProcessar" accessibleText="PROCESSA" onAction="#onBtnProcessa" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Processar" textFill="WHITE">
                      <tooltip>
@@ -155,6 +156,41 @@
                   <Insets bottom="5.0" left="5.0" right="5.0" />
                </VBox.margin>
             </HBox>
+            <HBox alignment="CENTER" spacing="10.0">
+               <children>
+                  <VBox alignment="CENTER_LEFT">
+                     <children>
+                        <Label fx:id="lblTitulo224" styleClass="texto-stilo-1" text="Nome do arquivo" textFill="WHITE" />
+                        <JFXTextField fx:id="txtNomeArquivo" minHeight="25.0" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY">
+                           <styleClass>
+                              <String fx:value="texto-stilo-1" />
+                              <String fx:value="background-Black2" />
+                           </styleClass>
+                        </JFXTextField>
+                     </children>
+                  </VBox>
+                  <VBox alignment="CENTER_LEFT">
+                     <children>
+                        <Label fx:id="lblTitulo22" styleClass="texto-stilo-1" text="Nome da pasta do capítulo" textFill="WHITE" />
+                        <JFXTextField fx:id="txtNomePastaCapitulo" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY">
+                           <styleClass>
+                              <String fx:value="texto-stilo-1" />
+                              <String fx:value="background-Black2" />
+                           </styleClass>
+                        </JFXTextField>
+                     </children>
+                  </VBox>
+                  <VBox alignment="CENTER_LEFT" spacing="5.0">
+                     <children>
+                        <JFXCheckBox fx:id="cbVerificaPaginaDupla" checkedColor="#4059a9" selected="true" text="Verifica página dupla" textFill="WHITE" unCheckedColor="GREY" />
+                        <JFXCheckBox fx:id="cbCompactarArquivo" checkedColor="#4059a9" selected="true" text="Compactar arquivo" textFill="WHITE" unCheckedColor="GREY" />
+                     </children>
+                  </VBox>
+               </children>
+               <VBox.margin>
+                  <Insets bottom="5.0" left="5.0" right="5.0" />
+               </VBox.margin>
+            </HBox>
             <SplitPane dividerPositions="0.3424068767908309" prefHeight="200.0" prefWidth="200.0" styleClass="background-Black3" VBox.vgrow="ALWAYS">
                <items>
                   <JFXListView fx:id="lsVwListaImagens" prefHeight="500.0" prefWidth="283.0" styleClass="background-Transparent" />
@@ -169,7 +205,7 @@
                                           <Insets />
                                        </HBox.margin>
                                        <children>
-                                          <Label fx:id="lblTitulo22" styleClass="texto-stilo-1" text="Nome da pasta do capítulo" textFill="WHITE" />
+                                          <JFXCheckBox fx:id="cbMesclarCapaTudo" checkedColor="#4059a9" selected="true" text="Mesclar capa tudo" textFill="WHITE" unCheckedColor="GREY" />
                                        </children>
                                     </VBox>
                                     <Label fx:id="lblTitulo221" styleClass="texto-stilo-capa" text="Capa - Click" textFill="#05420f">
@@ -187,17 +223,6 @@
                                           <Font size="10.0" />
                                        </font>
                                     </Label>
-                                 </children>
-                              </HBox>
-                              <HBox alignment="CENTER_LEFT" spacing="10.0" VBox.vgrow="ALWAYS">
-                                 <children>
-                                    <JFXTextField fx:id="txtNomePastaCapitulo" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY">
-                                       <styleClass>
-                                          <String fx:value="texto-stilo-1" />
-                                          <String fx:value="background-Black1" />
-                                       </styleClass>
-                                    </JFXTextField>
-                                    <JFXCheckBox fx:id="cbVerificaPaginaDupla" checkedColor="#4059a9" selected="true" text="Verifica página dupla" textFill="WHITE" unCheckedColor="GREY" />
                                  </children>
                               </HBox>
                            </children>

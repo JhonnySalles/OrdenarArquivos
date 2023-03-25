@@ -248,31 +248,31 @@
     -fx-background-color: #4052ab;
 }
 
-.list-view .list-cell:capaDualSelected {
+.list-view .list-cell:capaCompletaSelected {
 -fx-background-color: #4d7709;
 -fx-text-fill: white;
 }
 
-.list-view .list-cell:capaDualSelected:odd {
+.list-view .list-cell:capaCompletaSelected:odd {
 -fx-background-color: #2e4705;
 -fx-text-fill: white;
 }
 
-.list-view .list-cell:capaDualSelected:selected {
+.list-view .list-cell:capaCompletaSelected:selected {
     -fx-background-color: #4052ab;
 }
 
-.list-view .list-cell:sumarioDualSelected {
+.list-view .list-cell:sumarioSelected {
 -fx-background-color: #3e50a8;
 -fx-text-fill: white;
 }
 
-.list-view .list-cell:sumarioDualSelected:odd {
+.list-view .list-cell:sumarioSelected:odd {
 -fx-background-color: #293570;
 -fx-text-fill: white;
 }
 
-.list-view .list-cell:sumarioDualSelected:selected {
+.list-view .list-cell:sumarioSelected:selected {
     -fx-background-color: #4052ab;
 }
 
