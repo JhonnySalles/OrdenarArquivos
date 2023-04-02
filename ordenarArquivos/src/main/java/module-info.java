@@ -1,23 +1,23 @@
-module ordenarArquivos {
-	exports ordenarArquivos;
-	exports ordenarArquivos.controller;
-	exports ordenarArquivos.model;
-	exports ordenarArquivos.logback;
+module com.fenix.ordenararquivos {
+    exports com.fenix.ordenararquivos;
+    exports com.fenix.ordenararquivos.controller;
+    exports com.fenix.ordenararquivos.model;
+    exports com.fenix.ordenararquivos.logback;
 
-	requires transitive javafx.graphics;
-	requires javafx.base;
-	requires javafx.fxml;
-	requires transitive com.jfoenix;
-	requires transitive javafx.controls;
-	requires java.desktop;
-	requires org.flywaydb.core;
-	requires java.sql;
-	requires org.xerial.sqlitejdbc;
-	requires java.logging;
-	requires org.slf4j;
-	requires logback.classic;
-	requires logback.core;
+    requires transitive javafx.controls;
+    requires javafx.fxml;
+    requires transitive javafx.graphics;
+    requires javafx.base;
+    requires transitive com.jfoenix;
+    requires java.desktop;
+    requires org.flywaydb.core;
+    requires java.sql;
+    requires org.xerial.sqlitejdbc;
+    requires java.logging;
+    requires org.slf4j;
+    requires logback.classic;
+    requires logback.core;
 
-	opens ordenarArquivos.controller to javafx.fxml, javafx.graphics;
-	opens ordenarArquivos.model to javafx.base;
+    opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;
+    opens com.fenix.ordenararquivos.model to javafx.base;
 }

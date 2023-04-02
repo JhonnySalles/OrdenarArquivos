@@ -1,5 +1,5 @@
 <configuration>
-	<conversionRule conversionWord="highlightex" converterClass="ordenarArquivos.logback.HighlightingCompositeConverterEx" />
+	<conversionRule conversionWord="highlightex" converterClass="com.fenix.ordenararquivos.logback.HighlightingCompositeConverterEx" />
 
 	<appender name="STDOUT"
 		class="ch.qos.logback.core.ConsoleAppender">
