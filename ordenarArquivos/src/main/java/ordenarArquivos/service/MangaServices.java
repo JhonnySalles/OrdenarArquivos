@@ -130,6 +130,7 @@ public class MangaServices {
 			st.setInt(5, manga.getQuantidade());
 			st.setString(6, manga.getCapitulos());
 			st.setString(7, fromDateTime(manga.getAtualizacao()));
+			st.setLong(8, manga.getId());
 
 			int rowsAffected = st.executeUpdate();
 

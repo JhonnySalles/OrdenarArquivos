@@ -38,9 +38,9 @@
                         </JFXTextField>
                      </children>
                   </VBox>
-                  <JFXButton fx:id="btnCompactar" onAction="#onBtnCompactar" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Compactar" textFill="WHITE" />
-                  <JFXButton fx:id="btnLimparTudo" onAction="#onBtnLimparTudo" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Limpar Tudo" textFill="WHITE" />
-                  <JFXButton fx:id="btnProcessar" accessibleText="PROCESSA" onAction="#onBtnProcessa" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Processar" textFill="WHITE">
+                  <JFXButton fx:id="btnCompactar" minHeight="35.0" minWidth="50.0" onAction="#onBtnCompactar" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Compactar" textFill="WHITE" />
+                  <JFXButton fx:id="btnLimparTudo" minHeight="35.0" minWidth="50.0" onAction="#onBtnLimparTudo" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Limpar Tudo" textFill="WHITE" />
+                  <JFXButton fx:id="btnProcessar" accessibleText="PROCESSA" minHeight="35.0" minWidth="50.0" onAction="#onBtnProcessa" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Processar" textFill="WHITE">
                      <tooltip>
                         <Tooltip text="Ctrl + Espaço" />
                      </tooltip></JFXButton>
@@ -107,12 +107,12 @@
                   <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                </VBox.margin>
             </HBox>
-            <HBox alignment="CENTER" minHeight="43.0" minWidth="500.0" prefHeight="43.0" prefWidth="690.0" spacing="10.0">
+            <HBox alignment="CENTER" minHeight="40.0" minWidth="500.0" prefHeight="40.0" prefWidth="700.0" spacing="10.0">
                <children>
                   <VBox HBox.hgrow="ALWAYS">
                      <children>
                         <Label fx:id="lblTitulo2" styleClass="texto-stilo-1" text="Nome pasta do manga" textFill="WHITE" />
-                        <JFXTextField fx:id="txtNomePastaManga" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY" VBox.vgrow="ALWAYS">
+                        <JFXTextField fx:id="txtNomePastaManga" minHeight="25.0" minWidth="300.0" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY" VBox.vgrow="ALWAYS">
                            <styleClass>
                               <String fx:value="texto-stilo-1" />
                               <String fx:value="background-Black2" />
@@ -125,7 +125,7 @@
                         <Label fx:id="lblTitulo21" styleClass="texto-stilo-1" text="Volume" textFill="WHITE" />
                         <HBox spacing="5.0">
                            <children>
-                              <JFXTextField fx:id="txtVolume" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY">
+                              <JFXTextField fx:id="txtVolume" minHeight="25.0" minWidth="200.0" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY" HBox.hgrow="ALWAYS">
                                  <styleClass>
                                     <String fx:value="texto-stilo-1" />
                                     <String fx:value="background-Black2" />
@@ -156,12 +156,12 @@
                   <Insets bottom="5.0" left="5.0" right="5.0" />
                </VBox.margin>
             </HBox>
-            <HBox alignment="CENTER" spacing="10.0">
+            <HBox alignment="CENTER" minHeight="40.0" minWidth="500.0" prefHeight="40.0" prefWidth="700.0" spacing="10.0">
                <children>
-                  <VBox alignment="CENTER_LEFT">
+                  <VBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
                      <children>
                         <Label fx:id="lblTitulo224" styleClass="texto-stilo-1" text="Nome do arquivo" textFill="WHITE" />
-                        <JFXTextField fx:id="txtNomeArquivo" minHeight="25.0" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY">
+                        <JFXTextField fx:id="txtNomeArquivo" minHeight="25.0" minWidth="300.0" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY">
                            <styleClass>
                               <String fx:value="texto-stilo-1" />
                               <String fx:value="background-Black2" />
@@ -169,10 +169,10 @@
                         </JFXTextField>
                      </children>
                   </VBox>
-                  <VBox alignment="CENTER_LEFT">
+                  <VBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
                      <children>
                         <Label fx:id="lblTitulo22" styleClass="texto-stilo-1" text="Nome da pasta do capítulo" textFill="WHITE" />
-                        <JFXTextField fx:id="txtNomePastaCapitulo" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY">
+                        <JFXTextField fx:id="txtNomePastaCapitulo" minHeight="25.0" minWidth="200.0" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY">
                            <styleClass>
                               <String fx:value="texto-stilo-1" />
                               <String fx:value="background-Black2" />
@@ -227,19 +227,8 @@
                               </HBox>
                            </children>
                         </VBox>
-                        <HBox spacing="10.0">
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
                            <children>
-                              <VBox>
-                                 <children>
-                                    <Label fx:id="lblTitulo2311" styleClass="texto-stilo-1" text="Quantidade" textFill="WHITE" />
-                                    <JFXTextField fx:id="txtQuantidade" prefHeight="25.0" prefWidth="150.0" unFocusColor="GREY" VBox.vgrow="ALWAYS">
-                                       <styleClass>
-                                          <String fx:value="texto-stilo-1" />
-                                          <String fx:value="background-Black1" />
-                                       </styleClass>
-                                    </JFXTextField>
-                                 </children>
-                              </VBox>
                               <VBox>
                                  <children>
                                     <Label fx:id="lblTitulo23111" styleClass="texto-stilo-1" text="Separador" textFill="WHITE" />
@@ -282,6 +271,7 @@
                                     </JFXTextField>
                                  </children>
                               </VBox>
+                              <JFXButton fx:id="btnGerar" onAction="#onBtnGerarCapitulos" prefHeight="25.0" prefWidth="140.0" styleClass="background-White1" text="Gerar Capitulos" />
                            </children>
                         </HBox>
                         <HBox>
@@ -299,9 +289,14 @@
                         </HBox>
                         <HBox alignment="CENTER" spacing="10.0">
                            <children>
+                              <JFXTextField fx:id="txtQuantidade" prefHeight="25.0" prefWidth="150.0" promptText="Quantidade" unFocusColor="GREY">
+                                 <styleClass>
+                                    <String fx:value="texto-stilo-1" />
+                                    <String fx:value="background-Black1" />
+                                 </styleClass>
+                              </JFXTextField>
                               <JFXButton fx:id="btnSomar" onAction="#onBtnSomar" prefHeight="30.0" prefWidth="110.0" styleClass="background-Green2" text="Somar" textFill="WHITE" />
                               <JFXButton fx:id="btnSubtrair" onAction="#onBtnSubtrair" prefHeight="25.0" prefWidth="110.0" styleClass="background-Red2" text="Subtrair" textFill="WHITE" />
-                              <JFXButton fx:id="btnGerar" onAction="#onBtnGerarCapitulos" prefHeight="25.0" prefWidth="140.0" styleClass="background-White1" text="Gerar Capitulos" />
                               <JFXButton fx:id="btnLimpar" onAction="#onBtnLimpar" prefHeight="25.0" prefWidth="110.0" styleClass="background-Blue3" text="Limpar" textFill="WHITE" />
                               <JFXButton fx:id="btnImportar" onAction="#onBtnImporta" prefHeight="25.0" prefWidth="120.0" styleClass="background-Purple2" text="Importar" textFill="WHITE">
                                  <tooltip>

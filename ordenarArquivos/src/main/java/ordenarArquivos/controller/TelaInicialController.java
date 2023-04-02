@@ -277,6 +277,8 @@ public class TelaInicialController implements Initializable {
 				number--;
 				volume = texto + String.format("%0" + padding + "d", number);
 				txtVolume.setText(volume);
+				simulaNome();
+				carregaManga();
 			} catch (NumberFormatException e) {
 				try {
 					Double number = Double.valueOf(volume);
@@ -285,6 +287,8 @@ public class TelaInicialController implements Initializable {
 					volume = texto + String.format("%0" + padding + ".1f", number).replaceAll("\\.", "")
 							.replaceAll("\\,", ".");
 					txtVolume.setText(volume);
+					simulaNome();
+					carregaManga();
 				} catch (NumberFormatException e1) {
 					LOG.info("Erro ao incrementar valor.", e);
 				}
@@ -305,6 +309,8 @@ public class TelaInicialController implements Initializable {
 				number++;
 				volume = texto + String.format("%0" + padding + "d", number);
 				txtVolume.setText(volume);
+				simulaNome();
+				carregaManga();
 			} catch (NumberFormatException e) {
 				try {
 					Double number = Double.valueOf(volume);
@@ -313,6 +319,8 @@ public class TelaInicialController implements Initializable {
 					volume = texto + String.format("%0" + padding + ".1f", number).replaceAll("\\.", "")
 							.replaceAll("\\,", ".");
 					txtVolume.setText(volume);
+					simulaNome();
+					carregaManga();
 				} catch (NumberFormatException e1) {
 					LOG.info("Erro ao incrementar valor.", e);
 				}
@@ -447,7 +455,10 @@ public class TelaInicialController implements Initializable {
 
 		service.save(manga);
 
-		Platform.runLater(() -> lblAviso.setText("Manga salvo."));
+		Platform.runLater(() -> {
+			lblAlerta.setText("");
+			lblAviso.setText("Manga salvo.");
+		});
 	}
 
 	private File criaPasta(String caminho) {
@@ -735,10 +746,12 @@ public class TelaInicialController implements Initializable {
 	@SuppressWarnings("unused")
 	private boolean compactaArquivo(File rar, File arquivos) {
 		boolean success = true;
-		String comando = "cmd.exe /C cd \"" + WINRAR + "\" &&rar a -ep1 " + '"' + rar.getPath() + '"' + " " + '"'
+		String comando = "rar a -ma4 -ep1 " + '"' + rar.getPath() + '"' + " " + '"'
 				+ arquivos.getPath() + '"';
 
-		LOG.info("rar a -ep1 " + '"' + rar.getPath() + '"' + " " + '"' + arquivos.getPath() + '"');
+		LOG.info(comando);
+		
+		comando = "cmd.exe /C cd \"" + WINRAR + "\" &&" + comando;
 
 		proc = null;
 		try {
@@ -793,9 +806,11 @@ public class TelaInicialController implements Initializable {
 		for (File arquivo : arquivos)
 			compactar += '"' + arquivo.getPath() + '"' + ' ';
 
-		String comando = "cmd.exe /C cd \"" + WINRAR + "\" &&rar a -ep1 " + '"' + rar.getPath() + '"' + " " + compactar;
+		String comando = "rar a -ma4 -ep1 " + '"' + rar.getPath() + '"' + " " + compactar;
 
-		LOG.info("rar a -ep1 " + '"' + rar.getPath() + '"' + " " + compactar);
+		LOG.info(comando);
+		
+		comando = "cmd.exe /C cd \"" + WINRAR + "\" &&" + comando;
 
 		try {
 			Runtime rt = Runtime.getRuntime();
@@ -937,7 +952,8 @@ public class TelaInicialController implements Initializable {
 		String nome = txtNomePastaManga.getText().contains("]")
 				? txtNomePastaManga.getText().substring(txtNomePastaManga.getText().indexOf("]") + 1).trim()
 				: txtNomePastaManga.getText().trim();
-		txtNomeArquivo.setText(nome + " " + txtVolume.getText().trim() + ".cbr");
+		String posFix = txtNomePastaManga.getText().contains("[JPN]") ? " (Jap)" : ""; 
+		txtNomeArquivo.setText(nome + " " + txtVolume.getText().trim() + posFix + ".cbr");
 	}
 
 	private File selecionaPasta(String pasta) {
@@ -1378,6 +1394,10 @@ public class TelaInicialController implements Initializable {
 				txtAreaImportar.requestFocus();
 				int position = txtAreaImportar.getText().indexOf('-') + 1;
 				txtAreaImportar.positionCaret(position);
+				e.consume();
+			} else if (e.getCode().equals(KeyCode.TAB)) {
+				txtAreaImportar.requestFocus();
+				e.consume();
 			}
 		});
 
@@ -1385,7 +1405,19 @@ public class TelaInicialController implements Initializable {
 			if (e.isControlDown() && e.getCode().equals(KeyCode.ENTER))
 				onBtnImporta();
 		});
+		
+		txtQuantidade.focusedProperty().addListener(new ChangeListener<Boolean>() {
+			@Override
+			public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
+					Boolean newPropertyValue) {
+				txtPastaDestino.setUnFocusColor(Color.GRAY);
+			}
+		});
 
+		txtQuantidade.textProperty().addListener((obs, oldValue, newValue) -> {
+			if (newValue != null && !newValue.matches("\\d*"))
+				txtGerarFim.setText(oldValue);
+		});
 	}
 
 	public void configurarAtalhos(Scene scene) {
