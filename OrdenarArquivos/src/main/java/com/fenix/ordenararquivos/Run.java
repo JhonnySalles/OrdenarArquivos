@@ -1,5 +1,6 @@
 package com.fenix.ordenararquivos;
 
+import com.fenix.ordenararquivos.controller.TelaInicialController;
 import javafx.application.Application;
 import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
@@ -10,7 +11,6 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.WindowEvent;
-import com.fenix.ordenararquivos.controller.TelaInicialController;
 
 public class Run extends Application {
 	
