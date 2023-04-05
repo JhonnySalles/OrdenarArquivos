@@ -494,6 +494,10 @@ public class TelaInicialController implements Initializable {
 	}
 
 	private Boolean CANCELAR = false;
+	final private String FRENTE = " Frente";
+	final private String TUDO = " Tudo";
+	final private String TRAS = " Tras";
+	final private String SUMARIO = " zSumário";
 
 	private void processar() {
 		Task<Boolean> movimentaArquivos = new Task<Boolean>() {
@@ -526,10 +530,17 @@ public class TelaInicialController implements Initializable {
 							+ txtVolume.getText().trim();
 
 					updateMessage("Criando diretórios - " + nomePasta + " Capa\\");
-					pastasCompactar.add(criaPasta(nomePasta + " Capa\\"));
+					File destinoCapa = criaPasta(nomePasta + " Capa\\");
+					pastasCompactar.add(destinoCapa);
 
 					if (!obsLImagesSelected.isEmpty()) {
-						File destinoCapa = new File(nomePasta + " Capa\\");
+						boolean isCapa = false, isTudo = false;
+
+						for (Capa item: obsLImagesSelected)
+							switch (item.getTipo()) {
+								case CAPA -> isCapa = true;
+								case CAPA_COMPLETA -> isTudo = true;
+							}
 
 						if (mesclarCapaTudo) {
 							List<Capa> capas = obsLImagesSelected.parallelStream()
@@ -541,14 +552,11 @@ public class TelaInicialController implements Initializable {
 
 								for (Capa capa : capas) {
 									for (File arquivoCapa : caminhoOrigem.listFiles(getFilterNameFile())) {
-										if (capa.getArquivo().equalsIgnoreCase(arquivoCapa.getName())) {
+										if (capa.getArquivo().equalsIgnoreCase(arquivoCapa.getName()) && !capa.isDupla()) {
 											if (capaFrente == null)
 												capaFrente = arquivoCapa;
 											else if (capaTras == null)
 												capaTras = arquivoCapa;
-
-											if (capaFrente != null && capaTras != null)
-												break;
 										}
 
 										if (capaFrente != null && capaTras != null)
@@ -557,13 +565,12 @@ public class TelaInicialController implements Initializable {
 								}
 
 								if (capaFrente != null && capaTras != null) {
+									isTudo = true;
 									String nome = txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim();
 									if (nome.contains("]"))
-										nome = nome.substring(nome.indexOf(']') + 1, nome.length()).trim();
+										nome = nome.substring(nome.indexOf(']') + 1).trim();
 
-									nome += " Tudo";
-									nome += capaFrente.getName().substring(capaFrente.getName().lastIndexOf("."),
-											capaFrente.getName().length());
+									nome += TUDO + capaFrente.getName().substring(capaFrente.getName().lastIndexOf("."));
 									if (mesclarImagens(new File(destinoCapa.getPath() + "\\" + nome), capaFrente,
 											capaTras))
 										obsLImagesSelected
@@ -576,12 +583,19 @@ public class TelaInicialController implements Initializable {
 
 									nome = txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim();
 									if (nome.contains("]"))
-										nome = nome.substring(nome.indexOf(']') + 1, nome.length()).trim();
+										nome = nome.substring(nome.indexOf(']') + 1).trim();
 
-									nome += " Tras";
-									nome += capaFrente.getName().substring(capaFrente.getName().lastIndexOf("."),
-											capaFrente.getName().length());
+									nome += TRAS + capaTras.getName().substring(capaTras.getName().lastIndexOf("."));
 									renomeiaItem(copiaItem(capaTras, destinoCapa), nome);
+
+									if (!isCapa) {
+										nome = txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim();
+										if (nome.contains("]"))
+											nome = nome.substring(nome.indexOf(']') + 1).trim();
+
+										nome += FRENTE + capaFrente.getName().substring(capaFrente.getName().lastIndexOf("."));
+										renomeiaItem(copiaItem(capaFrente, destinoCapa), nome);
+									}
 								} else
 									Platform.runLater(
 											() -> txtSimularPasta.setText("Não localizado duas capas para junção."));
@@ -604,30 +618,38 @@ public class TelaInicialController implements Initializable {
 
 							String nome = txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim();
 							if (nome.contains("]"))
-								nome = nome.substring(nome.indexOf(']') + 1, nome.length());
+								nome = nome.substring(nome.indexOf(']') + 1).trim();
 
-							nome = nome.trim();
+							String ext = arquivoCapa.getName().substring(arquivoCapa.getName().lastIndexOf("."));
+							if (item.isDupla() && !item.equals(TipoCapa.SUMARIO)) {
+								if (!divideImagens(arquivoCapa, new File(destinoCapa + "\\" + nome + FRENTE + ext), new File(destinoCapa + "\\" + nome + TRAS + ext))) {
+									System.out.println("Não foi possível dividir a imagem. " + arquivoCapa.getName() + " - Tipo: " + item.getTipo() + " - Nome: " + nome + ext);
+									renomeiaItem(copiaItem(arquivoCapa, destinoCapa), nome + FRENTE + ext);
+									renomeiaItem(copiaItem(arquivoCapa, destinoCapa), nome + TRAS + ext);
+								} else
+									System.out.println("Arquivos de imagens dividido com sucesso. " + arquivoCapa.getName() + " - Tipo: " + item.getTipo() + " - Nome: " + nome + ext);
 
-							switch (item.getTipo()) {
-							case CAPA:
-								nome += " Frente";
-								break;
-							case CAPA_COMPLETA:
-								nome += " Tudo";
-								break;
-							case SUMARIO:
-								nome += " zSumário";
-								break;
-							default:
+								if (!isTudo || item.equals(TipoCapa.CAPA_COMPLETA))
+									renomeiaItem(copiaItem(arquivoCapa, destinoCapa), nome + TUDO + ext);
+							} else {
+								switch (item.getTipo()) {
+									case CAPA:
+										nome += FRENTE;
+										break;
+									case CAPA_COMPLETA:
+										nome += TUDO;
+										break;
+									case SUMARIO:
+										nome += SUMARIO;
+										break;
+									default:
+								}
+
+								nome += ext;
+								System.out.println("Copiando capa: " + arquivoCapa.getName() + " - Tipo: " + item.getTipo() + " - Nome: " + nome);
+								renomeiaItem(copiaItem(arquivoCapa, destinoCapa), nome);
 							}
 
-							nome += arquivoCapa.getName().substring(arquivoCapa.getName().lastIndexOf("."),
-									arquivoCapa.getName().length());
-
-							System.out.println("Copiando capa: " + arquivoCapa.getName() + " - Tipo: " + item.getTipo()
-									+ " - Nome: " + nome);
-							Path novoArquivo = copiaItem(arquivoCapa, destinoCapa);
-							renomeiaItem(novoArquivo, nome);
 							obsLImagesSelected.remove(item);
 						}
 					}
@@ -889,6 +911,58 @@ public class TelaInicialController implements Initializable {
 		return false;
 	}
 
+	private boolean divideImagens(File arquivo, File destinoFrente, File destinoTras) {
+		if (arquivo == null || destinoFrente == null || destinoTras == null)
+			return false;
+
+		BufferedImage image;
+		try {
+			image = ImageIO.read(arquivo);
+
+			int width = image.getWidth() / 2;
+			int height = image.getHeight();
+
+			BufferedImage frente = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+			Graphics2D grFrente = frente.createGraphics();
+			java.awt.Color colorFrente = grFrente.getColor();
+			grFrente.setPaint(java.awt.Color.WHITE);
+			grFrente.fillRect(0, 0, width, height);
+			grFrente.setColor(colorFrente);
+			grFrente.drawImage(image, null, 0, 0);
+			grFrente.dispose();
+
+			int offset = width;
+
+			BufferedImage tras = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+			Graphics2D grTras = tras.createGraphics();
+			java.awt.Color colorTras = grTras.getColor();
+			grTras.setPaint(java.awt.Color.WHITE);
+			grTras.fillRect(0, 0, width, height);
+			grTras.setColor(colorTras);
+			grTras.drawImage(image, null, -offset, 0);
+			grTras.dispose();
+
+			return ImageIO.write(frente, "png", destinoFrente) && ImageIO.write(tras, "png", destinoTras);
+		} catch (IOException e) {
+			LOG.error("Erro ao dividir as imagens.", e);
+		}
+		return false;
+	}
+
+	public Boolean isPaginaDupla(File arquivo) {
+		if (arquivo == null || !arquivo.exists())
+			return false;
+
+		BufferedImage image;
+		try {
+			image = ImageIO.read(arquivo);
+			return (image.getWidth() / image.getHeight()) > 0.9;
+		} catch (IOException e) {
+			LOG.error("Erro ao verificar imagem.", e);
+		}
+		return false;
+	}
+
 	@FXML
 	private void onBtnProcessa() {
 		if (validaCampos()) {
@@ -1115,6 +1189,8 @@ public class TelaInicialController implements Initializable {
 				.isPresent();
 	}
 
+
+
 	private void selecionaImagens() {
 		obsLImagesSelected = FXCollections.observableArrayList();
 
@@ -1138,7 +1214,7 @@ public class TelaInicialController implements Initializable {
 								else if (click.isAltDown())
 									tipo = TipoCapa.CAPA_COMPLETA;
 
-								obsLImagesSelected.add(new Capa(item, tipo));
+								obsLImagesSelected.add(new Capa(item, tipo, isPaginaDupla(new File(txtPastaOrigem.getText() + "\\" + item))));
 							}
 						}
 					}
