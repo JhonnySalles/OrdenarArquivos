@@ -19,7 +19,9 @@ import javafx.css.PseudoClass;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Orientation;
 import javafx.scene.Cursor;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Label;
@@ -29,6 +31,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.*;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.scene.robot.Robot;
 import javafx.stage.DirectoryChooser;
@@ -47,6 +50,10 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Handler;
 import java.util.regex.Pattern;
 
 public class TelaInicialController implements Initializable {
@@ -165,6 +172,12 @@ public class TelaInicialController implements Initializable {
 	@FXML
 	private ProgressBar pbProgresso;
 
+	@FXML
+	private JFXButton btnScrollSubir;
+
+	@FXML
+	private JFXButton btnScrollDescer;
+
 	private ObservableList<Caminhos> obsLCaminhos;
 	private ObservableList<String> obsLListaItens;
 	private List<Caminhos> lista;
@@ -221,6 +234,18 @@ public class TelaInicialController implements Initializable {
 				return false;
 			}
 		};
+	}
+
+	@FXML
+	private void onBtnScrollSubir() {
+		if (!lsVwListaImagens.getItems().isEmpty())
+			lsVwListaImagens.scrollTo(0);
+	}
+
+	@FXML
+	private void onBtnScrollBaixo() {
+		if (!lsVwListaImagens.getItems().isEmpty())
+			lsVwListaImagens.scrollTo(lsVwListaImagens.getItems().size());
 	}
 
 	@FXML
@@ -1167,9 +1192,50 @@ public class TelaInicialController implements Initializable {
 	}
 
 
-
+	private Timer dellaySubir = null;
+	private Timer dellayDescer = null;
 	private void selecionaImagens() {
 		obsLImagesSelected = FXCollections.observableArrayList();
+
+		lsVwListaImagens.addEventFilter(ScrollEvent.ANY, e -> {
+			if (e.getDeltaY() > 0) {
+				if (e.getDeltaY() > 10) {
+					btnScrollSubir.setVisible(true);
+					btnScrollSubir.setDisable(false);
+
+					if (dellaySubir != null)
+						dellaySubir.cancel();
+
+					dellaySubir = new Timer();
+					dellaySubir.schedule(new TimerTask() {
+						@Override
+						public void run() {
+							btnScrollSubir.setVisible(false);
+							btnScrollSubir.setDisable(true);
+							dellaySubir = null;
+						}
+					}, 3000);
+				}
+			} else {
+				if (e.getDeltaY() < 10) {
+					btnScrollDescer.setVisible(true);
+					btnScrollDescer.setDisable(false);
+
+					if (dellayDescer != null)
+						dellayDescer.cancel();
+
+					dellayDescer = new Timer();
+					dellayDescer.schedule(new TimerTask() {
+						@Override
+						public void run() {
+							btnScrollDescer.setVisible(false);
+							btnScrollDescer.setDisable(true);
+							dellayDescer = null;
+						}
+					}, 3000);
+				}
+			}
+		});
 
 		lsVwListaImagens.setOnMouseClicked(new EventHandler<MouseEvent>() {
 			@Override

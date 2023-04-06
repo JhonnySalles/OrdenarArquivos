@@ -23,17 +23,17 @@
 }
 
 .texto-stilo-capa {
-    -fx-text-fill: #28f04a;
+    -fx-text-fill: #00e600;
 }
 
 
 .texto-stilo-pagina-dupla {
-    -fx-text-fill: #6ba60c;
+    -fx-text-fill: #e60000;
 }
 
 
 .texto-stilo-sumario {
-    -fx-text-fill: #7d8acf;
+    -fx-text-fill: #9933ff;
 }
 
 
@@ -91,17 +91,18 @@
 .scroll-bar:vertical .thumb {
     -fx-background-color: #3c3c3c;
     -fx-background-radius: 5em;
-
 }
 
 .scroll-bar:horizontal .thumb:hover,
 .scroll-bar:vertical .thumb:hover {
     -fx-background-color: #757575;
+    -fx-effect: dropshadow( one-pass-box , #000000, 4, 4, 0, 0);
 }
 .scroll-bar:horizontal .thumb:pressed,
 .scroll-bar:vertical .thumb:pressed {
-    -fx-background-insets: 3.0;
-    -fx-background-color:  #333333;
+    -fx-background-insets: 1.0;
+    -fx-effect: dropshadow(one-pass-box, #000000, 4, 4, 0, 0);
+    -fx-background-color: #a6a6a6;
 }
 
 .scroll-bar:vertical {
@@ -234,46 +235,47 @@
     -fx-background-color: #4052ab;
 }
 
-.list-view .list-cell:capaSelected {
--fx-background-color: #0ca626;
--fx-text-fill: white;
-}
-
-.list-view .list-cell:capaSelected:odd {
--fx-background-color: #05420f;
--fx-text-fill: white;
-}
-
 .list-view .list-cell:capaSelected:selected {
     -fx-background-color: #4052ab;
-}
-
-.list-view .list-cell:capaCompletaSelected {
--fx-background-color: #4d7709;
--fx-text-fill: white;
-}
-
-.list-view .list-cell:capaCompletaSelected:odd {
--fx-background-color: #2e4705;
--fx-text-fill: white;
 }
 
 .list-view .list-cell:capaCompletaSelected:selected {
     -fx-background-color: #4052ab;
 }
 
+.list-view .list-cell:sumarioSelected:selected {
+    -fx-background-color: #4052ab;
+}
+
+
+.list-view .list-cell:capaSelected {
+-fx-background-color: #00cc00;
+-fx-text-fill: white;
+}
+
+.list-view .list-cell:capaSelected:odd {
+-fx-background-color: #008000;
+-fx-text-fill: white;
+}
+
+.list-view .list-cell:capaCompletaSelected {
+-fx-background-color: #b30000;
+-fx-text-fill: white;
+}
+
+.list-view .list-cell:capaCompletaSelected:odd {
+-fx-background-color: #800000;
+-fx-text-fill: white;
+}
+
 .list-view .list-cell:sumarioSelected {
--fx-background-color: #3e50a8;
+-fx-background-color: #9933ff;
 -fx-text-fill: white;
 }
 
 .list-view .list-cell:sumarioSelected:odd {
--fx-background-color: #293570;
+-fx-background-color: #4d0099;
 -fx-text-fill: white;
-}
-
-.list-view .list-cell:sumarioSelected:selected {
-    -fx-background-color: #4052ab;
 }
 
 /*---------- Progress Bar ----------*/
