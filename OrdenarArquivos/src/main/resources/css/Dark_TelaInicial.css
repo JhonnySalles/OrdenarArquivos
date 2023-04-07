@@ -239,7 +239,15 @@
     -fx-background-color: #4052ab;
 }
 
+.list-view .list-cell:capaSelected:odd:selected {
+    -fx-background-color: #4052ab;
+}
+
 .list-view .list-cell:capaCompletaSelected:selected {
+    -fx-background-color: #4052ab;
+}
+
+.list-view .list-cell:capaCompletaSelected:odd:selected {
     -fx-background-color: #4052ab;
 }
 
@@ -247,6 +255,9 @@
     -fx-background-color: #4052ab;
 }
 
+.list-view .list-cell:sumarioSelected:odd:selected {
+    -fx-background-color: #4052ab;
+}
 
 .list-view .list-cell:capaSelected {
 -fx-background-color: #00cc00;
