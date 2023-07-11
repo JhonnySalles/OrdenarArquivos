@@ -623,7 +623,7 @@ public class TelaInicialController implements Initializable {
 								nome = nome.substring(nome.indexOf(']') + 1).trim();
 
 							String ext = arquivoCapa.getName().substring(arquivoCapa.getName().lastIndexOf("."));
-							if (item.isDupla() && !item.equals(TipoCapa.SUMARIO)) {
+							if (item.isDupla() && !item.getTipo().equals(TipoCapa.SUMARIO)) {
 								if (!divideImagens(arquivoCapa, new File(destinoCapa + "\\" + nome + FRENTE + ext), new File(destinoCapa + "\\" + nome + TRAS + ext))) {
 									System.out.println("Não foi possível dividir a imagem. " + arquivoCapa.getName() + " - Tipo: " + item.getTipo() + " - Nome: " + nome + ext);
 									renomeiaItem(copiaItem(arquivoCapa, destinoCapa), nome + FRENTE + ext);
