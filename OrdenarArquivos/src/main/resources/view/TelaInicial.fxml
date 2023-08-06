@@ -254,7 +254,7 @@
                               <VBox>
                                  <children>
                                     <Label fx:id="lblTitulo23111" styleClass="texto-stilo-1" text="Separador" textFill="WHITE" />
-                                    <JFXTextField fx:id="txtSeparador" alignment="CENTER" minHeight="20.0" minWidth="60.0" prefHeight="25.0" prefWidth="60.0" unFocusColor="GREY" VBox.vgrow="ALWAYS">
+                                    <JFXTextField fx:id="txtSeparador" alignment="CENTER" prefHeight="25.0" prefWidth="60.0" unFocusColor="GREY" VBox.vgrow="ALWAYS">
                                        <styleClass>
                                           <String fx:value="texto-stilo-1" />
                                           <String fx:value="background-Black1" />
