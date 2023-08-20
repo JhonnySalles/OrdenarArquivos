@@ -54,7 +54,7 @@ public class Run extends Application {
 		return mainController;
 	}
 
-	public static void main(String[] args) {
+	public static void start(String[] args) {
 		launch(args);
 	}
 }

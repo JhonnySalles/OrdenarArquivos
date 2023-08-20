@@ -17,6 +17,6 @@ public class App {
 		if (gerarBanco)
 			GerarBancoDados.processar(caminho);
 		else		
-			Run.main(args);
+			Run.start(args);
 	}
 }

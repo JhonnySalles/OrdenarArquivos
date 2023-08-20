@@ -161,7 +161,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>ordenarArquivos.App</mainClass>
+                            <mainClass>com.fenix.ordenararquivos.App</mainClass>
                         </manifest>
                     </archive>
 
@@ -180,12 +180,16 @@
                         <option>javafx.base/com.sun.javafx.event=ALL-UNNAMED</option>
                         <option>--add-opens</option>
                         <option>javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>java.base/java.lang.reflect=ALL-UNNAMED</option>
                         <option>--add-exports</option>
                         <option>javafx.controls/com.sun.javafx.scene.control.behavior=com.jfoenix</option>
                         <option>--add-exports</option>
                         <option>javafx.controls/com.sun.javafx.scene.control=com.jfoenix</option>
                         <option>--add-exports</option>
                         <option>javafx.base/com.sun.javafx.binding=com.jfoenix</option>
+                        <option>--add-exports</option>
+                        <option>javafx.base/com.sun.javafx.event=ALL-UNNAMED</option>
                         <option>--add-exports</option>
                         <option>javafx.graphics/com.sun.javafx.stage=com.jfoenix</option>
                         <option>--add-exports</option>
@@ -201,7 +205,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>ordenarArquivos.App</mainClass>
+                            <mainClass>com.fenix.ordenararquivos.App</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -245,7 +249,7 @@
                         <!-- Default configuration for running with: mvn clean javafx:run -->
                         <id>default-cli</id>
                         <configuration>
-                            <mainClass>com.fenix.ordenararquivos/com.fenix.ordenararquivos.HelloApplication</mainClass>
+                            <mainClass>com.fenix.ordenararquivos/com.fenix.ordenararquivos.Run</mainClass>
                             <launcher>app</launcher>
                             <jlinkZipName>app</jlinkZipName>
                             <jlinkImageName>app</jlinkImageName>
