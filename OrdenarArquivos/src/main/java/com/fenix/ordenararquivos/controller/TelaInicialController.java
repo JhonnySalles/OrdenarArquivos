@@ -29,6 +29,8 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.*;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
@@ -55,6 +57,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Handler;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class TelaInicialController implements Initializable {
 
@@ -75,6 +78,9 @@ public class TelaInicialController implements Initializable {
 
 	@FXML
 	private JFXButton btnCompactar;
+
+	@FXML
+	private JFXButton btnGerarCapa;
 
 	@FXML
 	private JFXTextField txtSimularPasta;
@@ -117,6 +123,9 @@ public class TelaInicialController implements Initializable {
 
 	@FXML
 	private JFXCheckBox cbMesclarCapaTudo;
+
+	@FXML
+	private JFXCheckBox cbAjustarMargemCapa;
 
 	@FXML
 	private JFXListView<String> lsVwListaImagens;
@@ -178,6 +187,15 @@ public class TelaInicialController implements Initializable {
 	@FXML
 	private JFXButton btnScrollDescer;
 
+	@FXML
+	private ImageView imgTudo;
+
+	@FXML
+	private ImageView imgFrente;
+
+	@FXML
+	private ImageView imgTras;
+
 	private ObservableList<Caminhos> obsLCaminhos;
 	private ObservableList<String> obsLListaItens;
 	private List<Caminhos> lista;
@@ -189,6 +207,8 @@ public class TelaInicialController implements Initializable {
 	private MangaServices service = new MangaServices();
 
 	private void limpaCampos() {
+		limparCapas();
+
 		lista = new ArrayList<>();
 		obsLCaminhos = FXCollections.observableArrayList(lista);
 		tbViewTabela.setItems(obsLCaminhos);
@@ -212,7 +232,6 @@ public class TelaInicialController implements Initializable {
 
 		obsLListaItens = FXCollections.<String>observableArrayList("");
 		lsVwListaImagens.setItems(obsLListaItens);
-		obsLImagesSelected.clear();
 		selecionada = null;
 
 		lblProgresso.setText("");
@@ -260,6 +279,11 @@ public class TelaInicialController implements Initializable {
 		if (caminhoDestino.exists() && !txtNomeArquivo.getText().isEmpty() && !LAST_PROCESS_FOLDERS.isEmpty())
 			compactaArquivo(new File(caminhoDestino.getPath().trim() + "\\" + txtNomeArquivo.getText().trim()),
 					LAST_PROCESS_FOLDERS);
+	}
+
+	@FXML
+	private void onBtnGerarCapa() {
+
 	}
 
 	private static final String NUMBER_PATTERN = "[\\d.]+$";
@@ -482,6 +506,12 @@ public class TelaInicialController implements Initializable {
 		Files.move(arquivo, arquivo.resolveSibling(nome), StandardCopyOption.REPLACE_EXISTING);
 	}
 
+	private void deletaItem(String item) {
+		File arquivo = new File(item);
+		if (arquivo.exists())
+			arquivo.delete();
+	}
+
 	private Boolean verificaPaginaDupla(File arquivo) {
 		boolean result = false;
 		try {
@@ -494,6 +524,69 @@ public class TelaInicialController implements Initializable {
 		}
 		return result;
 	}
+
+	final File TEMP = new File(Paths.get("").toFile(), "temp/");
+	private void limparCapas() {
+		imgTudo.setImage(null);
+		imgFrente.setImage(null);
+		imgTras.setImage(null);
+		obsLImagesSelected.clear();
+		if (!TEMP.exists())
+			TEMP.mkdir();
+	}
+
+	private void simularCapa(TipoCapa tipo, Image imagem) {
+		switch (tipo) {
+			case CAPA -> imgFrente.setImage(imagem);
+			case TRAS -> imgTras.setImage(imagem);
+			case CAPA_COMPLETA -> imgTudo.setImage(imagem);
+		}
+	}
+
+	private void remCapa(String arquivo) {
+		var capa = obsLImagesSelected.stream().filter(it -> it.getArquivo().equalsIgnoreCase(arquivo)).findFirst();
+
+		if (capa.isPresent()) {
+			obsLImagesSelected.remove(capa.get());
+			simularCapa(capa.get().getTipo(), null);
+		}
+	}
+
+	private void addCapa(TipoCapa tipo, String arquivo) {
+		if (tipo == TipoCapa.CAPA_COMPLETA) {
+			var capas = obsLImagesSelected.stream().filter(it -> it.getTipo().compareTo(tipo) == 0).toList();
+			Capa frente = !capas.isEmpty() ? capas.get(0) : null;
+			Capa tras = capas.size() > 1 ? capas.get(1) : null;
+
+			if (frente == null) {
+				File img = new File(arquivo);
+				frente = new Capa(arquivo, tipo, isPaginaDupla(img));
+				remCapa(arquivo);
+				simularCapa(tipo, carregaImagem(img));
+				obsLImagesSelected.add(frente);
+			} else if (tras == null) {
+				File img = new File(arquivo);
+				tras = new Capa(arquivo, tipo, isPaginaDupla(img));
+				tras.setEsquerda(frente);
+				remCapa(arquivo);
+				simularCapa(tipo, carregaImagem(new File(frente.getArquivo()), img));
+				obsLImagesSelected.add(tras);
+			} else
+				simularCapa(tipo, carregaImagem(new File(frente.getArquivo()), new File(tras.getArquivo())));
+		} else {
+			var capa = obsLImagesSelected.stream().filter(it -> it.getTipo().compareTo(tipo) == 0).findFirst().orElse(new Capa());
+
+			capa.setTipo(tipo);
+			capa.setArquivo(arquivo);
+			File img = new File(txtPastaOrigem.getText() + "\\" + arquivo);
+			capa.setDupla(isPaginaDupla(img));
+
+			remCapa(arquivo);
+			simularCapa(tipo, carregaImagem(img));
+			obsLImagesSelected.add(capa);
+		}
+	}
+
 
 	private Boolean CANCELAR = false;
 	final private String FRENTE = " Frente";
@@ -720,8 +813,6 @@ public class TelaInicialController implements Initializable {
 							Platform.runLater(() -> txtSimularPasta
 									.setText("Erro ao gerar o arquivo, necessário compacta-lo manualmente."));
 					}
-
-					obsLImagesSelected.clear();
 				} catch (Exception e) {
 					LOG.error("Erro ao processar.", e);
 					Alert a = new Alert(AlertType.NONE);
@@ -951,6 +1042,82 @@ public class TelaInicialController implements Initializable {
 		return false;
 	}
 
+	private File limpaMargemImagens(File arquivo, Boolean clearTopBottom) {
+		if (arquivo == null || !cbAjustarMargemCapa.isSelected())
+			return arquivo;
+
+		BufferedImage image;
+		try {
+			image = ImageIO.read(arquivo);
+
+			int branco = java.awt.Color.WHITE.getRGB();
+
+			int startX = 0;
+			for (var x = 0; x <= image.getWidth(); x++) {
+				for (var y = 0; y<= image.getHeight(); y++) {
+					if (image.getRGB(x, y) != branco) {
+						startX = x;
+						break;
+					}
+				}
+				if (startX > 0)
+					break;
+			}
+
+			int endX = image.getWidth();
+			for (var x = image.getWidth(); x >= 0; x--) {
+				for (var y = 0; y<= image.getHeight(); y++) {
+					if (image.getRGB(x, y) != branco) {
+						endX = x;
+						break;
+					}
+				}
+				if (endX < image.getWidth())
+					break;
+			}
+
+			int startY = 0;
+			int endY = image.getHeight();
+			if (clearTopBottom) {
+				for (var y = 0; y <= image.getHeight(); y++) {
+					for (var x = 0; x <= image.getWidth(); x++) {
+						if (image.getRGB(x, y) != branco) {
+							startY = y;
+							break;
+						}
+					}
+					if (startY > 0)
+						break;
+				}
+
+				for (var y = image.getHeight(); y >= 0; y--) {
+					for (var x = 0; x <= image.getWidth(); x++) {
+						if (image.getRGB(x, y) != branco) {
+							endY = y;
+							break;
+						}
+					}
+					if (endY < image.getWidth())
+						break;
+				}
+			}
+
+			BufferedImage frente = new BufferedImage(image.getWidth() - endX - startX, image.getHeight() - endY - startY, BufferedImage.TYPE_INT_ARGB);
+			Graphics2D grFrente = frente.createGraphics();
+			java.awt.Color colorFrente = grFrente.getColor();
+			grFrente.setPaint(java.awt.Color.WHITE);
+			grFrente.fillRect(0, 0, image.getWidth() - endX , image.getHeight() - endY);
+			grFrente.setColor(colorFrente);
+			grFrente.drawImage(image, null, -startX, -startY);
+			grFrente.dispose();
+
+			ImageIO.write(frente, "png", arquivo);
+		} catch (IOException e) {
+			LOG.error("Erro ao dividir as imagens.", e);
+		}
+		return arquivo;
+	}
+
 	public Boolean isPaginaDupla(File arquivo) {
 		if (arquivo == null || !arquivo.exists())
 			return false;
@@ -963,6 +1130,62 @@ public class TelaInicialController implements Initializable {
 			LOG.error("Erro ao verificar imagem.", e);
 		}
 		return false;
+	}
+
+	public Image carregaImagem(File direita, File esquerda) {
+		if (direita == null || esquerda == null || !direita.exists() || !esquerda.exists())
+			return null;
+
+		File img1 = new File(TEMP, direita.getName());
+		if (img1.exists())
+			img1.delete();
+
+		File img2 = new File(TEMP, esquerda.getName());
+		if (img2.exists())
+			img2.delete();
+
+		try {
+			copiaItem(direita, img1);
+			copiaItem(esquerda, img2);
+			limpaMargemImagens(img1, true);
+			limpaMargemImagens(img2, true);
+
+			File img = new File(TEMP, "temp.jpg");
+			if (img.exists())
+				img.delete();
+			img.createNewFile();
+
+			mesclarImagens(img, img1, img2);
+			return new Image(img.getAbsolutePath());
+		} catch (IOException e) {
+			LOG.error("Erro ao verificar imagem.", e);
+		} finally {
+			if (img1.exists())
+				img1.delete();
+
+			if (img2.exists())
+				img2.delete();
+		}
+		return null;
+	}
+
+	public Image carregaImagem(File arquivo) {
+		if (arquivo == null || !arquivo.exists())
+			return null;
+
+		File img = new File(TEMP, arquivo.getName());
+		if (img.exists())
+			img.delete();
+
+		try {
+			copiaItem(arquivo, img);
+			limpaMargemImagens(img, false);
+			renomeiaItem(img.toPath(), "temp.jpg");
+			return new Image(img.getAbsolutePath());
+		} catch (IOException e) {
+			LOG.error("Erro ao verificar imagem.", e);
+		}
+		return null;
 	}
 
 	@FXML
@@ -1017,7 +1240,7 @@ public class TelaInicialController implements Initializable {
 		else
 			obsLListaItens = FXCollections.<String>observableArrayList("");
 		lsVwListaImagens.setItems(obsLListaItens);
-		obsLImagesSelected.clear();
+		limparCapas();
 		selecionada = obsLListaItens.get(0);
 	}
 
@@ -1187,8 +1410,7 @@ public class TelaInicialController implements Initializable {
 		if (obsLImagesSelected.isEmpty())
 			return false;
 		return obsLImagesSelected.stream()
-				.filter(capa -> capa.getTipo().equals(tipo) && capa.getArquivo().equalsIgnoreCase(caminho)).findFirst()
-				.isPresent();
+				.anyMatch(capa -> capa.getTipo().equals(tipo) && capa.getArquivo().equalsIgnoreCase(caminho));
 	}
 
 
@@ -1242,14 +1464,13 @@ public class TelaInicialController implements Initializable {
 			public void handle(MouseEvent click) {
 				if (click.getClickCount() > 1) {
 					if (click.isControlDown())
-						obsLImagesSelected.clear();
+						limparCapas();
 					else {
 						String item = lsVwListaImagens.getSelectionModel().getSelectedItem();
 
 						if (item != null) {
-							if (obsLImagesSelected.stream().filter(e -> e.getArquivo().equalsIgnoreCase(item))
-									.findFirst().isPresent())
-								obsLImagesSelected.removeIf(capa -> capa.getArquivo().equalsIgnoreCase(item));
+							if (obsLImagesSelected.stream().anyMatch(e -> e.getArquivo().equalsIgnoreCase(item)))
+								remCapa(item);
 							else {
 								TipoCapa tipo = TipoCapa.CAPA;
 								if (click.isShiftDown())
@@ -1257,7 +1478,7 @@ public class TelaInicialController implements Initializable {
 								else if (click.isAltDown())
 									tipo = TipoCapa.CAPA_COMPLETA;
 
-								obsLImagesSelected.add(new Capa(item, tipo, isPaginaDupla(new File(txtPastaOrigem.getText() + "\\" + item))));
+								addCapa(tipo, item);
 							}
 						}
 					}

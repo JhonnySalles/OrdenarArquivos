@@ -8,18 +8,20 @@
     -fx-background-color:  transparent;
 }
 
-/*---------- Estilos de fonte ----------*/
-.texto-titulo{
+/*---------- Estilos de fonte ----------*/  
+.texto-titulo {
     -fx-text-fill: white;
-    -fx-font-size: 24px;
+    -fx-font-size: 14px;
 }
 
 .texto-stilo-1{
+    -fx-prompt-text-fill: white;
     -fx-text-fill: white;
 }
 
 .texto-stilo-2 {
-    -fx-background-color:  #ffffff;
+    -fx-text-fill: white;
+    -fx-background-color: #000000;
 }
 
 .texto-stilo-capa {
@@ -38,7 +40,6 @@
 
 
 /*---------- Text Area ----------*/
-/*----------  Cadastro endereço ----------*/
 .textArea {
     -fx-background-color: #4059a9;
 }
@@ -308,4 +309,36 @@
 .progress-barAzul .bar {
     -fx-background-color: #106ebe;
     -fx-background-insets: 1;
+}
+
+/*---------- Tab ----------*/
+.jfx-tab-pane .tab {
+    -fx-pref-height: 30
+} 
+
+.jfx-tab-pane .control-buttons-tab .jfx-rippler {
+	-jfx-rippler-fill: black;
+}
+
+.jfx-tab-pane .tab-header-area .jfx-rippler {
+	-jfx-rippler-fill: black;
+}
+
+.jfx-tab-pane .tab-selected-line {
+	-fx-background-color: black;
+	-fx-pref-height: 3;
+	-fx-background-insets: 0 -0.01 0 -0.01;
+}
+
+.jfx-tab-pane .headers-region .tab .tab-container .tab-close-button>.jfx-svg-glyph {
+	-fx-background-color: red;
+}
+
+.jfx-tab-pane .headers-region {
+	-fx-background-color: transparent;
+}
+
+.jfx-tab-pane .tab-header-background {
+	-fx-background-color: #1A237E;
+	-fx-background-color: linear-gradient(to top right, #0277BD, #1A237E);
 }
