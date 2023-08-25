@@ -2,11 +2,21 @@ package com.fenix.ordenararquivos.model;
 
 public class Capa {
 
+	private String nome;
 	private String arquivo;
 	private TipoCapa tipo;
 	private Boolean isDupla;
 
-	private Capa esquerda;
+	private Capa direita;
+
+
+	public String getNome() {
+		return nome;
+	}
+
+	public void setNome(String nome) {
+		this.nome = nome;
+	}
 
 	public String getArquivo() {
 		return arquivo;
@@ -32,26 +42,36 @@ public class Capa {
 		this.isDupla = dupla;
 	}
 
-	public Capa getEsquerda() {
-		return esquerda;
+	public Capa getDireita() {
+		return direita;
 	}
 
-	public void setEsquerda(Capa esquerda) {
-		this.esquerda = esquerda;
+	public void setDireita(Capa direita) {
+		this.direita = direita;
 	}
 
-	public Capa(String arquivo, TipoCapa tipo, Boolean isDupla) {
+	public Capa(String nome, String arquivo, TipoCapa tipo, Boolean isDupla) {
+		this.nome = nome;
 		this.arquivo = arquivo;
 		this.tipo = tipo;
 		this.isDupla = isDupla;
-		this.esquerda = null;
+		this.direita = null;
+	}
+
+	public Capa(String nome, String arquivo, TipoCapa tipo, Boolean isDupla, Capa direita) {
+		this.nome = nome;
+		this.arquivo = arquivo;
+		this.tipo = tipo;
+		this.isDupla = isDupla;
+		this.direita = direita;
 	}
 
 	public Capa() {
+		this.nome = "";
 		this.arquivo = "";
 		this.tipo = TipoCapa.CAPA;
 		this.isDupla = false;
-		this.esquerda = null;
+		this.direita = null;
 	}
 
 }
