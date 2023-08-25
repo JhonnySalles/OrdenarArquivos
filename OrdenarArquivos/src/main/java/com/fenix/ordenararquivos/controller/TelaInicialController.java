@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
+import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
@@ -49,6 +50,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.*;
+import java.util.Timer;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 
@@ -232,19 +234,16 @@ public class TelaInicialController implements Initializable {
     }
 
     private FilenameFilter getFilterNameFile() {
-        return new FilenameFilter() {
-            @Override
-            public boolean accept(File dir, String name) {
-                if (name.lastIndexOf('.') > 0) {
-                    Pattern p = Pattern.compile(IMAGE_PATTERN);
+        return (dir, name) -> {
+            if (name.lastIndexOf('.') > 0) {
+                Pattern p = Pattern.compile(IMAGE_PATTERN);
 
-                    if (p.matcher(name).matches())
-                        return true;
-                    else
-                        return false;
-                }
-                return false;
+                if (p.matcher(name).matches())
+                    return true;
+                else
+                    return false;
             }
+            return false;
         };
     }
 
@@ -499,8 +498,8 @@ public class TelaInicialController implements Initializable {
         return arquivoDestino;
     }
 
-    private void renomeiaItem(Path arquivo, String nome) throws IOException {
-        Files.move(arquivo, arquivo.resolveSibling(nome), StandardCopyOption.REPLACE_EXISTING);
+    private File renomeiaItem(Path arquivo, String nome) throws IOException {
+        return Files.move(arquivo, arquivo.resolveSibling(nome), StandardCopyOption.REPLACE_EXISTING).toFile();
     }
 
     private void deletaItem(String item) {
@@ -596,7 +595,7 @@ public class TelaInicialController implements Initializable {
                         simularCapa(tipo, carregaImagem(new File(PASTA_TEMPORARIA + "\\" + img.getName())));
                         simularCapa(TipoCapa.TRAS, new Image(direita.getAbsolutePath()));
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        LOG.info("Erro ao processar imagem: Capa completa, pagina dupla.", e);
                     }
                 });
             } else if (frente == null) {
@@ -607,7 +606,7 @@ public class TelaInicialController implements Initializable {
                         copiaItem(img, PASTA_TEMPORARIA);
                         simularCapa(tipo, carregaImagem(new File(PASTA_TEMPORARIA + "\\" + img.getName())));
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        LOG.info("Erro ao processar imagem: Capa completa frente.", e);
                     }
                 });
             } else if (tras == null) {
@@ -622,7 +621,7 @@ public class TelaInicialController implements Initializable {
                         simularCapa(tipo, carregaImagem(new File(PASTA_TEMPORARIA + "\\" + frente.getArquivo()), imagem));
                         simularCapa(TipoCapa.TRAS, new Image(imagem.getAbsolutePath()));
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        LOG.info("Erro ao processar imagem: Capa completa trazeira.", e);
                     }
                 });
             }
@@ -641,7 +640,7 @@ public class TelaInicialController implements Initializable {
                     copiaItem(img, PASTA_TEMPORARIA);
                     simularCapa(tipo, carregaImagem(new File(PASTA_TEMPORARIA + "\\" + img.getName())));
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    LOG.info("Erro ao processar imagem: Capa Tipo " + tipo + ".", e);
                 }
             });
         }
@@ -657,7 +656,7 @@ public class TelaInicialController implements Initializable {
                     copiaItem(new File(txtPastaOrigem.getText() + "\\" + capa.getNome()), PASTA_TEMPORARIA);
                     simularCapa(capa.getTipo(), carregaImagem(new File(PASTA_TEMPORARIA + "\\" + capa.getArquivo())));
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    LOG.info("Erro ao reprocessar imagem: " + capa.getTipo() + ".", e);
                 }
             }
 
@@ -673,19 +672,18 @@ public class TelaInicialController implements Initializable {
                         copiaItem(new File(txtPastaOrigem.getText() + "\\" + completa.get().getDireita().getNome()), PASTA_TEMPORARIA);
                         simularCapa(TipoCapa.CAPA_COMPLETA, carregaImagem(new File(PASTA_TEMPORARIA + "\\" + completa.get().getArquivo()), new File(PASTA_TEMPORARIA + "\\" + completa.get().getDireita().getArquivo())));
                     } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        LOG.info("Erro ao reprocessar imagem: " + completa.get().getTipo() + ".", e);
                     }
                 } else {
                     try {
                         copiaItem(new File(txtPastaOrigem.getText() + "\\" + completa.get().getNome()), PASTA_TEMPORARIA);
                         simularCapa(TipoCapa.CAPA_COMPLETA, carregaImagem(new File(PASTA_TEMPORARIA + "\\" + completa.get().getArquivo())));
                     } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        LOG.info("Erro ao reprocessar imagem: " + completa.get().getTipo() + ".", e);
                     }
                 }
         });
     }
-
 
     private Boolean CANCELAR = false;
     final private String FRENTE = " Frente";
@@ -696,9 +694,8 @@ public class TelaInicialController implements Initializable {
     private void processar() {
         Task<Boolean> movimentaArquivos = new Task<>() {
             @Override
-            protected Boolean call() throws Exception {
+            protected Boolean call() {
                 try {
-
                     salvaManga();
 
                     if (lsVwListaImagens.getSelectionModel().getSelectedItem() != null)
@@ -708,7 +705,7 @@ public class TelaInicialController implements Initializable {
                     int i = 0;
                     int max = caminhoOrigem.listFiles(getFilterNameFile()).length;
 
-                    List<File> pastasCompactar = new ArrayList<File>();
+                    List<File> pastasCompactar = new ArrayList<>();
                     LAST_PROCESS_FOLDERS.clear();
 
                     String arquivoZip = caminhoDestino.getPath().trim() + "\\" + txtNomeArquivo.getText().trim();
@@ -728,124 +725,69 @@ public class TelaInicialController implements Initializable {
                     pastasCompactar.add(destinoCapa);
 
                     if (!obsLImagesSelected.isEmpty()) {
-                        boolean isCapa = false, isTudo = false;
+                        String nome = txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim();
+                        if (nome.contains("]"))
+                            nome = nome.substring(nome.indexOf(']') + 1).trim();
 
-                        for (Capa item : obsLImagesSelected)
-                            switch (item.getTipo()) {
-                                case CAPA -> isCapa = true;
-                                case CAPA_COMPLETA -> isTudo = true;
-                            }
+                        Optional<Capa> capa = obsLImagesSelected.stream().filter(it -> it.getTipo().compareTo(TipoCapa.CAPA) == 0).findFirst();
+                        if (capa.isPresent())
+                            limpaMargemImagens(renomeiaItem(copiaItem(new File(caminhoOrigem.getPath() + "\\" + capa.get().getNome()), destinoCapa), nome + FRENTE + capa.get().getNome().substring(capa.get().getNome().lastIndexOf("."))), false);
 
-                        if (mesclarCapaTudo) {
-                            List<Capa> capas = obsLImagesSelected.parallelStream()
-                                    .filter(capa -> capa.getTipo().equals(TipoCapa.CAPA_COMPLETA)).toList();
+                        Optional<Capa> tras = obsLImagesSelected.stream().filter(it -> it.getTipo().compareTo(TipoCapa.TRAS) == 0).findFirst();
+                        if (tras.isPresent())
+                            limpaMargemImagens(renomeiaItem(copiaItem(new File(caminhoOrigem.getPath() + "\\" + tras.get().getNome()), destinoCapa), nome + TRAS + tras.get().getNome().substring(tras.get().getNome().lastIndexOf("."))), false);
 
-                            if (capas.size() > 1) {
-                                File capaFrente = null;
-                                File capaTras = null;
+                        Optional<Capa> sumario = obsLImagesSelected.stream().filter(it -> it.getTipo().compareTo(TipoCapa.SUMARIO) == 0).findFirst();
+                        if (sumario.isPresent())
+                            renomeiaItem(copiaItem(new File(caminhoOrigem.getPath() + "\\" + sumario.get().getNome()), destinoCapa), nome + SUMARIO + sumario.get().getNome().substring(sumario.get().getNome().lastIndexOf(".")));
 
-                                for (Capa capa : capas) {
-                                    for (File arquivoCapa : caminhoOrigem.listFiles(getFilterNameFile())) {
-                                        if (capa.getArquivo().equalsIgnoreCase(arquivoCapa.getName()) && !capa.isDupla()) {
-                                            if (capaFrente == null)
-                                                capaFrente = arquivoCapa;
-                                            else if (capaTras == null)
-                                                capaTras = arquivoCapa;
-                                        }
+                        if (obsLImagesSelected.stream().anyMatch(it -> it.getTipo().compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.getDireita() != null)) {
+                            Optional<Capa> tudo = obsLImagesSelected.stream().filter(it -> it.getTipo().compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.getDireita() != null).findFirst();
 
-                                        if (capaFrente != null && capaTras != null)
-                                            break;
-                                    }
-                                }
+                            if (mesclarCapaTudo) {
+                                copiaItem(new File(caminhoOrigem.getPath() + "\\" + tudo.get().getNome()), PASTA_TEMPORARIA);
+                                copiaItem(new File(caminhoOrigem.getPath() + "\\" + tudo.get().getDireita().getNome()), PASTA_TEMPORARIA);
 
-                                if (capaFrente != null && capaTras != null) {
-                                    isTudo = true;
-                                    String nome = txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim();
-                                    if (nome.contains("]"))
-                                        nome = nome.substring(nome.indexOf(']') + 1).trim();
+                                File esquerda = new File(PASTA_TEMPORARIA, tudo.get().getNome());
+                                File direita = new File(PASTA_TEMPORARIA, tudo.get().getDireita().getNome());
 
-                                    nome += TUDO + capaFrente.getName().substring(capaFrente.getName().lastIndexOf("."));
-                                    if (mesclarImagens(new File(destinoCapa.getPath() + "\\" + nome), capaFrente,
-                                            capaTras))
-                                        obsLImagesSelected
-                                                .removeIf(capa -> capa.getTipo().equals(TipoCapa.CAPA_COMPLETA));
-                                    else {
-                                        Platform.runLater(() -> txtSimularPasta
-                                                .setText("Não foi possível gravar a nova imagem da junção."));
-                                        renomeiaItem(copiaItem(capaFrente, destinoCapa), nome);
-                                    }
+                                limpaMargemImagens(esquerda, true);
+                                limpaMargemImagens(direita, true);
 
-                                    nome = txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim();
-                                    if (nome.contains("]"))
-                                        nome = nome.substring(nome.indexOf(']') + 1).trim();
-
-                                    nome += TRAS + capaTras.getName().substring(capaTras.getName().lastIndexOf("."));
-                                    renomeiaItem(copiaItem(capaTras, destinoCapa), nome);
-
-                                    if (!isCapa) {
-                                        nome = txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim();
-                                        if (nome.contains("]"))
-                                            nome = nome.substring(nome.indexOf(']') + 1).trim();
-
-                                        nome += FRENTE + capaFrente.getName().substring(capaFrente.getName().lastIndexOf("."));
-                                        renomeiaItem(copiaItem(capaFrente, destinoCapa), nome);
-                                    }
-                                } else
-                                    Platform.runLater(
-                                            () -> txtSimularPasta.setText("Não localizado duas capas para junção."));
-
-                            } else
-                                Platform.runLater(
-                                        () -> txtSimularPasta.setText("Não foi selecionado duas capas para junção."));
-                        }
-
-                        for (File arquivoCapa : caminhoOrigem.listFiles(getFilterNameFile())) {
-                            if (obsLImagesSelected.isEmpty())
-                                break;
-
-                            Capa item = obsLImagesSelected.stream()
-                                    .filter(capa -> capa.getNome().equalsIgnoreCase(arquivoCapa.getName()))
-                                    .findFirst().orElse(null);
-
-                            if (item == null)
-                                continue;
-
-                            String nome = txtNomePastaManga.getText().trim() + " " + txtVolume.getText().trim();
-                            if (nome.contains("]"))
-                                nome = nome.substring(nome.indexOf(']') + 1).trim();
-
-                            String ext = arquivoCapa.getName().substring(arquivoCapa.getName().lastIndexOf("."));
-                            if (item.isDupla() && !item.getTipo().equals(TipoCapa.SUMARIO)) {
-                                if (!divideImagens(arquivoCapa, new File(destinoCapa + "\\" + nome + FRENTE + ext), new File(destinoCapa + "\\" + nome + TRAS + ext))) {
-                                    System.out.println("Não foi possível dividir a imagem. " + arquivoCapa.getName() + " - Tipo: " + item.getTipo() + " - Nome: " + nome + ext);
-                                    renomeiaItem(copiaItem(arquivoCapa, destinoCapa), nome + FRENTE + ext);
-                                    renomeiaItem(copiaItem(arquivoCapa, destinoCapa), nome + TRAS + ext);
-                                } else
-                                    System.out.println("Arquivos de imagens dividido com sucesso. " + arquivoCapa.getName() + " - Tipo: " + item.getTipo() + " - Nome: " + nome + ext);
-
-                                if (!isTudo || item.equals(TipoCapa.CAPA_COMPLETA))
-                                    renomeiaItem(copiaItem(arquivoCapa, destinoCapa), nome + TUDO + ext);
+                                mesclarImagens(new File(destinoCapa.getPath() + "\\" + nome + TUDO + ".png"), esquerda, direita);
                             } else {
-                                switch (item.getTipo()) {
-                                    case CAPA:
-                                        nome += FRENTE;
-                                        break;
-                                    case CAPA_COMPLETA:
-                                        nome += TUDO;
-                                        break;
-                                    case SUMARIO:
-                                        nome += SUMARIO;
-                                        break;
-                                    default:
-                                }
-
-                                nome += ext;
-                                System.out.println("Copiando capa: " + arquivoCapa.getName() + " - Tipo: " + item.getTipo() + " - Nome: " + nome);
-                                renomeiaItem(copiaItem(arquivoCapa, destinoCapa), nome);
+                                File arquivo = new File(caminhoOrigem.getPath() + "\\" + nome + TUDO + tudo.get().getNome().substring(tudo.get().getNome().lastIndexOf(".")));
+                                renomeiaItem(copiaItem(new File(caminhoOrigem, tudo.get().getNome()), destinoCapa), arquivo.getName());
+                                limpaMargemImagens(arquivo, true);
                             }
+                        } else if (obsLImagesSelected.stream().anyMatch(it -> it.getTipo().compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.isDupla()) || obsLImagesSelected.stream().anyMatch(it -> it.getTipo().compareTo(TipoCapa.SUMARIO) != 0 && it.isDupla())) {
+                            Optional<Capa> tudo = obsLImagesSelected.stream().filter(it -> it.getTipo().compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.isDupla()).findFirst();
 
-                            obsLImagesSelected.remove(item);
+                            if (tudo.isEmpty())
+                                tudo = obsLImagesSelected.stream().filter(it -> it.getTipo().compareTo(TipoCapa.SUMARIO) != 0 && it.isDupla()).findFirst();
+
+                            File arquivo = new File(caminhoOrigem.getPath() + "\\" + nome + TUDO + tudo.get().getNome().substring(tudo.get().getNome().lastIndexOf(".")));
+                            renomeiaItem(copiaItem(new File(caminhoOrigem, tudo.get().getNome()), destinoCapa), arquivo.getName());
+                            limpaMargemImagens(arquivo, true);
+
+                            if (tras.isEmpty() || capa.isEmpty()) {
+                                File esquerda = new File(PASTA_TEMPORARIA, tudo.get().getNome());
+                                File direita = new File(PASTA_TEMPORARIA, tudo.get().getDireita().getNome());
+
+                                if (divideImagens(arquivo, esquerda, direita)) {
+                                    renomeiaItem(copiaItem(esquerda, destinoCapa), nome + FRENTE + ".png");
+                                    renomeiaItem(copiaItem(direita, destinoCapa), nome + TRAS + ".png");
+                                }
+                            }
+                        } else {
+                            Optional<Capa> tudo = obsLImagesSelected.stream().filter(it -> it.getTipo().compareTo(TipoCapa.CAPA_COMPLETA) == 0).findFirst();
+                            if (tudo.isPresent()) {
+                                File arquivo = new File(caminhoOrigem.getPath() + "\\" + nome + TUDO + tudo.get().getNome().substring(tudo.get().getNome().lastIndexOf(".")));
+                                renomeiaItem(copiaItem(new File(caminhoOrigem, tudo.get().getNome()), destinoCapa), arquivo.getName());
+                                limpaMargemImagens(arquivo, true);
+                            }
                         }
+
                     }
 
                     int pagina = 0, proxCapitulo = 0, contadorCapitulo = 0;
@@ -1034,7 +976,6 @@ public class TelaInicialController implements Initializable {
                 try {
                     LOG.info("Resultado: " + proc.waitFor());
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
                     LOG.error("Erro ao executar o comando.", e);
                 }
             });
@@ -1305,6 +1246,7 @@ public class TelaInicialController implements Initializable {
 
     private void carregaPastaOrigem() {
         caminhoOrigem = new File(txtPastaOrigem.getText());
+        limparCapas();
         listaItens();
     }
 
@@ -1669,18 +1611,14 @@ public class TelaInicialController implements Initializable {
         textFieldMostraFinalTexto(txtSimularPasta);
         textFieldMostraFinalTexto(txtPastaOrigem);
 
-        txtPastaOrigem.focusedProperty().addListener(new ChangeListener<Boolean>() {
-            @Override
-            public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
-                                Boolean newPropertyValue) {
-                if (newPropertyValue)
-                    pastaAnterior = txtPastaOrigem.getText();
+        txtPastaOrigem.focusedProperty().addListener((arg0, oldPropertyValue, newPropertyValue) -> {
+            if (newPropertyValue)
+                pastaAnterior = txtPastaOrigem.getText();
 
-                if (oldPropertyValue && txtPastaOrigem.getText().compareToIgnoreCase(pastaAnterior) != 0)
-                    carregaPastaOrigem();
+            if (oldPropertyValue && txtPastaOrigem.getText().compareToIgnoreCase(pastaAnterior) != 0)
+                carregaPastaOrigem();
 
-                txtPastaOrigem.setUnFocusColor(Color.GRAY);
-            }
+            txtPastaOrigem.setUnFocusColor(Color.GRAY);
         });
 
         txtPastaOrigem.setOnKeyPressed(e -> {
@@ -1692,15 +1630,11 @@ public class TelaInicialController implements Initializable {
             }
         });
 
-        txtPastaDestino.focusedProperty().addListener(new ChangeListener<Boolean>() {
-            @Override
-            public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
-                                Boolean newPropertyValue) {
-                if (oldPropertyValue)
-                    carregaPastaDestino();
+        txtPastaDestino.focusedProperty().addListener((arg0, oldPropertyValue, newPropertyValue) -> {
+            if (oldPropertyValue)
+                carregaPastaDestino();
 
-                txtPastaDestino.setUnFocusColor(Color.GRAY);
-            }
+            txtPastaDestino.setUnFocusColor(Color.GRAY);
         });
 
         txtPastaDestino.setOnKeyPressed(e -> {
@@ -1712,13 +1646,9 @@ public class TelaInicialController implements Initializable {
             }
         });
 
-        txtNomePastaManga.focusedProperty().addListener(new ChangeListener<Boolean>() {
-            @Override
-            public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
-                                Boolean newPropertyValue) {
-                if (oldPropertyValue)
-                    simulaNome();
-            }
+        txtNomePastaManga.focusedProperty().addListener((arg0, oldPropertyValue, newPropertyValue) -> {
+            if (oldPropertyValue)
+                simulaNome();
         });
 
         txtNomePastaManga.setOnKeyPressed(e -> {
@@ -1726,27 +1656,17 @@ public class TelaInicialController implements Initializable {
                 clickTab();
         });
 
-        txtNomeArquivo.focusedProperty().addListener(new ChangeListener<Boolean>() {
-            @Override
-            public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
-                                Boolean newPropertyValue) {
-                txtPastaDestino.setUnFocusColor(Color.GRAY);
-            }
-        });
+        txtNomeArquivo.focusedProperty().addListener((arg0, oldPropertyValue, newPropertyValue) -> txtPastaDestino.setUnFocusColor(Color.GRAY));
 
         txtNomeArquivo.setOnKeyPressed(e -> {
             if (e.getCode().equals(KeyCode.ENTER))
                 clickTab();
         });
 
-        txtNomeArquivo.focusedProperty().addListener(new ChangeListener<Boolean>() {
-            @Override
-            public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
-                                Boolean newPropertyValue) {
-                if (oldPropertyValue) {
-                    if (manga == null)
-                        manga = geraManga(null);
-                }
+        txtNomeArquivo.focusedProperty().addListener((arg0, oldPropertyValue, newPropertyValue) -> {
+            if (oldPropertyValue) {
+                if (manga == null)
+                    manga = geraManga(null);
             }
         });
 
@@ -1770,13 +1690,9 @@ public class TelaInicialController implements Initializable {
             }
         });
 
-        txtNomePastaCapitulo.focusedProperty().addListener(new ChangeListener<Boolean>() {
-            @Override
-            public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
-                                Boolean newPropertyValue) {
-                if (oldPropertyValue)
-                    simulaNome();
-            }
+        txtNomePastaCapitulo.focusedProperty().addListener((arg0, oldPropertyValue, newPropertyValue) -> {
+            if (oldPropertyValue)
+                simulaNome();
         });
 
         txtNomePastaCapitulo.setOnKeyPressed(e -> {
@@ -1784,13 +1700,7 @@ public class TelaInicialController implements Initializable {
                 clickTab();
         });
 
-        txtGerarInicio.focusedProperty().addListener(new ChangeListener<Boolean>() {
-            @Override
-            public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
-                                Boolean newPropertyValue) {
-                txtPastaDestino.setUnFocusColor(Color.GRAY);
-            }
-        });
+        txtGerarInicio.focusedProperty().addListener((arg0, oldPropertyValue, newPropertyValue) -> txtPastaDestino.setUnFocusColor(Color.GRAY));
 
         txtGerarInicio.textProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue != null && !newValue.matches("\\d*"))
@@ -1804,13 +1714,7 @@ public class TelaInicialController implements Initializable {
                 clickTab();
         });
 
-        txtGerarFim.focusedProperty().addListener(new ChangeListener<Boolean>() {
-            @Override
-            public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
-                                Boolean newPropertyValue) {
-                txtPastaDestino.setUnFocusColor(Color.GRAY);
-            }
-        });
+        txtGerarFim.focusedProperty().addListener((arg0, oldPropertyValue, newPropertyValue) -> txtPastaDestino.setUnFocusColor(Color.GRAY));
 
         txtGerarFim.textProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue != null && !newValue.matches("\\d*"))
@@ -1826,7 +1730,7 @@ public class TelaInicialController implements Initializable {
                 int position = txtAreaImportar.getText().indexOf('-') + 1;
                 txtAreaImportar.positionCaret(position);
                 e.consume();
-            } else if (e.getCode().equals(KeyCode.TAB)) {
+            } else if (e.getCode().equals(KeyCode.TAB) && !e.isShiftDown()) {
                 txtAreaImportar.requestFocus();
                 e.consume();
             }
