@@ -3,6 +3,7 @@
 <?import com.jfoenix.controls.JFXButton?>
 <?import com.jfoenix.controls.JFXCheckBox?>
 <?import com.jfoenix.controls.JFXListView?>
+<?import com.jfoenix.controls.JFXSlider?>
 <?import com.jfoenix.controls.JFXTabPane?>
 <?import com.jfoenix.controls.JFXTextArea?>
 <?import com.jfoenix.controls.JFXTextField?>
@@ -11,6 +12,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TableColumn?>
@@ -19,12 +21,13 @@
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<AnchorPane fx:id="apGlobal" minHeight="700.0" minWidth="700.0" prefHeight="700.0" prefWidth="800.0" styleClass="background-Black1" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.TelaInicialController">
+<AnchorPane fx:id="apGlobal" minHeight="700.0" minWidth="700.0" prefHeight="700.0" prefWidth="800.0" styleClass="background-Black1" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.TelaInicialController">
    <children>
       <VBox layoutX="129.0" layoutY="37.0" prefHeight="200.0" prefWidth="100.0" spacing="5.0" styleClass="background-Blue4" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
@@ -321,26 +324,45 @@
                            <children>
                               <SplitPane dividerPositions="0.3" orientation="VERTICAL" styleClass="background-Black3" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                  <items>
-                                    <VBox alignment="CENTER">
-                                       <children>
-                                          <Text fill="WHITE" strokeType="OUTSIDE" strokeWidth="0.0" styleClass="texto-titulo" text="Tudo" />
-                                          <ImageView fx:id="imgTudo" fitHeight="150.0" fitWidth="700.0" pickOnBounds="true" preserveRatio="true" VBox.vgrow="ALWAYS" />
-                                       </children>
-                                    </VBox>
+                                    <ScrollPane fitToHeight="true" fitToWidth="true">
+                                       <content>
+                                          <BorderPane styleClass="background-Black3">
+                                             <center>
+                                                <ImageView fx:id="imgTudo" fitHeight="150.0" fitWidth="700.0" pickOnBounds="true" preserveRatio="true" />
+                                             </center>
+                                             <top>
+                                                <Text fill="WHITE" strokeType="OUTSIDE" strokeWidth="0.0" styleClass="texto-titulo" text="Tudo" BorderPane.alignment="CENTER" />
+                                             </top>
+                                             <right>
+                                                <JFXSlider fx:id="sliderTudo" max="10.0" min="1.0" orientation="VERTICAL" value="1.0" BorderPane.alignment="CENTER" />
+                                             </right>
+                                          </BorderPane>
+                                       </content>
+                                    </ScrollPane>
                                     <SplitPane dividerPositions="0.5" prefHeight="200.0" prefWidth="200.0" styleClass="background-Black3">
                                        <items>
-                                          <VBox alignment="CENTER">
-                                             <children>
-                                                <Text fill="WHITE" strokeType="OUTSIDE" strokeWidth="0.0" styleClass="texto-titulo" text="Frente" />
-                                                <ImageView fx:id="imgFrente" fitHeight="230.0" fitWidth="350.0" pickOnBounds="true" preserveRatio="true" VBox.vgrow="ALWAYS" />
-                                             </children>
-                                          </VBox>
-                                          <VBox alignment="CENTER">
-                                             <children>
-                                                <Text fill="WHITE" strokeType="OUTSIDE" strokeWidth="0.0" styleClass="texto-titulo" text="Tras" />
-                                                <ImageView fx:id="imgTras" fitHeight="230.0" fitWidth="350.0" pickOnBounds="true" preserveRatio="true" VBox.vgrow="ALWAYS" />
-                                             </children>
-                                          </VBox>
+                                          <BorderPane styleClass="background-Black3">
+                                             <center>
+                                                <ImageView fx:id="imgFrente" fitHeight="230.0" pickOnBounds="true" preserveRatio="true" />
+                                             </center>
+                                             <top>
+                                                <Text fill="WHITE" strokeType="OUTSIDE" strokeWidth="0.0" styleClass="texto-titulo" text="Frente" BorderPane.alignment="CENTER" />
+                                             </top>
+                                             <left>
+                                                <JFXSlider fx:id="sliderFrente" max="10.0" min="1.0" orientation="VERTICAL" value="1.0" BorderPane.alignment="CENTER" />
+                                             </left>
+                                          </BorderPane>
+                                          <BorderPane styleClass="background-Black3">
+                                             <center>
+                                                <ImageView fx:id="imgTras" fitHeight="200.0" fitWidth="400.0" pickOnBounds="true" preserveRatio="true" />
+                                             </center>
+                                             <top>
+                                                <Text fill="WHITE" strokeType="OUTSIDE" strokeWidth="0.0" styleClass="texto-titulo" text="Tras" BorderPane.alignment="CENTER" />
+                                             </top>
+                                             <right>
+                                                <JFXSlider fx:id="sliderTras" max="10.0" min="1.0" orientation="VERTICAL" value="1.0" BorderPane.alignment="CENTER" />
+                                             </right>
+                                          </BorderPane>
                                        </items>
                                     </SplitPane>
                                  </items>

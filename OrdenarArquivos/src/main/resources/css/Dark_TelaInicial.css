@@ -68,11 +68,12 @@
 
 /*---------- Estilos do scroll ----------*/
 .scroll-pane {
-    -fx-background-color: #333333;
+    -fx-background-color: black;
+    -fx-background: black;
 }
 
-.scroll-bar:horizontal, .scroll-bar:vertical{
-    -fx-background-color:transparent;
+.scroll-bar:horizontal, .scroll-bar:vertical {
+    -fx-background-color: transparent;
 }
 
 .increment-button, .decrement-button {
@@ -80,30 +81,27 @@
     -fx-border-color: transparent;
 }
 
-.scroll-bar:horizontal .track,
-.scroll-bar:vertical .track{
+.scroll-bar:horizontal .track, .scroll-bar:vertical .track {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
     -fx-background-radius: 0em;
 }
 
 /* Barra */
-.scroll-bar:horizontal .thumb,
-.scroll-bar:vertical .thumb {
+.scroll-bar:horizontal .thumb, .scroll-bar:vertical .thumb {
     -fx-background-color: #3c3c3c;
     -fx-background-radius: 5em;
 }
 
-.scroll-bar:horizontal .thumb:hover,
-.scroll-bar:vertical .thumb:hover {
+.scroll-bar:horizontal .thumb:hover, .scroll-bar:vertical .thumb:hover {
     -fx-background-color: #757575;
-    -fx-effect: dropshadow( one-pass-box , #000000, 4, 4, 0, 0);
 }
-.scroll-bar:horizontal .thumb:pressed,
-.scroll-bar:vertical .thumb:pressed {
-    -fx-background-insets: 1.0;
-    -fx-effect: dropshadow(one-pass-box, #000000, 4, 4, 0, 0);
-    -fx-background-color: #a6a6a6;
+
+.scroll-bar:horizontal .thumb:pressed, .scroll-bar:vertical .thumb:pressed
+{
+    -fx-background-color: #666666;
+    -fx-background-insets: 3.0;
+    -fx-effect: dropshadow(one-pass-box, #1e90ff, 4, 4, 0, 0);
 }
 
 .scroll-bar:vertical {
@@ -125,10 +123,9 @@
     -fx-font-size: 14;
 }
 
-
 /* Quina */
-.scroll-pane > .corner {
-    -fx-background-color: #333333;
+.scroll-pane>.corner {
+    -fx-background-color: black;
 }
 
 /*---------- Table view ----------*/

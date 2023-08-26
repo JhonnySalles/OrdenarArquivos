@@ -1,5 +1,6 @@
 package com.fenix.ordenararquivos.controller;
 
+import com.fenix.ordenararquivos.componentes.ImageViewZoom;
 import com.fenix.ordenararquivos.configuration.Configuracao;
 import com.fenix.ordenararquivos.model.Caminhos;
 import com.fenix.ordenararquivos.model.Capa;
@@ -11,12 +12,10 @@ import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.property.ReadOnlyProperty;
 import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.css.PseudoClass;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Cursor;
@@ -38,7 +37,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
-import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
@@ -50,7 +48,6 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.*;
-import java.util.Timer;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 
@@ -183,10 +180,19 @@ public class TelaInicialController implements Initializable {
     private JFXButton btnScrollDescer;
 
     @FXML
+    private JFXSlider sliderTudo;
+
+    @FXML
     private ImageView imgTudo;
 
     @FXML
+    private JFXSlider sliderFrente;
+
+    @FXML
     private ImageView imgFrente;
+
+    @FXML
+    private JFXSlider sliderTras;
 
     @FXML
     private ImageView imgTras;
@@ -538,9 +544,9 @@ public class TelaInicialController implements Initializable {
 
     private void simularCapa(TipoCapa tipo, Image imagem) {
         switch (tipo) {
-            case CAPA -> imgFrente.setImage(imagem);
-            case TRAS -> imgTras.setImage(imagem);
-            case CAPA_COMPLETA -> imgTudo.setImage(imagem);
+            case CAPA -> ImageViewZoom.configura(imagem, imgFrente, sliderFrente);
+            case TRAS -> ImageViewZoom.configura(imagem, imgTras, sliderTras);
+            case CAPA_COMPLETA -> ImageViewZoom.configura(imagem, imgTudo, sliderTudo);
         }
     }
 
@@ -1268,9 +1274,9 @@ public class TelaInicialController implements Initializable {
 
     private void listaItens() {
         if ((caminhoOrigem != null) && (caminhoOrigem.list() != null))
-            obsLListaItens = FXCollections.<String>observableArrayList(caminhoOrigem.list(getFilterNameFile()));
+            obsLListaItens = FXCollections.observableArrayList(caminhoOrigem.list(getFilterNameFile()));
         else
-            obsLListaItens = FXCollections.<String>observableArrayList("");
+            obsLListaItens = FXCollections.observableArrayList("");
         lsVwListaImagens.setItems(obsLListaItens);
         limparCapas();
         selecionada = obsLListaItens.get(0);
@@ -1398,40 +1404,34 @@ public class TelaInicialController implements Initializable {
         }
     }
 
-    final Set<TextField> mostraFinalTexto = new HashSet<TextField>();
+    final Set<TextField> mostraFinalTexto = new HashSet<>();
 
     private void textFieldMostraFinalTexto(JFXTextField txt) {
         mostraFinalTexto.add(txt);
-        final Set<TextField> onFocus = new HashSet<TextField>();
-        final Set<TextField> overrideNextCaratChange = new HashSet<TextField>();
-        final ChangeListener<Boolean> onLoseFocus = new ChangeListener<Boolean>() {
-            @Override
-            public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) {
-                ReadOnlyProperty<? extends Boolean> property = (ReadOnlyProperty<? extends Boolean>) observable;
-                TextField tf = (TextField) property.getBean();
+        final Set<TextField> onFocus = new HashSet<>();
+        final Set<TextField> overrideNextCaratChange = new HashSet<>();
+        final ChangeListener<Boolean> onLoseFocus = (observable, oldValue, newValue) -> {
+            ReadOnlyProperty<? extends Boolean> property = (ReadOnlyProperty<? extends Boolean>) observable;
+            TextField tf = (TextField) property.getBean();
 
-                if (oldValue && onFocus.contains(tf))
-                    onFocus.remove(tf);
+            if (oldValue && onFocus.contains(tf))
+                onFocus.remove(tf);
 
-                if (newValue)
-                    onFocus.add(tf);
+            if (newValue)
+                onFocus.add(tf);
 
-                if (!newValue.booleanValue())
-                    overrideNextCaratChange.add(tf);
-            }
+            if (!newValue.booleanValue())
+                overrideNextCaratChange.add(tf);
         };
 
-        final ChangeListener<Number> onCaratChange = new ChangeListener<Number>() {
-            @Override
-            public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
-                ReadOnlyProperty<? extends Number> property = (ReadOnlyProperty<? extends Number>) observable;
-                TextField tf = (TextField) property.getBean();
-                if (overrideNextCaratChange.contains(tf)) {
-                    tf.end();
-                    overrideNextCaratChange.remove(tf);
-                } else if (!onFocus.contains(tf) && mostraFinalTexto.contains(tf))
-                    tf.end();
-            }
+        final ChangeListener<Number> onCaratChange = (observable, oldValue, newValue) -> {
+            ReadOnlyProperty<? extends Number> property = (ReadOnlyProperty<? extends Number>) observable;
+            TextField tf = (TextField) property.getBean();
+            if (overrideNextCaratChange.contains(tf)) {
+                tf.end();
+                overrideNextCaratChange.remove(tf);
+            } else if (!onFocus.contains(tf) && mostraFinalTexto.contains(tf))
+                tf.end();
         };
 
         txt.focusedProperty().addListener(onLoseFocus);
@@ -1444,7 +1444,6 @@ public class TelaInicialController implements Initializable {
         return obsLImagesSelected.stream()
                 .anyMatch(capa -> capa.getTipo().equals(tipo) && capa.getNome().equalsIgnoreCase(caminho));
     }
-
 
     private Timer dellaySubir = null;
     private Timer dellayDescer = null;
@@ -1492,31 +1491,28 @@ public class TelaInicialController implements Initializable {
             }
         });
 
-        lsVwListaImagens.setOnMouseClicked(new EventHandler<MouseEvent>() {
-            @Override
-            public void handle(MouseEvent click) {
-                if (click.getClickCount() > 1) {
-                    if (click.isControlDown())
-                        limparCapas();
-                    else {
-                        String item = lsVwListaImagens.getSelectionModel().getSelectedItem();
+        lsVwListaImagens.setOnMouseClicked(click -> {
+            if (click.getClickCount() > 1) {
+                if (click.isControlDown())
+                    limparCapas();
+                else {
+                    String item = lsVwListaImagens.getSelectionModel().getSelectedItem();
 
-                        if (item != null) {
-                            if (obsLImagesSelected.stream().anyMatch(e -> e.getNome().equalsIgnoreCase(item)))
-                                remCapa(item);
-                            else {
-                                TipoCapa tipo = TipoCapa.CAPA;
-                                if (click.isShiftDown())
-                                    tipo = TipoCapa.SUMARIO;
-                                else if (click.isAltDown())
-                                    tipo = TipoCapa.CAPA_COMPLETA;
+                    if (item != null) {
+                        if (obsLImagesSelected.stream().anyMatch(e -> e.getNome().equalsIgnoreCase(item)))
+                            remCapa(item);
+                        else {
+                            TipoCapa tipo = TipoCapa.CAPA;
+                            if (click.isShiftDown())
+                                tipo = TipoCapa.SUMARIO;
+                            else if (click.isAltDown())
+                                tipo = TipoCapa.CAPA_COMPLETA;
 
-                                addCapa(tipo, item);
-                            }
+                            addCapa(tipo, item);
                         }
                     }
-
                 }
+
             }
         });
 
@@ -1580,29 +1576,6 @@ public class TelaInicialController implements Initializable {
         clNomePasta.setCellValueFactory(new PropertyValueFactory<>("nomePasta"));
         editaColunas();
         selecionaImagens();
-    }
-
-    @SuppressWarnings("unused")
-    private void carregarTeste() {
-        txtPastaOrigem.setText(
-                "D:\\Arquivos\\Mangas arrumar\\Japonês\\Kakegurui\\Kakegurui Kari v01-04\\[河本ほむら×川村拓] 賭ケグルイ(仮) 第01巻");
-        txtPastaDestino.setText("D:\\Arquivos\\Mangas arrumar\\Japonês\\Kakegurui\\Kakegurui Kari v01-04\\New folder");
-
-        carregaPastaOrigem();
-        carregaPastaDestino();
-
-        txtNomePastaManga.setText("[JPN] Kakegurui Kari -");
-        txtVolume.setText("Volume 01");
-        txtNomePastaCapitulo.setText("Capítulo");
-
-        lista.add(new Caminhos("001", "3", "Capítulo 001"));
-        lista.add(new Caminhos("002", "17", "Capítulo 002"));
-        lista.add(new Caminhos("003", "29", "Capítulo 003"));
-        lista.add(new Caminhos("004", "41", "Capítulo 004"));
-        lista.add(new Caminhos("005", "57", "Capítulo 005"));
-        obsLCaminhos = FXCollections.observableArrayList(lista);
-        tbViewTabela.setItems(obsLCaminhos);
-        tbViewTabela.refresh();
     }
 
     private String pastaAnterior = "";
@@ -1670,14 +1643,10 @@ public class TelaInicialController implements Initializable {
             }
         });
 
-        txtVolume.focusedProperty().addListener(new ChangeListener<Boolean>() {
-            @Override
-            public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
-                                Boolean newPropertyValue) {
-                if (oldPropertyValue) {
-                    simulaNome();
-                    carregaManga();
-                }
+        txtVolume.focusedProperty().addListener((arg0, oldPropertyValue, newPropertyValue) -> {
+            if (oldPropertyValue) {
+                simulaNome();
+                carregaManga();
             }
         });
 
@@ -1741,13 +1710,7 @@ public class TelaInicialController implements Initializable {
                 onBtnImporta();
         });
 
-        txtQuantidade.focusedProperty().addListener(new ChangeListener<Boolean>() {
-            @Override
-            public void changed(ObservableValue<? extends Boolean> arg0, Boolean oldPropertyValue,
-                                Boolean newPropertyValue) {
-                txtPastaDestino.setUnFocusColor(Color.GRAY);
-            }
-        });
+        txtQuantidade.focusedProperty().addListener((arg0, oldPropertyValue, newPropertyValue) -> txtPastaDestino.setUnFocusColor(Color.GRAY));
 
         txtQuantidade.textProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue != null && !newValue.matches("\\d*"))
@@ -1801,6 +1764,40 @@ public class TelaInicialController implements Initializable {
 
     }
 
+    private void configuraImagens() {
+
+        /*imgTudo.setPreserveRatio(true);
+        imgTudo.scaleXProperty().bind(sliderTudo.valueProperty());
+        imgTudo.scaleYProperty().bind(sliderTudo.valueProperty());
+
+        imgFrente.setPreserveRatio(true);
+        imgFrente.setSmooth(true);
+        imgFrente.scaleXProperty().bind(sliderFrente.valueProperty());
+        imgFrente.scaleYProperty().bind(sliderFrente.valueProperty());
+
+
+
+        imgFrente.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2)
+                sliderFrente.setValue(1);
+        });
+
+        imgFrente.setOnScroll(e -> {
+            if (sliderFrente.getValue() >= sliderFrente.getMin() || sliderFrente.getValue() <= sliderFrente.getMax()) {
+                if (e.getDeltaY() > 0)
+                    sliderFrente.setValue(sliderFrente.getValue() * 1.1);
+                else if (e.getDeltaY() < 0)
+                    sliderFrente.setValue(sliderFrente.getValue() / 1.1);
+            }
+        });
+
+
+        imgTras.setPreserveRatio(true);
+        imgTras.scaleXProperty().bind(sliderTras.valueProperty());
+        imgTras.scaleYProperty().bind(sliderTras.valueProperty());*/
+
+    }
+
     private void clickTab() {
         Robot robot = new Robot();
         robot.keyPress(KeyCode.TAB);
@@ -1811,6 +1808,7 @@ public class TelaInicialController implements Initializable {
         linkaCelulas();
         limpaCampos();
         configuraTextEdit();
+        configuraImagens();
 
         try {
             WINRAR = Configuracao.loadProperties().getProperty("caminho_winrar");
