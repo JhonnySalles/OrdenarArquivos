@@ -1,0 +1,32 @@
+package com.fenix.ordenararquivos.model
+
+data class Caminhos(
+    var id: Long = 0,
+    var manga: Manga? = null,
+    var capitulo: String = "",
+    private var _numero: Int = 0,
+    private var _numeroPagina: String = _numero.toString(),
+    var nomePasta: String = ""
+) {
+
+    var numero: Int = _numero
+        set(value) {
+            numeroPagina = value.toString()
+            field = value
+        }
+
+    fun setNumero(numero: String) {
+        this.numero = if (numero.isEmpty()) 0 else Integer.valueOf(numero)
+    }
+
+    var numeroPagina: String = _numeroPagina
+        private set
+
+    constructor(capitulo: String, numero: String, nomePasta: String) : this(capitulo = capitulo, nomePasta = nomePasta, _numero = if (numero.isEmpty()) 0 else Integer.valueOf(numero)) { }
+
+    constructor(id: Long, manga: Manga, capitulo: String, pagina: Int, pasta: String) : this(id, manga, capitulo, pagina, pagina.toString(), pasta) { }
+
+    override fun toString(): String {
+        return "Caminhos [capitulo=$capitulo, numero=$numero, nomePasta=$nomePasta]"
+    }
+}
