@@ -95,19 +95,17 @@ public class ImageViewZoom {
 				}
 
 				double newMinX = 0;
-				if (newWidth < image.getWidth()) {
+				if (newWidth < image.getWidth())
 					newMinX = clamp(mouse.getX() - (mouse.getX() - viewport.getMinX()) / zoom, 0, width - newWidth);
-				}
+
 				double newMinY = 0;
-				if (newHeight < image.getHeight()) {
+				if (newHeight < image.getHeight())
 					newMinY = clamp(mouse.getY() - (mouse.getY() - viewport.getMinY()) / zoom, 0, height - newHeight);
-				}
 
 				imageView.setViewport(new Rectangle2D(newMinX, newMinY, newWidth, newHeight));
 			} else
 				reset(imageView, width, height);
 		});
-
 	}
 
 	private static void reset(ImageView imageView, double width, double height) {
@@ -130,7 +128,6 @@ public class ImageViewZoom {
 	}
 
 	private static double clamp(double value, double min, double max) {
-
 		if (value < min)
 			return min;
 		if (value > max)

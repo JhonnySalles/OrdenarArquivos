@@ -17,6 +17,8 @@ module com.fenix.ordenararquivos {
     requires org.slf4j;
     requires logback.classic;
     requires logback.core;
+    requires kotlin.stdlib;
+
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;
     opens com.fenix.ordenararquivos.model to javafx.base;
