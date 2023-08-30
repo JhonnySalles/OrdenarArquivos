@@ -273,6 +273,17 @@ class TelaInicialController : Initializable {
 
     @FXML
     private fun onBtnGerarCapa() {
+        if (!validaCampos(isCapa = true))
+            return
+
+        CompletableFuture.runAsync {
+            val nomePasta = (caminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomePastaManga.text.trim { it <= ' ' } + " " + txtVolume.text.trim { it <= ' ' })
+            gerarCapa(nomePasta, cbMesclarCapaTudo.isSelected)
+
+            Platform.runLater {
+                lblAviso.text = "Imagens de capa gerada com sucesso."
+            }
+        }
     }
 
     @FXML
@@ -372,7 +383,7 @@ class TelaInicialController : Initializable {
         apGlobal.cursorProperty().set(null)
     }
 
-    private fun validaCampos(): Boolean {
+    private fun validaCampos(isCapa : Boolean = false): Boolean {
         var valida = true
         if (caminhoOrigem == null || !caminhoOrigem!!.exists()) {
             txtSimularPasta.text = "Origem não informado."
@@ -386,11 +397,14 @@ class TelaInicialController : Initializable {
             valida = false
         }
 
-        if (lsVwListaImagens.selectionModel.selectedItem == null)
-            lsVwListaImagens.selectionModel.select(0)
-
         if (obsLCaminhos.isEmpty())
             valida = false
+
+        if (isCapa)
+            return valida
+
+        if (lsVwListaImagens.selectionModel.selectedItem == null)
+            lsVwListaImagens.selectionModel.select(0)
 
         if (cbCompactarArquivo.isSelected && txtNomeArquivo.text.isEmpty()) {
             txtSimularPasta.text = "Não informado nome do arquivo."
@@ -515,15 +529,15 @@ class TelaInicialController : Initializable {
         when (tipo) {
             TipoCapa.CAPA -> {
                 imgFrente.image = imagem
-                imagem?.let { gestureFrente.zoomTo(0.1,  Point2D(it.width / 2, it.height / 2)) }
+                imagem?.let { gestureFrente.zoomTo(0.1, Point2D(it.width / 2, it.height / 2)) }
             }
             TipoCapa.TRAS -> {
                 imgTras.image = imagem
-                imagem?.let { gestureTras.zoomTo(0.1,  Point2D(it.width / 2, it.height / 2)) }
+                imagem?.let { gestureTras.zoomTo(0.1, Point2D(it.width / 2, it.height / 2)) }
             }
             TipoCapa.CAPA_COMPLETA -> {
                 imgTudo.image = imagem
-                imagem?.let { gestureTudo.zoomTo(0.1,  Point2D(it.width / 2, it.height / 2)) }
+                imagem?.let { gestureTudo.zoomTo(0.1, Point2D(it.width / 2, it.height / 2)) }
             }
             else -> {}
         }
@@ -537,14 +551,18 @@ class TelaInicialController : Initializable {
                 val frente = obsLImagesSelected.stream()
                     .filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 }
                     .findFirst()
-                if (frente.isPresent) CompletableFuture.runAsync {
-                    simularCapa(
-                        capa.get().tipo,
-                        carregaImagem(File(txtPastaOrigem.text + "\\" + frente.get().arquivo))
-                    )
-                    simularCapa(TipoCapa.TRAS, null)
-                } else simularCapa(TipoCapa.CAPA_COMPLETA, null)
-            } else simularCapa(capa.get().tipo, null)
+                if (frente.isPresent)
+                    CompletableFuture.runAsync {
+                        simularCapa(
+                            capa.get().tipo,
+                            carregaImagem(File(txtPastaOrigem.text + "\\" + frente.get().arquivo))
+                        )
+                        simularCapa(TipoCapa.TRAS, null)
+                    }
+                else
+                    simularCapa(TipoCapa.CAPA_COMPLETA, null)
+            } else
+                simularCapa(capa.get().tipo, null)
         }
     }
 
@@ -680,6 +698,155 @@ class TelaInicialController : Initializable {
     private val TRAS = " Tras"
     private val SUMARIO = " zSumário"
 
+    private fun gerarCapa(nomePasta : String, mesclarCapaTudo: Boolean) : File {
+        val destinoCapa = criaPasta("$nomePasta Capa\\")
+        if (!obsLImagesSelected.isEmpty()) {
+            LOG.info("Processando imagens de capa.")
+            var nome = txtNomePastaManga.text.trim { it <= ' ' } + " " + txtVolume.text.trim { it <= ' ' }
+            if (nome.contains("]"))
+                nome = nome.substring(nome.indexOf(']') + 1).trim { it <= ' ' }
+
+            val capa = obsLImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA) == 0 }.findFirst()
+
+            if (capa.isPresent)
+                limpaMargemImagens(
+                    renomeiaItem(
+                        copiaItem(
+                            File(caminhoOrigem!!.path + "\\" + capa.get().nome),
+                            destinoCapa
+                        ), nome + FRENTE + capa.get().nome.substring(capa.get().nome.lastIndexOf("."))
+                    ), false
+                )
+            LOG.info("Gerando capa da frente... " + if (capa.isPresent) (" processado. Imagem: " + capa.get().nome) else " não localizado.")
+
+            val tras = obsLImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.TRAS) == 0 }.findFirst()
+            if (tras.isPresent)
+                limpaMargemImagens(
+                    renomeiaItem(
+                        copiaItem(
+                            File(caminhoOrigem!!.path + "\\" + tras.get().nome),
+                            destinoCapa
+                        ), nome + TRAS + tras.get().nome.substring(tras.get().nome.lastIndexOf("."))
+                    ), false
+                )
+            LOG.info("Gerando capa de tras... " + if (tras.isPresent) (" processado. Imagem: " + tras.get().nome) else " não localizado.")
+
+            val sumario = obsLImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.SUMARIO) == 0 }.findFirst()
+
+            if (sumario.isPresent)
+                renomeiaItem(
+                    copiaItem(
+                        File(caminhoOrigem!!.path + "\\" + sumario.get().nome),
+                        destinoCapa
+                    ), nome + SUMARIO + sumario.get().nome.substring(sumario.get().nome.lastIndexOf("."))
+                )
+            LOG.info("Gerando sumário... " + if (sumario.isPresent) (" processado. Imagem: " + sumario.get().nome) else " não localizado.")
+
+            if (obsLImagesSelected.stream().anyMatch { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.direita != null }) {
+                val tudo = obsLImagesSelected.stream()
+                    .filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.direita != null }
+                    .findFirst()
+
+                if (mesclarCapaTudo) {
+                    LOG.info("Gerando capa completa...  mesclando arquivos....")
+                    LOG.info("Imagem frente: " + tudo.get().nome)
+                    LOG.info("Imagem trazeira: " + tudo.get().direita!!.nome)
+                    copiaItem(File(caminhoOrigem!!.path + "\\" + tudo.get().nome), PASTA_TEMPORARIA)
+                    copiaItem(File(caminhoOrigem!!.path + "\\" + tudo.get().direita!!.nome), PASTA_TEMPORARIA)
+                    val esquerda = File(PASTA_TEMPORARIA, tudo.get().nome)
+                    val direita = File(PASTA_TEMPORARIA, tudo.get().direita!!.nome)
+                    limpaMargemImagens(esquerda, true)
+                    limpaMargemImagens(direita, true)
+                    mesclarImagens(File(destinoCapa.path + "\\" + nome + TUDO + ".png"), esquerda, direita)
+                    LOG.info("Mesclagem concluida.")
+                } else {
+                    LOG.info("Gerando capa completa...  copiando arquivo....")
+                    LOG.info("Imagem: " + tudo.get().nome)
+                    val arquivo = File(
+                        destinoCapa, nome + TUDO + tudo.get().nome.substring(
+                            tudo.get().nome.lastIndexOf(".")
+                        )
+                    )
+                    renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().nome), destinoCapa), arquivo.name)
+                    limpaMargemImagens(arquivo, true)
+                    LOG.info("Cópia concluída.")
+                }
+
+                if (tras.isEmpty || capa.isEmpty) {
+                    LOG.info("Copiando capa de frente e traz...")
+                    val esquerda = File(PASTA_TEMPORARIA, nome + FRENTE + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
+                    val direita = File(PASTA_TEMPORARIA, nome + TRAS + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
+
+                    if (capa.isEmpty)
+                        renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().nome), destinoCapa), esquerda.name)
+
+                    if (tras.isEmpty)
+                        renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().direita!!.nome), destinoCapa), direita.name)
+
+                    LOG.info("Copiando concluída.")
+                }
+            } else if (obsLImagesSelected.stream()
+                    .anyMatch { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.isDupla } || obsLImagesSelected.stream()
+                    .anyMatch { it.tipo.compareTo(TipoCapa.SUMARIO) != 0 && it.isDupla }) {
+                var tudo = obsLImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.isDupla }.findFirst()
+                if (tudo.isEmpty)
+                    tudo = obsLImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.SUMARIO) != 0 && it.isDupla }.findFirst()
+
+                LOG.info("Gerando capa completa... copiando arquivo....")
+                LOG.info("Imagem: " + tudo.get().nome)
+                val arquivo = File(
+                    destinoCapa, nome + TUDO + tudo.get().nome.substring(
+                        tudo.get().nome.lastIndexOf(".")
+                    )
+                )
+                renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().nome), destinoCapa), arquivo.name)
+                limpaMargemImagens(arquivo, true)
+                LOG.info("Cópia concluída.")
+
+                if (tras.isEmpty || capa.isEmpty) {
+                    LOG.info("Dividindo a capa completa para gerar a capa de frente e traz...")
+                    copiaItem(File(caminhoOrigem!!.path + "\\" + tudo.get().nome), PASTA_TEMPORARIA)
+                    val temp = File(PASTA_TEMPORARIA, tudo.get().nome)
+                    val esquerda = File(PASTA_TEMPORARIA, nome + FRENTE + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
+                    val direita = File(PASTA_TEMPORARIA, nome + TRAS + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
+                    if (divideImagens(temp, esquerda, direita)) {
+                        if (capa.isEmpty)
+                            copiaItem(esquerda, destinoCapa)
+
+                        if (tras.isEmpty)
+                            copiaItem(direita, destinoCapa)
+                    }
+                    LOG.info("Divisão concluída.")
+                }
+            } else {
+                val tudo = obsLImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 }.findFirst()
+                if (tudo.isPresent) {
+                    LOG.info("Copiando capa completa...")
+                    val arquivo = File(
+                        destinoCapa, nome + TUDO + tudo.get().nome.substring(
+                            tudo.get().nome.lastIndexOf(".")
+                        )
+                    )
+                    renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().nome), destinoCapa), arquivo.name)
+                    limpaMargemImagens(arquivo, true)
+                    LOG.info("Cópia concluída.")
+
+                    if (capa.isEmpty) {
+                        LOG.info("Copiando capa de frente e traz...")
+                        val esquerda = File(PASTA_TEMPORARIA, nome + FRENTE + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
+
+                        if (capa.isEmpty)
+                            renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().nome), destinoCapa), esquerda.name)
+
+                        LOG.info("Copiando concluída.")
+                    }
+                }
+            }
+        }
+
+        return destinoCapa;
+    }
+
     private fun processar() {
         val movimentaArquivos: Task<Boolean> = object : Task<Boolean>() {
             override fun call(): Boolean {
@@ -699,117 +866,12 @@ class TelaInicialController : Initializable {
                     val gerarArquivo = cbCompactarArquivo.isSelected
                     val verificaPagDupla = cbVerificaPaginaDupla.isSelected
                     updateProgress(i.toLong(), max.toLong())
+
                     updateMessage("Criando diretórios...")
-                    val nomePasta =
-                        (caminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomePastaManga.text.trim { it <= ' ' } + " " + txtVolume.text.trim { it <= ' ' })
+                    val nomePasta = (caminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomePastaManga.text.trim { it <= ' ' } + " " + txtVolume.text.trim { it <= ' ' })
                     updateMessage("Criando diretórios - $nomePasta Capa\\")
-                    val destinoCapa = criaPasta("$nomePasta Capa\\")
-                    pastasCompactar.add(destinoCapa)
-                    if (!obsLImagesSelected.isEmpty()) {
-                        var nome = txtNomePastaManga.text.trim { it <= ' ' } + " " + txtVolume.text.trim { it <= ' ' }
-                        if (nome.contains("]"))
-                            nome = nome.substring(nome.indexOf(']') + 1).trim { it <= ' ' }
+                    pastasCompactar.add(gerarCapa(nomePasta, mesclarCapaTudo))
 
-                        val capa =
-                            obsLImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA) == 0 }.findFirst()
-
-                        if (capa.isPresent)
-                            limpaMargemImagens(
-                                renomeiaItem(
-                                    copiaItem(
-                                        File(caminhoOrigem!!.path + "\\" + capa.get().nome),
-                                        destinoCapa
-                                    ), nome + FRENTE + capa.get().nome.substring(capa.get().nome.lastIndexOf("."))
-                                ), false
-                            )
-
-                        val tras =
-                            obsLImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.TRAS) == 0 }.findFirst()
-
-                        if (tras.isPresent)
-                            limpaMargemImagens(
-                                renomeiaItem(
-                                    copiaItem(
-                                        File(caminhoOrigem!!.path + "\\" + tras.get().nome),
-                                        destinoCapa
-                                    ), nome + TRAS + tras.get().nome.substring(tras.get().nome.lastIndexOf("."))
-                                ), false
-                            )
-
-                        val sumario =
-                            obsLImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.SUMARIO) == 0 }.findFirst()
-
-                        if (sumario.isPresent) renomeiaItem(
-                            copiaItem(
-                                File(caminhoOrigem!!.path + "\\" + sumario.get().nome),
-                                destinoCapa
-                            ), nome + SUMARIO + sumario.get().nome.substring(sumario.get().nome.lastIndexOf("."))
-                        )
-                        if (obsLImagesSelected.stream()
-                                .anyMatch { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.direita != null }
-                        ) {
-                            val tudo = obsLImagesSelected.stream()
-                                .filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.direita != null }
-                                .findFirst()
-
-                            if (mesclarCapaTudo) {
-                                copiaItem(File(caminhoOrigem!!.path + "\\" + tudo.get().nome), PASTA_TEMPORARIA)
-                                copiaItem(
-                                    File(caminhoOrigem!!.path + "\\" + tudo.get().direita!!.nome),
-                                    PASTA_TEMPORARIA
-                                )
-                                val esquerda = File(PASTA_TEMPORARIA, tudo.get().nome)
-                                val direita = File(PASTA_TEMPORARIA, tudo.get().direita!!.nome)
-                                limpaMargemImagens(esquerda, true)
-                                limpaMargemImagens(direita, true)
-                                mesclarImagens(File(destinoCapa.path + "\\" + nome + TUDO + ".png"), esquerda, direita)
-                            } else {
-                                val arquivo = File(
-                                    caminhoOrigem!!.path + "\\" + nome + TUDO + tudo.get().nome.substring(
-                                        tudo.get().nome.lastIndexOf(".")
-                                    )
-                                )
-                                renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().nome), destinoCapa), arquivo.name)
-                                limpaMargemImagens(arquivo, true)
-                            }
-                        } else if (obsLImagesSelected.stream()
-                                .anyMatch { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.isDupla } || obsLImagesSelected.stream()
-                                .anyMatch { it.tipo.compareTo(TipoCapa.SUMARIO) != 0 && it.isDupla }
-                        ) {
-                            var tudo = obsLImagesSelected.stream()
-                                .filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.isDupla }.findFirst()
-                            if (tudo.isEmpty) tudo = obsLImagesSelected.stream()
-                                .filter { it.tipo.compareTo(TipoCapa.SUMARIO) != 0 && it.isDupla }.findFirst()
-                            val arquivo = File(
-                                caminhoOrigem!!.path + "\\" + nome + TUDO + tudo.get().nome.substring(
-                                    tudo.get().nome.lastIndexOf(".")
-                                )
-                            )
-                            renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().nome), destinoCapa), arquivo.name)
-                            limpaMargemImagens(arquivo, true)
-                            if (tras.isEmpty || capa.isEmpty) {
-                                val esquerda = File(PASTA_TEMPORARIA, tudo.get().nome)
-                                val direita = File(PASTA_TEMPORARIA, tudo.get().direita!!.nome)
-                                if (divideImagens(arquivo, esquerda, direita)) {
-                                    renomeiaItem(copiaItem(esquerda, destinoCapa), "$nome$FRENTE.png")
-                                    renomeiaItem(copiaItem(direita, destinoCapa), "$nome$TRAS.png")
-                                }
-                            }
-                        } else {
-                            val tudo =
-                                obsLImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 }
-                                    .findFirst()
-                            if (tudo.isPresent) {
-                                val arquivo = File(
-                                    caminhoOrigem!!.path + "\\" + nome + TUDO + tudo.get().nome.substring(
-                                        tudo.get().nome.lastIndexOf(".")
-                                    )
-                                )
-                                renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().nome), destinoCapa), arquivo.name)
-                                limpaMargemImagens(arquivo, true)
-                            }
-                        }
-                    }
                     var pagina = 0
                     var proxCapitulo = 0
                     var contadorCapitulo = 0
