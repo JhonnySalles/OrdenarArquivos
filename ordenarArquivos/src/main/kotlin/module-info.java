@@ -18,6 +18,7 @@ module com.fenix.ordenararquivos {
     requires logback.classic;
     requires logback.core;
     requires kotlin.stdlib;
+    requires net.kurobako.gesturefx;
 
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;

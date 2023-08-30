@@ -12,7 +12,6 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ProgressBar?>
-<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TableColumn?>
@@ -21,7 +20,6 @@
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
@@ -322,49 +320,50 @@
                     <content>
                       <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                            <children>
-                              <SplitPane dividerPositions="0.3" orientation="VERTICAL" styleClass="background-Black3" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                              <SplitPane dividerPositions="0.333, 0.666" styleClass="background-Black3" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                  <items>
-                                    <ScrollPane fitToHeight="true" fitToWidth="true">
-                                       <content>
-                                          <BorderPane styleClass="background-Black3">
-                                             <center>
-                                                <ImageView fx:id="imgTudo" fitHeight="150.0" fitWidth="700.0" pickOnBounds="true" preserveRatio="true" />
-                                             </center>
-                                             <top>
-                                                <Text fill="WHITE" strokeType="OUTSIDE" strokeWidth="0.0" styleClass="texto-titulo" text="Tudo" BorderPane.alignment="CENTER" />
-                                             </top>
-                                             <right>
-                                                <JFXSlider fx:id="sliderTudo" max="10.0" min="1.0" orientation="VERTICAL" value="1.0" BorderPane.alignment="CENTER" />
-                                             </right>
-                                          </BorderPane>
-                                       </content>
-                                    </ScrollPane>
-                                    <SplitPane dividerPositions="0.5" prefHeight="200.0" prefWidth="200.0" styleClass="background-Black3">
-                                       <items>
-                                          <BorderPane styleClass="background-Black3">
-                                             <center>
-                                                <ImageView fx:id="imgFrente" fitHeight="230.0" pickOnBounds="true" preserveRatio="true" />
-                                             </center>
-                                             <top>
-                                                <Text fill="WHITE" strokeType="OUTSIDE" strokeWidth="0.0" styleClass="texto-titulo" text="Frente" BorderPane.alignment="CENTER" />
-                                             </top>
-                                             <left>
-                                                <JFXSlider fx:id="sliderFrente" max="10.0" min="1.0" orientation="VERTICAL" value="1.0" BorderPane.alignment="CENTER" />
-                                             </left>
-                                          </BorderPane>
-                                          <BorderPane styleClass="background-Black3">
-                                             <center>
-                                                <ImageView fx:id="imgTras" fitHeight="200.0" fitWidth="400.0" pickOnBounds="true" preserveRatio="true" />
-                                             </center>
-                                             <top>
-                                                <Text fill="WHITE" strokeType="OUTSIDE" strokeWidth="0.0" styleClass="texto-titulo" text="Tras" BorderPane.alignment="CENTER" />
-                                             </top>
-                                             <right>
-                                                <JFXSlider fx:id="sliderTras" max="10.0" min="1.0" orientation="VERTICAL" value="1.0" BorderPane.alignment="CENTER" />
-                                             </right>
-                                          </BorderPane>
-                                       </items>
-                                    </SplitPane>
+                                    <AnchorPane fx:id="rootFrente" minHeight="100.0" minWidth="100.0">
+                                       <children>
+                                          <HBox alignment="CENTER" layoutY="-15.107421875" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                             <children>
+                                                <Text fill="WHITE" stroke="GREY" strokeType="OUTSIDE" strokeWidth="0.5" styleClass="texto-titulo" text="Frente">
+                                                   <font>
+                                                      <Font name="System Bold" size="12.0" />
+                                                   </font>
+                                                </Text>
+                                             </children>
+                                          </HBox>
+                                          <JFXSlider fx:id="sliderFrente" blockIncrement="1.0" max="10.0" min="0.2" orientation="VERTICAL" value="0.2" AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="5.0" AnchorPane.topAnchor="5.0" />
+                                       </children>
+                                    </AnchorPane>
+                                    <AnchorPane fx:id="rootTras" minHeight="100.0" minWidth="100.0">
+                                       <children>
+                                          <HBox alignment="CENTER" layoutY="-15.107421875" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                             <children>
+                                                <Text fill="WHITE" stroke="GREY" strokeType="OUTSIDE" strokeWidth="0.5" styleClass="texto-titulo" text="Tras">
+                                                   <font>
+                                                      <Font name="System Bold" size="12.0" />
+                                                   </font>
+                                                </Text>
+                                             </children>
+                                          </HBox>
+                                          <JFXSlider fx:id="sliderTras" blockIncrement="1.0" max="10.0" min="0.2" orientation="VERTICAL" value="0.2" AnchorPane.bottomAnchor="5.0" AnchorPane.topAnchor="5.0" />
+                                       </children>
+                                    </AnchorPane>
+                                    <AnchorPane fx:id="rootTudo" minHeight="100.0" minWidth="100.0">
+                                       <children>
+                                          <VBox alignment="CENTER" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                             <children>
+                                                <Text fill="WHITE" stroke="GREY" strokeType="OUTSIDE" strokeWidth="0.5" styleClass="texto-titulo" text="Tudo">
+                                                   <font>
+                                                      <Font name="System Bold" size="12.0" />
+                                                   </font>
+                                                </Text>
+                                             </children>
+                                          </VBox>
+                                          <JFXSlider fx:id="sliderTudo" blockIncrement="1.0" max="10.0" min="0.2" orientation="VERTICAL" value="0.2" AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="5.0" AnchorPane.topAnchor="5.0" />
+                                       </children>
+                                    </AnchorPane>
                                  </items>
                               </SplitPane>
                            </children>
