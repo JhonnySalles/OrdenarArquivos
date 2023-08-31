@@ -7,16 +7,16 @@ import java.sql.*
 
 object DataBase {
 
-    private val LOG = LoggerFactory.getLogger(DataBase::class.java)
-    private const val DATABASE = "ordena.db"
-    private lateinit var CONN: Connection
+    private val mLOG = LoggerFactory.getLogger(DataBase::class.java)
+    private const val mDATABASE = "ordena.db"
+    private lateinit var mCONN: Connection
 
     @JvmStatic
     val instancia: Connection
         get() {
-            if (!::CONN.isInitialized)
+            if (!::mCONN.isInitialized)
                 iniciaBanco()
-            return CONN
+            return mCONN
         }
 
     private fun iniciaBanco() {
@@ -24,24 +24,24 @@ object DataBase {
             Class.forName("org.sqlite.JDBC")
             DriverManager.registerDriver(JDBC())
             val flyway = Flyway.configure()
-                .dataSource("jdbc:sqlite:" + DATABASE, "", "")
+                .dataSource("jdbc:sqlite:" + mDATABASE, "", "")
                 .locations("filesystem:db/migration")
                 .load()
             flyway.migrate()
-            CONN = DriverManager.getConnection("jdbc:sqlite:" + DATABASE)
+            mCONN = DriverManager.getConnection("jdbc:sqlite:" + mDATABASE)
         } catch (e: ClassNotFoundException) { // Driver não encontrado
-            LOG.error("O driver de conexão expecificado não foi encontrado.", e)
+            mLOG.error("O driver de conexão expecificado não foi encontrado.", e)
         } catch (e: SQLException) {
-            LOG.error("Não foi possivel conectar ao Banco de Dados.", e)
+            mLOG.error("Não foi possivel conectar ao Banco de Dados.", e)
         }
     }
 
     fun closeConnection() {
         try {
-            CONN.close()
+            mCONN.close()
         } catch (e: SQLException) {
             e.printStackTrace()
-            LOG.error("Erro ao fechar a conexão com o banco.", e)
+            mLOG.error("Erro ao fechar a conexão com o banco.", e)
         }
     }
 

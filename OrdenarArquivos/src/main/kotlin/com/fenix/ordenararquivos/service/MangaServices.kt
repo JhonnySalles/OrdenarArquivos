@@ -1,6 +1,5 @@
 package com.fenix.ordenararquivos.service
 
-import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.database.DataBase.closeResultSet
 import com.fenix.ordenararquivos.database.DataBase.closeStatement
 import com.fenix.ordenararquivos.database.DataBase.instancia
@@ -12,14 +11,14 @@ import java.time.LocalDateTime
 
 class MangaServices {
 
-    private val LOG = LoggerFactory.getLogger(MangaServices::class.java)
+    private val mLOG = LoggerFactory.getLogger(MangaServices::class.java)
 
-    private val UPDATE_MANGA = "UPDATE Manga SET nome = ?, volume = ?, capitulo = ?, arquivo = ?, quantidade = ?, capitulos = ?, atualizacao = ? WHERE id = ?"
-    private val INSERT_MANGA = "INSERT INTO Manga (nome, volume, capitulo, arquivo, quantidade, capitulos, criacao, atualizacao) VALUES (?,?,?,?,?,?,?,?)"
-    private val SELECT_MANGA = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome LIKE ? AND volume LIKE ? AND capitulo LIKE ? LIMIT 1"
-    private val INSERT_CAMINHO = "INSERT INTO Caminho (id_manga, capitulo, pagina, pasta) VALUES (?,?,?,?)"
-    private val SELECT_CAMINHO = "SELECT id, capitulo, pagina, pasta FROM Caminho WHERE id_manga = ?"
-    private val DELETE_CAMINHO = "DELETE FROM Caminho WHERE id_manga = ?"
+    private val mUPDATE_MANGA = "UPDATE Manga SET nome = ?, volume = ?, capitulo = ?, arquivo = ?, quantidade = ?, capitulos = ?, atualizacao = ? WHERE id = ?"
+    private val mINSERT_MANGA = "INSERT INTO Manga (nome, volume, capitulo, arquivo, quantidade, capitulos, criacao, atualizacao) VALUES (?,?,?,?,?,?,?,?)"
+    private val mSELECT_MANGA = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome LIKE ? AND volume LIKE ? AND capitulo LIKE ? LIMIT 1"
+    private val mINSERT_CAMINHO = "INSERT INTO Caminho (id_manga, capitulo, pagina, pasta) VALUES (?,?,?,?)"
+    private val mSELECT_CAMINHO = "SELECT id, capitulo, pagina, pasta FROM Caminho WHERE id_manga = ?"
+    private val mDELETE_CAMINHO = "DELETE FROM Caminho WHERE id_manga = ?"
 
     private var conn: Connection = instancia
 
@@ -31,13 +30,12 @@ class MangaServices {
         return try {
             select(nome, volume, capitulo)
         } catch (e: SQLException) {
-            LOG.warn("Erro ao buscar o manga.")
+            mLOG.warn("Erro ao buscar o manga.")
             null
         }
     }
 
-    fun save(manga: Manga?) {
-        if (manga == null) return
+    fun save(manga: Manga) {
         manga.atualizacao = LocalDateTime.now()
         try {
             if (manga.id == 0L)
@@ -49,7 +47,7 @@ class MangaServices {
             for (caminho in manga.caminhos)
                 insert(manga.id, caminho)
         } catch (e: Exception) {
-            LOG.warn("Erro ao salvar o manga.")
+            mLOG.warn("Erro ao salvar o manga.")
         }
     }
 
@@ -58,7 +56,7 @@ class MangaServices {
         var st: PreparedStatement? = null
         var rs: ResultSet? = null
         return try {
-            st = conn!!.prepareStatement(SELECT_MANGA)
+            st = conn.prepareStatement(mSELECT_MANGA)
             st.setString(1, nome)
             st.setString(2, volume)
             st.setString(3, capitulo)
@@ -74,7 +72,7 @@ class MangaServices {
             }
             manga
         } catch (e: SQLException) {
-            LOG.error("Erro ao buscar o manga.", e)
+            mLOG.error("Erro ao buscar o manga.", e)
             throw e
         } finally {
             closeStatement(st)
@@ -86,7 +84,7 @@ class MangaServices {
     private fun update(manga: Manga) {
         var st: PreparedStatement? = null
         try {
-            st = conn!!.prepareStatement(UPDATE_MANGA, Statement.RETURN_GENERATED_KEYS)
+            st = conn.prepareStatement(mUPDATE_MANGA, Statement.RETURN_GENERATED_KEYS)
             st.setString(1, manga.nome)
             st.setString(2, manga.volume)
             st.setString(3, manga.capitulo)
@@ -101,7 +99,7 @@ class MangaServices {
                 println("Nenhum registro atualizado.")
             }
         } catch (e: SQLException) {
-            LOG.error("Erro ao atualizar o manga.", e)
+            mLOG.error("Erro ao atualizar o manga.", e)
             throw e
         } finally {
             closeStatement(st)
@@ -112,7 +110,7 @@ class MangaServices {
     private fun insert(manga: Manga): Long? {
         var st: PreparedStatement? = null
         try {
-            st = conn!!.prepareStatement(INSERT_MANGA, Statement.RETURN_GENERATED_KEYS)
+            st = conn.prepareStatement(mINSERT_MANGA, Statement.RETURN_GENERATED_KEYS)
             var index = 0;
             st.setString(++index, manga.nome)
             st.setString(++index, manga.volume)
@@ -124,7 +122,7 @@ class MangaServices {
             st.setString(++index, fromDateTime(manga.atualizacao))
             val rowsAffected = st.executeUpdate()
             if (rowsAffected < 1) {
-                LOG.info("Nenhum registro encontrado.")
+                mLOG.info("Nenhum registro encontrado.")
                 throw Exception("Nenhum registro foi inserido.")
             } else {
                 val rs = st.generatedKeys
@@ -134,7 +132,7 @@ class MangaServices {
                 }
             }
         } catch (e: SQLException) {
-            LOG.error("Erro ao inserir o manga.", e)
+            mLOG.error("Erro ao inserir o manga.", e)
             throw e
         } finally {
             closeStatement(st)
@@ -147,7 +145,7 @@ class MangaServices {
         var st: PreparedStatement? = null
         var rs: ResultSet? = null
         return try {
-            st = conn!!.prepareStatement(SELECT_CAMINHO)
+            st = conn.prepareStatement(mSELECT_CAMINHO)
             st.setLong(1, manga.id)
             rs = st.executeQuery()
             val list = ArrayList<Caminhos>()
@@ -159,7 +157,7 @@ class MangaServices {
             )
             list
         } catch (e: SQLException) {
-            LOG.error("Erro ao buscar os caminhos.", e)
+            mLOG.error("Erro ao buscar os caminhos.", e)
             throw e
         } finally {
             closeStatement(st)
@@ -171,7 +169,7 @@ class MangaServices {
     private fun delete(idCaminho: Long) {
         var st: PreparedStatement? = null
         try {
-            st = conn!!.prepareStatement(DELETE_CAMINHO)
+            st = conn.prepareStatement(mDELETE_CAMINHO)
             st.setLong(1, idCaminho)
             conn.autoCommit = false
             conn.beginRequest()
@@ -179,17 +177,17 @@ class MangaServices {
             conn.commit()
         } catch (e: SQLException) {
             try {
-                conn!!.rollback()
+                conn.rollback()
             } catch (e1: SQLException) {
-                LOG.error("Erro ao realizar o rollback.", e)
+                mLOG.error("Erro ao realizar o rollback.", e)
             }
-            LOG.error("Erro ao deletar os caminhos.", e)
+            mLOG.error("Erro ao deletar os caminhos.", e)
             throw e
         } finally {
             try {
-                conn!!.autoCommit = true
+                conn.autoCommit = true
             } catch (e: SQLException) {
-                LOG.error("Erro ao atualizar o commit.", e)
+                mLOG.error("Erro ao atualizar o commit.", e)
             }
             closeStatement(st)
         }
@@ -199,15 +197,15 @@ class MangaServices {
     private fun insert(idManga: Long, caminho: Caminhos): Long? {
         var st: PreparedStatement? = null
         try {
-            st = conn!!.prepareStatement(INSERT_CAMINHO, Statement.RETURN_GENERATED_KEYS)
-            var index = 0;
+            st = conn.prepareStatement(mINSERT_CAMINHO, Statement.RETURN_GENERATED_KEYS)
+            var index = 0
             st.setLong(++index, idManga)
             st.setString(++index, caminho.capitulo)
             st.setInt(++index, caminho.numero)
             st.setString(++index, caminho.nomePasta)
             val rowsAffected = st.executeUpdate()
             if (rowsAffected < 1) {
-                LOG.info("Nenhum caminho foi inserido.")
+                mLOG.info("Nenhum caminho foi inserido.")
                 throw Exception("Nenhum registro foi inserido.")
             } else {
                 val rs = st.generatedKeys
@@ -217,7 +215,7 @@ class MangaServices {
                 }
             }
         } catch (e: SQLException) {
-            LOG.error("Erro ao inserir os caminhos.", e)
+            mLOG.error("Erro ao inserir os caminhos.", e)
             throw e
         } finally {
             closeStatement(st)
