@@ -351,6 +351,7 @@ class TelaInicialController : Initializable {
     }
 
     private fun desabilita() {
+        btnGerarCapa.isDisable = true
         btnLimparTudo.isDisable = true
         btnCompactar.isDisable = true
         txtPastaOrigem.isDisable = true
@@ -366,6 +367,7 @@ class TelaInicialController : Initializable {
     }
 
     private fun habilita() {
+        btnGerarCapa.isDisable = false
         btnLimparTudo.isDisable = false
         btnCompactar.isDisable = false
         txtPastaOrigem.isDisable = false
@@ -727,7 +729,7 @@ class TelaInicialController : Initializable {
                             File(mCaminhoOrigem!!.path + "\\" + tras.get().nome),
                             destinoCapa
                         ), nome + TRAS + tras.get().nome.substring(tras.get().nome.lastIndexOf("."))
-                    ), false
+                    ), true
                 )
             mLOG.info("Gerando capa de tras... " + if (tras.isPresent) (" processado. Imagem: " + tras.get().nome) else " não localizado.")
 
@@ -860,8 +862,7 @@ class TelaInicialController : Initializable {
                     val max: Int = mCaminhoOrigem!!.listFiles(mFilterNomeArquivo).size
                     val pastasCompactar: MutableList<File> = ArrayList()
                     LAST_PROCESS_FOLDERS.clear()
-                    val arquivoZip =
-                        mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }
+                    val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }
                     val mesclarCapaTudo = cbMesclarCapaTudo.isSelected
                     val gerarArquivo = cbCompactarArquivo.isSelected
                     val verificaPagDupla = cbVerificaPaginaDupla.isSelected
@@ -1251,7 +1252,10 @@ class TelaInicialController : Initializable {
     @FXML
     private fun onBtnCarregarPastaOrigem() {
         mCaminhoOrigem = selecionaPasta(txtPastaOrigem.text)
-        if (mCaminhoOrigem != null) txtPastaOrigem.text = mCaminhoOrigem!!.absolutePath else txtPastaOrigem.text = ""
+        if (mCaminhoOrigem != null)
+            txtPastaOrigem.text = mCaminhoOrigem!!.absolutePath
+        else
+            txtPastaOrigem.text = ""
         listaItens()
     }
 
@@ -1264,8 +1268,10 @@ class TelaInicialController : Initializable {
     @FXML
     private fun onBtnCarregarPastaDestino() {
         mCaminhoDestino = selecionaPasta(txtPastaDestino.text)
-        if (txtPastaDestino != null) txtPastaDestino.text =
-            mCaminhoDestino!!.absolutePath else txtPastaDestino.setText("")
+        if (txtPastaDestino != null)
+            txtPastaDestino.text = mCaminhoDestino!!.absolutePath
+        else
+            txtPastaDestino.text = ""
         simulaNome()
     }
 
@@ -1275,32 +1281,29 @@ class TelaInicialController : Initializable {
     }
 
     private fun listaItens() {
-        mObsListaItens =
-            if (mCaminhoOrigem != null && mCaminhoOrigem!!.list() != null) FXCollections.observableArrayList(
-                *mCaminhoOrigem!!.list(
-                    mFilterNomeArquivo
-                )
-            ) else FXCollections.observableArrayList("")
-        lsVwListaImagens.setItems(mObsListaItens)
+        mObsListaItens = if (mCaminhoOrigem != null && !mCaminhoOrigem!!.list().isNullOrEmpty() )
+            FXCollections.observableArrayList(*mCaminhoOrigem!!.list(mFilterNomeArquivo))
+        else
+            FXCollections.observableArrayList("")
+        lsVwListaImagens.items = mObsListaItens
         limparCapas()
-        mSelecionado = mObsListaItens.get(0)
+        mSelecionado = mObsListaItens[0]
     }
 
     private fun simulaNome() {
-        txtSimularPasta.text =
-            (txtNomePastaManga.text.trim { it <= ' ' } + " " + txtVolume.text.trim { it <= ' ' } + " "
-                    + txtNomePastaCapitulo.text.trim { it <= ' ' } + " 00")
-        val nome = if (txtNomePastaManga.text.contains("]")) txtNomePastaManga.text.substring(
-            txtNomePastaManga.text.indexOf("]") + 1
-        ).trim { it <= ' ' } else txtNomePastaManga.text.trim { it <= ' ' }
+        txtSimularPasta.text = (txtNomePastaManga.text.trim { it <= ' ' } + " " + txtVolume.text.trim { it <= ' ' } + " " + txtNomePastaCapitulo.text.trim { it <= ' ' } + " 00")
+        val nome = if (txtNomePastaManga.text.contains("]"))
+            txtNomePastaManga.text.substring(txtNomePastaManga.text.indexOf("]") + 1).trim { it <= ' ' }
+        else
+            txtNomePastaManga.text.trim { it <= ' ' }
         val posFix = if (txtNomePastaManga.text.contains("[JPN]")) " (Jap)" else ""
         txtNomeArquivo.text = nome + " " + txtVolume.text.trim { it <= ' ' } + posFix + ".cbr"
     }
 
-    private fun selecionaPasta(pasta: String): File {
+    private fun selecionaPasta(pasta: String): File? {
         val fileChooser = DirectoryChooser()
         fileChooser.title = "Selecione o arquivo."
-        if (!pasta.isEmpty()) {
+        if (pasta.isNotEmpty()) {
             val defaultDirectory = File(pasta)
             fileChooser.initialDirectory = defaultDirectory
         }
@@ -1414,7 +1417,7 @@ class TelaInicialController : Initializable {
         txt.caretPositionProperty().addListener(onCaratChange)
     }
 
-    fun contemTipoSelecionado(tipo: TipoCapa, caminho: String?): Boolean {
+    private fun contemTipoSelecionado(tipo: TipoCapa, caminho: String?): Boolean {
         return if (mObsListaImagesSelected.isEmpty()) false else mObsListaImagesSelected.stream()
             .anyMatch { capa: Capa -> capa.tipo == tipo && capa.nome.equals(caminho, ignoreCase = true) }
     }
@@ -1708,7 +1711,7 @@ class TelaInicialController : Initializable {
         }
     }
 
-    fun configuraZoom(root: AnchorPane, imageView: ImageView, slider: JFXSlider): GesturePane {
+    private fun configuraZoom(root: AnchorPane, imageView: ImageView, slider: JFXSlider): GesturePane {
         val pane = GesturePane(imageView)
         root.children.add(0, pane)
         AnchorPane.setTopAnchor(pane, 0.0);

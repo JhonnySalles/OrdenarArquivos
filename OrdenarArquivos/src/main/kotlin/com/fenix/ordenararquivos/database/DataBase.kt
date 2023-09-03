@@ -25,7 +25,7 @@ object DataBase {
             DriverManager.registerDriver(JDBC())
             val flyway = Flyway.configure()
                 .dataSource("jdbc:sqlite:" + mDATABASE, "", "")
-                .locations("filesystem:db/migration")
+                .locations("classpath:db/migration")
                 .load()
             flyway.migrate()
             mCONN = DriverManager.getConnection("jdbc:sqlite:" + mDATABASE)

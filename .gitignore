@@ -87,3 +87,4 @@ nb-configuration.xml
 .DS_Store
 
 /ordenarArquivos/target/*.*
+/App/temp/*.*
