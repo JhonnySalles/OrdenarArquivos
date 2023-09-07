@@ -59,6 +59,9 @@ class TelaInicialController : Initializable {
     private lateinit var apGlobal: AnchorPane
 
     @FXML
+    private lateinit var tbTabRoot: JFXTabPane
+
+    @FXML
     private lateinit var btnLimparTudo: JFXButton
 
     @FXML
@@ -1267,6 +1270,7 @@ class TelaInicialController : Initializable {
         mCaminhoOrigem = File(txtPastaOrigem.text)
         limparCapas()
         listaItens()
+        tbTabRoot.selectionModel.select(0)
     }
 
     @FXML
