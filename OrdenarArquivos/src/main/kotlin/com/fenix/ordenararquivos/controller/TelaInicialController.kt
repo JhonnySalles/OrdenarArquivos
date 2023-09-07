@@ -247,14 +247,14 @@ class TelaInicialController : Initializable {
 
     @FXML
     private fun onBtnScrollSubir() {
-        if (!lsVwListaImagens.items.isEmpty())
+        if (!lsVwListaImagens.items.isNullOrEmpty())
             lsVwListaImagens.scrollTo(0)
     }
 
     @FXML
     private fun onBtnScrollBaixo() {
-        if (!lsVwListaImagens.items.isEmpty())
-            lsVwListaImagens.scrollTo(lsVwListaImagens.items.size)
+        if (!lsVwListaImagens.items.isNullOrEmpty())
+            lsVwListaImagens.scrollTo(lsVwListaImagens.items.size - 1)
     }
 
     @FXML
@@ -307,8 +307,7 @@ class TelaInicialController : Initializable {
                     var number = java.lang.Double.valueOf(volume)
                     texto = texto.substring(0, texto.lastIndexOf(volume))
                     number = number - 1
-                    volume = texto + String.format("%0$padding.1f", number).replace("\\.".toRegex(), "")
-                        .replace("\\,".toRegex(), ".")
+                    volume = texto + String.format("%0$padding.1f", number).replace("\\.".toRegex(), "").replace("\\,".toRegex(), ".")
                     txtVolume.text = volume
                     simulaNome()
                     carregaManga()
@@ -338,8 +337,7 @@ class TelaInicialController : Initializable {
                     var number = java.lang.Double.valueOf(volume)
                     texto = texto.substring(0, texto.lastIndexOf(volume))
                     number = number + 1
-                    volume = texto + String.format("%0$padding.1f", number).replace("\\.".toRegex(), "")
-                        .replace("\\,".toRegex(), ".")
+                    volume = texto + String.format("%0$padding.1f", number).replace("\\.".toRegex(), "").replace("\\,".toRegex(), ".")
                     txtVolume.text = volume
                     simulaNome()
                     carregaManga()
@@ -1138,52 +1136,58 @@ class TelaInicialController : Initializable {
         val image: BufferedImage
         try {
             image = ImageIO.read(arquivo)
+            val border = image.getRGB(0, 0)
             val branco = java.awt.Color.WHITE.rgb
+            val width = image.width
+            val height = image.height
+
             var startX = 0
-            var endX = image.width
-            for (x in 0 until image.width) {
-                for (y in 0 until image.height) {
+            var endX = width - 1
+            loop@ for (x in 0 until width) {
+                for (y in 0 until height) {
                     if (image.getRGB(x, y) != branco) {
                         startX = x
-                        break
+                        break@loop
                     }
                 }
-                if (startX > 0) break
             }
-            for (x in image.width - 1 downTo 0) {
-                for (y in 0 until image.height) {
+
+            loop@ for (x in endX downTo 0) {
+                for (y in 0 until height) {
                     if (image.getRGB(x, y) != branco) {
                         endX = x
-                        break
+                        break@loop
                     }
                 }
-                if (endX < image.width) break
             }
+
+            mLOG.info("Corte X: $startX - $endX")
+
             var startY = 0
-            var endY = image.height
+            var endY = height - 1
             if (clearTopBottom) {
-                for (y in 0 until image.height) {
-                    for (x in 0 until image.width) {
+                loop@ for (y in 0 until height) {
+                    for (x in 0 until width) {
                         if (image.getRGB(x, y) != branco) {
                             startY = y
-                            break
+                            break@loop
                         }
                     }
-                    if (startY > 0) break
                 }
-                for (y in image.height - 1 downTo 0) {
-                    for (x in 0 until image.width) {
+
+                loop@ for (y in endY downTo 0) {
+                    for (x in 0 until width) {
                         if (image.getRGB(x, y) != branco) {
                             endY = y
-                            break
+                            break@loop
                         }
                     }
-                    if (endY < image.height) break
                 }
+
+                mLOG.info("Corte Y: $startY - $endY")
             }
-            val width = endX - startX
-            val height = endY - startY
-            val frente = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+
+            val frente = BufferedImage(endX - startX, endY - startY, BufferedImage.TYPE_INT_ARGB)
             val grFrente = frente.createGraphics()
             val colorFrente = grFrente.color
             grFrente.paint = java.awt.Color.WHITE
@@ -1547,8 +1551,7 @@ class TelaInicialController : Initializable {
         textFieldMostraFinalTexto(txtSimularPasta)
         textFieldMostraFinalTexto(txtPastaOrigem)
 
-        txtPastaOrigem.focusedProperty()
-            .addListener { arg0: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean ->
+        txtPastaOrigem.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean ->
                 if (newPropertyValue)
                     mPastaAnterior = txtPastaOrigem.text
 
@@ -1566,8 +1569,7 @@ class TelaInicialController : Initializable {
             }
         }
 
-        txtPastaDestino.focusedProperty()
-            .addListener { arg0: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean? ->
+        txtPastaDestino.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? ->
                 if (oldPropertyValue) carregaPastaDestino()
                 txtPastaDestino.unFocusColor = Color.GRAY
             }
@@ -1580,24 +1582,20 @@ class TelaInicialController : Initializable {
             }
         }
 
-        txtNomePastaManga.focusedProperty()
-            .addListener { arg0: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean? -> if (oldPropertyValue) simulaNome() }
+        txtNomePastaManga.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? -> if (oldPropertyValue) simulaNome() }
         txtNomePastaManga.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
 
-        txtNomeArquivo.focusedProperty()
-            .addListener { arg0: ObservableValue<out Boolean?>?, oldPropertyValue: Boolean?, newPropertyValue: Boolean? ->
+        txtNomeArquivo.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
                 txtPastaDestino.unFocusColor = Color.GRAY
             }
         txtNomeArquivo.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
-        txtNomeArquivo.focusedProperty()
-            .addListener { arg0: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean? ->
+        txtNomeArquivo.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? ->
                 if (oldPropertyValue && mManga == null)
                     mManga = geraManga(0)
 
             }
 
-        txtVolume.focusedProperty()
-            .addListener { arg0: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean? ->
+        txtVolume.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? ->
                 if (oldPropertyValue) {
                     simulaNome()
                     carregaManga()
@@ -1612,30 +1610,24 @@ class TelaInicialController : Initializable {
             }
         }
 
-        txtNomePastaCapitulo.focusedProperty()
-            .addListener { arg0: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean? -> if (oldPropertyValue) simulaNome() }
+        txtNomePastaCapitulo.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? -> if (oldPropertyValue) simulaNome() }
         txtNomePastaCapitulo.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code.toString() == "ENTER") clickTab() }
 
-        txtGerarInicio.focusedProperty()
-            .addListener { arg0: ObservableValue<out Boolean?>?, oldPropertyValue: Boolean?, newPropertyValue: Boolean? ->
+        txtGerarInicio.focusedProperty().addListener { arg0: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
                 txtPastaDestino.unFocusColor = Color.GRAY
             }
-        txtGerarInicio.textProperty()
-            .addListener { obs: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
+        txtGerarInicio.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
                 if (newValue != null && !newValue.matches(NUMBER_REGEX))
-                    txtGerarInicio.text =
-                        oldValue else if (newValue != null && newValue.isEmpty()) txtGerarInicio.text = "0"
+                    txtGerarInicio.text = oldValue
             }
         txtGerarInicio.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code.toString() == "ENTER") clickTab() }
 
-        txtGerarFim.focusedProperty()
-            .addListener { arg0: ObservableValue<out Boolean?>?, oldPropertyValue: Boolean?, newPropertyValue: Boolean? ->
+        txtGerarFim.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
                 txtPastaDestino.unFocusColor = Color.GRAY
             }
-        txtGerarFim.textProperty()
-            .addListener { obs: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
+        txtGerarFim.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
                 if (newValue != null && !newValue.matches(NUMBER_REGEX))
-                    txtGerarFim.text = oldValue else if (newValue != null && newValue.isEmpty()) txtGerarFim.text = "0"
+                    txtGerarFim.text = oldValue
             }
         txtGerarFim.onKeyPressed = EventHandler { e: KeyEvent ->
             if (e.code == KeyCode.ENTER) {
@@ -1650,23 +1642,18 @@ class TelaInicialController : Initializable {
             }
         }
 
-        txtAreaImportar.onKeyPressed =
-            EventHandler { e: KeyEvent -> if (e.isControlDown && e.code == KeyCode.ENTER) onBtnImporta() }
+        txtAreaImportar.onKeyPressed = EventHandler { e: KeyEvent -> if (e.isControlDown && e.code == KeyCode.ENTER) onBtnImporta() }
 
-        txtQuantidade.focusedProperty()
-            .addListener { arg0: ObservableValue<out Boolean?>?, oldPropertyValue: Boolean?, newPropertyValue: Boolean? ->
+        txtQuantidade.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
                 txtPastaDestino.unFocusColor = Color.GRAY
             }
-        txtQuantidade.textProperty()
-            .addListener { obs: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
+        txtQuantidade.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
                 if (newValue != null && !newValue.matches(NUMBER_REGEX))
                     txtGerarFim.text = oldValue
             }
 
-        cbMesclarCapaTudo.selectedProperty()
-            .addListener { obs: ObservableValue<out Boolean?>?, oldValue: Boolean?, newValue: Boolean? -> reloadCapa() }
-        cbAjustarMargemCapa.selectedProperty()
-            .addListener { obs: ObservableValue<out Boolean?>?, oldValue: Boolean?, newValue: Boolean? -> reloadCapa() }
+        cbMesclarCapaTudo.selectedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> reloadCapa() }
+        cbAjustarMargemCapa.selectedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> reloadCapa() }
     }
 
     fun configurarAtalhos(scene: Scene) {
@@ -1748,9 +1735,7 @@ class TelaInicialController : Initializable {
 
         pane.setOnMouseClicked { e ->
             if (e.clickCount >= 2) {
-                val pivotOnTarget: Point2D =
-                    pane.targetPointAt(Point2D(e.x, e.y))
-                        .orElse(pane.targetPointAtViewportCentre())
+                val pivotOnTarget: Point2D = pane.targetPointAt(Point2D(e.x, e.y)).orElse(pane.targetPointAtViewportCentre())
                 if (e.button === MouseButton.PRIMARY) {
                     pane.animate(Duration.millis(200.0))
                         .interpolateWith(Interpolator.EASE_BOTH)
