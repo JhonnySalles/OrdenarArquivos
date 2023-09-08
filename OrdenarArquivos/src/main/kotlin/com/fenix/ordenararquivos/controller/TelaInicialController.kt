@@ -1384,8 +1384,7 @@ class TelaInicialController : Initializable {
                 var texto = "" // txtAreaImportar.getText();
                 // if (!texto.isEmpty())
                 // texto += "\r\n";
-                val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3")
-                        + "d")
+                val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
                 for (i in inicio..fim) texto += String.format(padding, i) + "-" + if (i < fim) "\r\n" else ""
                 txtAreaImportar.text = texto
             } else txtGerarInicio.unFocusColor = Color.GRAY
@@ -1646,11 +1645,108 @@ class TelaInicialController : Initializable {
             }
         }
 
-        txtAreaImportar.onKeyPressed = EventHandler { e: KeyEvent -> if (e.isControlDown && e.code == KeyCode.ENTER) onBtnImporta() }
+        var lastCaretPos = 0
+        txtAreaImportar.onKeyPressed = EventHandler { e: KeyEvent ->
+            if (e.isControlDown && !e.isShiftDown) {
+                when(e.code) {
+                    KeyCode.ENTER -> onBtnImporta()
+                    KeyCode.D,
+                    KeyCode.E -> {
+                        if (txtAreaImportar.text.isEmpty())
+                            return@EventHandler
 
-        txtQuantidade.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
-                txtPastaDestino.unFocusColor = Color.GRAY
+                        val txt = txtAreaImportar.text
+                        val scroll = txtAreaImportar.scrollTopProperty().value
+
+                        var before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
+                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+                        val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
+                        before = before.substringBeforeLast(line)
+
+                        val newLine = if (e.code == KeyCode.E)
+                            if (line.contains("extra", true))
+                                line.replace("extra", "", ignoreCase = true).trim()
+                            else
+                                "Extra $line"
+                        else if (e.code == KeyCode.D)
+                            line + "\n" + line
+                        else
+                            line
+
+                        val newText = before + newLine + last
+
+                        txtAreaImportar.text = newText
+                        txtAreaImportar.positionCaret(lastCaretPos)
+                        txtAreaImportar.scrollTop = scroll
+                    }
+                }
+            } else if (e.isControlDown && e.isShiftDown) {
+                when(e.code) {
+                    KeyCode.UP,
+                    KeyCode.DOWN -> {
+                        if (txtAreaImportar.text.isEmpty() || !txtAreaImportar.text.contains("\n"))
+                            return@EventHandler
+
+                        val txt = txtAreaImportar.text
+                        val lines = txt.split("\n")
+                        val scroll = txtAreaImportar.scrollTopProperty().value
+
+                        val before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
+                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+                        val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
+                        var newText = ""
+
+                        if (e.code == KeyCode.UP) {
+                            var replaced = false
+                            lines.forEachIndexed { index, ln ->
+                                if (!replaced) {
+                                    val next = index + 1
+                                    if (next < lines.size)
+                                        if (lines[next] == line) {
+                                            replaced = true
+                                            newText += line + "\n"
+                                        }
+                                }
+
+                                if (ln != line)
+                                    newText += ln + "\n"
+                            }
+                            if (!replaced)
+                                newText = line + "\n" + newText
+                        } else if (e.code == KeyCode.DOWN) {
+                            var replaced = false
+                            var nexIndex = -1
+                            lines.forEachIndexed { index, ln ->
+                                if (index == nexIndex)
+                                    return@forEachIndexed
+
+                                if (ln != line)
+                                    newText += ln + "\n"
+                                else {
+                                    val next = index + 1
+                                    if (next < lines.size) {
+                                        replaced = true
+                                        newText += lines[next] + "\n"
+                                        newText += line + "\n"
+                                        nexIndex = next
+                                    }
+                                }
+                            }
+
+                            if (!replaced)
+                                newText += line + "\n"
+                        }
+
+                        txtAreaImportar.text = newText.substringBeforeLast("\n")
+                        txtAreaImportar.positionCaret(txtAreaImportar.text.indexOf(line))
+                        txtAreaImportar.scrollTop = scroll
+                    }
+                }
             }
+            lastCaretPos = txtAreaImportar.caretPosition
+        }
+
+        txtQuantidade.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> txtPastaDestino.unFocusColor = Color.GRAY }
         txtQuantidade.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
                 if (newValue != null && !newValue.matches(NUMBER_REGEX))
                     txtGerarFim.text = oldValue

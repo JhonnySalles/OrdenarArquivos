@@ -10,6 +10,7 @@ import javafx.scene.chart.PieChart.Data
 import javafx.scene.image.Image
 import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
+import javafx.stage.Screen
 import javafx.stage.Stage
 import javafx.stage.StageStyle
 import kotlin.system.exitProcess
@@ -31,8 +32,17 @@ class Run : Application() {
             primaryStage.icons.add(Image(Run::class.java.getResourceAsStream(TelaInicialController.iconLocate)))
             primaryStage.initStyle(StageStyle.DECORATED)
             //primaryStage.setMaximized(true);
-            primaryStage.minWidth = 700.0
-            primaryStage.minHeight = 600.0
+
+            if (Screen.getScreens()[0].bounds.width > 720) {
+                primaryStage.minWidth = 800.0
+                primaryStage.minHeight = 700.0
+                primaryStage.width = 800.0
+                primaryStage.height = 900.0
+            } else {
+                primaryStage.minWidth = 700.0
+                primaryStage.minHeight = 600.0
+            }
+
             primaryStage.onCloseRequest = EventHandler {
                 DataBase.closeConnection()
                 exitProcess(0)

@@ -23,11 +23,15 @@ object DataBase {
         try {
             Class.forName("org.sqlite.JDBC")
             DriverManager.registerDriver(JDBC())
-            val flyway = Flyway.configure()
-                .dataSource("jdbc:sqlite:" + mDATABASE, "", "")
-                .locations("classpath:db/migration")
-                .load()
-            flyway.migrate()
+            try {
+                val flyway = Flyway.configure()
+                    .dataSource("jdbc:sqlite:" + mDATABASE, "", "")
+                    .locations("./db/migration", "classpath:/db/migration", "classpath:db/migration")
+                    .load()
+                flyway.migrate()
+            } catch (e: Exception) {
+                mLOG.error("Não foi possivel atualizar o Banco de Dados.", e)
+            }
             mCONN = DriverManager.getConnection("jdbc:sqlite:" + mDATABASE)
         } catch (e: ClassNotFoundException) { // Driver não encontrado
             mLOG.error("O driver de conexão expecificado não foi encontrado.", e)

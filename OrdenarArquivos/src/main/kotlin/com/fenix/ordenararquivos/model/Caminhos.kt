@@ -29,4 +29,25 @@ data class Caminhos(
     override fun toString(): String {
         return "Caminhos [capitulo=$capitulo, numero=$numero, nomePasta=$nomePasta]"
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Caminhos
+
+        if (manga != other.manga) return false
+        if (capitulo != other.capitulo) return false
+        if (nomePasta != other.nomePasta) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = manga?.hashCode() ?: 0
+        result = 31 * result + capitulo.hashCode()
+        result = 31 * result + nomePasta.hashCode()
+        return result
+    }
+
 }
