@@ -758,9 +758,9 @@ class TelaInicialController : Initializable {
                     copiaItem(File(mCaminhoOrigem!!.path + "\\" + tudo.get().direita!!.nome), PASTA_TEMPORARIA)
                     val esquerda = File(PASTA_TEMPORARIA, tudo.get().nome)
                     val direita = File(PASTA_TEMPORARIA, tudo.get().direita!!.nome)
-                    limpaMargemImagens(esquerda, true)
-                    limpaMargemImagens(direita, true)
-                    mesclarImagens(File(destinoCapa.path + "\\" + nome + TUDO + ".png"), esquerda, direita)
+                    val destino = File(destinoCapa.path + "\\" + nome + TUDO + ".png")
+                    mesclarImagens(destino, esquerda, direita)
+                    limpaMargemImagens(destino, true)
                     mLOG.info("Mesclagem concluida.")
                 } else {
                     mLOG.info("Gerando capa completa...  copiando arquivo....")
@@ -1225,11 +1225,10 @@ class TelaInicialController : Initializable {
             val img = File(PASTA_TEMPORARIA, "tudo.png")
             if (img.exists()) img.delete()
             img.createNewFile()
-            if (cbMesclarCapaTudo.isSelected) mesclarImagens(img, esquerda, direita) else copiaItem(
-                esquerda,
-                PASTA_TEMPORARIA,
-                img.name
-            )
+            if (cbMesclarCapaTudo.isSelected)
+                mesclarImagens(img, esquerda, direita)
+            else
+                copiaItem(esquerda, PASTA_TEMPORARIA, img.name)
             return Image(img.absolutePath)
         } catch (e: IOException) {
             mLOG.error("Erro ao verificar imagem.", e)
