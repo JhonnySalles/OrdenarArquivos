@@ -1364,7 +1364,7 @@ class TelaInicialController : Initializable {
                 nomePasta = if (txtNomePastaCapitulo.text.trim { it <= ' ' }.equals("Capítulo", ignoreCase = true)
                     && linha[0].uppercase(Locale.getDefault()).contains("EXTRA")
                 ) linha[0].trim { it <= ' ' } else txtNomePastaCapitulo.text.trim { it <= ' ' } + " " + linha[0].trim { it <= ' ' }
-                mListaCaminhos.add(Caminhos(linha[0], linha[1], nomePasta))
+                mListaCaminhos.add(Caminhos(linha[0], linha[1].trim(), nomePasta))
             }
             mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
             tbViewTabela.setItems(mObsListaCaminhos)
