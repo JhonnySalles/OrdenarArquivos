@@ -30,12 +30,8 @@
 		</triggeringPolicy>
 	</appender>
 
-	<logger name="act" level="WARN" additivity="false">
-		<appender-ref ref="FILE" />
-		<appender-ref ref="STDOUT" />
-	</logger>
-
 	<root level="INFO">
 		<appender-ref ref="STDOUT" />
+		<appender-ref ref="FILE" />
 	</root>
 </configuration>
