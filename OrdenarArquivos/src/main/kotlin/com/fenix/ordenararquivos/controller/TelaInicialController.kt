@@ -294,6 +294,7 @@ class TelaInicialController : Initializable {
         // Matches retorna se toda a string for o patern, no caso utiliza-se o inicio
         // para mostrar que tenha em toda a string.
         if (txtVolume.text.matches(Regex(".*" + NUMBER_PATTERN))) {
+            val oldVolume = txtVolume.text
             var texto = txtVolume.text.trim { it <= ' ' }
             var volume = texto.replace(texto.replace(NUMBER_PATTERN.toRegex(), "").toRegex(), "").trim { it <= ' ' }
             val padding = volume.length
@@ -304,7 +305,8 @@ class TelaInicialController : Initializable {
                 volume = texto + String.format("%0" + padding + "d", number)
                 txtVolume.text = volume
                 simulaNome()
-                carregaManga()
+                if (!carregaManga())
+                    incrementaCapitulos(txtVolume.text, oldVolume)
             } catch (e: NumberFormatException) {
                 try {
                     var number = java.lang.Double.valueOf(volume)
@@ -313,7 +315,8 @@ class TelaInicialController : Initializable {
                     volume = texto + String.format("%0$padding.1f", number).replace("\\.".toRegex(), "").replace("\\,".toRegex(), ".")
                     txtVolume.text = volume
                     simulaNome()
-                    carregaManga()
+                    if (!carregaManga())
+                        incrementaCapitulos(txtVolume.text, oldVolume)
                 } catch (e1: NumberFormatException) {
                     mLOG.info("Erro ao incrementar valor.", e)
                 }
@@ -324,6 +327,7 @@ class TelaInicialController : Initializable {
     @FXML
     private fun onBtnVolumeMais() {
         if (txtVolume.text.matches(Regex(".*" + NUMBER_PATTERN))) {
+            val oldVolume = txtVolume.text
             var texto = txtVolume.text.trim { it <= ' ' }
             var volume = texto.replace(texto.replace(NUMBER_PATTERN.toRegex(), "").toRegex(), "").trim { it <= ' ' }
             val padding = volume.length
@@ -334,7 +338,8 @@ class TelaInicialController : Initializable {
                 volume = texto + String.format("%0" + padding + "d", number)
                 txtVolume.text = volume
                 simulaNome()
-                carregaManga()
+                if (!carregaManga())
+                    incrementaCapitulos(txtVolume.text, oldVolume)
             } catch (e: NumberFormatException) {
                 try {
                     var number = java.lang.Double.valueOf(volume)
@@ -344,6 +349,8 @@ class TelaInicialController : Initializable {
                     txtVolume.text = volume
                     simulaNome()
                     carregaManga()
+                    if (!carregaManga())
+                        incrementaCapitulos(txtVolume.text, oldVolume)
                 } catch (e1: NumberFormatException) {
                     mLOG.info("Erro ao incrementar valor.", e)
                 }
@@ -439,7 +446,7 @@ class TelaInicialController : Initializable {
         )
     }
 
-    private fun carregaManga() {
+    private fun carregaManga() : Boolean {
         mManga = mService.find(geraManga(0))
 
         lblAviso.text = if (mManga != null) "Manga localizado." else "Manga não localizado."
@@ -459,6 +466,8 @@ class TelaInicialController : Initializable {
             mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
             tbViewTabela.items = mObsListaCaminhos
         }
+
+        return mManga != null
     }
 
     private fun salvaManga() {
@@ -1303,8 +1312,42 @@ class TelaInicialController : Initializable {
             txtNomePastaManga.text.substring(txtNomePastaManga.text.indexOf("]") + 1).trim { it <= ' ' }
         else
             txtNomePastaManga.text.trim { it <= ' ' }
-        val posFix = if (txtNomePastaManga.text.contains("[JPN]")) " (Jap)" else ""
+        val isJapanese = txtNomePastaManga.text.contains("[JPN]");
+        val tudo = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 }.findFirst()
+        val semCapa = if (tudo.isEmpty) {if (isJapanese) " Sem capa" else " (Sem capa)"} else ""
+        val posFix = if (isJapanese) " (Jap)$semCapa" else semCapa
         txtNomeArquivo.text = nome + " " + txtVolume.text.trim { it <= ' ' } + posFix + ".cbr"
+    }
+
+    private fun getNumber(texto : String) : Double? {
+        val numero = texto.trim { it <= ' ' }.replace(texto.replace(NUMBER_PATTERN.toRegex(), "").toRegex(), "").trim { it <= ' ' }
+        return try {
+            java.lang.Double.valueOf(numero)
+        } catch (e1: NumberFormatException) {
+            null
+        }
+    }
+
+    private fun incrementaCapitulos(volumeAtual : String, volumeAnterior : String) {
+        if (volumeAnterior == volumeAtual || txtGerarFim.text.isNullOrEmpty() || txtGerarInicio.text.isNullOrEmpty())
+            return
+
+        val volAtual = getNumber(volumeAtual) ?: return
+        val volAnterior = getNumber(volumeAnterior) ?: return
+
+        val capInicio = getNumber(txtGerarInicio.text) ?: return
+        val capFim = getNumber(txtGerarFim.text) ?: return
+
+        val diferenca = volAtual - volAnterior
+        val capitulos = capFim - capInicio
+
+        val inicio = capInicio + (diferenca * capitulos) + 1
+        if (inicio <= 0)
+            return
+
+        txtGerarInicio.text = inicio.toInt().toString()
+        txtGerarFim.text = (inicio + capitulos).toInt().toString()
+        onBtnGerarCapitulos()
     }
 
     private fun selecionaPasta(pasta: String): File? {
@@ -1377,8 +1420,8 @@ class TelaInicialController : Initializable {
         if (!txtGerarInicio.text.trim { it <= ' ' }.isEmpty() && !txtGerarFim.text.trim { it <= ' ' }.isEmpty()) {
             if (mManga == null)
                 mManga = geraManga(0)
-            val inicio = txtGerarInicio.text.trim { it <= ' ' }.toInt()
-            val fim = txtGerarFim.text.trim { it <= ' ' }.toInt()
+            val inicio = getNumber(txtGerarInicio.text)?.toInt() ?: return
+            val fim = getNumber(txtGerarFim.text)?.toInt() ?: return
             if (inicio <= fim) {
                 var texto = "" // txtAreaImportar.getText();
                 // if (!texto.isEmpty())
@@ -1506,6 +1549,7 @@ class TelaInicialController : Initializable {
                     capaCompletaSelected,
                     cell.item != null && contemTipoSelecionado(TipoCapa.CAPA_COMPLETA, cell.item)
                 )
+                simulaNome()
             }
             val listenerSumario = InvalidationListener { obs: Observable? ->
                 cell.pseudoClassStateChanged(
@@ -1597,12 +1641,18 @@ class TelaInicialController : Initializable {
 
             }
 
-        txtVolume.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? ->
+        var volumeAnterior = ""
+        txtVolume.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean ->
                 if (oldPropertyValue) {
                     simulaNome()
-                    carregaManga()
+                    if (!carregaManga())
+                        incrementaCapitulos(txtVolume.text, volumeAnterior)
                 }
+
+                if (newPropertyValue)
+                    volumeAnterior = txtVolume.text
             }
+
         txtVolume.onKeyPressed = EventHandler { e: KeyEvent ->
             if (e.code == KeyCode.ENTER)
                 txtGerarInicio.requestFocus()
