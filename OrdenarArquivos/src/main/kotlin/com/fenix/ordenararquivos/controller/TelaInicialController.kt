@@ -1341,7 +1341,7 @@ class TelaInicialController : Initializable {
         val diferenca = volAtual - volAnterior
         val capitulos = capFim - capInicio
 
-        val inicio = capInicio + (diferenca * capitulos) + 1
+        val inicio = capInicio + (diferenca * capitulos) + (1 * diferenca)
         if (inicio <= 0)
             return
 
@@ -1736,7 +1736,7 @@ class TelaInicialController : Initializable {
                         if (txtAreaImportar.text.isEmpty() || !txtAreaImportar.text.contains("\n"))
                             return@EventHandler
 
-                        val txt = txtAreaImportar.text
+                        val txt = txtAreaImportar.text ?: ""
                         val lines = txt.split("\n")
                         val scroll = txtAreaImportar.scrollTopProperty().value
 
