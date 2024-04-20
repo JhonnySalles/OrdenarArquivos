@@ -90,3 +90,5 @@ nb-configuration.xml
 /App/temp/*.*
 App/secrets-firebase.json
 ordenarArquivos/secrets-firebase.json
+OrdenarArquivos/ordenar.log
+App/ordenar.log
