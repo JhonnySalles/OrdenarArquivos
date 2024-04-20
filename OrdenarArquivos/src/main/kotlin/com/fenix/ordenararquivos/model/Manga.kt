@@ -1,5 +1,6 @@
 package com.fenix.ordenararquivos.model
 
+import com.google.firebase.database.Exclude
 import java.time.LocalDateTime
 
 data class Manga(
@@ -10,9 +11,8 @@ data class Manga(
     var arquivo: String = "",
     var capitulos: String = "",
     var quantidade: Int = 0,
-    var atualizacao: LocalDateTime = LocalDateTime.now(),
-    var caminhos: MutableList<Caminhos> = arrayListOf(),
-    var sincronizacao: String  = ""
+    @Exclude @set:Exclude @get:Exclude var atualizacao: LocalDateTime = LocalDateTime.now(),
+    var caminhos: MutableList<Caminhos> = arrayListOf()
 ) {
     constructor(
         id: Long,
@@ -32,20 +32,8 @@ data class Manga(
         capitulos,
         quantidade,
         atualizacao
-    ) { }
-
-    constructor(
-        id : Long,
-        obj : HashMap<String, String>
-    ) : this(
-        id,
-        obj["nome"]!!,
-        obj["volume"]!!,
-        obj["capitulo"]!!,
-        obj["arquivo"]!!,
-        obj["capitulos"]!!,
-        obj["quantidade"]!!.toInt()
-    ) { }
+    ) {
+    }
 
     fun addCaminhos(caminhos: Caminhos) {
         this.caminhos.add(caminhos)

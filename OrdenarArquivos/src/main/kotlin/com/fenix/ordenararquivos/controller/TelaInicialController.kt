@@ -1613,7 +1613,7 @@ class TelaInicialController : Initializable {
         }
         clNumeroPagina.setCellFactory(TextFieldTableCell.forTableColumn())
         clNumeroPagina.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
-            e.tableView.items[e.tablePosition.row].setNumero(e.getNewValue())
+            e.tableView.items[e.tablePosition.row].addNumero(e.getNewValue())
         }
         clNomePasta.setCellFactory(TextFieldTableCell.forTableColumn())
         clNomePasta.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
@@ -1967,7 +1967,7 @@ class TelaInicialController : Initializable {
 
         animacao.animaSincronizacao(imgCompartilhamento, imgAnimaCompartilha, imgAnimaCompartilhaEspera)
 
-        sincronizacao.setObserver { observable: ListChangeListener.Change<out Manga> ->
+        sincronizacao.setObserver { observable: ListChangeListener.Change<out com.fenix.ordenararquivos.model.firebase.Manga> ->
             if (!sincronizacao.isSincronizando()) Platform.runLater {
                 if (!observable.list.isEmpty()) {
                     lblAviso.text = "Pendente de envio " + observable.list.size + " registro(s)."

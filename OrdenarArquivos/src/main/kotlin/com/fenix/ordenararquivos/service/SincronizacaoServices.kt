@@ -3,8 +3,8 @@ package com.fenix.ordenararquivos.service
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.database.DataBase.instancia
-import com.fenix.ordenararquivos.model.Caminhos
-import com.fenix.ordenararquivos.model.Manga
+import com.fenix.ordenararquivos.model.firebase.Caminhos
+import com.fenix.ordenararquivos.model.firebase.Manga
 import com.fenix.ordenararquivos.model.Sincronizacao
 import com.fenix.ordenararquivos.util.Utils
 import com.google.auth.oauth2.GoogleCredentials
@@ -25,6 +25,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.stream.Collectors
+import kotlin.collections.HashMap
 
 class SincronizacaoServices(private val controller: TelaInicialController) : TimerTask() {
 
@@ -49,7 +50,7 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
     companion object {
         private val sincronizar: ObservableList<Manga> = FXCollections.observableArrayList()
 
-        fun enviar(manga: Manga) = sincronizar.add(manga)
+        fun enviar(manga: com.fenix.ordenararquivos.model.Manga) = sincronizar.add(Manga(manga))
     }
 
     fun setObserver(listener: ListChangeListener<Manga>) {
@@ -85,7 +86,9 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
             return
 
         try {
-            val sinc = service.findEnvio(sincronizacao!!.envio).parallelStream().filter { i -> sincronizar.parallelStream().noneMatch { m -> m.equals(i) } }.collect(Collectors.toList())
+            val sinc = service.findEnvio(sincronizacao!!.envio).parallelStream().map { m -> Manga(m) }
+                .filter { i -> sincronizar.parallelStream().noneMatch { m -> m.equals(i) } }
+                .collect(Collectors.toList())
             if (sinc.isNotEmpty())
                 sincronizar.addAll(sinc)
         } catch (ex: Exception) {
@@ -114,7 +117,6 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
                     val data: MutableMap<String, Any> = HashMap()
                     for (manga in sinc) {
                         manga.sincronizacao = envio
-                        manga.caminhos.forEach { c -> c.manga = null }
                         data[getIdCloud(manga)] = manga
                     }
                     val result = docRef.set(data)
@@ -128,7 +130,7 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
 
                 mLOG.info("Concluído envio de dados a cloud.")
                 processado = true
-            } catch (e: java.lang.Exception) {
+            } catch (e: Exception) {
                 sincronizar.addAll(sinc)
                 mLOG.error("Erro ao enviar dados a cloud, adicionado arquivos para novo ciclo. ${e.message}", e)
                 throw e
@@ -141,7 +143,7 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
         var processado = false
         try {
             mLOG.info("Recebendo dados a cloud.... ")
-            val lista: MutableList<Manga> = ArrayList<Manga>()
+            val lista = mutableListOf<com.fenix.ordenararquivos.model.Manga>()
             val atual = LocalDate.now().format(formaterData)
 
             val query = DB.collection(collection).get()
@@ -154,14 +156,14 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
                     continue
 
                 for (key in document.data.keys) {
-                    val obj = document.data[key] as HashMap<String, String>
-                    val sinc = LocalDateTime.parse(obj["sincronizacao"], formaterDataHora)
+                    val obj = document.data[key] as HashMap<String, *>
+                    val sinc = LocalDateTime.parse(obj["sincronizacao"] as String, formaterDataHora)
                     if (sinc.isAfter(sincronizacao!!.recebimento)) {
-                        val manga = Manga(0, obj)
+                        val manga = Manga.toManga(0, obj)
                         lista.add(manga)
-                        val caminhos = (document.data[key] as HashMap<*, *>)["caminhos"] as HashMap<String, String>
-                        for (caminho in caminhos.keys)
-                            manga.addCaminhos(Caminhos(manga, (caminhos[caminho] as HashMap<String, String>) ))
+                        val caminhos = (document.data[key] as HashMap<*, *>)["caminhos"] as List<*>
+                        for (caminho in caminhos)
+                          manga.addCaminhos(Caminhos.toCominhos(manga, (caminho as HashMap<String, *>) ))
                     }
                 }
             }
@@ -169,7 +171,7 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
             mLOG.info("Processando retorno dados a cloud: " + lista.size + " registros.")
             registros = lista.size
             for (sinc in lista) {
-                var manga: Manga? = service.find(sinc)
+                var manga: com.fenix.ordenararquivos.model.Manga? = service.find(sinc)
                 if (manga != null)
                     manga.merge(sinc)
                 else
@@ -183,7 +185,7 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
 
             processado = true
             mLOG.info("Concluído recebimento de dados a cloud.")
-        } catch (e: java.lang.Exception) {
+        } catch (e: Exception) {
             mLOG.error("Erro ao receber dados a cloud. ${e.message}".trimIndent(), e)
             throw e
         }
@@ -216,7 +218,7 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
             controller.animacaoSincronizacao(isProcessando = false, isErro = false)
             sincronizando = false
             true
-        } catch (e: java.lang.Exception) {
+        } catch (e: Exception) {
             controller.animacaoSincronizacao(isProcessando = false, isErro = true)
             false
         }
