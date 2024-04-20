@@ -26,6 +26,8 @@ data class Caminhos(
 
     constructor(id: Long, manga: Manga, capitulo: String, pagina: Int, pasta: String) : this(id, manga, capitulo, pagina, pagina.toString(), pasta) { }
 
+    constructor(manga: Manga,  obj : HashMap<String, String>) : this(obj["id"]!!.toLong(), manga, obj["capitulo"]!!, obj["_numero"]!!.toInt(), obj["nomePasta"]!!) { }
+
     override fun toString(): String {
         return "Caminhos [capitulo=$capitulo, numero=$numero, nomePasta=$nomePasta]"
     }

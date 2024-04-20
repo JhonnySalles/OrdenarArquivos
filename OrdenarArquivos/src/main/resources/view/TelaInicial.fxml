@@ -42,6 +42,13 @@
                         </JFXTextField>
                      </children>
                   </VBox>
+                  <JFXButton fx:id="btnCompartilhamento" alignment="TOP_CENTER" buttonType="RAISED" contentDisplay="GRAPHIC_ONLY" graphicTextGap="0.0" onAction="#onBtnCompartilhamento" prefHeight="45.0" prefWidth="2.0">
+                     <graphic>
+                        <ImageView fx:id="imgCompartilhamento" fitHeight="30.0" fitWidth="30.0" pickOnBounds="true" preserveRatio="true">
+                           <Image url="@../images/icoCompartilhamento_48.png"/>
+                        </ImageView>
+                     </graphic>
+                  </JFXButton>
                   <JFXButton fx:id="btnGerarCapa" minHeight="35.0" minWidth="50.0" onAction="#onBtnGerarCapa" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Gerar Capa" textFill="WHITE" />
                   <JFXButton fx:id="btnCompactar" minHeight="35.0" minWidth="50.0" onAction="#onBtnCompactar" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Compactar" textFill="WHITE" />
                   <JFXButton fx:id="btnLimparTudo" minHeight="35.0" minWidth="50.0" onAction="#onBtnLimparTudo" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Limpar Tudo" textFill="WHITE" />

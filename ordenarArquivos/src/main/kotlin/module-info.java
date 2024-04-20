@@ -19,8 +19,14 @@ module com.fenix.ordenararquivos {
     requires logback.core;
     requires kotlin.stdlib;
     requires net.kurobako.gesturefx;
+    requires firebase.admin;
+    requires com.google.auth.oauth2;
+    requires com.google.auth;
+    requires google.cloud.core;
+    requires google.cloud.firestore;
+    requires com.google.api.apicommon;
 
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;
-    opens com.fenix.ordenararquivos.model to javafx.base;
+    opens com.fenix.ordenararquivos.model to javafx.base, google.cloud.firestore;
 }

@@ -1,11 +1,13 @@
 package com.fenix.ordenararquivos.controller
 
+import com.fenix.ordenararquivos.animation.Animacao
 import com.fenix.ordenararquivos.configuration.Configuracao.loadProperties
 import com.fenix.ordenararquivos.model.Caminhos
 import com.fenix.ordenararquivos.model.Capa
 import com.fenix.ordenararquivos.model.Manga
 import com.fenix.ordenararquivos.model.TipoCapa
 import com.fenix.ordenararquivos.service.MangaServices
+import com.fenix.ordenararquivos.service.SincronizacaoServices
 import com.jfoenix.controls.*
 import javafx.animation.Interpolator
 import javafx.application.Platform
@@ -15,6 +17,7 @@ import javafx.beans.property.ReadOnlyProperty
 import javafx.beans.value.ChangeListener
 import javafx.beans.value.ObservableValue
 import javafx.collections.FXCollections
+import javafx.collections.ListChangeListener
 import javafx.collections.ObservableList
 import javafx.concurrent.Task
 import javafx.css.PseudoClass
@@ -196,6 +199,12 @@ class TelaInicialController : Initializable {
     @FXML
     private lateinit var sliderTras: JFXSlider
 
+    @FXML
+    private lateinit var btnCompartilhamento: JFXButton
+
+    @FXML
+    private lateinit var imgCompartilhamento: ImageView
+
 
     private var mListaCaminhos: MutableList<Caminhos> = arrayListOf()
     private var mObsListaCaminhos: ObservableList<Caminhos> = FXCollections.observableArrayList(mListaCaminhos)
@@ -213,6 +222,12 @@ class TelaInicialController : Initializable {
     private lateinit var mGestureTras: GesturePane
     private lateinit var mImagemTudo: ImageView
     private lateinit var mGestureTudo: GesturePane
+
+    private val animacao = Animacao()
+    private var sincronizacao = SincronizacaoServices(this)
+
+    @FXML
+    private fun onBtnCompartilhamento() = compartilhamento()
 
     private fun limpaCampos() {
         limparCapas()
@@ -393,7 +408,7 @@ class TelaInicialController : Initializable {
         apGlobal.cursorProperty().set(null)
     }
 
-    private fun validaCampos(isCapa : Boolean = false): Boolean {
+    private fun validaCampos(isCapa: Boolean = false): Boolean {
         var valida = true
         if (mCaminhoOrigem == null || !mCaminhoOrigem!!.exists()) {
             txtSimularPasta.text = "Origem não informado."
@@ -446,7 +461,7 @@ class TelaInicialController : Initializable {
         )
     }
 
-    private fun carregaManga() : Boolean {
+    private fun carregaManga(): Boolean {
         mManga = mService.find(geraManga(0))
 
         lblAviso.text = if (mManga != null) "Manga localizado." else "Manga não localizado."
@@ -710,7 +725,7 @@ class TelaInicialController : Initializable {
     private val TRAS = " Tras"
     private val SUMARIO = " zSumário"
 
-    private fun gerarCapa(nomePasta : String, mesclarCapaTudo: Boolean) : File {
+    private fun gerarCapa(nomePasta: String, mesclarCapaTudo: Boolean): File {
         val destinoCapa = criaPasta("$nomePasta Capa\\")
         if (!mObsListaImagesSelected.isEmpty()) {
             mLOG.info("Processando imagens de capa.")
@@ -799,7 +814,8 @@ class TelaInicialController : Initializable {
                 }
             } else if (mObsListaImagesSelected.stream()
                     .anyMatch { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.isDupla } || mObsListaImagesSelected.stream()
-                    .anyMatch { it.tipo.compareTo(TipoCapa.SUMARIO) != 0 && it.isDupla }) {
+                    .anyMatch { it.tipo.compareTo(TipoCapa.SUMARIO) != 0 && it.isDupla }
+            ) {
                 var tudo = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.isDupla }.findFirst()
                 if (tudo.isEmpty)
                     tudo = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.SUMARIO) != 0 && it.isDupla }.findFirst()
@@ -993,27 +1009,15 @@ class TelaInicialController : Initializable {
             var resultado = ""
             val stdInput = BufferedReader(InputStreamReader(mProcess!!.getInputStream()))
             var s: String?
-            while (stdInput.readLine().also { s = it } != null) resultado += """
-     $s
-     
-     """.trimIndent()
+            while (stdInput.readLine().also { s = it } != null) resultado += "$s"
             if (!resultado.isEmpty()) mLOG.info("Output comand:\n$resultado")
             s = null
             resultado = ""
             val stdError = BufferedReader(InputStreamReader(mProcess!!.getErrorStream()))
-            while (stdError.readLine().also { s = it } != null) resultado += """
-     $s
-     
-     """.trimIndent()
+            while (stdError.readLine().also { s = it } != null) resultado += "$s"
             if (!resultado.isEmpty()) {
                 success = false
-                mLOG.info(
-                    """
-                    Error comand:
-                    $resultado
-                    Necessário adicionar o rar no path e reiniciar a aplicação.
-                    """.trimIndent()
-                )
+                mLOG.info("Error comand: $resultado Necessário adicionar o rar no path e reiniciar a aplicação.")
             }
             success
         } catch (e: Exception) {
@@ -1045,27 +1049,15 @@ class TelaInicialController : Initializable {
             var resultado = ""
             val stdInput = BufferedReader(InputStreamReader(mProcess!!.getInputStream()))
             var s: String?
-            while (stdInput.readLine().also { s = it } != null) resultado += """
-     $s
-     
-     """.trimIndent()
+            while (stdInput.readLine().also { s = it } != null) resultado += "$s"
             if (!resultado.isEmpty()) mLOG.info("Output comand:\n$resultado")
             s = null
             resultado = ""
             val stdError = BufferedReader(InputStreamReader(mProcess!!.getErrorStream()))
-            while (stdError.readLine().also { s = it } != null) resultado += """
-     $s
-     
-     """.trimIndent()
+            while (stdError.readLine().also { s = it } != null) resultado += "$s"
             if (!resultado.isEmpty()) {
                 success = false
-                mLOG.info(
-                    """
-                    Error comand:
-                    $resultado
-                    Necessário adicionar o rar no path e reiniciar a aplicação.
-                    """.trimIndent()
-                )
+                mLOG.info("Error comand: $resultado Necessário adicionar o rar no path e reiniciar a aplicação. ".trimIndent())
             }
             success
         } catch (e: Exception) {
@@ -1297,7 +1289,7 @@ class TelaInicialController : Initializable {
     }
 
     private fun listaItens() {
-        mObsListaItens = if (mCaminhoOrigem != null && !mCaminhoOrigem!!.list().isNullOrEmpty() )
+        mObsListaItens = if (mCaminhoOrigem != null && !mCaminhoOrigem!!.list().isNullOrEmpty())
             FXCollections.observableArrayList(*mCaminhoOrigem!!.list(mFilterNomeArquivo))
         else
             FXCollections.observableArrayList("")
@@ -1314,12 +1306,14 @@ class TelaInicialController : Initializable {
             txtNomePastaManga.text.trim { it <= ' ' }
         val isJapanese = txtNomePastaManga.text.contains("[JPN]");
         val tudo = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 }.findFirst()
-        val semCapa = if (tudo.isEmpty) {if (isJapanese) " Sem capa" else " (Sem capa)"} else ""
+        val semCapa = if (tudo.isEmpty) {
+            if (isJapanese) " Sem capa" else " (Sem capa)"
+        } else ""
         val posFix = if (isJapanese) " (Jap)$semCapa" else semCapa
         txtNomeArquivo.text = nome + " " + txtVolume.text.trim { it <= ' ' } + posFix + ".cbr"
     }
 
-    private fun getNumber(texto : String) : Double? {
+    private fun getNumber(texto: String): Double? {
         val numero = texto.trim { it <= ' ' }.replace(texto.replace(NUMBER_PATTERN.toRegex(), "").toRegex(), "").trim { it <= ' ' }
         return try {
             java.lang.Double.valueOf(numero)
@@ -1328,7 +1322,7 @@ class TelaInicialController : Initializable {
         }
     }
 
-    private fun incrementaCapitulos(volumeAtual : String, volumeAnterior : String) {
+    private fun incrementaCapitulos(volumeAtual: String, volumeAnterior: String) {
         if (volumeAnterior == volumeAtual || txtGerarFim.text.isNullOrEmpty() || txtGerarInicio.text.isNullOrEmpty())
             return
 
@@ -1369,12 +1363,14 @@ class TelaInicialController : Initializable {
 
     @FXML
     private fun onBtnSubtrair() {
-        if (!txtQuantidade.text.isEmpty()) modificaNumeroPaginas(Integer.valueOf(txtQuantidade.text) * -1)
+        if (!txtQuantidade.text.isEmpty())
+            modificaNumeroPaginas(Integer.valueOf(txtQuantidade.text) * -1)
     }
 
     @FXML
     private fun onBtnSomar() {
-        if (!txtQuantidade.text.isEmpty()) modificaNumeroPaginas(Integer.valueOf(txtQuantidade.text))
+        if (!txtQuantidade.text.isEmpty())
+            modificaNumeroPaginas(Integer.valueOf(txtQuantidade.text))
     }
 
     private fun modificaNumeroPaginas(quantidade: Int) {
@@ -1423,9 +1419,7 @@ class TelaInicialController : Initializable {
             val inicio = getNumber(txtGerarInicio.text)?.toInt() ?: return
             val fim = getNumber(txtGerarFim.text)?.toInt() ?: return
             if (inicio <= fim) {
-                var texto = "" // txtAreaImportar.getText();
-                // if (!texto.isEmpty())
-                // texto += "\r\n";
+                var texto = ""
                 val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
                 for (i in inicio..fim) texto += String.format(padding, i) + "-" + if (i < fim) "\r\n" else ""
                 txtAreaImportar.text = texto
@@ -1433,6 +1427,49 @@ class TelaInicialController : Initializable {
         } else {
             if (txtGerarInicio.text.trim { it <= ' ' }.isEmpty()) txtGerarInicio.unFocusColor = Color.GRAY
             if (txtGerarFim.text.trim { it <= ' ' }.isEmpty()) txtGerarFim.unFocusColor = Color.GRAY
+        }
+    }
+
+    fun setLog(texto: String, isError : Boolean = false) {
+        if (isError) {
+            lblAlerta.text = texto
+            lblAviso.text = ""
+        } else {
+            lblAlerta.text = ""
+            lblAviso.text = texto
+        }
+    }
+
+    fun compartilhamento() {
+        val compartilha: Task<Boolean> = object : Task<Boolean>() {
+            override fun call(): Boolean {
+                sincronizacao.consultar()
+                return sincronizacao.sincroniza()
+            }
+
+            override fun succeeded() {
+                if (!value)
+                    setLog("Não foi possível sincronizar os dados com a cloud", true)
+                else
+                    setLog("Sincronização de dados com a cloud concluída com sucesso.")
+            }
+        }
+
+        val t = Thread(compartilha)
+        t.start()
+    }
+
+    fun animacaoSincronizacao(isProcessando: Boolean, isErro: Boolean) {
+        Platform.runLater {
+            if (isProcessando)
+                animacao.tmSincronizacao.play()
+            else {
+                animacao.tmSincronizacao.stop()
+                if (isErro)
+                    imgCompartilhamento.setImage(imgAnimaCompartilhaErro)
+                else
+                    imgCompartilhamento.setImage(imgAnimaCompartilhaEnvio)
+            }
         }
     }
 
@@ -1598,14 +1635,14 @@ class TelaInicialController : Initializable {
         textFieldMostraFinalTexto(txtPastaOrigem)
 
         txtPastaOrigem.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean ->
-                if (newPropertyValue)
-                    mPastaAnterior = txtPastaOrigem.text
+            if (newPropertyValue)
+                mPastaAnterior = txtPastaOrigem.text
 
-                if (oldPropertyValue && txtPastaOrigem.text.compareTo(mPastaAnterior, ignoreCase = true) != 0)
-                    carregaPastaOrigem()
+            if (oldPropertyValue && txtPastaOrigem.text.compareTo(mPastaAnterior, ignoreCase = true) != 0)
+                carregaPastaOrigem()
 
-                txtPastaOrigem.unFocusColor = Color.GRAY
-            }
+            txtPastaOrigem.unFocusColor = Color.GRAY
+        }
         txtPastaOrigem.onKeyPressed = EventHandler { e: KeyEvent ->
             if (e.code == KeyCode.ENTER)
                 txtVolume.requestFocus()
@@ -1616,9 +1653,9 @@ class TelaInicialController : Initializable {
         }
 
         txtPastaDestino.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? ->
-                if (oldPropertyValue) carregaPastaDestino()
-                txtPastaDestino.unFocusColor = Color.GRAY
-            }
+            if (oldPropertyValue) carregaPastaDestino()
+            txtPastaDestino.unFocusColor = Color.GRAY
+        }
         txtPastaDestino.onKeyPressed = EventHandler { e: KeyEvent ->
             if (e.code == KeyCode.ENTER)
                 txtNomePastaManga.requestFocus()
@@ -1632,26 +1669,26 @@ class TelaInicialController : Initializable {
         txtNomePastaManga.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
 
         txtNomeArquivo.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
-                txtPastaDestino.unFocusColor = Color.GRAY
-            }
+            txtPastaDestino.unFocusColor = Color.GRAY
+        }
         txtNomeArquivo.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
         txtNomeArquivo.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? ->
-                if (oldPropertyValue && mManga == null)
-                    mManga = geraManga(0)
+            if (oldPropertyValue && mManga == null)
+                mManga = geraManga(0)
 
-            }
+        }
 
         var volumeAnterior = ""
         txtVolume.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean ->
-                if (oldPropertyValue) {
-                    simulaNome()
-                    if (!carregaManga())
-                        incrementaCapitulos(txtVolume.text, volumeAnterior)
-                }
-
-                if (newPropertyValue)
-                    volumeAnterior = txtVolume.text
+            if (oldPropertyValue) {
+                simulaNome()
+                if (!carregaManga())
+                    incrementaCapitulos(txtVolume.text, volumeAnterior)
             }
+
+            if (newPropertyValue)
+                volumeAnterior = txtVolume.text
+        }
 
         txtVolume.onKeyPressed = EventHandler { e: KeyEvent ->
             if (e.code == KeyCode.ENTER)
@@ -1666,21 +1703,21 @@ class TelaInicialController : Initializable {
         txtNomePastaCapitulo.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code.toString() == "ENTER") clickTab() }
 
         txtGerarInicio.focusedProperty().addListener { arg0: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
-                txtPastaDestino.unFocusColor = Color.GRAY
-            }
+            txtPastaDestino.unFocusColor = Color.GRAY
+        }
         txtGerarInicio.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
-                if (newValue != null && !newValue.matches(NUMBER_REGEX))
-                    txtGerarInicio.text = oldValue
-            }
+            if (newValue != null && !newValue.matches(NUMBER_REGEX))
+                txtGerarInicio.text = oldValue
+        }
         txtGerarInicio.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code.toString() == "ENTER") clickTab() }
 
         txtGerarFim.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
-                txtPastaDestino.unFocusColor = Color.GRAY
-            }
+            txtPastaDestino.unFocusColor = Color.GRAY
+        }
         txtGerarFim.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
-                if (newValue != null && !newValue.matches(NUMBER_REGEX))
-                    txtGerarFim.text = oldValue
-            }
+            if (newValue != null && !newValue.matches(NUMBER_REGEX))
+                txtGerarFim.text = oldValue
+        }
         txtGerarFim.onKeyPressed = EventHandler { e: KeyEvent ->
             if (e.code == KeyCode.ENTER) {
                 onBtnGerarCapitulos()
@@ -1697,7 +1734,7 @@ class TelaInicialController : Initializable {
         var lastCaretPos = 0
         txtAreaImportar.onKeyPressed = EventHandler { e: KeyEvent ->
             if (e.isControlDown && !e.isShiftDown) {
-                when(e.code) {
+                when (e.code) {
                     KeyCode.ENTER -> onBtnImporta()
                     KeyCode.D,
                     KeyCode.E -> {
@@ -1730,7 +1767,7 @@ class TelaInicialController : Initializable {
                     }
                 }
             } else if (e.isControlDown && e.isShiftDown) {
-                when(e.code) {
+                when (e.code) {
                     KeyCode.UP,
                     KeyCode.DOWN -> {
                         if (txtAreaImportar.text.isEmpty() || !txtAreaImportar.text.contains("\n"))
@@ -1797,9 +1834,9 @@ class TelaInicialController : Initializable {
 
         txtQuantidade.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> txtPastaDestino.unFocusColor = Color.GRAY }
         txtQuantidade.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
-                if (newValue != null && !newValue.matches(NUMBER_REGEX))
-                    txtGerarFim.text = oldValue
-            }
+            if (newValue != null && !newValue.matches(NUMBER_REGEX))
+                txtGerarFim.text = oldValue
+        }
 
         cbMesclarCapaTudo.selectedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> reloadCapa() }
         cbAjustarMargemCapa.selectedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> reloadCapa() }
@@ -1927,6 +1964,26 @@ class TelaInicialController : Initializable {
         } catch (e: Exception) {
             mLOG.error("Erro ao obter o caminho do winrar.", e)
         }
+
+        animacao.animaSincronizacao(imgCompartilhamento, imgAnimaCompartilha, imgAnimaCompartilhaEspera)
+
+        sincronizacao.setObserver { observable: ListChangeListener.Change<out Manga> ->
+            if (!sincronizacao.isSincronizando()) Platform.runLater {
+                if (!observable.list.isEmpty()) {
+                    lblAviso.text = "Pendente de envio " + observable.list.size + " registro(s)."
+                    imgCompartilhamento.image = imgAnimaCompartilhaEspera
+                } else
+                    imgCompartilhamento.image = imgAnimaCompartilha
+            }
+        }
+
+        if (!sincronizacao.isConfigurado())
+            imgCompartilhamento.image = imgAnimaCompartilhaErro
+        else if (sincronizacao.listSize() > 0) {
+            lblAviso.text = "Pendente de envio " + sincronizacao.listSize() + " registro(s)."
+            imgCompartilhamento.image = imgAnimaCompartilhaEspera
+        } else
+            imgCompartilhamento.image = imgAnimaCompartilha
     }
 
     companion object {
@@ -1938,5 +1995,10 @@ class TelaInicialController : Initializable {
 
         val fxmlLocate: URL get() = TelaInicialController::class.java.getResource("/view/TelaInicial.fxml")
         val iconLocate: String get() = "/images/icoProcessar_512.png"
+
+        val imgAnimaCompartilha = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamento_48.png"))
+        val imgAnimaCompartilhaEspera = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamentoEspera_48.png"))
+        val imgAnimaCompartilhaErro = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamentoErro_48.png"))
+        val imgAnimaCompartilhaEnvio = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamentoEnvio_48.png"))
     }
 }

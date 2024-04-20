@@ -11,7 +11,8 @@ data class Manga(
     var capitulos: String = "",
     var quantidade: Int = 0,
     var atualizacao: LocalDateTime = LocalDateTime.now(),
-    var caminhos: MutableList<Caminhos> = arrayListOf()
+    var caminhos: MutableList<Caminhos> = arrayListOf(),
+    var sincronizacao: String  = ""
 ) {
     constructor(
         id: Long,
@@ -31,17 +32,37 @@ data class Manga(
         capitulos,
         quantidade,
         atualizacao
-    ) {
+    ) { }
 
-    }
+    constructor(
+        id : Long,
+        obj : HashMap<String, String>
+    ) : this(
+        id,
+        obj["nome"]!!,
+        obj["volume"]!!,
+        obj["capitulo"]!!,
+        obj["arquivo"]!!,
+        obj["capitulos"]!!,
+        obj["quantidade"]!!.toInt()
+    ) { }
 
     fun addCaminhos(caminhos: Caminhos) {
         this.caminhos.add(caminhos)
     }
 
+    fun merge(manga: Manga) {
+        this.nome = manga.nome
+        this.volume = manga.volume
+        this.capitulo = manga.capitulo
+        this.arquivo = manga.arquivo
+        this.capitulos = manga.capitulos
+        this.quantidade = manga.quantidade
+        this.caminhos = manga.caminhos
+    }
+
     override fun toString(): String {
-        return ("Manga [id=" + id + ", nome=" + nome + ", volume=" + volume + ", capitulo=" + capitulo + ", arquivo="
-                + arquivo + "]")
+        return ("Manga [id=" + id + ", nome=" + nome + ", volume=" + volume + ", capitulo=" + capitulo + ", arquivo=" + arquivo + "]")
     }
 
     override fun equals(other: Any?): Boolean {

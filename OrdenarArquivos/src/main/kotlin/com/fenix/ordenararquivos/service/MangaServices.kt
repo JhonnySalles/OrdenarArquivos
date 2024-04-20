@@ -5,6 +5,7 @@ import com.fenix.ordenararquivos.database.DataBase.closeStatement
 import com.fenix.ordenararquivos.database.DataBase.instancia
 import com.fenix.ordenararquivos.model.Caminhos
 import com.fenix.ordenararquivos.model.Manga
+import com.fenix.ordenararquivos.util.Utils
 import org.slf4j.LoggerFactory
 import java.sql.*
 import java.time.LocalDateTime
@@ -19,6 +20,8 @@ class MangaServices {
     private val mINSERT_CAMINHO = "INSERT INTO Caminho (id_manga, capitulo, pagina, pasta) VALUES (?,?,?,?)"
     private val mSELECT_CAMINHO = "SELECT id, capitulo, pagina, pasta FROM Caminho WHERE id_manga = ?"
     private val mDELETE_CAMINHO = "DELETE FROM Caminho WHERE id_manga = ?"
+
+    private val mSELECT_ENVIO = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE atualizacao >= ?"
 
     private var conn: Connection = instancia
 
@@ -35,7 +38,9 @@ class MangaServices {
         }
     }
 
-    fun save(manga: Manga) {
+    fun findEnvio(envio: LocalDateTime) : List<Manga> = select(envio)
+
+    fun save(manga: Manga, isSendCloud : Boolean = true) {
         manga.atualizacao = LocalDateTime.now()
         try {
             if (manga.id == 0L)
@@ -46,6 +51,9 @@ class MangaServices {
             delete(manga.id)
             for (caminho in manga.caminhos)
                 insert(manga.id, caminho)
+
+            if (isSendCloud)
+                SincronizacaoServices.enviar(manga)
         } catch (e: Exception) {
             mLOG.warn("Erro ao salvar o manga.")
         }
@@ -66,7 +74,7 @@ class MangaServices {
                 manga = Manga(
                     rs.getLong("id"), rs.getString("nome"), rs.getString("volume"),
                     rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
-                    rs.getString("capitulos"), toDateTime(rs.getString("atualizacao"))
+                    rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
                 )
                 manga.caminhos = select(manga)
             }
@@ -91,7 +99,7 @@ class MangaServices {
             st.setString(4, manga.arquivo)
             st.setInt(5, manga.quantidade)
             st.setString(6, manga.capitulos)
-            st.setString(7, fromDateTime(manga.atualizacao))
+            st.setString(7, Utils.fromDateTime(manga.atualizacao))
             st.setLong(8, manga.id)
             val rowsAffected = st.executeUpdate()
             if (rowsAffected < 1) {
@@ -118,8 +126,8 @@ class MangaServices {
             st.setString(++index, manga.arquivo)
             st.setInt(++index, manga.quantidade)
             st.setString(++index, manga.capitulos)
-            st.setString(++index, fromDateTime(LocalDateTime.now()))
-            st.setString(++index, fromDateTime(manga.atualizacao))
+            st.setString(++index, Utils.fromDateTime(LocalDateTime.now()))
+            st.setString(++index, Utils.fromDateTime(manga.atualizacao))
             val rowsAffected = st.executeUpdate()
             if (rowsAffected < 1) {
                 mLOG.info("Nenhum registro encontrado.")
@@ -223,13 +231,31 @@ class MangaServices {
         return null
     }
 
-    companion object {
-        private fun toDateTime(dateTime: String): LocalDateTime {
-            return if (dateTime.isEmpty()) LocalDateTime.MIN else LocalDateTime.parse(dateTime)
-        }
-
-        private fun fromDateTime(dateTime: LocalDateTime): String {
-            return dateTime.toString()
+    @Throws(SQLException::class)
+    private fun select(envio: LocalDateTime): List<Manga> {
+        var st: PreparedStatement? = null
+        var rs: ResultSet? = null
+        return try {
+            st = conn.prepareStatement(mSELECT_ENVIO)
+            st.setString(1, Utils.fromDateTime(envio))
+            rs = st.executeQuery()
+            val list = ArrayList<Manga>()
+            while (rs.next()) {
+                val manga = Manga(rs.getLong("id"), rs.getString("nome"), rs.getString("volume"),
+                    rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
+                    rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
+                )
+                manga.caminhos = select(manga)
+                list.add(manga)
+            }
+            list
+        } catch (e: SQLException) {
+            mLOG.error("Erro ao buscar os envios.", e)
+            throw e
+        } finally {
+            closeStatement(st)
+            closeResultSet(rs)
         }
     }
+
 }

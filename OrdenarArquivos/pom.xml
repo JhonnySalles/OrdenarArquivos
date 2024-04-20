@@ -6,7 +6,7 @@
 
     <groupId>com.fenix</groupId>
     <artifactId>ordenarArquivos</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.2-SNAPSHOT</version>
     <name>OrdenarArquivos</name>
 
     <properties>
@@ -137,6 +137,13 @@
             <groupId>net.kurobako</groupId>
             <artifactId>gesturefx</artifactId>
             <version>0.7.1</version>
+        </dependency>
+
+        <!-- Share DB-->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>9.2.0</version>
         </dependency>
     </dependencies>
 
