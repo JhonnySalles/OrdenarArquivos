@@ -25,6 +25,8 @@ module com.fenix.ordenararquivos {
     requires google.cloud.core;
     requires google.cloud.firestore;
     requires com.google.api.apicommon;
+    requires grpc.api;
+    requires grpc.core;
 
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;

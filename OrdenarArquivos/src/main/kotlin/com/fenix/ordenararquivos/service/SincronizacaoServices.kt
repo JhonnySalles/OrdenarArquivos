@@ -3,15 +3,17 @@ package com.fenix.ordenararquivos.service
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.database.DataBase.instancia
+import com.fenix.ordenararquivos.model.Sincronizacao
 import com.fenix.ordenararquivos.model.firebase.Caminhos
 import com.fenix.ordenararquivos.model.firebase.Manga
-import com.fenix.ordenararquivos.model.Sincronizacao
 import com.fenix.ordenararquivos.util.Utils
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.firestore.Firestore
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.cloud.FirestoreClient
+import io.grpc.LoadBalancerRegistry
+import io.grpc.internal.PickFirstLoadBalancerProvider
 import javafx.application.Platform
 import javafx.collections.FXCollections
 import javafx.collections.ListChangeListener
@@ -25,7 +27,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.stream.Collectors
-import kotlin.collections.HashMap
+
 
 class SincronizacaoServices(private val controller: TelaInicialController) : TimerTask() {
 
@@ -197,6 +199,8 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
             return false
 
         return try {
+            LoadBalancerRegistry.getDefaultRegistry().register(PickFirstLoadBalancerProvider())
+
             sincronizando = true
             controller.animacaoSincronizacao(isProcessando = true, isErro = false)
             processados = ""
