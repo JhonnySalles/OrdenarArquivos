@@ -34,7 +34,7 @@
                   <VBox HBox.hgrow="ALWAYS">
                      <children>
                         <Label fx:id="lblTitulo26" styleClass="texto-stilo-1" text="Simulação do caminho" textFill="WHITE" />
-                        <JFXTextField fx:id="txtSimularPasta" prefHeight="25.0" prefWidth="344.0" unFocusColor="GREY" VBox.vgrow="ALWAYS">
+                        <JFXTextField fx:id="txtSimularPasta" prefHeight="25.0" prefWidth="290.0" unFocusColor="GREY" VBox.vgrow="ALWAYS">
                            <styleClass>
                               <String fx:value="texto-stilo-1" />
                               <String fx:value="background-Black2" />
@@ -49,10 +49,11 @@
                         </ImageView>
                      </graphic>
                   </JFXButton>
+                  <JFXButton fx:id="btnAjustarNomes" minHeight="35.0" minWidth="50.0" onAction="#onAjustarNomes" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Ajustar nomes" textFill="WHITE" />
                   <JFXButton fx:id="btnGerarCapa" minHeight="35.0" minWidth="50.0" onAction="#onBtnGerarCapa" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Gerar Capa" textFill="WHITE" />
-                  <JFXButton fx:id="btnCompactar" minHeight="35.0" minWidth="50.0" onAction="#onBtnCompactar" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Compactar" textFill="WHITE" />
-                  <JFXButton fx:id="btnLimparTudo" minHeight="35.0" minWidth="50.0" onAction="#onBtnLimparTudo" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Limpar Tudo" textFill="WHITE" />
-                  <JFXButton fx:id="btnProcessar" accessibleText="PROCESSA" minHeight="35.0" minWidth="50.0" onAction="#onBtnProcessa" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Processar" textFill="WHITE">
+                  <JFXButton fx:id="btnCompactar" minHeight="35.0" minWidth="50.0" onAction="#onBtnCompactar" prefHeight="50.0" prefWidth="90.0" styleClass="background-Indigo1" text="Compactar" textFill="WHITE" />
+                  <JFXButton fx:id="btnLimparTudo" minHeight="35.0" minWidth="50.0" onAction="#onBtnLimparTudo" prefHeight="50.0" prefWidth="80.0" styleClass="background-Indigo1" text="Limpar" textFill="WHITE" />
+                  <JFXButton fx:id="btnProcessar" accessibleText="PROCESSA" minHeight="35.0" minWidth="50.0" onAction="#onBtnProcessa" prefHeight="50.0" prefWidth="80.0" styleClass="background-Indigo1" text="Processar" textFill="WHITE">
                      <tooltip>
                         <Tooltip text="Ctrl + Espaço" />
                      </tooltip></JFXButton>

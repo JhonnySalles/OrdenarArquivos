@@ -77,6 +77,9 @@ class TelaInicialController : Initializable {
     private lateinit var btnGerarCapa: JFXButton
 
     @FXML
+    private lateinit var btnAjustarNomes: JFXButton
+
+    @FXML
     private lateinit var txtSimularPasta: JFXTextField
 
     @FXML
@@ -305,6 +308,38 @@ class TelaInicialController : Initializable {
     }
 
     @FXML
+    private fun onAjustarNomes() {
+        if (!validaCampos(isAjusteNome = true))
+            return
+
+        CompletableFuture.runAsync {
+            var padding = 3
+            var ajustado = false
+
+            for (arquivo in mCaminhoOrigem!!.listFiles()!!)
+                if (arquivo.isFile) {
+                    if (arquivo.nameWithoutExtension.length > padding)
+                        padding = arquivo.nameWithoutExtension.length
+                }
+
+            for (arquivo in mCaminhoOrigem!!.listFiles()!!)
+                if (arquivo.isFile) {
+                    if (arquivo.nameWithoutExtension.length < padding) {
+                        ajustado = true
+                        val nome = arquivo.nameWithoutExtension.padStart(padding, '0') + "." + arquivo.extension
+                        renomeiaItem(arquivo.toPath(), nome)
+                    }
+                }
+            Platform.runLater {
+                if (ajustado)
+                    carregaPastaOrigem()
+
+                lblAviso.text = if (ajustado) "Nomes ajustado com sucesso com sucesso." else "Nenhum arquivo com problemas encontrado."
+            }
+        }
+    }
+
+    @FXML
     private fun onBtnVolumeMenos() {
         // Matches retorna se toda a string for o patern, no caso utiliza-se o inicio
         // para mostrar que tenha em toda a string.
@@ -408,13 +443,16 @@ class TelaInicialController : Initializable {
         apGlobal.cursorProperty().set(null)
     }
 
-    private fun validaCampos(isCapa: Boolean = false): Boolean {
+    private fun validaCampos(isCapa: Boolean = false, isAjusteNome: Boolean = false): Boolean {
         var valida = true
         if (mCaminhoOrigem == null || !mCaminhoOrigem!!.exists()) {
             txtSimularPasta.text = "Origem não informado."
             txtPastaOrigem.unFocusColor = Color.RED
             valida = false
         }
+
+        if (isAjusteNome)
+            return valida
 
         if (mCaminhoDestino == null || !mCaminhoDestino!!.exists()) {
             txtSimularPasta.text = "Destino não informado."
