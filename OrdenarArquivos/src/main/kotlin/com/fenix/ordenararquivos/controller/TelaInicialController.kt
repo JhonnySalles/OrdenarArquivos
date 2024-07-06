@@ -412,6 +412,7 @@ class TelaInicialController : Initializable {
         btnGerarCapa.isDisable = true
         btnLimparTudo.isDisable = true
         btnCompactar.isDisable = true
+        btnAjustarNomes.isDisable = true
         txtPastaOrigem.isDisable = true
         btnPesquisarPastaOrigem.isDisable = true
         txtPastaDestino.isDisable = true
@@ -428,6 +429,7 @@ class TelaInicialController : Initializable {
         btnGerarCapa.isDisable = false
         btnLimparTudo.isDisable = false
         btnCompactar.isDisable = false
+        btnAjustarNomes.isDisable = false
         txtPastaOrigem.isDisable = false
         btnPesquisarPastaOrigem.isDisable = false
         txtPastaDestino.isDisable = false
