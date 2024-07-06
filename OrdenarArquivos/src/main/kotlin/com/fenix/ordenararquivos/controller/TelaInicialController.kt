@@ -910,7 +910,7 @@ class TelaInicialController : Initializable {
                     if (mListaCaminhos.size > 1)
                         proxCapitulo = mListaCaminhos[pagina].numero
 
-                    for (arquivos in mCaminhoOrigem!!.listFiles(mFilterNomeArquivo)) {
+                    for (arquivos in mCaminhoOrigem!!.listFiles(mFilterNomeArquivo).sorted()) {
                         if (mCANCELAR)
                             return true
 
@@ -1290,7 +1290,7 @@ class TelaInicialController : Initializable {
 
     private fun listaItens() {
         mObsListaItens = if (mCaminhoOrigem != null && !mCaminhoOrigem!!.list().isNullOrEmpty())
-            FXCollections.observableArrayList(*mCaminhoOrigem!!.list(mFilterNomeArquivo))
+            FXCollections.observableArrayList(mCaminhoOrigem!!.list(mFilterNomeArquivo)?.sorted())
         else
             FXCollections.observableArrayList("")
         lsVwListaImagens.items = mObsListaItens

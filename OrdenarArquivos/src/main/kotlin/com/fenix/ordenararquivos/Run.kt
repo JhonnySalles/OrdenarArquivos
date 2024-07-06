@@ -17,8 +17,7 @@ import kotlin.system.exitProcess
 
 class Run : Application() {
 
-    override
-    fun start(primaryStage: Stage) {
+    override fun start(primaryStage: Stage) {
         try {
             // Classe inicial
             val loader = FXMLLoader(TelaInicialController.fxmlLocate)
