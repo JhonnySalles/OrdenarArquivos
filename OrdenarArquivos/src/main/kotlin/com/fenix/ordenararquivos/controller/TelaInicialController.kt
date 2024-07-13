@@ -1705,7 +1705,16 @@ class TelaInicialController : Initializable {
             }
         }
 
-        txtNomePastaManga.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? -> if (oldPropertyValue) simulaNome() }
+        txtNomePastaManga.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? ->
+                if (oldPropertyValue) {
+                    txtNomePastaManga.text?.let {
+                        if (it.isNotEmpty() && it.contains("  "))
+                            txtNomePastaManga.text = it.replace("  ", " ")
+                    }
+
+                    simulaNome()
+                }
+        }
         txtNomePastaManga.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
 
         txtNomeArquivo.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
@@ -1715,7 +1724,6 @@ class TelaInicialController : Initializable {
         txtNomeArquivo.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? ->
             if (oldPropertyValue && mManga == null)
                 mManga = geraManga(0)
-
         }
 
         var volumeAnterior = ""
