@@ -1141,6 +1141,8 @@ class TelaInicialController : Initializable {
             return ImageIO.write(newImage, "png", arquivoDestino)
         } catch (e: IOException) {
             mLOG.error("Erro ao mesclar as imagens.", e)
+        } catch (e: Exception) {
+            mLOG.error("Erro ao mesclar as imagens.", e)
         }
         return false
     }
@@ -1171,12 +1173,15 @@ class TelaInicialController : Initializable {
             return ImageIO.write(frente, "png", destinoFrente) && ImageIO.write(tras, "png", destinoTras)
         } catch (e: IOException) {
             mLOG.error("Erro ao dividir as imagens.", e)
+        } catch (e: Exception) {
+            mLOG.error("Erro ao dividir as imagens.", e)
         }
         return false
     }
 
     private fun limpaMargemImagens(arquivo: File?, clearTopBottom: Boolean): File? {
-        if (arquivo == null || !cbAjustarMargemCapa.isSelected) return arquivo
+        if (arquivo == null || !cbAjustarMargemCapa.isSelected)
+            return arquivo
         val image: BufferedImage
         try {
             image = ImageIO.read(arquivo)
@@ -1241,7 +1246,9 @@ class TelaInicialController : Initializable {
             grFrente.dispose()
             ImageIO.write(frente, "png", arquivo)
         } catch (e: IOException) {
-            mLOG.error("Erro ao dividir as imagens.", e)
+            mLOG.error("Erro ao limpar as imagens.", e)
+        } catch (e: Exception) {
+            mLOG.error("Erro ao limpar as imagens.", e)
         }
         return arquivo
     }
