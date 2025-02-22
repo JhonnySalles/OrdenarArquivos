@@ -21,6 +21,7 @@ import javafx.collections.ListChangeListener
 import javafx.collections.ObservableList
 import javafx.concurrent.Task
 import javafx.css.PseudoClass
+import javafx.event.Event
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
@@ -63,6 +64,12 @@ class TelaInicialController : Initializable {
 
     @FXML
     private lateinit var tbTabRoot: JFXTabPane
+
+    @FXML
+    private lateinit var tbTabArquivo: Tab
+
+    @FXML
+    private lateinit var tbTabCapa: Tab
 
     @FXML
     private lateinit var btnLimparTudo: JFXButton
@@ -612,33 +619,15 @@ class TelaInicialController : Initializable {
 
     private fun remCapa(arquivo: String) {
         val capa = mObsListaImagesSelected.stream().filter { it.nome.equals(arquivo, ignoreCase = true) }.findFirst()
-        if (capa.isPresent) {
+        if (capa.isPresent)
             mObsListaImagesSelected.remove(capa.get())
-            if (capa.get().tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0) {
-                val frente = mObsListaImagesSelected.stream()
-                    .filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 }
-                    .findFirst()
-                if (frente.isPresent)
-                    CompletableFuture.runAsync {
-                        simularCapa(
-                            capa.get().tipo,
-                            carregaImagem(File(txtPastaOrigem.text + "\\" + frente.get().arquivo))
-                        )
-                        simularCapa(TipoCapa.TRAS, null)
-                    }
-                else
-                    simularCapa(TipoCapa.CAPA_COMPLETA, null)
-            } else
-                simularCapa(capa.get().tipo, null)
-        }
     }
 
     private fun addCapa(tipo: TipoCapa, arquivo: String) {
         val img = File(txtPastaOrigem.text + "\\" + arquivo)
         val isDupla = isPaginaDupla(img)
         if (tipo === TipoCapa.CAPA_COMPLETA) {
-            var capas =
-                mObsListaImagesSelected.stream().filter { it.tipo.compareTo(tipo) == 0 && it.direita != null }.findFirst()
+            var capas = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(tipo) == 0 && it.direita != null }.findFirst()
 
             if (capas.isEmpty)
                 capas = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(tipo) == 0 }.findFirst()
@@ -651,49 +640,22 @@ class TelaInicialController : Initializable {
                 val ext = img.name.substring(img.name.lastIndexOf("."))
                 val direita = File(PASTA_TEMPORARIA.toString() + "\\" + nome + TRAS + ext)
                 val esquerda = File(PASTA_TEMPORARIA.toString() + "\\" + nome + FRENTE + ext)
+                copiaItem(img, PASTA_TEMPORARIA)
+                divideImagens(img, esquerda, direita)
                 mObsListaImagesSelected.removeIf { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 }
                 mObsListaImagesSelected.add(Capa(arquivo, esquerda.name, tipo, isDupla))
                 mObsListaImagesSelected.removeIf { it.tipo.compareTo(TipoCapa.TRAS) == 0 }
                 mObsListaImagesSelected.add(Capa(arquivo, direita.name, TipoCapa.TRAS, false))
-                CompletableFuture.runAsync {
-                    try {
-                        copiaItem(img, PASTA_TEMPORARIA)
-                        divideImagens(img, esquerda, direita)
-                        simularCapa(tipo, carregaImagem(File(PASTA_TEMPORARIA.toString() + "\\" + img.name)))
-                        simularCapa(TipoCapa.TRAS, Image(direita.absolutePath))
-                    } catch (e: IOException) {
-                        mLOG.warn("Erro ao processar imagem: Capa completa, pagina dupla.", e)
-                    }
-                }
             } else if (frente == null) {
                 remCapa(arquivo)
                 mObsListaImagesSelected.add(Capa(arquivo, img.name, tipo, isDupla))
-                CompletableFuture.runAsync {
-                    try {
-                        copiaItem(img, PASTA_TEMPORARIA)
-                        simularCapa(tipo, carregaImagem(File(PASTA_TEMPORARIA.toString() + "\\" + img.name)))
-                    } catch (e: IOException) {
-                        mLOG.warn("Erro ao processar imagem: Capa completa frente.", e)
-                    }
-                }
+                copiaItem(img, PASTA_TEMPORARIA)
             } else if (tras == null) {
                 frente.direita = Capa(arquivo, img.name, tipo, isDupla)
                 mObsListaImagesSelected.add(frente.direita)
                 mObsListaImagesSelected.removeIf { it.tipo.compareTo(TipoCapa.TRAS) == 0 }
                 mObsListaImagesSelected.add(Capa(arquivo, img.name, TipoCapa.TRAS, false))
-                CompletableFuture.runAsync {
-                    try {
-                        copiaItem(img, PASTA_TEMPORARIA)
-                        val imagem = File(PASTA_TEMPORARIA.toString() + "\\" + img.name)
-                        simularCapa(
-                            tipo,
-                            carregaImagem(File(PASTA_TEMPORARIA.toString() + "\\" + frente.arquivo), imagem)
-                        )
-                        simularCapa(TipoCapa.TRAS, Image(imagem.absolutePath))
-                    } catch (e: IOException) {
-                        mLOG.warn("Erro ao processar imagem: Capa completa trazeira.", e)
-                    }
-                }
+                copiaItem(img, PASTA_TEMPORARIA)
             }
         } else {
             val capa = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(tipo) == 0 }.findFirst().orElse(Capa())
@@ -703,14 +665,7 @@ class TelaInicialController : Initializable {
             capa.isDupla = isDupla
             mObsListaImagesSelected.remove(capa)
             mObsListaImagesSelected.add(capa)
-            CompletableFuture.runAsync {
-                try {
-                    copiaItem(img, PASTA_TEMPORARIA)
-                    simularCapa(tipo, carregaImagem(File(PASTA_TEMPORARIA.toString() + "\\" + img.name)))
-                } catch (e: IOException) {
-                    mLOG.warn("Erro ao processar imagem: Capa Tipo $tipo.", e)
-                }
-            }
+            copiaItem(img, PASTA_TEMPORARIA)
         }
     }
 
@@ -1477,6 +1432,38 @@ class TelaInicialController : Initializable {
         }
     }
 
+    @FXML
+    private fun onSelectCapaChanged(event: Event) {
+        if (tbTabCapa.isSelected) {
+            mImagemTudo.image = null
+            mImagemFrente.image = null
+            mImagemTras.image = null
+
+            if (mObsListaImagesSelected.isNotEmpty()) {
+                mObsListaImagesSelected.stream().forEach {
+                    if (it.tipo == TipoCapa.CAPA_COMPLETA)
+                        CompletableFuture.runAsync {
+                            try {
+                                simularCapa(it.tipo, carregaImagem(File(PASTA_TEMPORARIA.toString() + "\\" + it.nome)))
+                                if (mObsListaImagesSelected.none { it.tipo == TipoCapa.CAPA })
+                                    simularCapa(TipoCapa.CAPA, Image(PASTA_TEMPORARIA.toString() + "\\" + it.arquivo))
+                            } catch (e: IOException) {
+                                mLOG.warn("Erro ao processar imagem: Capa ${it.tipo}.", e)
+                            }
+                        }
+                    else
+                        CompletableFuture.runAsync {
+                            try {
+                                simularCapa(it.tipo, carregaImagem(File(PASTA_TEMPORARIA.toString() + "\\" + it.arquivo)))
+                            } catch (e: IOException) {
+                                mLOG.warn("Erro ao processar imagem: Capa ${it.tipo}.", e)
+                            }
+                        }
+                }
+            }
+        }
+    }
+
     fun setLog(texto: String, isError : Boolean = false) {
         if (isError) {
             lblAlerta.text = texto
@@ -1594,7 +1581,9 @@ class TelaInicialController : Initializable {
         }
         lsVwListaImagens.onMouseClicked = EventHandler { click: MouseEvent ->
             if (click.clickCount > 1) {
-                if (click.isControlDown) limparCapas() else {
+                if (click.isControlDown)
+                    limparCapas()
+                else {
                     val item = lsVwListaImagens.selectionModel.selectedItem
                     if (item != null) {
                         if (mObsListaImagesSelected.stream().anyMatch { e: Capa -> e.nome.equals(item, ignoreCase = true) })

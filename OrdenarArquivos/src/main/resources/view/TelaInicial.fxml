@@ -175,7 +175,7 @@
             </HBox>
             <JFXTabPane fx:id="tbTabRoot" VBox.vgrow="ALWAYS">
                <tabs>
-                  <Tab text="Arquivos">
+                  <Tab fx:id="tbTabArquivo" text="Arquivos">
                     <content>
                       <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                            <children>
@@ -324,7 +324,7 @@
                         </AnchorPane>
                     </content>
                   </Tab>
-                  <Tab text="Capas">
+                  <Tab fx:id="tbTabCapa" text="Capas" onSelectionChanged="#onSelectCapaChanged">
                     <content>
                       <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                            <children>
