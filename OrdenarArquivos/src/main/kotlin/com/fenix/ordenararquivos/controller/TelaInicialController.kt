@@ -511,6 +511,7 @@ class TelaInicialController : Initializable {
                 val image = File(PASTA_TEMPORARIA.toString() + "\\ocr_" + sumario.name.substringBeforeLast(".") + ".jpg")
                 try {
                     var newImage = ImageIO.read(sumario)
+                    newImage = ImageHelper.convertImageToGrayscale(newImage)
                     newImage = ImageHelper.convertImageToBinary(newImage)
                     ImageIO.write(newImage, "jpg", image)
 
