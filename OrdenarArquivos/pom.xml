@@ -139,11 +139,18 @@
             <version>0.7.1</version>
         </dependency>
 
-        <!-- Share DB-->
+        <!-- Share DB -->
         <dependency>
             <groupId>com.google.firebase</groupId>
             <artifactId>firebase-admin</artifactId>
             <version>9.2.0</version>
+        </dependency>
+
+        <!-- OCR -->
+        <dependency>
+            <groupId>net.sourceforge.tess4j</groupId>
+            <artifactId>tess4j</artifactId>
+            <version>5.15.0</version>
         </dependency>
     </dependencies>
 

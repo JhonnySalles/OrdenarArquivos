@@ -27,6 +27,7 @@ module com.fenix.ordenararquivos {
     requires com.google.api.apicommon;
     requires grpc.api;
     requires grpc.core;
+    requires tess4j;
 
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;

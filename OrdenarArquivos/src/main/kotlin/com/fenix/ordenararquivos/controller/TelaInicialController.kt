@@ -41,6 +41,11 @@ import javafx.scene.robot.Robot
 import javafx.stage.DirectoryChooser
 import javafx.util.Duration
 import net.kurobako.gesturefx.GesturePane
+import net.sourceforge.tess4j.ITesseract
+import net.sourceforge.tess4j.Tesseract
+import net.sourceforge.tess4j.TesseractException
+import net.sourceforge.tess4j.util.ImageHelper
+import net.sourceforge.tess4j.util.LoadLibs
 import org.slf4j.LoggerFactory
 import java.awt.image.BufferedImage
 import java.io.*
@@ -54,6 +59,7 @@ import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.regex.Pattern
 import javax.imageio.ImageIO
+
 
 class TelaInicialController : Initializable {
 
@@ -492,6 +498,77 @@ class TelaInicialController : Initializable {
         return valida
     }
 
+    private fun ocrSumario(sumario : File) {
+        if (TESSERACT == null || TESSERACT!!.isEmpty() || !File(TESSERACT).exists()) {
+            print("Caminho do Tesseract não configurado ou não localizado.")
+            return
+        }
+
+        val isJapanese = txtNomePastaManga.text.contains("[JPN]", true)
+
+        val ocr: Task<Void> = object : Task<Void>() {
+            override fun call(): Void? {
+                val image = File(PASTA_TEMPORARIA.toString() + "\\ocr_" + sumario.name.substringBeforeLast(".") + ".jpg")
+                try {
+                    var newImage = ImageIO.read(sumario)
+                    newImage = ImageHelper.convertImageToBinary(newImage)
+                    ImageIO.write(newImage, "jpg", image)
+
+                    val instance: ITesseract = Tesseract()
+                    LoadLibs.extractTessResources("tessdata")
+                    instance.setDatapath(File(TESSERACT).path)
+
+                    if (isJapanese)
+                        instance.setLanguage("jpn")
+                    else
+                        instance.setLanguage("eng")
+
+                    val texto = instance.doOCR(sumario)
+                    mLOG.info(texto)
+                    if (texto != null && texto.isNotEmpty())
+                        Platform.runLater {
+                            addSugestao(texto)
+                        }
+                } catch (e: TesseractException) {
+                    mLOG.info("Erro ao realizar a leitura do arquivo.", e)
+                } finally {
+                    if (image.exists())
+                        image.delete()
+                }
+                return null
+            }
+            override fun succeeded() { }
+        }
+
+        Thread(ocr).start()
+    }
+
+    val japanese = ".*[\u3041-\u9FAF].*".toRegex()
+    private fun addSugestao(texto : String) {
+        return
+        val isJapanese = texto.contains(japanese)
+
+        var suggestion = ""
+        val linhas = texto.split("\n")
+        var primeiro = ""
+        var ultimo = ""
+
+        for (linha in linhas) {
+            var cap = ""
+
+            if (cap.isNotEmpty()) {
+                if (primeiro.isEmpty())
+                    primeiro = cap
+                else
+                    ultimo = cap
+            }
+        }
+    }
+
+    private fun remSugestao() {
+
+    }
+
     private var mManga: Manga? = null
     private fun geraManga(id: Long): Manga {
         var nome = txtNomePastaManga.text
@@ -597,6 +674,7 @@ class TelaInicialController : Initializable {
             for (item in PASTA_TEMPORARIA.listFiles())
                 item.delete()
         }
+        remSugestao()
     }
 
     private fun simularCapa(tipo: TipoCapa, imagem: Image?) {
@@ -666,6 +744,9 @@ class TelaInicialController : Initializable {
             mObsListaImagesSelected.remove(capa)
             mObsListaImagesSelected.add(capa)
             copiaItem(img, PASTA_TEMPORARIA)
+
+            if (tipo == TipoCapa.SUMARIO)
+                ocrSumario(File(PASTA_TEMPORARIA.toString() + "\\" + arquivo))
         }
     }
 
@@ -2009,6 +2090,12 @@ class TelaInicialController : Initializable {
             mLOG.error("Erro ao obter o caminho do winrar.", e)
         }
 
+        try {
+            TESSERACT = loadProperties()!!.getProperty("caminho_tesseract")
+        } catch (e: Exception) {
+            mLOG.error("Erro ao obter o caminho do tesseract.", e)
+        }
+
         animacao.animaSincronizacao(imgCompartilhamento, imgAnimaCompartilha, imgAnimaCompartilhaEspera)
 
         sincronizacao.setObserver { observable: ListChangeListener.Change<out com.fenix.ordenararquivos.model.firebase.Manga> ->
@@ -2032,6 +2119,7 @@ class TelaInicialController : Initializable {
 
     companion object {
         private var WINRAR: String? = null
+        private var TESSERACT: String? = null
         private const val IMAGE_PATTERN = "(.*/)*.+\\.(png|jpg|gif|bmp|jpeg|PNG|JPG|GIF|BMP|JPEG)$"
         private var LAST_PROCESS_FOLDERS: MutableList<File> = ArrayList()
         private const val NUMBER_PATTERN = "[\\d.]+$"

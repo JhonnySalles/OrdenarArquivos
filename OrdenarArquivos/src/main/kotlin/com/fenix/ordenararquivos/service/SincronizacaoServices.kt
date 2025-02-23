@@ -51,7 +51,6 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
 
     companion object {
         private val sincronizar: ObservableList<Manga> = FXCollections.observableArrayList()
-
         fun enviar(manga: com.fenix.ordenararquivos.model.Manga) = sincronizar.add(Manga(manga))
     }
 
