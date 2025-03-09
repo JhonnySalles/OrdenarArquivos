@@ -3,7 +3,6 @@
 ##############################
 .mtj.tmp/
 *.class
-*.jar
 *.war
 *.ear
 *.nar
@@ -92,3 +91,4 @@ App/secrets-firebase.json
 ordenarArquivos/secrets-firebase.json
 OrdenarArquivos/ordenar.log
 App/ordenar.log
+/App/*
