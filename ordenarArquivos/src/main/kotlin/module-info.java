@@ -28,6 +28,10 @@ module com.fenix.ordenararquivos {
     requires grpc.api;
     requires grpc.core;
     requires tess4j;
+    requires opencv;
+    requires libsvm;
+    requires colt;
+    requires org.apache.commons.lang3;
 
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;
