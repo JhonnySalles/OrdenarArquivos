@@ -42,7 +42,7 @@ object Ocr {
      * Loads Native Libraries for the detected OS
      */
     private fun loadLibraries() {
-        val path = Paths.get(File(".").canonicalPath, "src", "main", "resources", "natives").toFile().path
+        val path = File(Paths.get("").toAbsolutePath().toString() + "/natives/").path
         if (SystemUtils.IS_OS_WINDOWS) {
             val bit = System.getProperty("sun.arch.data.model").toInt()
             when (bit) {
