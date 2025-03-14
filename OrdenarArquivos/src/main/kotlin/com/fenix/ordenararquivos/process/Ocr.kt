@@ -20,7 +20,7 @@ import javax.imageio.ImageIO
 object Ocr {
 
     private val mLOG = LoggerFactory.getLogger(Ocr::class.java)
-    private const val mGerarImagens = false
+    private const val mGerarImagens = true
     var mLibs = false
         private set
 
@@ -136,7 +136,7 @@ object Ocr {
             block.delete()
     }
 
-    fun process(image : File) : List<String> {
+    fun process(image : File) : String {
         try {
             ocrFile = File(PASTA_TEMPORARIA.toString() + "\\ocr_" + image.name.substringBeforeLast(".") + ".jpg")
             val ocrImage = ImageIO.read(image)
@@ -220,18 +220,40 @@ object Ocr {
 
             // Find the candidate text blocks by finding the connected components of dilated image
             val textBlocks: List<Rect> = findTextBlocks(aux, input, image.absolutePath.toString())
-            paintTextBlocks(textBlocks, aux)
-            if (mGerarImagens)
+            if (mGerarImagens) {
+                paintTextBlocks(textBlocks, aux)
                 Imgcodecs.imwrite(image.absolutePath.toString().replace(".jpg", "_08textblock.jpg"), aux)
+            }
 
-            val textos = mutableListOf<String>()
+            val region = Rect(0, 0, ocrImage.height, ocrImage.width)
+            if (textBlocks.isNotEmpty()) {
+                region.x = textBlocks[0].x
+                region.y = textBlocks[0].y
+                region.width = textBlocks[0].width
+                region.height = textBlocks[0].height
+
+                for (block in textBlocks) {
+                    if (region.x > block.x)
+                        region.x = block.x
+                    if (region.y > block.y)
+                        region.y = block.y
+
+                    if ((region.x + region.width) < (block.x + block.width))
+                        region.width = (block.x + block.width) - region.x
+                    if ((region.y + region.height) < (block.y + block.height))
+                        region.height = (block.y + block.height) - region.y
+                }
+            }
+
+            /*// Use only get small block
             for (textBlock in getCroppedTextBlocks(textBlocks, input)) {
                 val texto = instance.doOCR(preprocessTextBlock(textBlock))
                 textos.add(texto)
                 mLOG.info(texto)
-            }
+            }*/
 
-            return textos
+            val textBlock = Mat(input, region)
+            return instance.doOCR(preprocessTextBlock(textBlock))
         } catch (e: Error) {
             mLOG.error("Erro ao processar o OCR.", e)
             throw OcrException(e.message ?: "Erro ao processar o OCR.")

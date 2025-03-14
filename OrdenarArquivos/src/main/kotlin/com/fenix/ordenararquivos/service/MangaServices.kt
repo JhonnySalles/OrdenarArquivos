@@ -16,7 +16,8 @@ class MangaServices {
 
     private val mUPDATE_MANGA = "UPDATE Manga SET nome = ?, volume = ?, capitulo = ?, arquivo = ?, quantidade = ?, capitulos = ?, atualizacao = ? WHERE id = ?"
     private val mINSERT_MANGA = "INSERT INTO Manga (nome, volume, capitulo, arquivo, quantidade, capitulos, criacao, atualizacao) VALUES (?,?,?,?,?,?,?,?)"
-    private val mSELECT_MANGA = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome LIKE ? AND volume LIKE ? AND capitulo LIKE ? LIMIT 1"
+    private val mSELECT_MANGA_ATUAL = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome LIKE ? AND volume LIKE ? AND capitulo LIKE ? LIMIT 1"
+    private val mSELECT_MANGA_ANTERIOR = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome LIKE ? AND capitulo LIKE ? ORDER BY volume DESC LIMIT 1"
     private val mINSERT_CAMINHO = "INSERT INTO Caminho (id_manga, capitulo, pagina, pasta) VALUES (?,?,?,?)"
     private val mSELECT_CAMINHO = "SELECT id, capitulo, pagina, pasta FROM Caminho WHERE id_manga = ?"
     private val mDELETE_CAMINHO = "DELETE FROM Caminho WHERE id_manga = ?"
@@ -25,13 +26,16 @@ class MangaServices {
 
     private var conn: Connection = instancia
 
-    fun find(manga: Manga): Manga? {
-        return find(manga.nome, manga.volume, manga.capitulo)
+    fun find(manga: Manga, anterior : Boolean = false): Manga? {
+        return find(manga.nome, manga.volume, manga.capitulo, anterior)
     }
 
-    fun find(nome: String, volume: String, capitulo: String): Manga? {
+    fun find(nome: String, volume: String, capitulo: String, anterior : Boolean = false): Manga? {
         return try {
-            select(nome, volume, capitulo)
+            if (anterior)
+                selectAnterior(nome, capitulo)
+            else
+                selectAtual(nome, volume, capitulo)
         } catch (e: SQLException) {
             mLOG.warn("Erro ao buscar o manga.")
             null
@@ -60,11 +64,11 @@ class MangaServices {
     }
 
     @Throws(SQLException::class)
-    private fun select(nome: String, volume: String, capitulo: String): Manga? {
+    private fun selectAtual(nome: String, volume: String, capitulo: String): Manga? {
         var st: PreparedStatement? = null
         var rs: ResultSet? = null
         return try {
-            st = conn.prepareStatement(mSELECT_MANGA)
+            st = conn.prepareStatement(mSELECT_MANGA_ATUAL)
             st.setString(1, nome)
             st.setString(2, volume)
             st.setString(3, capitulo)
@@ -75,6 +79,34 @@ class MangaServices {
                     rs.getLong("id"), rs.getString("nome"), rs.getString("volume"),
                     rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
                     rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
+                )
+                manga.caminhos = select(manga)
+            }
+            manga
+        } catch (e: SQLException) {
+            mLOG.error("Erro ao buscar o manga.", e)
+            throw e
+        } finally {
+            closeStatement(st)
+            closeResultSet(rs)
+        }
+    }
+
+    @Throws(SQLException::class)
+    private fun selectAnterior(nome: String, capitulo: String): Manga? {
+        var st: PreparedStatement? = null
+        var rs: ResultSet? = null
+        return try {
+            st = conn.prepareStatement(mSELECT_MANGA_ANTERIOR)
+            st.setString(1, nome)
+            st.setString(2, capitulo)
+            rs = st.executeQuery()
+            var manga: Manga? = null
+            if (rs.next()) {
+                manga = Manga(
+                        rs.getLong("id"), rs.getString("nome"), rs.getString("volume"),
+                        rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
+                        rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
                 )
                 manga.caminhos = select(manga)
             }

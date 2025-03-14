@@ -3,7 +3,6 @@ package com.fenix.ordenararquivos.controller
 import com.fenix.ordenararquivos.animation.Animacao
 import com.fenix.ordenararquivos.configuration.Configuracao.loadProperties
 import com.fenix.ordenararquivos.exceptions.LibException
-import com.fenix.ordenararquivos.exceptions.OcrException
 import com.fenix.ordenararquivos.model.Caminhos
 import com.fenix.ordenararquivos.model.Capa
 import com.fenix.ordenararquivos.model.Manga
@@ -44,7 +43,6 @@ import javafx.scene.robot.Robot
 import javafx.stage.DirectoryChooser
 import javafx.util.Duration
 import net.kurobako.gesturefx.GesturePane
-import net.sourceforge.tess4j.TesseractException
 import org.slf4j.LoggerFactory
 import java.awt.image.BufferedImage
 import java.io.*
@@ -219,6 +217,8 @@ class TelaInicialController : Initializable {
 
     @FXML
     private lateinit var imgCompartilhamento: ImageView
+
+    private val mSugestao: JFXAutoCompletePopup<String> = JFXAutoCompletePopup<String>()
 
 
     private var mListaCaminhos: MutableList<Caminhos> = arrayListOf()
@@ -497,9 +497,10 @@ class TelaInicialController : Initializable {
         return valida
     }
 
+    private val regex = "第?([\\d]+)話?[\\D]*([\\d]+)".toRegex()
     private fun ocrSumario(sumario : File) {
+        remSugestao()
         val isJapanese = txtNomePastaManga.text.contains("[JPN]", true)
-
         val ocr: Task<Void> = object : Task<Void>() {
             override fun call(): Void? {
                 try {
@@ -508,10 +509,33 @@ class TelaInicialController : Initializable {
 
                     Ocr.prepare(isJapanese)
                     val textos = Ocr.process(sumario)
+                    mLOG.info("OCR processado: $textos")
+                    val linhas = textos.split("\n")
 
-                    if (textos.isNotEmpty())
+                    val capitulos = mutableMapOf<Int, Int>()
+                    for (linha in linhas) {
+                        regex.matchEntire(linha)?.let {
+                            if (it.groups.size > 2) {
+                                if (it.groups[1] != null && it.groups[2] != null)
+                                    capitulos[Integer.parseInt(it.groups[1]!!.value)] = Integer.parseInt(it.groups[2]!!.value)
+                            }
+                        }
+                    }
+
+                    var capAnterio = 0
+                    var pagAnterio = 0
+                    var sugestao = ""
+                    capitulos.keys.sorted().forEach {
+                        if (it > capAnterio && capitulos[it]!! > pagAnterio) {
+                            capAnterio = it
+                            pagAnterio = capitulos[it]!!
+                            sugestao += it.toString() + txtSeparador.text + capitulos[it] + "\n"
+                        }
+                    }
+
+                    if (sugestao.isNotEmpty())
                         Platform.runLater {
-                            addSugestao(textos)
+                            addSugestao(sugestao.substringBefore("\n", missingDelimiterValue = sugestao))
                         }
                 } catch (e: Exception) {
                     mLOG.info("Erro ao realizar o OCR do arquivo de sumário.", e)
@@ -526,31 +550,22 @@ class TelaInicialController : Initializable {
         Thread(ocr).start()
     }
 
-    val japanese = ".*[\u3041-\u9FAF].*".toRegex()
-    private fun addSugestao(textos : List<String>) {
-        if (true)
-            return
-        val isJapanese = textos.stream().anyMatch { it.contains(japanese) }
-
-        var suggestion = ""
-        val linhas = textos.joinToString { "\n" }.split("\n")
-        var primeiro = ""
-        var ultimo = ""
-
-        for (linha in linhas) {
-            var cap = ""
-
-            if (cap.isNotEmpty()) {
-                if (primeiro.isEmpty())
-                    primeiro = cap
-                else
-                    ultimo = cap
+    private fun addSugestao(textos : String) {
+        mLOG.info("Sugestão: $textos")
+        if (textos.isNotEmpty()) {
+            mSugestao.fixedCellSize = 24.0 + (if (textos.contains('\n')) ((textos.count { it == '\n' } - 1) * 18.0) else 0.0)
+            mSugestao.suggestions.clear()
+            mSugestao.suggestions.add(textos)
+            mSugestao.show(txtAreaImportar)
+            mSugestao.setSelectionHandler {
+                txtAreaImportar.text = it.`object` ?: ""
             }
         }
     }
 
     private fun remSugestao() {
-
+        mSugestao.suggestions.clear()
+        mSugestao.hide()
     }
 
     private var mManga: Manga? = null
@@ -588,6 +603,49 @@ class TelaInicialController : Initializable {
             mListaCaminhos = ArrayList(it.caminhos)
             mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
             tbViewTabela.items = mObsListaCaminhos
+        }
+
+        return mManga != null
+    }
+
+    private fun carregaMangaAnterior(): Boolean {
+        val psq = geraManga(0)
+        val manga = mService.find(psq, anterior = true)
+        lblAviso.text = lblAviso.text + " -- " + if (manga != null) "Volume anterior localizado." else "Volume anterior não localizado."
+
+        manga?.let {
+            txtNomePastaManga.text = "[JPN] " + it.nome + " - "
+            txtNomePastaCapitulo.text = it.capitulo
+
+            val capitulos = it.capitulos.split("\n")
+            val regex = "^\\d+".toRegex()
+            var min = 0
+            var max = 0
+            var aux = ""
+
+            for (cap in capitulos) {
+                aux = if (cap.contains("-")) cap.substringBeforeLast("-") else cap
+                if (aux.trim().isNotEmpty() && regex.containsMatchIn(aux)) {
+                    if (min == 0)
+                        min = Integer.valueOf(aux)
+                    else
+                        max = Integer.valueOf(aux)
+                }
+            }
+
+            if (min > 0 && max > 0) {
+                val vol = try {
+                    (getNumber(psq.volume) ?: 0).toInt() - (getNumber(it.volume) ?: 0).toInt()
+                } catch (e : Exception) {
+                    0
+                }
+
+                val dif = max - min
+                val initial = if (vol > 0) ((dif * vol) + max + 1) else (max + 1)
+                txtGerarInicio.text = initial.toString()
+                txtGerarFim.text = (initial + dif).toString()
+                onBtnGerarCapitulos()
+            }
         }
 
         return mManga != null
@@ -749,8 +807,7 @@ class TelaInicialController : Initializable {
             var completa = mObsListaImagesSelected.stream()
                 .filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.direita != null }.findFirst()
             if (completa.isEmpty)
-                completa =
-                    mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 }.findFirst()
+                completa = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 }.findFirst()
 
             if (completa.isPresent) if (completa.get().direita != null) {
                 try {
@@ -1791,7 +1848,7 @@ class TelaInicialController : Initializable {
         txtVolume.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean ->
             if (oldPropertyValue) {
                 simulaNome()
-                if (!carregaManga())
+                if (!carregaManga() && !carregaMangaAnterior())
                     incrementaCapitulos(txtVolume.text, volumeAnterior)
             }
 
@@ -2093,6 +2150,8 @@ class TelaInicialController : Initializable {
             imgCompartilhamento.image = imgAnimaCompartilhaEspera
         } else
             imgCompartilhamento.image = imgAnimaCompartilha
+
+        mSugestao.cellLimit = 0
     }
 
     companion object {

@@ -25,16 +25,16 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<AnchorPane fx:id="apGlobal" minHeight="700.0" minWidth="700.0" prefHeight="700.0" prefWidth="800.0" styleClass="background-Black1" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.TelaInicialController">
+<AnchorPane fx:id="apGlobal" minHeight="700.0" minWidth="700.0" prefHeight="700.0" prefWidth="800.0" styleClass="background-Black1" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.TelaInicialController">
    <children>
-      <VBox layoutX="129.0" layoutY="37.0" prefHeight="200.0" prefWidth="100.0" spacing="5.0" styleClass="background-Blue4" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+      <VBox layoutX="129.0" layoutY="37.0" prefHeight="200.0" prefWidth="100.0" spacing="5.0" styleClass="background-Black1" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
-            <HBox prefHeight="40.0" prefWidth="700.0" spacing="5.0" styleClass="background-Black1">
+            <HBox prefHeight="40.0" prefWidth="700.0" spacing="5.0" styleClass="background-Black4">
                <children>
                   <VBox HBox.hgrow="ALWAYS">
                      <children>
                         <Label fx:id="lblTitulo26" styleClass="texto-stilo-1" text="Simulação do caminho" textFill="WHITE" />
-                        <JFXTextField fx:id="txtSimularPasta" prefHeight="25.0" prefWidth="290.0" unFocusColor="GREY" VBox.vgrow="ALWAYS">
+                        <JFXTextField fx:id="txtSimularPasta" focusColor="#0cff00" prefHeight="25.0" prefWidth="290.0" unFocusColor="WHITE" VBox.vgrow="ALWAYS">
                            <styleClass>
                               <String fx:value="texto-stilo-1" />
                               <String fx:value="background-Black2" />
@@ -45,7 +45,7 @@
                   <JFXButton fx:id="btnCompartilhamento" alignment="TOP_CENTER" buttonType="RAISED" contentDisplay="GRAPHIC_ONLY" graphicTextGap="0.0" onAction="#onBtnCompartilhamento" prefHeight="45.0" prefWidth="2.0">
                      <graphic>
                         <ImageView fx:id="imgCompartilhamento" fitHeight="30.0" fitWidth="30.0" pickOnBounds="true" preserveRatio="true">
-                           <Image url="@../images/icoCompartilhamento_48.png"/>
+                           <Image url="@../images/icoCompartilhamento_48.png" />
                         </ImageView>
                      </graphic>
                   </JFXButton>
@@ -69,8 +69,8 @@
                <children>
                   <HBox alignment="CENTER" minWidth="340.0" prefHeight="36.0" spacing="2.0" HBox.hgrow="ALWAYS">
                      <children>
-                        <JFXTextField fx:id="txtPastaOrigem" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta de Origem" styleClass="texto-stilo-1" unFocusColor="BLACK" HBox.hgrow="ALWAYS" />
-                        <JFXButton fx:id="btnPesquisarPastaOrigem" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPastaOrigem" styleClass="background-Black2">
+                        <JFXTextField fx:id="txtPastaOrigem" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta de Origem" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                        <JFXButton fx:id="btnPesquisarPastaOrigem" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPastaOrigem" styleClass="background-Black3">
                            <graphic>
                               <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
                                  <image>
@@ -83,8 +83,8 @@
                   </HBox>
                   <HBox alignment="CENTER" prefHeight="40.0" spacing="2.0">
                      <children>
-                        <JFXTextField fx:id="txtPastaDestino" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta de destino" styleClass="texto-stilo-1" unFocusColor="BLACK" HBox.hgrow="ALWAYS" />
-                        <JFXButton fx:id="btnPesquisarPastaDestino" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPastaDestino" styleClass="background-Black2">
+                        <JFXTextField fx:id="txtPastaDestino" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta de destino" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                        <JFXButton fx:id="btnPesquisarPastaDestino" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPastaDestino" styleClass="background-Black3">
                            <graphic>
                               <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
                                  <image>
@@ -114,15 +114,15 @@
                            <children>
                               <VBox minWidth="260.0" HBox.hgrow="ALWAYS">
                                  <children>
-                                    <JFXTextField fx:id="txtNomePastaManga" focusColor="#0cff00" labelFloat="true" minHeight="25.0" prefHeight="25.0" promptText="Nome pasta do manga" styleClass="texto-stilo-1" unFocusColor="BLACK" />
+                                    <JFXTextField fx:id="txtNomePastaManga" focusColor="#0cff00" labelFloat="true" minHeight="25.0" prefHeight="25.0" promptText="Nome pasta do manga" styleClass="texto-stilo-1" unFocusColor="#4059a9" />
                                  </children>
                               </VBox>
                               <VBox minWidth="260.0" HBox.hgrow="ALWAYS">
                                  <children>
                                     <HBox spacing="5.0">
                                        <children>
-                                          <JFXTextField fx:id="txtVolume" focusColor="#0cff00" labelFloat="true" minHeight="25.0" prefHeight="25.0" promptText="Volume" styleClass="texto-stilo-1" unFocusColor="BLACK" HBox.hgrow="ALWAYS" />
-                                          <JFXButton fx:id="btnVolumeMenos" alignment="CENTER" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnVolumeMenos" styleClass="background-Black2">
+                                          <JFXTextField fx:id="txtVolume" focusColor="#0cff00" labelFloat="true" minHeight="25.0" prefHeight="25.0" promptText="Volume" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                                          <JFXButton fx:id="btnVolumeMenos" alignment="CENTER" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnVolumeMenos" styleClass="background-Black3">
                                              <graphic>
                                                 <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
                                                    <image>
@@ -131,7 +131,7 @@
                                                 </ImageView>
                                              </graphic>
                                           </JFXButton>
-                                          <JFXButton fx:id="btnVolumeMais" alignment="CENTER" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnVolumeMais" styleClass="background-Black2">
+                                          <JFXButton fx:id="btnVolumeMais" alignment="CENTER" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnVolumeMais" styleClass="background-Black3">
                                              <graphic>
                                                 <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
                                                    <image>
@@ -151,8 +151,8 @@
                         </HBox>
                         <HBox alignment="CENTER" minHeight="40.0" prefHeight="40.0" spacing="10.0">
                            <children>
-                              <JFXTextField fx:id="txtNomeArquivo" focusColor="#0cff00" labelFloat="true" minHeight="25.0" minWidth="260.0" prefHeight="25.0" promptText="Nome do arquivo" styleClass="texto-stilo-1" unFocusColor="BLACK" HBox.hgrow="ALWAYS" />
-                              <JFXTextField fx:id="txtNomePastaCapitulo" focusColor="#0cff00" labelFloat="true" minHeight="25.0" minWidth="260.0" prefHeight="25.0" promptText="Nome da pasta do capítulo" styleClass="texto-stilo-1" unFocusColor="BLACK" HBox.hgrow="ALWAYS" />
+                              <JFXTextField fx:id="txtNomeArquivo" focusColor="#0cff00" labelFloat="true" minHeight="25.0" minWidth="260.0" prefHeight="25.0" promptText="Nome do arquivo" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                              <JFXTextField fx:id="txtNomePastaCapitulo" focusColor="#0cff00" labelFloat="true" minHeight="25.0" minWidth="260.0" prefHeight="25.0" promptText="Nome da pasta do capítulo" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
                            </children>
                            <VBox.margin>
                               <Insets />
@@ -324,7 +324,7 @@
                         </AnchorPane>
                     </content>
                   </Tab>
-                  <Tab fx:id="tbTabCapa" text="Capas" onSelectionChanged="#onSelectCapaChanged">
+                  <Tab fx:id="tbTabCapa" onSelectionChanged="#onSelectCapaChanged" text="Capas">
                     <content>
                       <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                            <children>
