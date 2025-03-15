@@ -1931,6 +1931,7 @@ class TelaInicialController : Initializable {
                         txtAreaImportar.positionCaret(lastCaretPos)
                         txtAreaImportar.scrollTop = scroll
                     }
+                    else -> {}
                 }
             } else if (e.isControlDown && e.isShiftDown) {
                 when (e.code) {
@@ -1993,6 +1994,7 @@ class TelaInicialController : Initializable {
                         txtAreaImportar.positionCaret(txtAreaImportar.text.indexOf(line))
                         txtAreaImportar.scrollTop = scroll
                     }
+                    else -> {}
                 }
             }
             lastCaretPos = txtAreaImportar.caretPosition
@@ -2151,7 +2153,7 @@ class TelaInicialController : Initializable {
         } else
             imgCompartilhamento.image = imgAnimaCompartilha
 
-        mSugestao.cellLimit = 0
+        mSugestao.cellLimit = 1
     }
 
     companion object {

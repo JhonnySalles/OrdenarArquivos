@@ -12,15 +12,36 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.8.2</junit.version>
-        <kotlin.version>1.6.20</kotlin.version>
+        <java.version>17</java.version>
+        <kotlin.version>2.0.0</kotlin.version>
         <maven.compiler.source>14</maven.compiler.source>
         <maven.compiler.target>14</maven.compiler.target>
     </properties>
 
     <repositories>
         <repository>
+            <id>localRepository</id>
+            <url>file://${project.basedir}/src/lib</url>
+        </repository>
+
+        <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
+        </repository>
+
+        <repository>
+            <id>Central Maven repository</id>
+            <name>Central Maven repository https</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+
+        <repository>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+            <id>Central Bintray</id>
+            <name>bintray</name>
+            <url>https://jcenter.bintray.com</url>
         </repository>
     </repositories>
 
@@ -155,11 +176,11 @@
 
         <dependency>
             <groupId>org.opencv</groupId>
-            <artifactId>opencv-java</artifactId>
+            <artifactId>opencv</artifactId>
             <version>3.2.0</version>
             <scope>system</scope>
             <type>jar</type>
-            <systemPath>${basedir}/src/lib/opencv-320.jar</systemPath>
+            <systemPath>${pom.basedir}/src/lib/opencv-3.2.0.jar</systemPath>
         </dependency>
 
         <dependency>
@@ -192,33 +213,6 @@
                 <configuration>
                     <source>16</source>
                     <target>16</target>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.1.0</version>
-                <executions>
-                    <execution>
-                        <id>make-assembly</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                    </execution>
-                </executions>
-
-                <configuration>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                    <archive>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-                            <mainClass>com.fenix.ordenararquivos.App</mainClass>
-                        </manifest>
-                    </archive>
                 </configuration>
             </plugin>
 
@@ -300,8 +294,37 @@
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.7.1</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>com.fenix.ordenararquivos.App</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.0.2</version>
+                <version>3.1.0</version>
+                <configuration>
+                    <encoding>UTF-8</encoding>
+                </configuration>
                 <executions>
                     <execution>
                         <id>copy-files-on-build</id>
@@ -310,10 +333,11 @@
                             <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>../../App/</outputDirectory>
+                            <overwrite>true</overwrite>
+                            <outputDirectory>../App/</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${basedir}/target/</directory>
+                                    <directory>${project.basedir}/target/</directory>
                                     <include>*.jar</include>
                                     <filtering>true</filtering>
                                 </resource>
