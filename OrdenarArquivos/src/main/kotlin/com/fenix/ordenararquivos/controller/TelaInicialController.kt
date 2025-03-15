@@ -2123,6 +2123,10 @@ class TelaInicialController : Initializable {
 
     @Synchronized
     override fun initialize(arg0: URL, arg1: ResourceBundle?) {
+        mLOG.warn("第53話 屋上の戦い                 091\n" +
+                "第54話 要コミの魔物               111\n" +
+                "第55話 州陽の下で                 133\n" +
+                "第56話 友達と作るやせ界            153")
         configuraImagens()
         linkaCelulas()
         limpaCampos()

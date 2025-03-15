@@ -4,7 +4,10 @@
 	<appender name="STDOUT"
 		class="ch.qos.logback.core.ConsoleAppender">
 		<withJansi>false</withJansi>
+		<target>System.out</target>
 		<encoder>
+			<charset>UTF-8</charset>
+			<outputPatternAsHeader>true</outputPatternAsHeader>
 			<pattern>%d{HH:mm:ss.SSS} | %-20.20thread | %highlightex( %-5level ) | %magenta(%-25.25logger{25}).%M : %highlightex( %msg ) %n</pattern>
 		</encoder>
 	</appender>
@@ -14,6 +17,8 @@
 		<file>ordenar.log</file>
 		<encoder
 			class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<charset>UTF-8</charset>
+			<outputPatternAsHeader>true</outputPatternAsHeader>
 			<pattern>%d{yyyyMMdd HH:mm:ss.SSS} | [%level] | [%thread] - %-25.25logger{25}.%M : %msg%n</pattern>
 		</encoder>
 
