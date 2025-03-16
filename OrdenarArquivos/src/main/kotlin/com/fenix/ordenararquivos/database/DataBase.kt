@@ -25,8 +25,8 @@ object DataBase {
         try {
             Class.forName("org.sqlite.JDBC")
             DriverManager.registerDriver(JDBC())
+            val dataBase = if (isTeste) mDATABASE_TEST else mDATABASE
             try {
-                val dataBase = if (isTeste) mDATABASE_TEST else mDATABASE
                 val flyway = Flyway.configure()
                     .dataSource("jdbc:sqlite:" + dataBase, "", "")
                     .locations("./db/migration", "classpath:/db/migration", "classpath:db/migration")
@@ -35,7 +35,7 @@ object DataBase {
             } catch (e: Exception) {
                 mLOG.error("Não foi possivel atualizar o Banco de Dados.", e)
             }
-            mCONN = DriverManager.getConnection("jdbc:sqlite:" + mDATABASE)
+            mCONN = DriverManager.getConnection("jdbc:sqlite:" + dataBase)
         } catch (e: ClassNotFoundException) { // Driver não encontrado
             mLOG.error("O driver de conexão expecificado não foi encontrado.", e)
         } catch (e: SQLException) {

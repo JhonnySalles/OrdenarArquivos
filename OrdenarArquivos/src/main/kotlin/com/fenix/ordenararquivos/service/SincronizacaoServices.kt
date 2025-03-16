@@ -59,22 +59,24 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
     }
 
     init {
-        val timer = Timer(true)
-        timer.scheduleAtFixedRate(this, 0, (5 * 60 * 1000).toLong())
+        if (!DataBase.isTeste) {
+            val timer = Timer(true)
+            timer.scheduleAtFixedRate(this, 0, (5 * 60 * 1000).toLong())
 
-        try {
-            val serviceAccount: InputStream = FileInputStream("secrets-firebase.json")
-            val credentials = GoogleCredentials.fromStream(serviceAccount)
-            val options = FirebaseOptions.builder().setCredentials(credentials).build()
-            FirebaseApp.initializeApp(options)
-            DB = FirestoreClient.getFirestore()
+            try {
+                val serviceAccount: InputStream = FileInputStream("secrets-firebase.json")
+                val credentials = GoogleCredentials.fromStream(serviceAccount)
+                val options = FirebaseOptions.builder().setCredentials(credentials).build()
+                FirebaseApp.initializeApp(options)
+                DB = FirestoreClient.getFirestore()
 
-            sincronizacao = select()
-        } catch (ex: Exception) {
-            mLOG.error(ex.message, ex)
+                sincronizacao = select()
+            } catch (ex: Exception) {
+                mLOG.error(ex.message, ex)
+            }
+
+            consultar()
         }
-
-        consultar()
     }
 
     override fun run() {

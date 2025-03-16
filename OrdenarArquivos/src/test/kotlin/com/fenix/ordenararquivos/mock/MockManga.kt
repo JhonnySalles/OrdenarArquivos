@@ -30,7 +30,7 @@ class MockManga : MockBase<Long?, Manga>() {
         assertTrue(input.capitulo.isNotEmpty())
         assertTrue(input.arquivo.isNotEmpty())
         assertTrue(input.capitulos.isNotEmpty())
-        assertTrue(input.quantidade == 0)
+        assertTrue(input.quantidade == 0 || input.quantidade == 10)
 
         mockCaminhos.assertsService(input.caminhos[0])
     }

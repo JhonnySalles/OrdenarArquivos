@@ -78,10 +78,6 @@ class TelaInicialControllerTest {
 
     @BeforeAll
     fun preparaTeste(robot: FxRobot) {
-        robot.lookup("txtNomePastaManga").queryAs(JFXTextField::class.java).text = "[JPN] Teste da tela inicial - "
-        robot.lookup("txtPastaOrigem").queryAs(JFXTextField::class.java).text = ORIGEM_TEMPORARIA.path
-        robot.lookup("txtPastaDestino").queryAs(JFXTextField::class.java).text = DESTINO_TEMPORARIA.path
-
         if (!PASTA_TEMPORARIA.exists())
             PASTA_TEMPORARIA.mkdir()
         else {
@@ -125,6 +121,14 @@ class TelaInicialControllerTest {
             for (item in PASTA_TEMPORARIA.listFiles())
                 item.delete()
         }
+    }
+
+    @Test
+    @Order(0)
+    fun preparaCampos(robot: FxRobot) {
+        robot.lookup("txtNomePastaManga").queryAs(JFXTextField::class.java).text = "[JPN] Teste da tela inicial - "
+        robot.lookup("txtPastaOrigem").queryAs(JFXTextField::class.java).text = ORIGEM_TEMPORARIA.path
+        robot.lookup("txtPastaDestino").queryAs(JFXTextField::class.java).text = DESTINO_TEMPORARIA.path
     }
 
     @Test

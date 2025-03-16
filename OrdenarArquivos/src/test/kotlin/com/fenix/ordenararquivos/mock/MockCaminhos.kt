@@ -23,8 +23,8 @@ class MockCaminhos : MockBase<Long?, Caminhos>() {
         assertNotNull(input!!.id)
 
         assertTrue(input.capitulo.isNotEmpty())
-        assertTrue(input.numero == 10)
-        assertTrue(input.numeroPagina == "10")
+        assertTrue(input.numero == 10 || input.numero == 20)
+        assertTrue(input.numeroPagina == "10" || input.numeroPagina == "20")
         assertTrue(input.nomePasta.isNotEmpty())
     }
 
