@@ -36,4 +36,6 @@ module com.fenix.ordenararquivos {
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;
     opens com.fenix.ordenararquivos.model.firebase to javafx.base, google.cloud.firestore;
+
+    opens db.migration;
 }
