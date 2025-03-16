@@ -32,8 +32,7 @@ data class Manga(
         capitulos,
         quantidade,
         atualizacao
-    ) {
-    }
+    ) { }
 
     fun addCaminhos(caminhos: Caminhos) {
         this.caminhos.add(caminhos)

@@ -11,11 +11,30 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <junit.version>5.8.2</junit.version>
         <java.version>17</java.version>
         <kotlin.version>2.0.0</kotlin.version>
         <maven.compiler.source>14</maven.compiler.source>
         <maven.compiler.target>14</maven.compiler.target>
+
+        <test.junit.version>5.10.2</test.junit.version>
+        <test.testfx.version>4.0.18</test.testfx.version>
+        <test.mockito.version>5.9.0</test.mockito.version>
+
+        <javafx.version>18-ea+2</javafx.version>
+        <jfoenix.version>9.0.10</jfoenix.version>
+        <gesturefx.version>0.7.1</gesturefx.version>
+        <sqlite.version>3.41.2.2</sqlite.version>
+        <bd.jdbi3.version>3.1.0</bd.jdbi3.version>
+        <bd.spark.version>2.9.3</bd.spark.version>
+        <firebase.version>9.2.0</firebase.version>
+        <flyway.version>8.5.0</flyway.version>
+        <flyway.jooq.version>3.16.4</flyway.jooq.version>
+        <logger.slf4j.version>1.7.32</logger.slf4j.version>
+        <logger.logback.version>1.2.0</logger.logback.version>
+        <ocr.tess4j.version>5.15.0</ocr.tess4j.version>
+        <ocr.opencv.version>3.2.0-1</ocr.opencv.version>
+        <ocr.libsvm.version>3.35</ocr.libsvm.version>
+        <ocr.colt.version>1.2.0</ocr.colt.version>
     </properties>
 
     <repositories>
@@ -52,155 +71,171 @@
             <version>${kotlin.version}</version>
         </dependency>
 
+        <!--                                          Bibliotecas Teste                                           -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <version>${junit.version}</version>
+            <version>${test.junit.version}</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
-            <version>${junit.version}</version>
+            <version>${test.junit.version}</version>
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-junit5</artifactId>
+            <version>${test.testfx.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${test.mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>${test.mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!--                                          Bibliotecas Projeto                                           -->
         <!-- Biblioteca JavaFX Base -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-base</artifactId>
-            <version>18-ea+2</version>
+            <version>${javafx.version}</version>
         </dependency>
 
         <!-- Biblioteca JavaFX Graphics -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-graphics</artifactId>
-            <version>18-ea+2</version>
+            <version>${javafx.version}</version>
         </dependency>
 
         <!-- Biblioteca JavaFX Controle -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
-            <version>18-ea+2</version>
+            <version>${javafx.version}</version>
         </dependency>
 
         <!-- Bibliotecas para animacao no javafx -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
-            <version>18-ea+2</version>
+            <version>${javafx.version}</version>
         </dependency>
 
         <!-- Biblioteca JavaFX WebView -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-web</artifactId>
-            <version>18-ea+2</version>
+            <version>${javafx.version}</version>
         </dependency>
 
         <!-- Botoes e componentes estilizados para o javafx -->
         <dependency>
             <groupId>com.jfoenix</groupId>
             <artifactId>jfoenix</artifactId>
-            <version>9.0.10</version>
+            <version>${jfoenix.version}</version>
         </dependency>
 
         <!-- SQLite -->
         <dependency>
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
-            <version>3.41.2.2</version>
+            <version>${sqlite.version}</version>
         </dependency>
 
         <!-- Flyway-->
         <dependency>
             <groupId>org.jooq</groupId>
             <artifactId>jooq</artifactId>
-            <version>3.16.4</version>
+            <version>${flyway.jooq.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-            <version>8.5.0</version>
+            <version>${flyway.version}</version>
         </dependency>
 
         <!-- Logger -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.32</version>
+            <version>${logger.slf4j.version}</version>
         </dependency>
 
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.2.0</version>
+            <version>${logger.logback.version}</version>
         </dependency>
 
         <!-- DB-->
         <dependency>
             <groupId>org.jdbi</groupId>
             <artifactId>jdbi3-core</artifactId>
-            <version>3.1.0</version>
+            <version>${bd.jdbi3.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.sparkjava</groupId>
             <artifactId>spark-core</artifactId>
-            <version>2.9.3</version>
+            <version>${bd.spark.version}</version>
         </dependency>
 
+        <!-- Gesto em imagem -->
         <dependency>
             <groupId>net.kurobako</groupId>
             <artifactId>gesturefx</artifactId>
-            <version>0.7.1</version>
+            <version>${gesturefx.version}</version>
         </dependency>
 
         <!-- Share DB -->
         <dependency>
             <groupId>com.google.firebase</groupId>
             <artifactId>firebase-admin</artifactId>
-            <version>9.2.0</version>
+            <version>${firebase.version}</version>
         </dependency>
 
         <!-- OCR -->
         <dependency>
             <groupId>net.sourceforge.tess4j</groupId>
             <artifactId>tess4j</artifactId>
-            <version>5.15.0</version>
+            <version>${ocr.tess4j.version}</version>
         </dependency>
-
-        <!-- <dependency>
-            <groupId>org.opencv</groupId>
-            <artifactId>opencv</artifactId>
-            <version>3.2.0</version>
-            <scope>system</scope>
-            <type>jar</type>
-            <systemPath>${pom.basedir}/src/lib/opencv-3.2.0.jar</systemPath>
-        </dependency> -->
 
         <dependency>
             <groupId>org.openpnp</groupId>
             <artifactId>opencv</artifactId>
-            <version>3.2.0-1</version>
+            <version>${ocr.opencv.version}</version>
         </dependency>
 
         <dependency>
             <groupId>tw.edu.ntu.csie</groupId>
             <artifactId>libsvm</artifactId>
-            <version>3.35</version>
+            <version>${ocr.libsvm.version}</version>
         </dependency>
 
         <dependency>
             <groupId>colt</groupId>
             <artifactId>colt</artifactId>
-            <version>1.2.0</version>
+            <version>${ocr.colt.version}</version>
         </dependency>
 
+        <!-- OUTROS -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
