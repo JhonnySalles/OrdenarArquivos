@@ -3,7 +3,10 @@ package com.fenix.ordenararquivos.process
 import cern.colt.list.IntArrayList
 import cern.colt.map.OpenIntIntHashMap
 import libsvm.*
-import org.opencv.core.*
+import org.opencv.core.Mat
+import org.opencv.core.Point
+import org.opencv.core.Rect
+import org.opencv.core.Size
 import org.opencv.imgcodecs.Imgcodecs
 import org.slf4j.LoggerFactory
 import java.io.File

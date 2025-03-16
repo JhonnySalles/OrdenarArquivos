@@ -6,7 +6,6 @@ import javafx.application.Application
 import javafx.event.EventHandler
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
-import javafx.scene.chart.PieChart.Data
 import javafx.scene.image.Image
 import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color

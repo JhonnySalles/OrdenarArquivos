@@ -1,7 +1,5 @@
 package com.fenix.ordenararquivos.mock
 
-import java.lang.reflect.Field
-
 
 abstract class MockBase<ID, E> : Mock<ID, E> {
 
