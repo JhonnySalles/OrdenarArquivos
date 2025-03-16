@@ -13,7 +13,6 @@ object Configuracao {
             FileOutputStream(ARQUIVO).use { os ->
                 val props = Properties()
                 props.setProperty("caminho_winrar", winrar)
-                props.setProperty("caminho_tesseract","")
                 props.store(os, "")
             }
         } catch (e: IOException) {

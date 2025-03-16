@@ -1,14 +1,6 @@
 package com.fenix.ordenararquivos.util
 
-import java.io.File
-import java.net.URISyntaxException
-import java.nio.file.FileSystems
-import java.nio.file.Path
-import java.nio.file.Paths
 import java.time.LocalDateTime
-import java.util.*
-import java.util.jar.JarEntry
-import java.util.jar.JarFile
 
 
 class Utils {

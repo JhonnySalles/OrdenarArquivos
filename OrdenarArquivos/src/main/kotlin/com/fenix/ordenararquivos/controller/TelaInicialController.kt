@@ -573,8 +573,9 @@ class TelaInicialController : Initializable {
         var nome = txtNomePastaManga.text
         if (nome.contains("]"))
             nome = nome.substring(nome.indexOf("]")).replace("]", "").trim { it <= ' ' }
-        if (nome.substring(nome.length - 1).equals("-", ignoreCase = true)) nome =
-            nome.substring(0, nome.length - 1).trim { it <= ' ' }
+
+        if (nome.substring(nome.length - 1).equals("-", ignoreCase = true))
+            nome = nome.substring(0, nome.length - 1).trim { it <= ' ' }
 
         val quantidade = if (mObsListaItens == null) 0 else mObsListaItens.size
 

@@ -9,7 +9,9 @@ object DataBase {
 
     private val mLOG = LoggerFactory.getLogger(DataBase::class.java)
     private const val mDATABASE = "ordena.db"
+    const val mDATABASE_TEST = "ordenatest.db"
     private lateinit var mCONN: Connection
+    var isTeste : Boolean = false
 
     @JvmStatic
     val instancia: Connection
@@ -24,8 +26,9 @@ object DataBase {
             Class.forName("org.sqlite.JDBC")
             DriverManager.registerDriver(JDBC())
             try {
+                val dataBase = if (isTeste) mDATABASE_TEST else mDATABASE
                 val flyway = Flyway.configure()
-                    .dataSource("jdbc:sqlite:" + mDATABASE, "", "")
+                    .dataSource("jdbc:sqlite:" + dataBase, "", "")
                     .locations("./db/migration", "classpath:/db/migration", "classpath:db/migration")
                     .load()
                 flyway.migrate()
