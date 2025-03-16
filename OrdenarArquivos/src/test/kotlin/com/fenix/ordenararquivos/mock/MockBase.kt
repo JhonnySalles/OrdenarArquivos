@@ -23,20 +23,4 @@ abstract class MockBase<ID, E> : Mock<ID, E> {
         return updated
     }
 
-    override fun updateEntityById(lastId: ID?): E {
-        val update = mockEntity(lastId)!!
-        val fields: Array<Field> = update::class.java.declaredFields
-
-        for (field in fields) {
-            field.isAccessible = true
-            when (field.type) {
-                String::class.java -> field[update] = field[update].toString().plus("---")
-                Int::class.java, Long::class.java -> field[update] = 10
-                Float::class.java, Double::class.java -> field[update] = 10.0
-            }
-
-        }
-        return update
-    }
-
 }

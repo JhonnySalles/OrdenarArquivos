@@ -10,14 +10,12 @@ class MockCaminhos : MockBase<Long?, Caminhos>() {
 
     override fun randomId(): Long? = (1L..100L).random()
 
-    override fun updateEntity(input: Caminhos): Caminhos = updateEntityById(input.id)
-
-    override fun updateEntityById(lastId: Long?): Caminhos {
-        return Caminhos(lastId ?: 0, null, "Capitulo" + "---", 20, "20", "Pasta" + "---")
+    override fun updateEntity(input: Caminhos): Caminhos {
+        return Caminhos(input.id, null, "Capitulo Teste" + "---", 20, "20", "Pasta" + "---")
     }
 
     override fun mockEntity(id: Long?): Caminhos {
-        return Caminhos(id ?: 0, null, "Capitulo", 10, "10", "Pasta")
+        return Caminhos(id ?: 0, null, "Capitulo Teste", 10, "10", "Pasta")
     }
 
     override fun assertsService(input: Caminhos?) {
