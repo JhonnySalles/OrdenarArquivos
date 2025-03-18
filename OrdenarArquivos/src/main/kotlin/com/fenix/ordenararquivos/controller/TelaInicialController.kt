@@ -355,15 +355,15 @@ class TelaInicialController : Initializable {
     private fun onBtnVolumeMenos() {
         // Matches retorna se toda a string for o patern, no caso utiliza-se o inicio
         // para mostrar que tenha em toda a string.
-        if (txtVolume.text.matches(Regex(".*" + NUMBER_PATTERN))) {
+        if (txtVolume.text.matches(Regex(".*$NUMBER_PATTERN$"))) {
             val oldVolume = txtVolume.text
             var texto = txtVolume.text.trim { it <= ' ' }
-            var volume = texto.replace(texto.replace(NUMBER_PATTERN.toRegex(), "").toRegex(), "").trim { it <= ' ' }
+            var volume = texto.replace(texto.replace(NUMBER_PATTERN.toRegex(), ""), "").trim { it <= ' ' }
             val padding = volume.length
             try {
                 var number = Integer.valueOf(volume)
                 texto = texto.substring(0, texto.lastIndexOf(volume))
-                number = number - 1
+                number -= 1
                 volume = texto + String.format("%0" + padding + "d", number)
                 txtVolume.text = volume
                 simulaNome()
@@ -373,7 +373,7 @@ class TelaInicialController : Initializable {
                 try {
                     var number = java.lang.Double.valueOf(volume)
                     texto = texto.substring(0, texto.lastIndexOf(volume))
-                    number = number - 1
+                    number -= 1
                     volume = texto + String.format("%0$padding.1f", number).replace("\\.".toRegex(), "").replace("\\,".toRegex(), ".")
                     txtVolume.text = volume
                     simulaNome()
@@ -388,15 +388,15 @@ class TelaInicialController : Initializable {
 
     @FXML
     private fun onBtnVolumeMais() {
-        if (txtVolume.text.matches(Regex(".*" + NUMBER_PATTERN))) {
+        if (txtVolume.text.matches(Regex(".*$NUMBER_PATTERN$"))) {
             val oldVolume = txtVolume.text
             var texto = txtVolume.text.trim { it <= ' ' }
-            var volume = texto.replace(texto.replace(NUMBER_PATTERN.toRegex(), "").toRegex(), "").trim { it <= ' ' }
+            var volume = texto.replace(texto.replace(NUMBER_PATTERN.toRegex(), ""), "").trim { it <= ' ' }
             val padding = volume.length
             try {
                 var number = Integer.valueOf(volume)
                 texto = texto.substring(0, texto.lastIndexOf(volume))
-                number = number + 1
+                number += 1
                 volume = texto + String.format("%0" + padding + "d", number)
                 txtVolume.text = volume
                 simulaNome()
@@ -406,7 +406,7 @@ class TelaInicialController : Initializable {
                 try {
                     var number = java.lang.Double.valueOf(volume)
                     texto = texto.substring(0, texto.lastIndexOf(volume))
-                    number = number + 1
+                    number += 1
                     volume = texto + String.format("%0$padding.1f", number).replace("\\.".toRegex(), "").replace("\\,".toRegex(), ".")
                     txtVolume.text = volume
                     simulaNome()
@@ -1439,7 +1439,7 @@ class TelaInicialController : Initializable {
     }
 
     private fun getNumber(texto: String): Double? {
-        val numero = texto.trim { it <= ' ' }.replace(texto.replace(NUMBER_PATTERN.toRegex(), "").toRegex(), "").trim { it <= ' ' }
+        val numero = texto.trim { it <= ' ' }.replace(texto.replace(NUMBER_PATTERN.toRegex(), ""), "").trim { it <= ' ' }
         return try {
             java.lang.Double.valueOf(numero)
         } catch (e1: NumberFormatException) {
@@ -1525,9 +1525,8 @@ class TelaInicialController : Initializable {
             mListaCaminhos = ArrayList()
             for (ls in linhas) {
                 linha = ls.split(txtSeparador.text.toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-                nomePasta = if (txtNomePastaCapitulo.text.trim { it <= ' ' }.equals("Capítulo", ignoreCase = true)
-                    && linha[0].uppercase(Locale.getDefault()).contains("EXTRA")
-                ) linha[0].trim { it <= ' ' } else txtNomePastaCapitulo.text.trim { it <= ' ' } + " " + linha[0].trim { it <= ' ' }
+                nomePasta = if (txtNomePastaCapitulo.text.trim { it <= ' ' }.equals("Capítulo", ignoreCase = true) && linha[0].uppercase(Locale.getDefault()).contains("EXTRA"))
+                    linha[0].trim { it <= ' ' } else txtNomePastaCapitulo.text.trim { it <= ' ' } + " " + linha[0].trim { it <= ' ' }
                 mListaCaminhos.add(Caminhos(linha[0], linha[1].trim(), nomePasta))
             }
             mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
@@ -1546,7 +1545,8 @@ class TelaInicialController : Initializable {
             if (inicio <= fim) {
                 var texto = ""
                 val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
-                for (i in inicio..fim) texto += String.format(padding, i) + "-" + if (i < fim) "\r\n" else ""
+                for (i in inicio..fim)
+                    texto += String.format(padding, i) + "-" + if (i < fim) "\r\n" else ""
                 txtAreaImportar.text = texto
             } else txtGerarInicio.unFocusColor = Color.GRAY
         } else {
@@ -1916,15 +1916,30 @@ class TelaInicialController : Initializable {
                         val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
                         before = before.substringBeforeLast(line)
 
-                        val newLine = if (e.code == KeyCode.E)
-                            if (line.contains("extra", true))
-                                line.replace("extra", "", ignoreCase = true).trim()
-                            else
-                                "Extra $line"
-                        else if (e.code == KeyCode.D)
-                            line + "\n" + line
-                        else
-                            line
+                        val newLine = when (e.code) {
+                            KeyCode.E -> {
+                                if (line.contains("extra", true)) {
+                                    val fim = getNumber(txtGerarFim.text)?.toInt() ?: 0
+                                    val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
+                                    var sequence = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
+                                    sequence = if (sequence.contains("extra", ignoreCase = true)) sequence.lowercase().substringBefore("extra") else sequence.substringBeforeLast("\n")
+                                    sequence = if (sequence.endsWith("\n")) sequence.substringBeforeLast("\n") else sequence
+                                    sequence = if (sequence.contains("\n")) sequence.substringAfterLast("\n") else sequence
+                                    getNumber(sequence)?.toInt()?.let { "${String.format(padding, it+1)}-" } ?: sequence
+                                } else {
+                                    val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
+                                    "Extra ${String.format("%02d", count + 1)}-"
+                                }
+                            }
+                            KeyCode.D ->  {
+                                if (line.contains("extra", true) && last.isEmpty()) {
+                                    val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
+                                    line + "\n" + "Extra ${String.format("%02d", count + 1)}-"
+                                } else
+                                    line + "\n" + line
+                            }
+                            else -> line
+                        }
 
                         val newText = before + newLine + last
 
@@ -2161,7 +2176,7 @@ class TelaInicialController : Initializable {
         private var WINRAR: String? = null
         private const val IMAGE_PATTERN = "(.*/)*.+\\.(png|jpg|gif|bmp|jpeg|PNG|JPG|GIF|BMP|JPEG)$"
         private var LAST_PROCESS_FOLDERS: MutableList<File> = ArrayList()
-        private const val NUMBER_PATTERN = "[\\d.]+$"
+        private const val NUMBER_PATTERN = "[\\d.]+"
         private val NUMBER_REGEX = Regex("\\d*")
 
         val fxmlLocate: URL get() = TelaInicialController::class.java.getResource("/view/TelaInicial.fxml")
