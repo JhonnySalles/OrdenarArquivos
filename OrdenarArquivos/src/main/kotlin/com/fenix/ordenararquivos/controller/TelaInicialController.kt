@@ -1921,20 +1921,21 @@ class TelaInicialController : Initializable {
                                 if (line.contains("extra", true)) {
                                     val fim = getNumber(txtGerarFim.text)?.toInt() ?: 0
                                     val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
-                                    var sequence = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
-                                    sequence = if (sequence.contains("extra", ignoreCase = true)) sequence.lowercase().substringBefore("extra") else sequence.substringBeforeLast("\n")
-                                    sequence = if (sequence.endsWith("\n")) sequence.substringBeforeLast("\n") else sequence
-                                    sequence = if (sequence.contains("\n")) sequence.substringAfterLast("\n") else sequence
-                                    getNumber(sequence)?.toInt()?.let { "${String.format(padding, it+1)}-" } ?: sequence
+                                    var sequence = txt.split("\n").last { !it.contains("extra", ignoreCase = true) }
+                                    sequence = if (sequence.contains("-")) sequence.substringBefore("-") else sequence
+                                    val page = if (line.contains("-")) line.substringAfter("-") else ""
+                                    getNumber(sequence)?.toInt()?.let { "${String.format(padding, it+1)}-$page" } ?: sequence
                                 } else {
                                     val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
-                                    "Extra ${String.format("%02d", count + 1)}-"
+                                    val page = if (line.contains("-")) line.substringAfter("-") else ""
+                                    "Extra ${String.format("%02d", count + 1)}-$page"
                                 }
                             }
                             KeyCode.D ->  {
                                 if (line.contains("extra", true) && last.isEmpty()) {
                                     val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
-                                    line + "\n" + "Extra ${String.format("%02d", count + 1)}-"
+                                    val page = if (line.contains("-")) line.substringAfter("-") else ""
+                                    line + "\n" + "Extra ${String.format("%02d", count + 1)}-$page"
                                 } else
                                     line + "\n" + line
                             }
@@ -1944,6 +1945,7 @@ class TelaInicialController : Initializable {
                         val newText = before + newLine + last
 
                         txtAreaImportar.text = newText
+                        lastCaretPos = before.length + newLine.lastIndexOf("-") + 1
                         txtAreaImportar.positionCaret(lastCaretPos)
                         txtAreaImportar.scrollTop = scroll
                     }
