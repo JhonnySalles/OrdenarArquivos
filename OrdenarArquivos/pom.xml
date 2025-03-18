@@ -28,7 +28,6 @@
         <bd.spark.version>2.9.3</bd.spark.version>
         <firebase.version>9.2.0</firebase.version>
         <flyway.version>8.5.0</flyway.version>
-        <flyway.jooq.version>3.16.4</flyway.jooq.version>
         <logger.slf4j.version>1.7.32</logger.slf4j.version>
         <logger.logback.version>1.2.0</logger.logback.version>
         <ocr.tess4j.version>5.15.0</ocr.tess4j.version>
@@ -161,7 +160,7 @@
         <dependency>
             <groupId>org.jooq</groupId>
             <artifactId>jooq</artifactId>
-            <version>${flyway.jooq.version}</version>
+            <version>3.16.4</version>
         </dependency>
 
         <dependency>
