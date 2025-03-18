@@ -25,11 +25,8 @@
         <gesturefx.version>0.7.1</gesturefx.version>
         <sqlite.version>3.41.2.2</sqlite.version>
         <bd.jdbi3.version>3.1.0</bd.jdbi3.version>
-        <bd.spark.version>2.9.3</bd.spark.version>
-        <firebase.version>9.2.0</firebase.version>
         <flyway.version>8.5.0</flyway.version>
         <logger.slf4j.version>1.7.32</logger.slf4j.version>
-        <logger.logback.version>1.2.0</logger.logback.version>
         <ocr.tess4j.version>5.15.0</ocr.tess4j.version>
         <ocr.opencv.version>3.2.0-1</ocr.opencv.version>
         <ocr.libsvm.version>3.35</ocr.libsvm.version>
@@ -179,7 +176,7 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>${logger.logback.version}</version>
+            <version>1.2.0</version>
         </dependency>
 
         <!-- DB-->
@@ -192,7 +189,7 @@
         <dependency>
             <groupId>com.sparkjava</groupId>
             <artifactId>spark-core</artifactId>
-            <version>${bd.spark.version}</version>
+            <version>2.9.3</version>
         </dependency>
 
         <!-- Gesto em imagem -->
@@ -206,7 +203,13 @@
         <dependency>
             <groupId>com.google.firebase</groupId>
             <artifactId>firebase-admin</artifactId>
-            <version>${firebase.version}</version>
+            <version>9.3.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-core</artifactId>
+            <version>1.62.2</version>
         </dependency>
 
         <!-- OCR -->

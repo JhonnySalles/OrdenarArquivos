@@ -25,13 +25,13 @@ module com.fenix.ordenararquivos {
     requires google.cloud.core;
     requires google.cloud.firestore;
     requires com.google.api.apicommon;
-    requires grpc.api;
-    requires grpc.core;
     requires tess4j;
     requires libsvm;
     requires colt;
     requires org.apache.commons.lang3;
     requires opencv;
+    requires io.grpc.internal;
+    requires io.grpc;
 
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;

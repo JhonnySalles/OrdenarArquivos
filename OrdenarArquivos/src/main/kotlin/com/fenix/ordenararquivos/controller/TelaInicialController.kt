@@ -46,16 +46,19 @@ import net.kurobako.gesturefx.GesturePane
 import org.slf4j.LoggerFactory
 import java.awt.image.BufferedImage
 import java.io.*
+import java.math.RoundingMode
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
+import java.text.DecimalFormat
 import java.time.LocalDateTime
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.regex.Pattern
 import javax.imageio.ImageIO
+import kotlin.math.roundToInt
 
 
 class TelaInicialController : Initializable {
@@ -620,17 +623,18 @@ class TelaInicialController : Initializable {
 
             val capitulos = it.capitulos.split("\n")
             val regex = "^\\d+".toRegex()
-            var min = 0
-            var max = 0
+            var min = 0.0
+            var max = 0.0
             var aux = ""
 
             for (cap in capitulos) {
                 aux = if (cap.contains("-")) cap.substringBeforeLast("-") else cap
                 if (aux.trim().isNotEmpty() && regex.containsMatchIn(aux)) {
-                    if (min == 0)
-                        min = Integer.valueOf(aux)
+                    val cap = getNumber(aux) ?: continue
+                    if (min == 0.0 || min > cap)
+                        min = cap
                     else
-                        max = Integer.valueOf(aux)
+                        max = cap
                 }
             }
 
@@ -641,10 +645,11 @@ class TelaInicialController : Initializable {
                     0
                 }
 
-                val dif = max - min
-                val initial = if (vol > 0) ((dif * vol) + max + 1) else (max + 1)
-                txtGerarInicio.text = initial.toString()
-                txtGerarFim.text = (initial + dif).toString()
+                // Arredonda para cima, ou seja, em caso de 19.1, arredonda para 20.
+                val dif = DecimalFormat("#").apply { roundingMode = RoundingMode.CEILING }.format(max - min).toInt()
+                val initial = if (vol > 1) ((dif * vol) + max + 1) else (max + 1)
+                txtGerarInicio.text = initial.toInt().toString()
+                txtGerarFim.text = (initial + dif).toInt().toString()
                 onBtnGerarCapitulos()
             }
         }
