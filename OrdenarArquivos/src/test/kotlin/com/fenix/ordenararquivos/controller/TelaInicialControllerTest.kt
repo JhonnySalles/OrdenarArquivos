@@ -1,12 +1,17 @@
 package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.database.DataBase
+import com.fenix.ordenararquivos.mock.MockManga
+import com.fenix.ordenararquivos.service.MangaServices
+import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXListView
 import com.jfoenix.controls.JFXTextArea
 import com.jfoenix.controls.JFXTextField
+import javafx.application.Platform
 import javafx.event.EventHandler
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
+import javafx.scene.control.Label
 import javafx.scene.image.Image
 import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
@@ -24,6 +29,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.system.exitProcess
 
 
@@ -64,7 +71,6 @@ class TelaInicialControllerTest {
         stage.scene = scene
         stage.title = "Testando Ordena Arquivos"
         stage.icons.add(Image(TelaInicialController::class.java.getResourceAsStream(TelaInicialController.iconLocate)))
-        stage.initStyle(StageStyle.DECORATED)
         stage.minWidth = 700.0
         stage.minHeight = 600.0
 
@@ -123,79 +129,134 @@ class TelaInicialControllerTest {
         }
     }
 
+    private fun espera(segundos : Long) = CountDownLatch(1).await(segundos, TimeUnit.SECONDS)
+
+    // Para o teste, com lookup utilize # para o css id ou . para a css classe
     @Test
     @Order(0)
     fun preparaCampos(robot: FxRobot) {
-        robot.lookup("txtNomePastaManga").queryAs(JFXTextField::class.java).text = "[JPN] Teste da tela inicial - "
-        robot.lookup("txtPastaOrigem").queryAs(JFXTextField::class.java).text = ORIGEM_TEMPORARIA.path
-        robot.lookup("txtPastaDestino").queryAs(JFXTextField::class.java).text = DESTINO_TEMPORARIA.path
+        robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = "[JPN] Teste da tela inicial - "
+        robot.lookup("#txtPastaOrigem").queryAs(JFXTextField::class.java).text = ORIGEM_TEMPORARIA.path
+        robot.lookup("#txtPastaDestino").queryAs(JFXTextField::class.java).text = DESTINO_TEMPORARIA.path
     }
 
     @Test
     @Order(1)
     fun testeGerarCapitulos(robot: FxRobot) {
-        val txtInicio = robot.lookup("txtGerarInicio").queryAs(JFXTextField::class.java)
-        val txtFim = robot.lookup("txtGerarFim").queryAs(JFXTextField::class.java)
+        val txtInicio = robot.lookup("#txtGerarInicio").queryAs(JFXTextField::class.java)
+        val txtFim = robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java)
+
         txtInicio.text = "1"
         txtFim.text = "10"
-        robot.clickOn("btnGerar")
+        robot.clickOn("#btnGerar")
 
-        val txtAImportar = robot.lookup("txtAreaImportar").queryAs(JFXTextArea::class.java)
+        val txtAImportar = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         assertEquals(txtAImportar.text, "001-\n002-\n003-\n004-\n005-\n006-\n007-\n008-\n009-\n010-")
     }
 
     @Test
     @Order(2)
     fun testeIncrementaVolume(robot: FxRobot) {
-        val txtInicio = robot.lookup("txtVolume").queryAs(JFXTextField::class.java)
-        val txtFim = robot.lookup("txtGerarFim").queryAs(JFXTextField::class.java)
+        val txtInicio = robot.lookup("#txtGerarInicio").queryAs(JFXTextField::class.java)
+        val txtFim = robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java)
 
-        robot.clickOn("btnVolumeMais")
+        txtInicio.text = "1"
+        txtFim.text = "10"
+        robot.clickOn("#btnVolumeMais")
 
         assertEquals(txtInicio.text, "11")
         assertEquals(txtFim.text, "20")
 
-        val txtAImportar = robot.lookup("txtAreaImportar").queryAs(JFXTextArea::class.java)
+        val txtAImportar = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         assertEquals(txtAImportar.text, "011-\n012-\n013-\n014-\n015-\n016-\n017-\n018-\n019-\n020-")
     }
 
     @Test
     @Order(3)
     fun testeDecrementaVolume(robot: FxRobot) {
-        val txtInicio = robot.lookup("txtVolume").queryAs(JFXTextField::class.java)
-        val txtFim = robot.lookup("txtGerarFim").queryAs(JFXTextField::class.java)
+        val txtInicio = robot.lookup("#txtGerarInicio").queryAs(JFXTextField::class.java)
+        val txtFim = robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java)
 
-        robot.clickOn("btnVolumeMenos")
+        txtInicio.text = "11"
+        txtFim.text = "20"
+
+        robot.clickOn("#btnVolumeMenos")
 
         assertEquals(txtInicio.text, "1")
         assertEquals(txtFim.text, "10")
 
-        val txtAImportar = robot.lookup("txtAreaImportar").queryAs(JFXTextArea::class.java)
+        val txtAImportar = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         assertEquals(txtAImportar.text, "001-\n002-\n003-\n004-\n005-\n006-\n007-\n008-\n009-\n010-")
     }
 
     @Test
     @Order(4)
     fun testeGerarSequencia(robot: FxRobot) {
-        val txtInicio = robot.lookup("txtVolume").queryAs(JFXTextField::class.java)
-        val txtFim = robot.lookup("txtGerarFim").queryAs(JFXTextField::class.java)
+        val txtInicio = robot.lookup("#txtGerarInicio").queryAs(JFXTextField::class.java)
+        val txtFim = robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java)
 
-        robot.clickOn("btnVolumeMenos")
+        txtInicio.text = "1"
+        txtFim.text = "5"
 
-        assertEquals(txtInicio.text, "1")
-        assertEquals(txtFim.text, "10")
+        robot.clickOn("#btnGerar")
 
-        val txtAImportar = robot.lookup("txtAreaImportar").queryAs(JFXTextArea::class.java)
-        assertEquals(txtAImportar.text, "001-\n002-\n003-\n004-\n005-\n006-\n007-\n008-\n009-\n010-")
+        val txtAImportar = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
+        assertEquals(txtAImportar.text, "001-\n002-\n003-\n004-\n005-")
+    }
+
+    private val manga = MockManga().mockEntity(0)
+    @Test
+    @Order(5)
+    fun testeCarrega(robot: FxRobot) {
+        MangaServices().save(manga)
+
+        robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = "[JPN] ${manga.nome} - "
+        robot.lookup("#txtNomePastaCapitulo").queryAs(JFXTextField::class.java).text = manga.capitulo
+        robot.clickOn("#txtVolume")
+        robot.clickOn("#txtAreaImportar")
+
+        val lblAviso = robot.lookup("#lblAviso").queryAs(Label::class.java)
+        assertTrue(lblAviso.text.isNotEmpty() && lblAviso.text.contains("Manga localizado."))
+
+        val txtGerarInicio = robot.lookup("#txtGerarInicio").queryAs(JFXTextField::class.java)
+        val txtGerarFim = robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java)
+
+        assertEquals(txtGerarInicio.text, "1")
+        assertEquals(txtGerarFim.text, "2")
+
+        val txtAImportar = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
+        assertEquals(txtAImportar.text, manga.capitulos)
+
+        val lsVwImagens = robot.lookup("#lsVwListaImagens").queryAs(JFXListView::class.java) as JFXListView<String>
+        assertTrue(lsVwImagens.items.isNotEmpty())
     }
 
     @Test
-    @Order(4)
-    fun testeItens(robot: FxRobot) {
-        val lsVwImagens = robot.lookup("lsVwListaImagens").queryAs(JFXListView::class.java) as JFXListView<String>
-        robot.lookup("txtPastaOrigem").queryAs(JFXTextField::class.java).requestFocus()
-        robot.lookup("txtPastaDestino").queryAs(JFXTextField::class.java).requestFocus()
+    @Order(6)
+    fun testeCarregaAnterior(robot: FxRobot) {
+        robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = "[JPN] ${manga.nome} - "
+        robot.lookup("#txtNomePastaCapitulo").queryAs(JFXTextField::class.java).text = manga.capitulo
+        robot.lookup("#txtVolume").queryAs(JFXTextField::class.java).text = "Volume 02"
 
+        robot.clickOn("#txtVolume")
+        robot.clickOn("#txtAreaImportar")
+
+        espera(1)
+
+        val lblAviso = robot.lookup("#lblAviso").queryAs(Label::class.java)
+        assertTrue(lblAviso.text.isNotEmpty() && lblAviso.text.contains("Volume anterior localizado."))
+
+        val txtGerarInicio = robot.lookup("#txtGerarInicio").queryAs(JFXTextField::class.java)
+        val txtGerarFim = robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java)
+
+        assertEquals(txtGerarInicio.text, "3")
+        assertEquals(txtGerarFim.text, "4")
+
+        val txtAImportar = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
+        assertEquals(txtAImportar.text, "003-\n004-")
+
+        val lsVwImagens = robot.lookup("#lsVwListaImagens").queryAs(JFXListView::class.java) as JFXListView<String>
         assertTrue(lsVwImagens.items.isNotEmpty())
     }
+
 }

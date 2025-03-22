@@ -8,3 +8,4 @@
 --add-exports javafx.base/com.sun.javafx.event=com.jfoenix
 --add-exports javafx.graphics/com.sun.javafx.stage=com.jfoenix
 --add-opens java.base/java.lang.reflect=com.jfoenix
+--add-opens javafx.graphics/com.sun.javafx.application=ALL-UNNAMED

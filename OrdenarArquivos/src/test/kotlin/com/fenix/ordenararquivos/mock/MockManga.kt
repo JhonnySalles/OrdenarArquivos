@@ -14,11 +14,11 @@ class MockManga : MockBase<Long?, Manga>() {
     override fun randomId(): Long? = (1L..100L).random()
 
     override fun updateEntity(input: Manga): Manga {
-        return Manga(input.id, "Manga Teste" + "---", "Volume" + "---", "Capitulo" + "---", "Aquivo" + "---", "Capitulos" + "---", 10, LocalDateTime.now(), mutableListOf(mockCaminhos.updateEntity(input.caminhos[0])))
+        return Manga(input.id, "Manga Teste" + "---", "Volume 02", "Capitulo" + "---", "Aquivo" + "---", "001-5\n002-10", 10, LocalDateTime.now(), mutableListOf(mockCaminhos.updateEntity(input.caminhos[0])))
     }
 
     override fun mockEntity(id: Long?): Manga {
-        return Manga(id ?: 0, "Manga Teste", "Volume", "Capitulo", "Arquivo", "Capitulos", 0, caminhos = mutableListOf(mockCaminhos.mockEntity()))
+        return Manga(id ?: 0, "Manga Teste", "Volume 01", "Capitulo", "Arquivo", "001-\n002-", 0, caminhos = mockCaminhos.mockEntities())
     }
 
     override fun assertsService(input: Manga?) {

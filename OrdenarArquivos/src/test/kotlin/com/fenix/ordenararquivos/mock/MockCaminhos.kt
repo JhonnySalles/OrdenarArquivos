@@ -11,11 +11,15 @@ class MockCaminhos : MockBase<Long?, Caminhos>() {
     override fun randomId(): Long? = (1L..100L).random()
 
     override fun updateEntity(input: Caminhos): Caminhos {
-        return Caminhos(input.id, null, "Capitulo Teste" + "---", 20, "20", "Pasta" + "---")
+        return Caminhos(input.id, null, "002", 20, "20", "Capitulo Teste 002")
     }
 
     override fun mockEntity(id: Long?): Caminhos {
-        return Caminhos(id ?: 0, null, "Capitulo Teste", 10, "10", "Pasta")
+        return Caminhos(id ?: 0, null, "001", 10, "10", "Capitulo Teste 001")
+    }
+
+    fun mockEntities(): MutableList<Caminhos> {
+        return mutableListOf(mockEntity(0), updateEntity(mockEntity(0)))
     }
 
     override fun assertsService(input: Caminhos?) {
