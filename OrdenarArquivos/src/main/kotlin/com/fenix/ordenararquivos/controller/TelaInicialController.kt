@@ -500,7 +500,6 @@ class TelaInicialController : Initializable {
         return valida
     }
 
-    private val regex = "第?([\\d]+)話?[\\D]*([\\d]+)".toRegex()
     private fun ocrSumario(sumario : File) {
         remSugestao()
         val isJapanese = txtNomePastaManga.text.contains("[JPN]", true)
@@ -517,7 +516,7 @@ class TelaInicialController : Initializable {
 
                     val capitulos = mutableMapOf<Int, Int>()
                     for (linha in linhas) {
-                        regex.matchEntire(linha)?.let {
+                        OCR_CHAPTER_REGEX.matchEntire(linha)?.let {
                             if (it.groups.size > 2) {
                                 if (it.groups[1] != null && it.groups[2] != null)
                                     capitulos[Integer.parseInt(it.groups[1]!!.value)] = Integer.parseInt(it.groups[2]!!.value)
@@ -607,6 +606,42 @@ class TelaInicialController : Initializable {
             mListaCaminhos = ArrayList(it.caminhos)
             mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
             tbViewTabela.items = mObsListaCaminhos
+
+            try {
+                var min = 0
+                var max = 0
+
+                if (it.caminhos.isNotEmpty()) {
+                    for (caminho in it.caminhos) {
+                        val capitulo = caminho.capitulo
+                        if (capitulo.trim().isEmpty() || !ONLY_NUMBER_REGEX.containsMatchIn(capitulo))
+                            continue
+
+                        val cap = capitulo.replace(Regex("\\D"), "").toInt()
+                        if (min == 0 || min > cap)
+                            min = cap
+                        else
+                            max = cap
+                    }
+                } else {
+                    val linhas = it.capitulos.split("\n")
+                    for (linha in linhas) {
+                        val numero = if (linha.contains("-")) linha.substringBeforeLast("-") else linha
+                        if (numero.trim().isNotEmpty() && ONLY_NUMBER_REGEX.containsMatchIn(numero)) {
+                            val capitulo = getNumber(numero) ?: continue
+                            if (min == 0 || min > capitulo)
+                                min = capitulo.toInt()
+                            else
+                                max = capitulo.toInt()
+                        }
+                    }
+                }
+
+                txtGerarInicio.text = min.toString()
+                txtGerarFim.text = max.toString()
+            } catch (e: Exception) {
+                mLOG.error("Erro ao carregar os capítulos de inicio e fim.", e)
+            }
         }
 
         return mManga != null
@@ -621,20 +656,18 @@ class TelaInicialController : Initializable {
             txtNomePastaManga.text = "[JPN] " + it.nome + " - "
             txtNomePastaCapitulo.text = it.capitulo
 
-            val capitulos = it.capitulos.split("\n")
-            val regex = "^\\d+".toRegex()
+            val linhas = it.capitulos.split("\n")
             var min = 0.0
             var max = 0.0
-            var aux = ""
 
-            for (cap in capitulos) {
-                aux = if (cap.contains("-")) cap.substringBeforeLast("-") else cap
-                if (aux.trim().isNotEmpty() && regex.containsMatchIn(aux)) {
-                    val cap = getNumber(aux) ?: continue
-                    if (min == 0.0 || min > cap)
-                        min = cap
+            for (linha in linhas) {
+                val numero = if (linha.contains("-")) linha.substringBeforeLast("-") else linha
+                if (numero.trim().isNotEmpty() && ONLY_NUMBER_REGEX.containsMatchIn(numero)) {
+                    val capitulo = getNumber(numero) ?: continue
+                    if (min == 0.0 || min > capitulo)
+                        min = capitulo
                     else
-                        max = cap
+                        max = capitulo
                 }
             }
 
@@ -2185,6 +2218,8 @@ class TelaInicialController : Initializable {
         private var LAST_PROCESS_FOLDERS: MutableList<File> = ArrayList()
         private const val NUMBER_PATTERN = "[\\d.]+"
         private val NUMBER_REGEX = Regex("\\d*")
+        private val ONLY_NUMBER_REGEX = Regex("^\\d+")
+        private val OCR_CHAPTER_REGEX = Regex("第?([\\d]+)話?[\\D]*([\\d]+)")
 
         val fxmlLocate: URL get() = TelaInicialController::class.java.getResource("/view/TelaInicial.fxml")
         val iconLocate: String get() = "/images/icoProcessar_512.png"
