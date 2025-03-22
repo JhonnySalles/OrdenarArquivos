@@ -6,7 +6,7 @@
 
     <groupId>com.fenix</groupId>
     <artifactId>ordenarArquivos</artifactId>
-    <version>1.0.4-SNAPSHOT</version>
+    <version>1.0.5-SNAPSHOT</version>
     <name>OrdenarArquivos</name>
 
     <properties>
@@ -31,6 +31,7 @@
         <ocr.opencv.version>3.2.0-1</ocr.opencv.version>
         <ocr.libsvm.version>3.35</ocr.libsvm.version>
         <ocr.colt.version>1.2.0</ocr.colt.version>
+        <jakarta.xml.version>4.0.1</jakarta.xml.version>
     </properties>
 
     <repositories>
@@ -68,6 +69,13 @@
         </dependency>
 
         <!--                                          Bibliotecas Teste                                           -->
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-test</artifactId>
+            <version>${kotlin.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
@@ -244,22 +252,24 @@
             <version>${ocr.colt.version}</version>
         </dependency>
 
+        <!-- XML -->
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+            <version>${jakarta.xml.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
+            <version>4.0.0</version>
+        </dependency>
+
         <!-- OUTROS -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>3.17.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-stdlib-jdk8</artifactId>
-            <version>${kotlin.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-test</artifactId>
-            <version>${kotlin.version}</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 

@@ -5,6 +5,7 @@ import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.database.DataBase.instancia
 import com.fenix.ordenararquivos.model.Sincronizacao
 import com.fenix.ordenararquivos.model.firebase.Caminhos
+import com.fenix.ordenararquivos.model.firebase.ComicInfo
 import com.fenix.ordenararquivos.model.firebase.Manga
 import com.fenix.ordenararquivos.util.Utils
 import com.google.auth.oauth2.GoogleCredentials
@@ -38,7 +39,8 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
 
     private var conn: Connection = instancia
 
-    private val service = MangaServices()
+    private val serviceManga = MangaServices()
+    private val serviceComicInfo = ComicInfoServices()
     private var sincronizacao: Sincronizacao? = null
     private lateinit var DB: Firestore
 
@@ -47,15 +49,18 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
 
     private var sincronizando = false
 
-    private val collection = "ORDENAR"
+    private val collectOrdenar = "ORDENAR"
+    private val collectComicInfo = "COMICINFO"
 
     companion object {
-        private val sincronizar: ObservableList<Manga> = FXCollections.observableArrayList()
-        fun enviar(manga: com.fenix.ordenararquivos.model.Manga) = sincronizar.add(Manga(manga))
+        private val sincManga: ObservableList<Manga> = FXCollections.observableArrayList()
+        private val sincComicInfo: ObservableList<ComicInfo> = FXCollections.observableArrayList()
+        fun enviar(manga: com.fenix.ordenararquivos.model.Manga) = sincManga.add(Manga(manga))
+        fun enviar(comic: com.fenix.ordenararquivos.model.comicinfo.ComicInfo) = sincComicInfo.add(ComicInfo(comic))
     }
 
     fun setObserver(listener: ListChangeListener<Manga>) {
-        sincronizar.addListener(listener)
+        sincManga.addListener(listener)
     }
 
     init {
@@ -89,14 +94,25 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
             return
 
         try {
-            val sinc = service.findEnvio(sincronizacao!!.envio).parallelStream().map { m -> Manga(m) }
-                .filter { i -> sincronizar.parallelStream().noneMatch { m -> m.equals(i) } }
+            val sinc = serviceManga.findEnvio(sincronizacao!!.envio).parallelStream().map { m -> Manga(m) }
+                .filter { i -> sincManga.parallelStream().noneMatch { m -> m.equals(i) } }
                 .collect(Collectors.toList())
             if (sinc.isNotEmpty())
-                sincronizar.addAll(sinc)
+                sincManga.addAll(sinc)
         } catch (ex: Exception) {
-            mLOG.error(ex.message, ex)
+            mLOG.error("Erro ao consultar registros de Manga para envio.", ex)
         }
+
+        try {
+            val sinc = serviceComicInfo.findEnvio(sincronizacao!!.envio).parallelStream().map { c -> ComicInfo(c) }
+                .filter { i -> sincComicInfo.parallelStream().noneMatch { c -> c.equals(i) } }
+                .collect(Collectors.toList())
+            if (sinc.isNotEmpty())
+                sincComicInfo.addAll(sinc)
+        } catch (ex: Exception) {
+            mLOG.error("Erro ao consultar registros de ComicInfo para envio.", ex)
+        }
+
     }
 
 
@@ -104,19 +120,20 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
     var processados: String = ""
 
     private fun getIdCloud(manga: Manga) : String = manga.nome + " - " + manga.volume
+    private fun getIdCloud(comic: ComicInfo) : String = comic.comic
 
     private fun envia(): Boolean {
-        var processado = false
+        var processadoManga = false
         registros = 0
-        if (!sincronizar.isEmpty()) {
-            mLOG.info("Enviando dados a cloud... ")
-            val sinc: List<Manga> = sincronizar.parallelStream().sorted { o1: Manga, o2: Manga -> o2.nome.compareTo(o1.nome) }.distinct().toList()
+        if (!sincManga.isEmpty()) {
+            mLOG.info("Enviando dados de Mangas da cloud... ")
+            val sinc: List<Manga> = sincManga.parallelStream().sorted { o1: Manga, o2: Manga -> o2.nome.compareTo(o1.nome) }.distinct().toList()
             try {
-                sincronizar.clear()
+                sincManga.clear()
                 val envio = LocalDateTime.now().format(formaterDataHora)
 
                 if (sinc.isNotEmpty()) {
-                    val docRef = DB.collection(collection).document(formaterData.format(LocalDate.now()))
+                    val docRef = DB.collection(collectOrdenar).document(formaterData.format(LocalDate.now()))
                     val data: MutableMap<String, Any> = HashMap()
                     for (manga in sinc) {
                         manga.sincronizacao = envio
@@ -125,31 +142,66 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
                     val result = docRef.set(data)
                     result.get()
                     registros += sinc.size
-                    mLOG.info("Enviado dados a cloud: " + sinc.size + " registros. ")
+                    mLOG.info("Enviado dados de mangas a cloud: " + sinc.size + " registros. ")
                 }
 
                 if (registros > 0)
-                    processados += "Enviado $registros registro(s). "
+                    processados += "Enviado $registros registro(s) de Mangas. "
 
-                mLOG.info("Concluído envio de dados a cloud.")
-                processado = true
+                mLOG.info("Concluído envio de dados de Mangas da cloud.")
+                processadoManga = true
             } catch (e: Exception) {
-                sincronizar.addAll(sinc)
-                mLOG.error("Erro ao enviar dados a cloud, adicionado arquivos para novo ciclo. ${e.message}", e)
+                sincManga.addAll(sinc)
+                mLOG.error("Erro ao enviar dados de Mangas da cloud, adicionado arquivos para novo ciclo. ${e.message}", e)
                 throw e
             }
         }
-        return processado
+
+        var processadoComic = false
+        registros = 0
+        if (!sincComicInfo.isEmpty()) {
+            mLOG.info("Enviando dados do ComicInfo a cloud... ")
+            val sinc: List<ComicInfo> = sincComicInfo.parallelStream().sorted { o1: ComicInfo, o2: ComicInfo -> o2.comic.compareTo(o1.comic) }.distinct().toList()
+            try {
+                sincComicInfo.clear()
+                val envio = LocalDateTime.now().format(formaterDataHora)
+
+                if (sinc.isNotEmpty()) {
+                    val docRef = DB.collection(collectComicInfo).document(formaterData.format(LocalDate.now()))
+                    val data: MutableMap<String, Any> = HashMap()
+                    for (comic in sinc) {
+                        comic.sincronizacao = envio
+                        data[getIdCloud(comic)] = comic
+                    }
+                    val result = docRef.set(data)
+                    result.get()
+                    registros += sinc.size
+                    mLOG.info("Enviado dados do ComicInfo a cloud: " + sinc.size + " registros. ")
+                }
+
+                if (registros > 0)
+                    processados += "Enviado $registros registro(s) de ComicInfo. "
+
+                mLOG.info("Concluído envio de dados do ComicInfo a cloud.")
+                processadoComic = true
+            } catch (e: Exception) {
+                sincComicInfo.addAll(sinc)
+                mLOG.error("Erro ao enviar dados do ComicInfo a cloud, adicionado arquivos para novo ciclo. ${e.message}", e)
+                throw e
+            }
+        }
+
+        return processadoManga && processadoComic
     }
     
     private fun receber(): Boolean {
-        var processado = false
+        var processadoManga = false
         try {
-            mLOG.info("Recebendo dados a cloud.... ")
+            mLOG.info("Recebendo dados de Manga da cloud.... ")
             val lista = mutableListOf<com.fenix.ordenararquivos.model.Manga>()
             val atual = LocalDate.now().format(formaterData)
 
-            val query = DB.collection(collection).get()
+            val query = DB.collection(collectOrdenar).get()
             val querySnapshot = query.get()
             val documents = querySnapshot.documents
             for (document in documents) {
@@ -171,28 +223,74 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
                 }
             }
 
-            mLOG.info("Processando retorno dados a cloud: " + lista.size + " registros.")
+            mLOG.info("Processando retorno dados de Manga da cloud: " + lista.size + " registros.")
             registros = lista.size
             for (sinc in lista) {
-                var manga: com.fenix.ordenararquivos.model.Manga? = service.find(sinc)
+                var manga: com.fenix.ordenararquivos.model.Manga? = serviceManga.find(sinc)
                 if (manga != null)
                     manga.merge(sinc)
                 else
                     manga = sinc
 
-                service.save(manga, false)
+                serviceManga.save(manga, false)
             }
 
             if (registros > 0)
-                processados += "Recebido $registros registro(s). "
+                processados += "Recebido $registros registro(s) de Manga. "
 
-            processado = true
-            mLOG.info("Concluído recebimento de dados a cloud.")
+            processadoManga = true
+            mLOG.info("Concluído recebimento de dados de Manga da cloud.")
         } catch (e: Exception) {
-            mLOG.error("Erro ao receber dados a cloud. ${e.message}".trimIndent(), e)
+            mLOG.error("Erro ao receber dados de Manga da cloud. ${e.message}".trimIndent(), e)
             throw e
         }
-        return processado
+
+        var processadoComic = false
+        try {
+            mLOG.info("Recebendo dados do ComicInfo da cloud.... ")
+            val lista = mutableListOf<com.fenix.ordenararquivos.model.comicinfo.ComicInfo>()
+            val atual = LocalDate.now().format(formaterData)
+
+            val query = DB.collection(collectComicInfo).get()
+            val querySnapshot = query.get()
+            val documents = querySnapshot.documents
+            for (document in documents) {
+                val data = LocalDate.parse(document.id, formaterData)
+
+                if (sincronizacao!!.recebimento.toLocalDate().isAfter(data) && !atual.equals(document.id, ignoreCase = true))
+                    continue
+
+                for (key in document.data.keys) {
+                    val obj = document.data[key] as HashMap<String, *>
+                    val sinc = LocalDateTime.parse(obj["sincronizacao"] as String, formaterDataHora)
+                    if (sinc.isAfter(sincronizacao!!.recebimento))
+                        lista.add(ComicInfo.toComicInfo(obj))
+                }
+            }
+
+            mLOG.info("Processando retorno dados do ComicInfo da cloud: " + lista.size + " registros.")
+            registros = lista.size
+            for (sinc in lista) {
+                var comic: com.fenix.ordenararquivos.model.comicinfo.ComicInfo? = serviceComicInfo.find(sinc.comic)
+                if (comic != null)
+                    comic.merge(sinc)
+                else
+                    comic = sinc
+
+                serviceComicInfo.save(comic, isSendCloud = false, isReceiveCloud = true)
+            }
+
+            if (registros > 0)
+                processados += "Recebido $registros registro(s) de ComicInfo. "
+
+            processadoComic = true
+            mLOG.info("Concluído recebimento de dados do ComicInfo da cloud.")
+        } catch (e: Exception) {
+            mLOG.error("Erro ao receber dados do ComicInfo da cloud. ${e.message}".trimIndent(), e)
+            throw e
+        }
+
+        return processadoManga && processadoComic
     }
 
     fun sincroniza(): Boolean {
@@ -233,7 +331,7 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
 
     fun isSincronizando(): Boolean = sincronizando
 
-    fun listSize(): Int = sincronizar.size
+    fun listSize(): Int = sincManga.size
 
     @Throws(SQLException::class)
     private fun update(obj: Sincronizacao) {

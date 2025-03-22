@@ -162,7 +162,7 @@ class MangaServices {
             st.setString(++index, Utils.fromDateTime(manga.atualizacao))
             val rowsAffected = st.executeUpdate()
             if (rowsAffected < 1) {
-                mLOG.info("Nenhum registro encontrado.")
+                mLOG.info("Nenhum registro foi inserido.")
                 throw Exception("Nenhum registro foi inserido.")
             } else {
                 val rs = st.generatedKeys

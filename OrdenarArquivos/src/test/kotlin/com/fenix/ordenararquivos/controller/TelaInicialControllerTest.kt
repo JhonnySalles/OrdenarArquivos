@@ -3,11 +3,9 @@ package com.fenix.ordenararquivos.controller
 import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.mock.MockManga
 import com.fenix.ordenararquivos.service.MangaServices
-import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXListView
 import com.jfoenix.controls.JFXTextArea
 import com.jfoenix.controls.JFXTextField
-import javafx.application.Platform
 import javafx.event.EventHandler
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
@@ -16,7 +14,6 @@ import javafx.scene.image.Image
 import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
 import javafx.stage.Stage
-import javafx.stage.StageStyle
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.extension.ExtendWith
@@ -258,5 +255,7 @@ class TelaInicialControllerTest {
         val lsVwImagens = robot.lookup("#lsVwListaImagens").queryAs(JFXListView::class.java) as JFXListView<String>
         assertTrue(lsVwImagens.items.isNotEmpty())
     }
+
+    //Para o teste de geração das pastas e arquivos, testar com capitulo 1 e 1.5 e Extra, pois são modelos diferentes para o xml do comicinfo
 
 }
