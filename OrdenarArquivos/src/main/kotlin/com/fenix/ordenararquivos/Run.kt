@@ -31,7 +31,7 @@ class Run : Application() {
             primaryStage.initStyle(StageStyle.DECORATED)
             //primaryStage.setMaximized(true);
 
-            if (Screen.getScreens()[0].bounds.width > 720) {
+            if (Screen.getScreens()[0].bounds.height > 800) {
                 primaryStage.minWidth = 800.0
                 primaryStage.minHeight = 700.0
                 primaryStage.width = 800.0
@@ -39,6 +39,8 @@ class Run : Application() {
             } else {
                 primaryStage.minWidth = 700.0
                 primaryStage.minHeight = 600.0
+                primaryStage.width = 700.0
+                primaryStage.height = 600.0
             }
 
             primaryStage.onCloseRequest = EventHandler {
