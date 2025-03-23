@@ -26,8 +26,6 @@ class ComicInfoServices {
     private var conn: Connection = instancia
 
     fun findEnvio(envio: LocalDateTime) : List<ComicInfo> = select(envio)
-    fun find(nome: String, linguagem : String) : ComicInfo? = select(nome, linguagem)
-
     fun save(comic: ComicInfo, isSendCloud : Boolean = true, isReceiveCloud: Boolean = false) {
         try {
             if (isReceiveCloud) {
@@ -46,6 +44,8 @@ class ComicInfoServices {
         }
     }
 
+    fun find(nome: String, linguagem : String) : ComicInfo? = select(nome, linguagem)
+
     @Throws(SQLException::class)
     fun select(nome: String, linguagem : String): ComicInfo? {
         var st: PreparedStatement? = null
@@ -53,9 +53,9 @@ class ComicInfoServices {
         return try {
             st = conn.prepareStatement(mSELECT_COMIC_INFO)
             st.setString(1, linguagem)
-            st.setString(2, nome)
-            st.setString(3, nome)
-            st.setString(4, nome)
+            st.setString(2, nome.uppercase())
+            st.setString(3, nome.uppercase())
+            st.setString(4, nome.uppercase())
             rs = st.executeQuery()
             var comic: ComicInfo? = null
             if (rs.next()) {

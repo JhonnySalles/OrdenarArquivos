@@ -184,7 +184,7 @@ public class ComicInfo {
         Long idMal = null;
         if (obj.containsKey("idMal"))
             idMal = ((Double) obj.get("idMal")).longValue();
-        return new com.fenix.ordenararquivos.model.comicinfo.ComicInfo(UUID.fromString((String) obj.get("id")), idMal, (String) obj.get("comic"), (String) obj.get("title"),
+            return new com.fenix.ordenararquivos.model.comicinfo.ComicInfo(UUID.fromString((String) obj.get("id")), idMal, (String) obj.get("comic"), (String) obj.get("title"),
                 (String) obj.get("series"), (String) obj.get("publisher"), (String) obj.get("alternateSeries"), (String) obj.get("storyArc"), (String) obj.get("seriesGroup"),
                 (String) obj.get("imprint"), (String) obj.get("genre"), (String) obj.get("languageISO"), rating);
     }
