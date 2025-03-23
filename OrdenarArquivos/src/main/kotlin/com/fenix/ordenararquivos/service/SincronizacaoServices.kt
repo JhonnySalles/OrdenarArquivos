@@ -27,8 +27,10 @@ import java.io.InputStream
 import java.sql.*
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
+import java.util.Date
 import java.util.stream.Collectors
 
 
@@ -185,14 +187,23 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
                 val envio = LocalDateTime.now().format(formaterDataHora)
 
                 if (sinc.isNotEmpty()) {
-                    val docRef = DB.collection(collectComicInfo).document(formaterData.format(LocalDate.now()))
-                    val data: MutableMap<String, Any> = HashMap()
+                    val index = mutableMapOf<String, Date>()
+                    val docRef = DB.collection(collectComicInfo)
+                    val docIndex = docRef.document("_INDEX").get().get()
+
+                    if (docIndex.exists()) {
+                        val item = docIndex.data ?: mapOf()
+                        index.putAll(item as Map<String, Date>)
+                    }
+
                     for (comic in sinc) {
                         comic.sincronizacao = envio
-                        data[getIdCloud(comic)] = removeValoresNull(comic)
+                        val id = getIdCloud(comic)
+                        index[id] = Date()
+                        docRef.document(id).set(removeValoresNull(comic)).get()
                     }
-                    val result = docRef.set(data)
-                    result.get()
+
+                    docRef.document("_INDEX").set(index as Map<String, Any>).get()
                     registros += sinc.size
                     mLOG.info("Enviado dados do ComicInfo a cloud: " + sinc.size + " registros. ")
                 }
@@ -267,23 +278,25 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
         try {
             mLOG.info("Recebendo dados do ComicInfo da cloud.... ")
             val lista = mutableListOf<com.fenix.ordenararquivos.model.comicinfo.ComicInfo>()
-            val atual = LocalDate.now().format(formaterData)
 
-            val query = DB.collection(collectComicInfo).get()
-            val querySnapshot = query.get()
-            val documents = querySnapshot.documents
-            for (document in documents) {
-                val data = LocalDate.parse(document.id, formaterData)
+            val docRef = DB.collection(collectComicInfo)
+            val docIndex = docRef.document("_INDEX").get().get()
+            val documents = mutableListOf<String>()
 
-                if (sincronizacao!!.recebimento.toLocalDate().isAfter(data) && !atual.equals(document.id, ignoreCase = true))
-                    continue
+            val recebimento = Date.from(sincronizacao!!.recebimento.atZone(ZoneId.systemDefault()).toInstant())
 
-                for (key in document.data.keys) {
-                    val obj = document.data[key] as HashMap<String, *>
-                    val sinc = LocalDateTime.parse(obj["sincronizacao"] as String, formaterDataHora)
-                    if (sinc.isAfter(sincronizacao!!.recebimento))
-                        lista.add(ComicInfo.toComicInfo(obj))
+            if (docIndex.exists()) {
+                docIndex.data?.keys?.forEach {
+                    val data = docIndex.data!![it] as com.google.cloud.Timestamp
+                    if (recebimento.before(data.toDate()))
+                        documents.add(it)
                 }
+            }
+
+            for (id in documents) {
+                val document = docRef.document(id).get().get() ?: continue
+                val data = document.data ?: continue
+                lista.add(ComicInfo.toComicInfo(data as HashMap<String, *>))
             }
 
             mLOG.info("Processando retorno dados do ComicInfo da cloud: " + lista.size + " registros.")
