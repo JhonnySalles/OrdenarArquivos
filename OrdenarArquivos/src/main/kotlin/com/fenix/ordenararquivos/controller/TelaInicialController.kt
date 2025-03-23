@@ -495,11 +495,6 @@ class TelaInicialController : Initializable {
             valida = false
         }
 
-        if (cbCompactarArquivo.isSelected && (WINRAR == null || WINRAR!!.isEmpty())) {
-            txtSimularPasta.text = "Winrar não configurado."
-            valida = false
-        }
-
         return valida
     }
 
@@ -1269,7 +1264,6 @@ class TelaInicialController : Initializable {
         var success = true
         var comando = ("rar a -ma4 -ep1 " + '"' + rar.path + '"' + " " + '"' + arquivos.path + '"')
         mLOG.info(comando)
-        comando = "cmd.exe /C cd \"" + WINRAR + "\" &&" + comando
         mProcess = null
         return try {
             val rt = Runtime.getRuntime()
@@ -1311,7 +1305,6 @@ class TelaInicialController : Initializable {
             compactar += '"'.toString() + arquivo.path + '"' + ' '
         var comando = "rar a -ma4 -ep1 " + '"' + rar.path + '"' + " " + compactar
         mLOG.info(comando)
-        comando = "cmd.exe /C cd \"" + WINRAR + "\" &&" + comando
         return try {
             val rt = Runtime.getRuntime()
             mProcess = rt.exec(comando)
@@ -2303,11 +2296,6 @@ class TelaInicialController : Initializable {
         linkaCelulas()
         limpaCampos()
         configuraTextEdit()
-        try {
-            WINRAR = loadProperties()!!.getProperty("caminho_winrar")
-        } catch (e: Exception) {
-            mLOG.error("Erro ao obter o caminho do winrar.", e)
-        }
 
         animacao.animaSincronizacao(imgCompartilhamento, imgAnimaCompartilha, imgAnimaCompartilhaEspera)
 
@@ -2339,7 +2327,6 @@ class TelaInicialController : Initializable {
     }
 
     companion object {
-        private var WINRAR: String? = null
         private const val IMAGE_PATTERN = "(.*/)*.+\\.(png|jpg|gif|bmp|jpeg|PNG|JPG|GIF|BMP|JPEG)$"
         private var LAST_PROCESS_FOLDERS: MutableList<File> = ArrayList()
         private const val NUMBER_PATTERN = "[\\d.]+"
