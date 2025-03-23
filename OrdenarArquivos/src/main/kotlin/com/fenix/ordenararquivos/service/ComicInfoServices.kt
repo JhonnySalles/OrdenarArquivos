@@ -18,15 +18,15 @@ class ComicInfoServices {
 
     private val mUPDATE_COMIC_INFO = "UPDATE ComicInfo SET comic = ?, idMal = ?, series = ?, title = ?, publisher = ?, genre = ?, imprint = ?, seriesGroup = ?, storyArc = ?, maturityRating = ?, alternativeSeries = ?, language = ?,  atualizacao = ? WHERE id = ?"
     private val mINSERT_COMIC_INFO = "INSERT INTO ComicInfo (id, comic, idMal, series, title, publisher, genre, imprint, seriesGroup, storyArc, maturityRating, alternativeSeries, language, criacao, atualizacao) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-    private val mSELECT_COMIC_INFO = "SELECT id, comic, idMal, series, title, publisher, genre, imprint, seriesGroup, storyArc, maturityRating, alternativeSeries, language FROM ComicInfo WHERE UPPER(comic) LIKE ? or UPPER(series) LIKE ? or UPPER(title) LIKE ? LIMIT 1"
+    private val mSELECT_COMIC_INFO = "SELECT id, comic, idMal, series, title, publisher, genre, imprint, seriesGroup, storyArc, maturityRating, alternativeSeries, language FROM ComicInfo WHERE language = ? AND (UPPER(comic) LIKE ? or UPPER(series) LIKE ? or UPPER(title) LIKE ?) LIMIT 1"
     private val mDELETE_COMIC_INFO = "DELETE FROM ComicInfo WHERE id = ?"
 
-    private val mSELECT_ENVIO = "SELECT id, comic, idMal, series, title, publisher, genre, imprint, seriesGroup, storyArc, maturityRating, alternativeSeries, language, atualizacao FROM Manga WHERE atualizacao >= ?"
+    private val mSELECT_ENVIO = "SELECT id, comic, idMal, series, title, publisher, genre, imprint, seriesGroup, storyArc, maturityRating, alternativeSeries, language, atualizacao FROM ComicInfo WHERE atualizacao >= ?"
 
     private var conn: Connection = instancia
 
     fun findEnvio(envio: LocalDateTime) : List<ComicInfo> = select(envio)
-    fun find(nome: String) : ComicInfo? = select(nome)
+    fun find(nome: String, linguagem : String) : ComicInfo? = select(nome, linguagem)
 
     fun save(comic: ComicInfo, isSendCloud : Boolean = true, isReceiveCloud: Boolean = false) {
         try {
@@ -47,14 +47,15 @@ class ComicInfoServices {
     }
 
     @Throws(SQLException::class)
-    fun select(nome: String): ComicInfo? {
+    fun select(nome: String, linguagem : String): ComicInfo? {
         var st: PreparedStatement? = null
         var rs: ResultSet? = null
         return try {
             st = conn.prepareStatement(mSELECT_COMIC_INFO)
-            st.setString(1, nome)
+            st.setString(1, linguagem)
             st.setString(2, nome)
             st.setString(3, nome)
+            st.setString(4, nome)
             rs = st.executeQuery()
             var comic: ComicInfo? = null
             if (rs.next()) {

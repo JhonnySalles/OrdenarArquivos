@@ -33,10 +33,11 @@ module com.fenix.ordenararquivos {
     requires io.grpc.internal;
     requires io.grpc;
     requires jakarta.xml.bind;
+    requires com.google.gson;
 
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;
-    opens com.fenix.ordenararquivos.model.firebase to javafx.base, google.cloud.firestore;
+    opens com.fenix.ordenararquivos.model.firebase to javafx.base, google.cloud.firestore, com.google.gson;
     opens com.fenix.ordenararquivos.model.comicinfo to java.xml.bind, jakarta.xml.bind;
 
     opens db.migration;

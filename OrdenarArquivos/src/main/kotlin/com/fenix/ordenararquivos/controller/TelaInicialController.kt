@@ -3,10 +3,7 @@ package com.fenix.ordenararquivos.controller
 import com.fenix.ordenararquivos.animation.Animacao
 import com.fenix.ordenararquivos.configuration.Configuracao.loadProperties
 import com.fenix.ordenararquivos.exceptions.LibException
-import com.fenix.ordenararquivos.model.Caminhos
-import com.fenix.ordenararquivos.model.Capa
-import com.fenix.ordenararquivos.model.Manga
-import com.fenix.ordenararquivos.model.TipoCapa
+import com.fenix.ordenararquivos.model.*
 import com.fenix.ordenararquivos.model.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.comicinfo.ComicPageType
 import com.fenix.ordenararquivos.model.comicinfo.Pages
@@ -1182,7 +1179,7 @@ class TelaInicialController : Initializable {
                             }
                     }
 
-                    val comic = mServiceComicInfo.find(mManga!!.nome) ?: ComicInfo()
+                    val comic = mServiceComicInfo.find(mManga!!.nome, if (isJapanese) "ja" else "pt") ?: ComicInfo()
                     comic.pages = pages
 
                     if (comic.id == null)
@@ -2314,13 +2311,19 @@ class TelaInicialController : Initializable {
 
         animacao.animaSincronizacao(imgCompartilhamento, imgAnimaCompartilha, imgAnimaCompartilhaEspera)
 
-        sincronizacao.setObserver { observable: ListChangeListener.Change<out com.fenix.ordenararquivos.model.firebase.Manga> ->
-            if (!sincronizacao.isSincronizando()) Platform.runLater {
-                if (!observable.list.isEmpty()) {
-                    lblAviso.text = "Pendente de envio " + observable.list.size + " registro(s)."
-                    imgCompartilhamento.image = imgAnimaCompartilhaEspera
-                } else
-                    imgCompartilhamento.image = imgAnimaCompartilha
+        sincronizacao.setObserver { observable: ListChangeListener.Change<out Pair<Tipo, Int>> ->
+            if (!sincronizacao.isSincronizando()) {
+                var sinc = ""
+                for (item in observable.list)
+                    sinc += observable.list.size.toString() + " ${if(item.first == Tipo.MANGA) "(Manga)" else "(ComicInfo)"} "
+
+                Platform.runLater {
+                    if (sinc.isNotEmpty()) {
+                        lblAviso.text = "Pendente registro(s) para envio: ${sinc.trim()}."
+                        imgCompartilhamento.image = imgAnimaCompartilhaEspera
+                    } else
+                        imgCompartilhamento.image = imgAnimaCompartilha
+                }
             }
         }
 

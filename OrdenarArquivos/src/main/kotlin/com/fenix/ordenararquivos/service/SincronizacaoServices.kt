@@ -4,6 +4,7 @@ import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.database.DataBase.instancia
 import com.fenix.ordenararquivos.model.Sincronizacao
+import com.fenix.ordenararquivos.model.Tipo
 import com.fenix.ordenararquivos.model.firebase.Caminhos
 import com.fenix.ordenararquivos.model.firebase.ComicInfo
 import com.fenix.ordenararquivos.model.firebase.Manga
@@ -13,12 +14,13 @@ import com.google.cloud.firestore.Firestore
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.cloud.FirestoreClient
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
 import io.grpc.LoadBalancerRegistry
 import io.grpc.internal.PickFirstLoadBalancerProvider
 import javafx.application.Platform
-import javafx.collections.FXCollections
-import javafx.collections.ListChangeListener
-import javafx.collections.ObservableList
+import javafx.collections.*
 import org.slf4j.LoggerFactory
 import java.io.FileInputStream
 import java.io.InputStream
@@ -55,13 +57,12 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
     companion object {
         private val sincManga: ObservableList<Manga> = FXCollections.observableArrayList()
         private val sincComicInfo: ObservableList<ComicInfo> = FXCollections.observableArrayList()
+        private val sincronizar: ObservableList<Pair<Tipo, Int>> = FXCollections.observableArrayList()
         fun enviar(manga: com.fenix.ordenararquivos.model.Manga) = sincManga.add(Manga(manga))
         fun enviar(comic: com.fenix.ordenararquivos.model.comicinfo.ComicInfo) = sincComicInfo.add(ComicInfo(comic))
     }
 
-    fun setObserver(listener: ListChangeListener<Manga>) {
-        sincManga.addListener(listener)
-    }
+    fun setObserver(listener: ListChangeListener<Pair<Tipo, Int>>) = sincronizar.addListener(listener)
 
     init {
         if (!DataBase.isTeste) {
@@ -81,6 +82,9 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
             }
 
             consultar()
+
+            sincManga.addListener {  observable: ListChangeListener.Change<out Manga> -> if(observable.list.isEmpty()) sincronizar.removeIf { it.first == Tipo.MANGA } else sincronizar.add(Pair(Tipo.MANGA,observable.list.size)) }
+            sincComicInfo.addListener {  observable: ListChangeListener.Change<out ComicInfo> -> if(observable.list.isEmpty()) sincronizar.removeIf { it.first == Tipo.COMICINFO } else sincronizar.add(Pair(Tipo.COMICINFO,observable.list.size)) }
         }
     }
 
@@ -112,6 +116,8 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
         } catch (ex: Exception) {
             mLOG.error("Erro ao consultar registros de ComicInfo para envio.", ex)
         }
+
+        sincComicInfo.add(ComicInfo("00706a15-a285-4e10-af0a-a01744a8508b",117179,"Tensei Shitara Slime Datta Ken - Tensura Nikki","転スラ日記 転生したらスライムだった件","Tensura Nikki Tensei Shitara Slime Datta Ken","Kodansha","転スラ日記 転生したらスライムだった件",null,null,null,"Comedy; Fantasy; Isekai; Reincarnation; Shounen; Slice of Life","ja",null,""))
 
     }
 
@@ -171,7 +177,7 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
                     val data: MutableMap<String, Any> = HashMap()
                     for (comic in sinc) {
                         comic.sincronizacao = envio
-                        data[getIdCloud(comic)] = comic
+                        data[getIdCloud(comic)] = removeValoresNull(comic)
                     }
                     val result = docRef.set(data)
                     result.get()
@@ -271,7 +277,7 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
             mLOG.info("Processando retorno dados do ComicInfo da cloud: " + lista.size + " registros.")
             registros = lista.size
             for (sinc in lista) {
-                var comic: com.fenix.ordenararquivos.model.comicinfo.ComicInfo? = serviceComicInfo.find(sinc.comic)
+                var comic: com.fenix.ordenararquivos.model.comicinfo.ComicInfo? = serviceComicInfo.find(sinc.comic, sinc.languageISO)
                 if (comic != null)
                     comic.merge(sinc)
                 else
@@ -370,6 +376,12 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
             DataBase.closeStatement(st)
             DataBase.closeResultSet(rs)
         }
+    }
+
+    private fun removeValoresNull(userObject: ComicInfo): Map<String, Any> {
+        val gson = GsonBuilder().create()
+        val map: Map<String, Any> = Gson().fromJson(gson.toJson(userObject), object : TypeToken<HashMap<String?, Any?>?>() {}.type)
+        return map
     }
 
 }

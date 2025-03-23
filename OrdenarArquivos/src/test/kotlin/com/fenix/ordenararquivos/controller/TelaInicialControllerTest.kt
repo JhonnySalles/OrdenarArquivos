@@ -15,7 +15,8 @@ import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
 import javafx.stage.Stage
 import org.junit.jupiter.api.*
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
 import org.testfx.api.FxRobot
