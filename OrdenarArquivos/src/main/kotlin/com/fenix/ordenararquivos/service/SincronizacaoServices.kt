@@ -83,8 +83,22 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
 
             consultar()
 
-            sincManga.addListener {  observable: ListChangeListener.Change<out Manga> -> if(observable.list.isEmpty()) sincronizar.removeIf { it.first == Tipo.MANGA } else sincronizar.add(Pair(Tipo.MANGA,observable.list.size)) }
-            sincComicInfo.addListener {  observable: ListChangeListener.Change<out ComicInfo> -> if(observable.list.isEmpty()) sincronizar.removeIf { it.first == Tipo.COMICINFO } else sincronizar.add(Pair(Tipo.COMICINFO,observable.list.size)) }
+            sincManga.addListener {  observable: ListChangeListener.Change<out Manga> ->
+                if(observable.list.isEmpty())
+                    sincronizar.removeIf { it.first == Tipo.MANGA }
+                else if (sincronizar.any { it.first == Tipo.MANGA })
+                    sincronizar[sincronizar.indexOfFirst { it.first == Tipo.MANGA }] = Pair(Tipo.MANGA, observable.list.size)
+                else
+                    sincronizar.add(Pair(Tipo.MANGA, observable.list.size))
+            }
+            sincComicInfo.addListener {  observable: ListChangeListener.Change<out ComicInfo> ->
+                if(observable.list.isEmpty())
+                    sincronizar.removeIf { it.first == Tipo.COMICINFO }
+                else if (sincronizar.any { it.first == Tipo.COMICINFO })
+                    sincronizar[sincronizar.indexOfFirst { it.first == Tipo.COMICINFO }] = Pair(Tipo.COMICINFO, observable.list.size)
+                else
+                    sincronizar.add(Pair(Tipo.COMICINFO, observable.list.size))
+            }
         }
     }
 
@@ -116,8 +130,6 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
         } catch (ex: Exception) {
             mLOG.error("Erro ao consultar registros de ComicInfo para envio.", ex)
         }
-
-        sincComicInfo.add(ComicInfo("00706a15-a285-4e10-af0a-a01744a8508b",117179,"Tensei Shitara Slime Datta Ken - Tensura Nikki","転スラ日記 転生したらスライムだった件","Tensura Nikki Tensei Shitara Slime Datta Ken","Kodansha","転スラ日記 転生したらスライムだった件",null,null,null,"Comedy; Fantasy; Isekai; Reincarnation; Shounen; Slice of Life","ja",null,""))
 
     }
 
@@ -337,7 +349,13 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
 
     fun isSincronizando(): Boolean = sincronizando
 
-    fun listSize(): Int = sincManga.size
+    fun listSize(): Int = sincManga.size + sincComicInfo.size
+    fun listPendentes(): String {
+        var sinc = ""
+        sinc += if (sincManga.isNotEmpty()) "${sincManga.size} (Manga) " else ""
+        sinc += if (sincComicInfo.isNotEmpty()) "${sincComicInfo.size} (ComicInfo) " else ""
+        return sinc
+    }
 
     @Throws(SQLException::class)
     private fun update(obj: Sincronizacao) {
