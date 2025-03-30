@@ -6,9 +6,8 @@ import com.fenix.ordenararquivos.model.*
 import com.fenix.ordenararquivos.model.entities.Caminhos
 import com.fenix.ordenararquivos.model.entities.Capa
 import com.fenix.ordenararquivos.model.entities.Manga
-import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.model.entities.comicinfo.ComicPageType
-import com.fenix.ordenararquivos.model.entities.comicinfo.Pages
+import com.fenix.ordenararquivos.model.entities.comicinfo.*
+import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.model.enums.Tipo
 import com.fenix.ordenararquivos.model.enums.TipoCapa
@@ -54,9 +53,12 @@ import javafx.stage.DirectoryChooser
 import javafx.util.Duration
 import net.kurobako.gesturefx.GesturePane
 import org.slf4j.LoggerFactory
+import java.awt.Desktop
 import java.awt.image.BufferedImage
 import java.io.*
 import java.math.RoundingMode
+import java.net.URI
+import java.net.URISyntaxException
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Path
@@ -73,6 +75,8 @@ import javax.imageio.ImageIO
 class TelaInicialController : Initializable {
 
     private val mLOG = LoggerFactory.getLogger(TelaInicialController::class.java)
+
+    //<--------------------------  PRINCIPAL   -------------------------->
 
     @FXML
     private lateinit var apGlobal: AnchorPane
@@ -91,6 +95,15 @@ class TelaInicialController : Initializable {
 
     @FXML
     private lateinit var tbTabCapa: Tab
+
+    @FXML
+    private lateinit var tbTabComicInfo: Tab
+
+    @FXML
+    private lateinit var btnCompartilhamento: JFXButton
+
+    @FXML
+    private lateinit var imgCompartilhamento: ImageView
 
     @FXML
     private lateinit var btnLimparTudo: JFXButton
@@ -212,6 +225,8 @@ class TelaInicialController : Initializable {
     @FXML
     private lateinit var btnScrollDescer: JFXButton
 
+    //<--------------------------  CAPA   -------------------------->
+
     @FXML
     private lateinit var rootTudo: AnchorPane
 
@@ -230,11 +245,72 @@ class TelaInicialController : Initializable {
     @FXML
     private lateinit var sliderTras: JFXSlider
 
+    //<--------------------------  COMIC INFO   -------------------------->
     @FXML
-    private lateinit var btnCompartilhamento: JFXButton
+    private lateinit var txtIdMal: JFXTextField
 
     @FXML
-    private lateinit var imgCompartilhamento: ImageView
+    private lateinit var cbAgeRating: JFXComboBox<AgeRating>
+
+    @FXML
+    private lateinit var cbLanguage: JFXComboBox<Linguagem>
+
+    @FXML
+    private lateinit var txtTitle: JFXTextField
+
+    @FXML
+    private lateinit var txtSeries: JFXTextField
+
+    @FXML
+    private lateinit var txtAlternateSeries: JFXTextField
+
+    @FXML
+    private lateinit var txtSeriesGroup: JFXTextField
+
+    @FXML
+    private lateinit var txtPublisher: JFXTextField
+
+    @FXML
+    private lateinit var txtStoryArc: JFXTextField
+
+    @FXML
+    private lateinit var txtImprint: JFXTextField
+
+    @FXML
+    private lateinit var txtGenre: JFXTextField
+
+    @FXML
+    private lateinit var txtNotes: JFXTextArea
+
+    //<--------------------------  MAL SEARCH   -------------------------->
+
+    @FXML
+    private lateinit var txtMalId: JFXTextField
+
+    @FXML
+    private lateinit var txtMalNome: JFXTextField
+
+    @FXML
+    private lateinit var btnMalAplicar: JFXButton
+
+    @FXML
+    private lateinit var btnMalConsultar: JFXButton
+
+    @FXML
+    private lateinit var tbViewMal: TableView<Caminhos>
+
+    @FXML
+    private lateinit var clMalId: TableColumn<Mal, String>
+
+    @FXML
+    private lateinit var clMalNome: TableColumn<Mal, String>
+
+    @FXML
+    private lateinit var clMalSite: TableColumn<Mal, JFXButton?>
+
+    @FXML
+    private lateinit var clMalImagem: TableColumn<Mal, ImageView?>
+
 
     private val mSugestao: JFXAutoCompletePopup<String> = JFXAutoCompletePopup<String>()
 
@@ -243,6 +319,7 @@ class TelaInicialController : Initializable {
     private var mObsListaCaminhos: ObservableList<Caminhos> = FXCollections.observableArrayList(mListaCaminhos)
     private var mObsListaItens: ObservableList<String> = FXCollections.observableArrayList("")
     private var mObsListaImagesSelected: ObservableList<Capa> = FXCollections.observableArrayList()
+    private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
 
     private var mCaminhoOrigem: File? = null
     private var mCaminhoDestino: File? = null
@@ -439,6 +516,22 @@ class TelaInicialController : Initializable {
         }
     }
 
+    @FXML
+    private fun onBtnMalAplicar() {
+        if (tbViewMal.items.isNotEmpty())
+            carregaMal(tbViewMal.selectionModel.selectedItem.id)
+    }
+
+    @FXML
+    private fun onBtnMalConsultar() {
+        tbTabRoot.selectionModel.select(tbTabComicInfo)
+        if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
+            mObsListaMal.clear()
+
+        } else
+            AlertasPopup.alertaModal("Alerta", "Necessário informar um id ou nome.")
+    }
+
     private fun desabilita() {
         btnGerarCapa.isDisable = true
         btnLimparTudo.isDisable = true
@@ -481,6 +574,7 @@ class TelaInicialController : Initializable {
         if (mCaminhoOrigem == null || !mCaminhoOrigem!!.exists()) {
             txtSimularPasta.text = "Origem não informado."
             txtPastaOrigem.unFocusColor = Color.RED
+            AlertasPopup.alertaModal("Alerta", "Origem não informado.")
             valida = false
         }
 
@@ -490,6 +584,7 @@ class TelaInicialController : Initializable {
         if (mCaminhoDestino == null || !mCaminhoDestino!!.exists()) {
             txtSimularPasta.text = "Destino não informado."
             txtPastaDestino.unFocusColor = Color.RED
+            AlertasPopup.alertaModal("Alerta", "Destino não informado.")
             valida = false
         }
 
@@ -505,10 +600,61 @@ class TelaInicialController : Initializable {
         if (cbCompactarArquivo.isSelected && txtNomeArquivo.text.isEmpty()) {
             txtSimularPasta.text = "Não informado nome do arquivo."
             txtNomeArquivo.unFocusColor = Color.RED
+            AlertasPopup.alertaModal("Alerta", "Não informado nome do arquivo.")
+            valida = false
+        }
+
+        if (cbLanguage.value == null) {
+            cbLanguage.unFocusColor = Color.RED
+            AlertasPopup.alertaModal("Alerta", "Necessário informar uma linguagem.")
             valida = false
         }
 
         return valida
+    }
+
+    fun carregaComicInfo(comic: ComicInfo) {
+        txtIdMal.text = if (comic.idMal != null) comic.idMal.toString() else ""
+        cbAgeRating.selectionModel.select(comic.ageRating)
+        cbLanguage.selectionModel.select(Linguagem.getEnum(comic.languageISO))
+        txtTitle.text = comic.title
+        txtSeries.text = comic.series
+        txtAlternateSeries.text = comic.alternateSeries
+        txtSeriesGroup.text = comic.seriesGroup
+        txtPublisher.text = comic.publisher
+        txtStoryArc.text = comic.storyArc
+        txtImprint.text = comic.imprint
+        txtGenre.text = comic.genre
+        txtNotes.text = comic.notes
+    }
+
+    fun atualizaComicInfo(comic: ComicInfo) {
+        comic.idMal = if (txtIdMal.text.isNotEmpty()) txtIdMal.text.toLong() else null
+        comic.ageRating = cbAgeRating.value
+        comic.languageISO = cbLanguage.value.sigla
+        comic.title = txtTitle.text
+        comic.series = txtSeries.text
+        comic.alternateSeries = txtAlternateSeries.text.ifEmpty { null }
+        comic.seriesGroup = txtSeriesGroup.text.ifEmpty { null }
+        comic.publisher = txtPublisher.text.ifEmpty { null }
+        comic.storyArc = txtStoryArc.text.ifEmpty { null }
+        comic.imprint = txtImprint.text.ifEmpty { null }
+        comic.genre = txtGenre.text.ifEmpty { null }
+        comic.notes = txtNotes.text.ifEmpty { null }
+    }
+
+    private fun openSiteMal(id: Long) {
+        try {
+            Desktop.getDesktop().browse(URI("https://myanimelist.net/manga/$id"))
+        } catch (e: IOException) {
+            mLOG.error(e.message, e)
+        } catch (e: URISyntaxException) {
+            mLOG.error(e.message, e)
+        }
+    }
+
+    private fun carregaMal(id: Long) {
+
     }
 
     private fun ocrSumario(sumario : File) {
@@ -1932,11 +2078,11 @@ class TelaInicialController : Initializable {
             e.tableView.items[e.tablePosition.row]
                 .nomePasta = txtNomePastaCapitulo.text.trim { it <= ' ' } + " " + e.newValue
         }
-        clNumeroPagina.setCellFactory(TextFieldTableCell.forTableColumn())
+        clNumeroPagina.cellFactory = TextFieldTableCell.forTableColumn()
         clNumeroPagina.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
             e.tableView.items[e.tablePosition.row].addNumero(e.getNewValue())
         }
-        clNomePasta.setCellFactory(TextFieldTableCell.forTableColumn())
+        clNomePasta.cellFactory = TextFieldTableCell.forTableColumn()
         clNomePasta.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
             e.tableView.items[e.tablePosition.row].nomePasta = e.newValue
         }
@@ -1946,8 +2092,19 @@ class TelaInicialController : Initializable {
         clCapitulo.cellValueFactory = PropertyValueFactory("capitulo")
         clNumeroPagina.cellValueFactory = PropertyValueFactory("numeroPagina")
         clNomePasta.cellValueFactory = PropertyValueFactory("nomePasta")
+
+        clMalId.cellValueFactory = PropertyValueFactory("idVisual")
+        clMalNome.cellValueFactory = PropertyValueFactory("nome")
+        clMalSite.cellValueFactory = PropertyValueFactory("site")
+        clMalImagem.cellValueFactory = PropertyValueFactory("imagem")
+
         editaColunas()
         selecionaImagens()
+
+        tbViewMal.onMouseClicked = EventHandler { click: MouseEvent ->
+            if (click.clickCount > 1 && tbViewMal.items.isNotEmpty())
+                carregaMal(tbViewMal.selectionModel.selectedItem.id)
+        }
     }
 
     private var mPastaAnterior = ""
@@ -2188,6 +2345,32 @@ class TelaInicialController : Initializable {
 
         cbMesclarCapaTudo.selectedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> reloadCapa() }
         cbAjustarMargemCapa.selectedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> reloadCapa() }
+
+        cbLanguage.items.addAll(Linguagem.JAPANESE, Linguagem.ENGLISH, Linguagem.PORTUGUESE)
+        cbLanguage.selectionModel.select(Linguagem.JAPANESE)
+
+        cbLanguage.focusedProperty().addListener { _, _, newPropertyValue ->
+            if (newPropertyValue)
+                cbLanguage.setUnFocusColor(Color.web("#4059a9"))
+            else {
+                if (cbLanguage.editor.textProperty().get().isEmpty())
+                    cbLanguage.setUnFocusColor(Color.RED)
+                else if (cbLanguage.value == null)
+                    cbLanguage.setUnFocusColor(Color.RED)
+                else
+                    cbLanguage.setUnFocusColor(Color.web("#4059a9"))
+            }
+        }
+
+        txtIdMal.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
+            if (newValue != null && !newValue.matches(NUMBER_REGEX))
+                txtIdMal.text = oldValue
+        }
+
+        txtMalId.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
+            if (newValue != null && !newValue.matches(NUMBER_REGEX))
+                txtMalId.text = oldValue
+        }
     }
 
     fun configurarAtalhos(scene: Scene) {
