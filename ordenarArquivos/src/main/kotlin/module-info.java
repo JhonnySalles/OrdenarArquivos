@@ -1,7 +1,7 @@
 module com.fenix.ordenararquivos {
     exports com.fenix.ordenararquivos;
     exports com.fenix.ordenararquivos.controller;
-    exports com.fenix.ordenararquivos.model;
+    exports com.fenix.ordenararquivos.model.entities;
     exports com.fenix.ordenararquivos.logback;
 
     requires transitive javafx.controls;
@@ -34,11 +34,12 @@ module com.fenix.ordenararquivos {
     requires io.grpc;
     requires jakarta.xml.bind;
     requires com.google.gson;
-
+    requires AnimateFX;
+    requires org.controlsfx.controls;
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;
     opens com.fenix.ordenararquivos.model.firebase to javafx.base, google.cloud.firestore, com.google.gson;
-    opens com.fenix.ordenararquivos.model.comicinfo to java.xml.bind, jakarta.xml.bind;
+    opens com.fenix.ordenararquivos.model.entities.comicinfo to java.xml.bind, jakarta.xml.bind;
 
     opens db.migration;
 }

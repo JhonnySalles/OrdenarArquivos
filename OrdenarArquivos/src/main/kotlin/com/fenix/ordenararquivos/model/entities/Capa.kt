@@ -1,4 +1,6 @@
-package com.fenix.ordenararquivos.model
+package com.fenix.ordenararquivos.model.entities
+
+import com.fenix.ordenararquivos.model.enums.TipoCapa
 
 data class Capa(
     var nome: String = "",

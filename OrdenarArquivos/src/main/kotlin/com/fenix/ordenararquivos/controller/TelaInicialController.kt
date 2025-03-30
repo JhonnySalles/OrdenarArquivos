@@ -1,12 +1,19 @@
 package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.animation.Animacao
-import com.fenix.ordenararquivos.configuration.Configuracao.loadProperties
 import com.fenix.ordenararquivos.exceptions.LibException
 import com.fenix.ordenararquivos.model.*
-import com.fenix.ordenararquivos.model.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.model.comicinfo.ComicPageType
-import com.fenix.ordenararquivos.model.comicinfo.Pages
+import com.fenix.ordenararquivos.model.entities.Caminhos
+import com.fenix.ordenararquivos.model.entities.Capa
+import com.fenix.ordenararquivos.model.entities.Manga
+import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
+import com.fenix.ordenararquivos.model.entities.comicinfo.ComicPageType
+import com.fenix.ordenararquivos.model.entities.comicinfo.Pages
+import com.fenix.ordenararquivos.model.enums.Notificacao
+import com.fenix.ordenararquivos.model.enums.Tipo
+import com.fenix.ordenararquivos.model.enums.TipoCapa
+import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.process.Ocr
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
@@ -34,13 +41,13 @@ import javafx.geometry.Point2D
 import javafx.scene.Cursor
 import javafx.scene.Scene
 import javafx.scene.control.*
-import javafx.scene.control.Alert.AlertType
 import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.control.cell.TextFieldTableCell
 import javafx.scene.image.Image
 import javafx.scene.image.ImageView
 import javafx.scene.input.*
 import javafx.scene.layout.AnchorPane
+import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.scene.robot.Robot
 import javafx.stage.DirectoryChooser
@@ -69,6 +76,12 @@ class TelaInicialController : Initializable {
 
     @FXML
     private lateinit var apGlobal: AnchorPane
+
+    @FXML
+    private lateinit var rootStackPane: StackPane
+
+    @FXML
+    private lateinit var root: AnchorPane
 
     @FXML
     private lateinit var tbTabRoot: JFXTabPane
@@ -577,7 +590,7 @@ class TelaInicialController : Initializable {
         if (nome.substring(nome.length - 1).equals("-", ignoreCase = true))
             nome = nome.substring(0, nome.length - 1).trim { it <= ' ' }
 
-        val quantidade = if (mObsListaItens == null) 0 else mObsListaItens.size
+        val quantidade = mObsListaItens.size
 
         return Manga(
             id, nome, txtVolume.text, txtNomePastaCapitulo.text.trim { it <= ' ' },
@@ -597,9 +610,12 @@ class TelaInicialController : Initializable {
             txtNomeArquivo.text = it.arquivo
             txtAreaImportar.text = it.capitulos
 
-            val quantidade = if (mObsListaItens == null) 0 else mObsListaItens.size
+            val quantidade = mObsListaItens.size
 
-            lblAlerta.text = if (it.quantidade.compareTo(quantidade) !== 0) "Difereça na quantidade de imagens." else ""
+            lblAlerta.text = if (it.quantidade != quantidade) "Difereça na quantidade de imagens." else ""
+
+            if (it.quantidade != quantidade)
+                Notificacoes.notificacao(Notificacao.ALERTA, "Diferença", "Difereça na quantidade de imagens.")
 
             mListaCaminhos = ArrayList(it.caminhos)
             mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
@@ -697,6 +713,7 @@ class TelaInicialController : Initializable {
         Platform.runLater {
             lblAlerta.text = ""
             lblAviso.text = "Manga salvo."
+            Notificacoes.notificacao(Notificacao.SUCESSO, "Sucesso", "Manga salvo.")
         }
     }
 
@@ -1226,10 +1243,7 @@ class TelaInicialController : Initializable {
                     }
                 } catch (e: Exception) {
                     mLOG.error("Erro ao processar.", e)
-                    val a = Alert(AlertType.NONE)
-                    a.alertType = AlertType.ERROR
-                    a.contentText = e.toString()
-                    a.show()
+                    AlertasPopup.erroModal("Erro ao processar", e.stackTrace.toString())
                 }
                 return true
             }
@@ -1245,10 +1259,7 @@ class TelaInicialController : Initializable {
             override fun failed() {
                 super.failed()
                 updateMessage("Erro ao mover os arquivos.")
-                val a = Alert(AlertType.NONE)
-                a.alertType = AlertType.ERROR
-                a.contentText = "Erro ao mover arquivos."
-                a.show()
+                AlertasPopup.erroModal("Erro ao mover os arquivos", super.getMessage())
                 habilita()
             }
         }
@@ -2296,6 +2307,11 @@ class TelaInicialController : Initializable {
         linkaCelulas()
         limpaCampos()
         configuraTextEdit()
+
+        /* Setando as variáveis para o alerta padrão. */
+        AlertasPopup.rootStackPane = rootStackPane
+        AlertasPopup.nodeBlur = root
+        Notificacoes.rootAnchorPane = apGlobal
 
         animacao.animaSincronizacao(imgCompartilhamento, imgAnimaCompartilha, imgAnimaCompartilhaEspera)
 

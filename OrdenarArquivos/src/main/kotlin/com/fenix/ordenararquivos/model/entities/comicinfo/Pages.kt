@@ -1,4 +1,4 @@
-package com.fenix.ordenararquivos.model.comicinfo
+package com.fenix.ordenararquivos.model.entities.comicinfo
 
 import jakarta.xml.bind.annotation.XmlAccessType
 import jakarta.xml.bind.annotation.XmlAccessorType

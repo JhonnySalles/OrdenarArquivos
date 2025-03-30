@@ -1,8 +1,8 @@
 package com.fenix.ordenararquivos.process
 
 import com.fenix.ordenararquivos.database.DataBase
-import com.fenix.ordenararquivos.model.Caminhos
-import com.fenix.ordenararquivos.model.Manga
+import com.fenix.ordenararquivos.model.entities.Caminhos
+import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.service.MangaServices
 import org.slf4j.LoggerFactory
 import java.io.File

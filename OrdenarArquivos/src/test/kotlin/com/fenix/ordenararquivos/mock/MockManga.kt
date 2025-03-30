@@ -1,6 +1,6 @@
 package com.fenix.ordenararquivos.mock
 
-import com.fenix.ordenararquivos.model.Manga
+import com.fenix.ordenararquivos.model.entities.Manga
 import org.junit.jupiter.api.Assertions.*
 import java.time.LocalDateTime
 

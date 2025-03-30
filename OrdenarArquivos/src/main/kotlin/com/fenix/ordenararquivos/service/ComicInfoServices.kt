@@ -3,8 +3,8 @@ package com.fenix.ordenararquivos.service
 import com.fenix.ordenararquivos.database.DataBase.closeResultSet
 import com.fenix.ordenararquivos.database.DataBase.closeStatement
 import com.fenix.ordenararquivos.database.DataBase.instancia
-import com.fenix.ordenararquivos.model.comicinfo.AgeRating
-import com.fenix.ordenararquivos.model.comicinfo.ComicInfo
+import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
+import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.util.Utils
 import org.slf4j.LoggerFactory
 import java.sql.*
@@ -185,14 +185,16 @@ class ComicInfoServices {
             rs = st.executeQuery()
             val list = ArrayList<ComicInfo>()
             while (rs.next())
-                list.add(ComicInfo(
+                list.add(
+                    ComicInfo(
                     UUID.fromString(rs.getString("id")), if (rs.getLong("idMal") > 0) rs.getLong("idMal") else null,
                     rs.getString("comic"), rs.getString("title"), rs.getString("series"),
                     rs.getString("publisher"),
                     rs.getString("alternativeSeries"), rs.getString("storyArc"), rs.getString("seriesGroup"),
                     rs.getString("imprint"), rs.getString("genre"), rs.getString("language"),
                     if (rs.getString("maturityRating") != null) AgeRating.valueOf(rs.getString("maturityRating")) else null
-                ))
+                )
+                )
             list
         } catch (e: SQLException) {
             mLOG.error("Erro ao buscar os envios.", e)

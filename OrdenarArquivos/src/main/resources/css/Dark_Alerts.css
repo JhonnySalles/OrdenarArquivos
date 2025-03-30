@@ -1,0 +1,86 @@
+/*----------------------------------------------------------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------ Estilos dos Alertas -------------------------------------------------------*/
+/*----------------------------------------------------------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------------------------------------------------------*/
+
+* {
+    btnOk:#1976D2;
+    btnOkHover : #2A2E37;
+    btnCancel: #FF0000;
+    btnConfirm: #7cb342;
+}
+
+.btnAlerta {
+    -fx-background-color: btnOk;
+    -fx-border-color: btnOk;
+    -fx-text-fill: white;
+    -fx-border-radius: 1px;
+    -fx-background-radius: 3px;
+}
+
+.btnAlerta:hover {
+    -fx-background-color: btnOkHover;
+    -fx-border-color: derive(btnOkHover, -20%);
+    -fx-text-fill: white;
+}
+
+.btnConfirma {
+    -fx-background-color: btnConfirm;
+    -fx-border-color: btnConfirm;
+    -fx-text-fill: white;
+    -fx-border-radius: 1px;
+    -fx-background-radius: 3px;
+}
+
+.btnConfirma:hover {
+    -fx-background-color: btnOkHover;
+    -fx-border-color: derive(btnOkHover, -20%);
+    -fx-text-fill: white;
+}
+
+.btnCancela {
+    -fx-background-color: btnCancel;
+    -fx-border-color: btnCancel;
+    -fx-text-fill: white;
+    -fx-border-radius: 1px;
+    -fx-background-radius: 3px;
+}
+
+.btnCancela:hover {
+    -fx-background-color: btnOkHover;
+    -fx-border-color: derive(btnOkHover, -20%);
+    -fx-text-fill: white;
+}
+
+
+/*----------------------------------------------------------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------ Estilos dos Notifica��es --------------------------------------------------*/
+/*----------------------------------------------------------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------------------------------------------------------*/
+.notificacaoAvisoImagemPane {
+    -fx-background-color:  #333333;
+    -fx-background-radius : 8px 0 0 8px;
+}
+
+.notificacaoSucessoBackground {
+    -fx-background-color : #00D032;
+    -fx-background-radius : 9px 8px 8px 9px;
+}
+
+.notificacaoAvisoBackground {
+    -fx-background-color : #565D60;
+    -fx-background-radius : 9px 8px 8px 9px;
+}
+
+.notificacaoAlertaBackground {
+    -fx-background-color : #00B9FF;
+    -fx-background-radius : 9px 8px 8px 9px;
+}
+
+.notificacaoErroBackground {
+    -fx-background-color : #FF472B;
+    -fx-background-radius : 9px 8px 8px 9px;
+}
+

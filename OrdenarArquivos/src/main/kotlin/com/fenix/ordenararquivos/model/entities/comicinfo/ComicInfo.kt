@@ -1,8 +1,7 @@
-package com.fenix.ordenararquivos.model.comicinfo
+package com.fenix.ordenararquivos.model.entities.comicinfo
 
 import jakarta.xml.bind.annotation.*
 import java.util.*
-
 
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlRootElement(name = "ComicInfo")

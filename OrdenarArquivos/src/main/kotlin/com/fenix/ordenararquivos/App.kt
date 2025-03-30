@@ -1,6 +1,6 @@
 package com.fenix.ordenararquivos
 
-import com.fenix.ordenararquivos.model.Argumentos
+import com.fenix.ordenararquivos.model.enums.Argumentos
 import com.fenix.ordenararquivos.process.CopiarOpfEpub
 import com.fenix.ordenararquivos.process.GerarBancoDados
 

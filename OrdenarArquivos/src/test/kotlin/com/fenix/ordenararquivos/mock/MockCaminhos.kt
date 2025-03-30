@@ -1,6 +1,6 @@
 package com.fenix.ordenararquivos.mock
 
-import com.fenix.ordenararquivos.model.Caminhos
+import com.fenix.ordenararquivos.model.entities.Caminhos
 import org.junit.jupiter.api.Assertions.*
 
 

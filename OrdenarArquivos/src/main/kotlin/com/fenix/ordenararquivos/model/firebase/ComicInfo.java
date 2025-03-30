@@ -1,6 +1,6 @@
 package com.fenix.ordenararquivos.model.firebase;
 
-import com.fenix.ordenararquivos.model.comicinfo.AgeRating;
+import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating;
 
 import java.util.HashMap;
 import java.util.UUID;
@@ -152,7 +152,7 @@ public class ComicInfo {
         this.sincronizacao = sincronizacao;
     }
 
-    public ComicInfo(com.fenix.ordenararquivos.model.comicinfo.ComicInfo comic) {
+    public ComicInfo(com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo comic) {
         this.id = comic.getId().toString();
         this.comic = comic.getComic();
         this.title = comic.getTitle();
@@ -177,14 +177,14 @@ public class ComicInfo {
             this.ageRating = comic.getAgeRating().toString();
     }
 
-    public static com.fenix.ordenararquivos.model.comicinfo.ComicInfo toComicInfo(HashMap<String, ?> obj) {
+    public static com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo toComicInfo(HashMap<String, ?> obj) {
         AgeRating rating = null;
         if (obj.containsKey("ageRating"))
             rating = AgeRating.valueOf((String) obj.get("ageRating"));
         Long idMal = null;
         if (obj.containsKey("idMal"))
             idMal = ((Double) obj.get("idMal")).longValue();
-            return new com.fenix.ordenararquivos.model.comicinfo.ComicInfo(UUID.fromString((String) obj.get("id")), idMal, (String) obj.get("comic"), (String) obj.get("title"),
+            return new com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo(UUID.fromString((String) obj.get("id")), idMal, (String) obj.get("comic"), (String) obj.get("title"),
                 (String) obj.get("series"), (String) obj.get("publisher"), (String) obj.get("alternateSeries"), (String) obj.get("storyArc"), (String) obj.get("seriesGroup"),
                 (String) obj.get("imprint"), (String) obj.get("genre"), (String) obj.get("languageISO"), rating);
     }

@@ -3,8 +3,8 @@ package com.fenix.ordenararquivos.service
 import com.fenix.ordenararquivos.database.DataBase.closeResultSet
 import com.fenix.ordenararquivos.database.DataBase.closeStatement
 import com.fenix.ordenararquivos.database.DataBase.instancia
-import com.fenix.ordenararquivos.model.Caminhos
-import com.fenix.ordenararquivos.model.Manga
+import com.fenix.ordenararquivos.model.entities.Caminhos
+import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.util.Utils
 import org.slf4j.LoggerFactory
 import java.sql.*

@@ -22,6 +22,8 @@
 
         <javafx.version>18-ea+2</javafx.version>
         <jfoenix.version>9.0.10</jfoenix.version>
+        <animatefx.version>1.2.3</animatefx.version>
+        <constrolsfx.version>11.1.1</constrolsfx.version>
         <gesturefx.version>0.7.1</gesturefx.version>
         <sqlite.version>3.41.2.2</sqlite.version>
         <bd.jdbi3.version>3.1.0</bd.jdbi3.version>
@@ -159,6 +161,20 @@
             <groupId>com.jfoenix</groupId>
             <artifactId>jfoenix</artifactId>
             <version>${jfoenix.version}</version>
+        </dependency>
+
+        <!-- Bibliotecas para animacao no javafx -->
+        <dependency>
+            <groupId>io.github.typhon0</groupId>
+            <artifactId>AnimateFX</artifactId>
+            <version>${animatefx.version}</version>
+        </dependency>
+
+        <!-- Biblioteca para popup -->
+        <dependency>
+            <groupId>org.controlsfx</groupId>
+            <artifactId>controlsfx</artifactId>
+            <version>${constrolsfx.version}</version>
         </dependency>
 
         <!-- SQLite -->

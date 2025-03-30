@@ -1,4 +1,4 @@
-package com.fenix.ordenararquivos.model
+package com.fenix.ordenararquivos.model.entities
 
 import com.google.firebase.database.Exclude
 import java.time.LocalDateTime

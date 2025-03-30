@@ -93,7 +93,7 @@ public class Manga {
         this.sincronizacao = sincronizacao;
     }
 
-    public Manga(com.fenix.ordenararquivos.model.Manga manga) {
+    public Manga(com.fenix.ordenararquivos.model.entities.Manga manga) {
         this.nome = manga.getNome();
         this.volume = manga.getVolume();
         this.capitulo = manga.getCapitulo();
@@ -103,8 +103,8 @@ public class Manga {
         this.caminhos = manga.getCaminhos().isEmpty() ? new ArrayList<>() : manga.getCaminhos().parallelStream().map(Caminhos::new).collect(Collectors.toList());
     }
 
-    public static com.fenix.ordenararquivos.model.Manga toManga(Long id, HashMap<String, ?> obj) {
-        return new com.fenix.ordenararquivos.model.Manga(id, (String) obj.get("nome"), (String) obj.get("volume"), (String) obj.get("capitulo"), (String) obj.get("arquivo"), (String) obj.get("capitulos"), ((Long) obj.get("quantidade")).intValue(), LocalDateTime.now(), new ArrayList<>());
+    public static com.fenix.ordenararquivos.model.entities.Manga toManga(Long id, HashMap<String, ?> obj) {
+        return new com.fenix.ordenararquivos.model.entities.Manga(id, (String) obj.get("nome"), (String) obj.get("volume"), (String) obj.get("capitulo"), (String) obj.get("arquivo"), (String) obj.get("capitulos"), ((Long) obj.get("quantidade")).intValue(), LocalDateTime.now(), new ArrayList<>());
     }
 
     @Override

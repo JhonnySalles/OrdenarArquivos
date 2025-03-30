@@ -1,5 +1,7 @@
 package com.fenix.ordenararquivos.model.firebase;
 
+import com.fenix.ordenararquivos.model.entities.Manga;
+
 import java.util.HashMap;
 import java.util.Objects;
 
@@ -39,14 +41,14 @@ public class Caminhos {
         this.pagina = pagina;
     }
 
-    public Caminhos(com.fenix.ordenararquivos.model.Caminhos caminho) {
+    public Caminhos(com.fenix.ordenararquivos.model.entities.Caminhos caminho) {
         this.capitulo = caminho.getCapitulo();
         this.pasta = caminho.getNomePasta();
         this.pagina = caminho.getNumero();
     }
 
-    public static com.fenix.ordenararquivos.model.Caminhos toCominhos(com.fenix.ordenararquivos.model.Manga manga, HashMap<String, ?> obj) {
-        return new com.fenix.ordenararquivos.model.Caminhos(0, manga, (String) obj.get("capitulo"), ((Long) obj.get("pagina")).intValue(), (String) obj.get("pasta"));
+    public static com.fenix.ordenararquivos.model.entities.Caminhos toCominhos(Manga manga, HashMap<String, ?> obj) {
+        return new com.fenix.ordenararquivos.model.entities.Caminhos(0, manga, (String) obj.get("capitulo"), ((Long) obj.get("pagina")).intValue(), (String) obj.get("pasta"));
     }
 
     @Override

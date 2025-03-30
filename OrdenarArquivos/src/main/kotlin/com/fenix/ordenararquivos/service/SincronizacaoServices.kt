@@ -3,11 +3,13 @@ package com.fenix.ordenararquivos.service
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.database.DataBase.instancia
-import com.fenix.ordenararquivos.model.Sincronizacao
-import com.fenix.ordenararquivos.model.Tipo
+import com.fenix.ordenararquivos.model.entities.Sincronizacao
+import com.fenix.ordenararquivos.model.enums.Notificacao
+import com.fenix.ordenararquivos.model.enums.Tipo
 import com.fenix.ordenararquivos.model.firebase.Caminhos
 import com.fenix.ordenararquivos.model.firebase.ComicInfo
 import com.fenix.ordenararquivos.model.firebase.Manga
+import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.util.Utils
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.firestore.Firestore
@@ -60,8 +62,8 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
         private val sincManga: ObservableList<Manga> = FXCollections.observableArrayList()
         private val sincComicInfo: ObservableList<ComicInfo> = FXCollections.observableArrayList()
         private val sincronizar: ObservableList<Pair<Tipo, Int>> = FXCollections.observableArrayList()
-        fun enviar(manga: com.fenix.ordenararquivos.model.Manga) = sincManga.add(Manga(manga))
-        fun enviar(comic: com.fenix.ordenararquivos.model.comicinfo.ComicInfo) = sincComicInfo.add(ComicInfo(comic))
+        fun enviar(manga: com.fenix.ordenararquivos.model.entities.Manga) = sincManga.add(Manga(manga))
+        fun enviar(comic: com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo) = sincComicInfo.add(ComicInfo(comic))
     }
 
     fun setObserver(listener: ListChangeListener<Pair<Tipo, Int>>) = sincronizar.addListener(listener)
@@ -143,6 +145,8 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
     private fun getIdCloud(comic: ComicInfo) : String = comic.comic
 
     private fun envia(): Boolean {
+        var notificacao = ""
+
         var processadoManga = false
         registros = 0
         if (!sincManga.isEmpty()) {
@@ -165,8 +169,10 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
                     mLOG.info("Enviado dados de mangas a cloud: " + sinc.size + " registros. ")
                 }
 
-                if (registros > 0)
+                if (registros > 0) {
                     processados += "Enviado $registros registro(s) de Mangas. "
+                    notificacao += "Enviado $registros registro(s) de Mangas.\n"
+                }
 
                 mLOG.info("Concluído envio de dados de Mangas da cloud.")
                 processadoManga = true
@@ -208,8 +214,10 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
                     mLOG.info("Enviado dados do ComicInfo a cloud: " + sinc.size + " registros. ")
                 }
 
-                if (registros > 0)
+                if (registros > 0) {
                     processados += "Enviado $registros registro(s) de ComicInfo. "
+                    notificacao += "Enviado $registros registro(s) de ComicInfo.\n"
+                }
 
                 mLOG.info("Concluído envio de dados do ComicInfo a cloud.")
                 processadoComic = true
@@ -220,14 +228,19 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
             }
         }
 
+        if (notificacao.isNotEmpty())
+            Platform.runLater { Notificacoes.notificacao(Notificacao.SUCESSO, "Recebimento da cloud com sucesso", notificacao.substringBeforeLast("\n")) }
+
         return processadoManga && processadoComic
     }
     
     private fun receber(): Boolean {
+        var notificacao = ""
+
         var processadoManga = false
         try {
             mLOG.info("Recebendo dados de Manga da cloud.... ")
-            val lista = mutableListOf<com.fenix.ordenararquivos.model.Manga>()
+            val lista = mutableListOf<com.fenix.ordenararquivos.model.entities.Manga>()
             val atual = LocalDate.now().format(formaterData)
 
             val query = DB.collection(collectOrdenar).get()
@@ -255,7 +268,7 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
             mLOG.info("Processando retorno dados de Manga da cloud: " + lista.size + " registros.")
             registros = lista.size
             for (sinc in lista) {
-                var manga: com.fenix.ordenararquivos.model.Manga? = serviceManga.find(sinc)
+                var manga: com.fenix.ordenararquivos.model.entities.Manga? = serviceManga.find(sinc)
                 if (manga != null)
                     manga.merge(sinc)
                 else
@@ -264,8 +277,10 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
                 serviceManga.save(manga, false)
             }
 
-            if (registros > 0)
+            if (registros > 0) {
                 processados += "Recebido $registros registro(s) de Manga. "
+                notificacao += "Recebido $registros registro(s) de Manga.\n"
+            }
 
             processadoManga = true
             mLOG.info("Concluído recebimento de dados de Manga da cloud.")
@@ -277,7 +292,7 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
         var processadoComic = false
         try {
             mLOG.info("Recebendo dados do ComicInfo da cloud.... ")
-            val lista = mutableListOf<com.fenix.ordenararquivos.model.comicinfo.ComicInfo>()
+            val lista = mutableListOf<com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo>()
 
             val docRef = DB.collection(collectComicInfo)
             val docIndex = docRef.document("_INDEX").get().get()
@@ -302,7 +317,7 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
             mLOG.info("Processando retorno dados do ComicInfo da cloud: " + lista.size + " registros.")
             registros = lista.size
             for (sinc in lista) {
-                var comic: com.fenix.ordenararquivos.model.comicinfo.ComicInfo? = serviceComicInfo.find(sinc.comic, sinc.languageISO)
+                var comic: com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo? = serviceComicInfo.find(sinc.comic, sinc.languageISO)
                 if (comic != null)
                     comic.merge(sinc)
                 else
@@ -311,8 +326,10 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
                 serviceComicInfo.save(comic, isSendCloud = false, isReceiveCloud = true)
             }
 
-            if (registros > 0)
+            if (registros > 0) {
                 processados += "Recebido $registros registro(s) de ComicInfo. "
+                notificacao += "Recebido $registros registro(s) de ComicInfo.\n"
+            }
 
             processadoComic = true
             mLOG.info("Concluído recebimento de dados do ComicInfo da cloud.")
@@ -320,6 +337,9 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
             mLOG.error("Erro ao receber dados do ComicInfo da cloud. ${e.message}".trimIndent(), e)
             throw e
         }
+
+        if (notificacao.isNotEmpty())
+            Platform.runLater { Notificacoes.notificacao(Notificacao.SUCESSO, "Recebimento da cloud com sucesso", notificacao.substringBeforeLast("\n")) }
 
         return processadoManga && processadoComic
     }
