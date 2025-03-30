@@ -2318,7 +2318,7 @@ class TelaInicialController : Initializable {
         if (!sincronizacao.isConfigurado())
             imgCompartilhamento.image = imgAnimaCompartilhaErro
         else if (sincronizacao.listSize() > 0) {
-            lblAviso.text = "Pendente registro(s) para envio: ${sincronizacao.listPendentes()}."
+            lblAviso.text = "Pendente de envio " + sincronizacao.listSize() + " registro(s)."
             imgCompartilhamento.image = imgAnimaCompartilhaEspera
         } else
             imgCompartilhamento.image = imgAnimaCompartilha

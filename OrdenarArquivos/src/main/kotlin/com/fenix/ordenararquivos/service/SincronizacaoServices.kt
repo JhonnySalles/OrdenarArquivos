@@ -363,6 +363,7 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
     fun isSincronizando(): Boolean = sincronizando
 
     fun listSize(): Int = sincManga.size + sincComicInfo.size
+
     fun listPendentes(): String {
         var sinc = ""
         sinc += if (sincManga.isNotEmpty()) "${sincManga.size} (Manga) " else ""
