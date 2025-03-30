@@ -25,7 +25,7 @@ object AlertasPopup {
     private val CONFIRMA: ImageView = ImageView(Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/icoConfirma_48.png")))
 
     private val CSS: String = AlertasPopup::class.java.getResource("/css/Dark_Alerts.css").toExternalForm()
-    private val CSS_THEME: String = AlertasPopup::class.java.getResource("/css/Dark_Theme.css").toExternalForm()
+    private val CSS_THEME: String = AlertasPopup::class.java.getResource("/css/Dark_TelaInicial.css").toExternalForm()
     private lateinit var ROOT_STACK_PANE: StackPane
     private lateinit var NODE_BLUR: Node
 

@@ -45,8 +45,8 @@ class PopupNotificacaoController : Initializable {
     fun setTexto(texto: String): PopupNotificacaoController {
         lblTexto.text = texto
         wheight = if (texto.length <= 80) {
-            notificacaoBackground.setPrefSize(500.0, 47.0)
-            notificacaoBackground.setMaxSize(500.0, 47.0)
+            notificacaoBackground.setPrefSize(350.0, 45.0)
+            notificacaoBackground.setMaxSize(350.0, 45.0)
             imgImagem.fitHeight = 35.0
             imgImagem.fitWidth = 35.0
             60.0
