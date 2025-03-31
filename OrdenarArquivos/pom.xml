@@ -281,6 +281,13 @@
             <version>4.0.0</version>
         </dependency>
 
+        <!-- MyAnimeList -->
+        <dependency>
+            <groupId>dev.katsute</groupId>
+            <artifactId>mal4j</artifactId>
+            <version>3.0.1</version>
+        </dependency>
+
         <!-- OUTROS -->
         <dependency>
             <groupId>org.apache.commons</groupId>

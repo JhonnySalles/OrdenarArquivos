@@ -14,7 +14,7 @@
     -fx-font-size: 14px;
 }
 
-.texto-stilo-1{
+.texto-stilo-1 {
     -fx-prompt-text-fill: white;
     -fx-text-fill: white;
 }
@@ -39,6 +39,20 @@
     -fx-text-fill: #9933ff;
 }
 
+/*---------- Combo Box ----------*/
+.comboBox-stilo {
+    -fx-text-fill: white;
+    -fx-background-color: #000000;
+    -fx-prompt-text-fill: #ababab;
+}
+
+.comboBox-stilo .text-field {
+    -fx-text-fill: white;
+}
+
+.comboBox-stilo>.list-cell {
+    -fx-text-fill: white;
+}
 
 /*---------- Text Area ----------*/
 .textArea {

@@ -11,6 +11,11 @@
     btnConfirm: #7cb342;
 }
 
+.Tela_Alerta {
+    -fx-background-color: linear-gradient(to bottom, #e6e6e6 0%, #ffffff 20%, #ffffff 80%, #f2f2f2
+    100%);
+}
+
 .btnAlerta {
     -fx-background-color: btnOk;
     -fx-border-color: btnOk;

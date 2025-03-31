@@ -103,7 +103,7 @@ data class ComicInfo(
 ) {
 
     constructor(
-        id: UUID, idMal: Long?, comic: String, title: String, series: String, publisher: String?, alternateSeries: String?,
+        id: UUID?, idMal: Long?, comic: String, title: String, series: String, publisher: String?, alternateSeries: String?,
         storyArc: String?, seriesGroup: String?, imprint: String?, genre: String?, languageISO: String,
         ageRating: AgeRating?
     ) : this(id, idMal, comic, title, series) {
@@ -116,6 +116,16 @@ data class ComicInfo(
         this.languageISO = languageISO
         this.ageRating = ageRating
     }
+
+    constructor(comic: ComicInfo) : this(
+        comic.id, comic.idMal, comic.comic, comic.title, comic.series, comic.number, comic.volume,
+        comic.notes, comic.year, comic.month, comic.day, comic.writer, comic.penciller, comic.inker, comic.coverArtist, comic.colorist,
+        comic.letterer, comic.publisher, comic.tags, comic.web, comic.editor, comic.translator, comic.pageCount, comic.pages, comic.count,
+        comic.alternateSeries, comic.alternateNumber, comic.storyArc, comic.storyArcNumber, comic.seriesGroup, comic.alternateCount,
+        comic.summary, comic.imprint, comic.genre, comic.languageISO, comic.format, comic.ageRating, comic.communityRating,
+        comic.blackAndWhite, comic.manga, comic.characters, comic.teams, comic.locations, comic.scanInformation,
+        comic.mainCharacterOrTeam, comic.review
+    )
 
     fun merge(comic: ComicInfo) {
         this.id = comic.id

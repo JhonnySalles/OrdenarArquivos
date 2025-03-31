@@ -8,7 +8,8 @@ class Mal(
     var nome: String,
     var descricao: String,
     var site: JFXButton? = null,
-    var imagem: ImageView? = null
+    var imagem: ImageView? = null,
+    var mal: dev.katsute.mal4j.manga.Manga
 ) {
     val idVisual: String
         get() = if (id > 0) id.toString() else ""

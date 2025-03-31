@@ -53,12 +53,9 @@ import javafx.stage.DirectoryChooser
 import javafx.util.Duration
 import net.kurobako.gesturefx.GesturePane
 import org.slf4j.LoggerFactory
-import java.awt.Desktop
 import java.awt.image.BufferedImage
 import java.io.*
 import java.math.RoundingMode
-import java.net.URI
-import java.net.URISyntaxException
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Path
@@ -70,6 +67,7 @@ import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.regex.Pattern
 import javax.imageio.ImageIO
+import kotlin.properties.Delegates
 
 
 class TelaInicialController : Initializable {
@@ -297,7 +295,7 @@ class TelaInicialController : Initializable {
     private lateinit var btnMalConsultar: JFXButton
 
     @FXML
-    private lateinit var tbViewMal: TableView<Caminhos>
+    private lateinit var tbViewMal: TableView<Mal>
 
     @FXML
     private lateinit var clMalId: TableColumn<Mal, String>
@@ -324,6 +322,7 @@ class TelaInicialController : Initializable {
     private var mCaminhoOrigem: File? = null
     private var mCaminhoDestino: File? = null
     private var mSelecionado: String? = null
+    private var mComicInfo by Delegates.observable(ComicInfo()) { _, _, newValue -> carregaComicInfo(newValue) }
     private val mServiceManga = MangaServices()
     private val mServiceComicInfo = ComicInfoServices()
 
@@ -363,6 +362,12 @@ class TelaInicialController : Initializable {
         mSelecionado = null
         lblProgresso.text = ""
         pbProgresso.progress = 0.0
+
+        mObsListaMal = FXCollections.observableArrayList()
+        tbViewMal.items = mObsListaMal
+        mComicInfo = ComicInfo()
+        txtMalId.text = ""
+        txtMalNome.text = ""
     }
 
     private val mFilterNomeArquivo: FilenameFilter
@@ -393,7 +398,7 @@ class TelaInicialController : Initializable {
 
     @FXML
     private fun onBtnCompactar() {
-        if (mCaminhoDestino!!.exists() && !txtNomeArquivo.text.isEmpty() && !LAST_PROCESS_FOLDERS.isEmpty())
+        if (mCaminhoDestino!!.exists() && txtNomeArquivo.text.isNotEmpty() && LAST_PROCESS_FOLDERS.isNotEmpty())
             compactaArquivo(
                 File(mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }),
                 LAST_PROCESS_FOLDERS
@@ -519,17 +524,47 @@ class TelaInicialController : Initializable {
     @FXML
     private fun onBtnMalAplicar() {
         if (tbViewMal.items.isNotEmpty())
-            carregaMal(tbViewMal.selectionModel.selectedItem.id)
+            carregaMal(tbViewMal.selectionModel.selectedItem)
     }
 
     @FXML
     private fun onBtnMalConsultar() {
         tbTabRoot.selectionModel.select(tbTabComicInfo)
         if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
-            mObsListaMal.clear()
+            val id : Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
+            val nome = txtMalNome.text
 
-        } else
+            btnMalConsultar.isDisable = true
+            val consulta: Task<Void> = object : Task<Void>() {
+                override fun call(): Void? {
+                    try {
+                        val lista = mServiceComicInfo.getMal(id, nome)
+                        mObsListaMal = FXCollections.observableArrayList(lista)
+                        Platform.runLater {
+                            tbViewMal.items = mObsListaMal
+                            if (lista.isEmpty())
+                                Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
+                        }
+                    } catch (e: Exception) {
+                        mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
+                        Platform.runLater {
+                            Notificacoes.notificacao(Notificacao.ERRO, "My Anime List", "Erro ao realizar a consulta do MyAnimeList. " + e.message)
+                        }
+                    }
+                    return null
+                }
+                override fun succeeded() {
+                    Platform.runLater {
+                        btnMalConsultar.isDisable = false
+                    }
+                }
+            }
+
+            Thread(consulta).start()
+        } else {
             AlertasPopup.alertaModal("Alerta", "Necessário informar um id ou nome.")
+            txtMalNome.requestFocus();
+        }
     }
 
     private fun desabilita() {
@@ -613,10 +648,11 @@ class TelaInicialController : Initializable {
         return valida
     }
 
-    fun carregaComicInfo(comic: ComicInfo) {
+    private fun carregaComicInfo(comic: ComicInfo) {
         txtIdMal.text = if (comic.idMal != null) comic.idMal.toString() else ""
         cbAgeRating.selectionModel.select(comic.ageRating)
-        cbLanguage.selectionModel.select(Linguagem.getEnum(comic.languageISO))
+        val lingua = Linguagem.getEnum(comic.languageISO) ?: cbLanguage.value
+        cbLanguage.selectionModel.select(lingua)
         txtTitle.text = comic.title
         txtSeries.text = comic.series
         txtAlternateSeries.text = comic.alternateSeries
@@ -643,18 +679,10 @@ class TelaInicialController : Initializable {
         comic.notes = txtNotes.text.ifEmpty { null }
     }
 
-    private fun openSiteMal(id: Long) {
-        try {
-            Desktop.getDesktop().browse(URI("https://myanimelist.net/manga/$id"))
-        } catch (e: IOException) {
-            mLOG.error(e.message, e)
-        } catch (e: URISyntaxException) {
-            mLOG.error(e.message, e)
-        }
-    }
-
-    private fun carregaMal(id: Long) {
-
+    private fun carregaMal(mal: Mal) {
+        val comic = ComicInfo(mComicInfo)
+        mServiceComicInfo.updateMal(comic, mal, cbLanguage.value ?: Linguagem.JAPANESE)
+        mComicInfo = comic
     }
 
     private fun ocrSumario(sumario : File) {
@@ -863,6 +891,26 @@ class TelaInicialController : Initializable {
         }
     }
 
+    private fun carregaComicInfo() {
+        var nome = txtNomePastaManga.text
+        if (nome.contains("]"))
+            nome = nome.substring(nome.indexOf("]")).replace("]", "").trim { it <= ' ' }
+
+        if (nome.substring(nome.length - 1).equals("-", ignoreCase = true))
+            nome = nome.substring(0, nome.length - 1).trim { it <= ' ' }
+
+        mComicInfo = mServiceComicInfo.find(nome, cbLanguage.value.sigla) ?: ComicInfo(null, null, nome, nome)
+
+        if (mComicInfo.id == null) {
+            mLOG.info("Gerando novo ComicInfo.")
+            txtMalId.text = ""
+        } else {
+            mLOG.info("ComicInfo localizado: " + mComicInfo.title)
+            txtMalId.text = mComicInfo.idMal.toString()
+        }
+        txtMalNome.text = mComicInfo.comic
+    }
+
     private fun criaPasta(caminho: String): File {
         val arquivo = File(caminho)
         if (!arquivo.exists())
@@ -895,25 +943,24 @@ class TelaInicialController : Initializable {
     private fun verificaPaginaDupla(arquivo: File): Boolean {
         var result = false
         try {
-            var img: BufferedImage? = null
-            img = ImageIO.read(arquivo)
-            result = img.width / img.height > 0.9
+            val img: BufferedImage? = ImageIO.read(arquivo)
+            result = img!!.width / img.height > 0.9
         } catch (e: IOException) {
             mLOG.error("Erro ao verificar a página dupla.", e)
         }
         return result
     }
 
-    val PASTA_TEMPORARIA = File(System.getProperty("user.dir"), "temp/")
+    private val mPASTA_TEMPORARIA = File(System.getProperty("user.dir"), "temp/")
     private fun limparCapas() {
         mImagemTudo.image = null
         mImagemFrente.image = null
         mImagemTras.image = null
         mObsListaImagesSelected.clear()
-        if (!PASTA_TEMPORARIA.exists())
-            PASTA_TEMPORARIA.mkdir()
+        if (!mPASTA_TEMPORARIA.exists())
+            mPASTA_TEMPORARIA.mkdir()
         else {
-            for (item in PASTA_TEMPORARIA.listFiles())
+            for (item in mPASTA_TEMPORARIA.listFiles())
                 item.delete()
         }
         remSugestao()
@@ -958,9 +1005,9 @@ class TelaInicialController : Initializable {
             if (isDupla) {
                 val nome = img.name.substring(0, img.name.lastIndexOf("."))
                 val ext = img.name.substring(img.name.lastIndexOf("."))
-                val direita = File(PASTA_TEMPORARIA.toString() + "\\" + nome + TRAS + ext)
-                val esquerda = File(PASTA_TEMPORARIA.toString() + "\\" + nome + FRENTE + ext)
-                copiaItem(img, PASTA_TEMPORARIA)
+                val direita = File(mPASTA_TEMPORARIA.toString() + "\\" + nome + TRAS + ext)
+                val esquerda = File(mPASTA_TEMPORARIA.toString() + "\\" + nome + FRENTE + ext)
+                copiaItem(img, mPASTA_TEMPORARIA)
                 divideImagens(img, esquerda, direita)
                 mObsListaImagesSelected.removeIf { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 }
                 mObsListaImagesSelected.add(Capa(arquivo, esquerda.name, tipo, isDupla))
@@ -969,13 +1016,13 @@ class TelaInicialController : Initializable {
             } else if (frente == null) {
                 remCapa(arquivo)
                 mObsListaImagesSelected.add(Capa(arquivo, img.name, tipo, isDupla))
-                copiaItem(img, PASTA_TEMPORARIA)
+                copiaItem(img, mPASTA_TEMPORARIA)
             } else if (tras == null) {
                 frente.direita = Capa(arquivo, img.name, tipo, isDupla)
                 mObsListaImagesSelected.add(frente.direita)
                 mObsListaImagesSelected.removeIf { it.tipo.compareTo(TipoCapa.TRAS) == 0 }
                 mObsListaImagesSelected.add(Capa(arquivo, img.name, TipoCapa.TRAS, false))
-                copiaItem(img, PASTA_TEMPORARIA)
+                copiaItem(img, mPASTA_TEMPORARIA)
             }
         } else {
             val capa = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(tipo) == 0 }.findFirst().orElse(Capa())
@@ -985,10 +1032,10 @@ class TelaInicialController : Initializable {
             capa.isDupla = isDupla
             mObsListaImagesSelected.remove(capa)
             mObsListaImagesSelected.add(capa)
-            copiaItem(img, PASTA_TEMPORARIA)
+            copiaItem(img, mPASTA_TEMPORARIA)
 
             if (tipo == TipoCapa.SUMARIO)
-                ocrSumario(File(PASTA_TEMPORARIA.toString() + "\\" + arquivo))
+                ocrSumario(File(mPASTA_TEMPORARIA.toString() + "\\" + arquivo))
         }
     }
 
@@ -998,8 +1045,8 @@ class TelaInicialController : Initializable {
             for (capa in mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) != 0 }
                 .toList()) {
                 try {
-                    copiaItem(File(txtPastaOrigem.text + "\\" + capa.nome), PASTA_TEMPORARIA)
-                    simularCapa(capa.tipo, carregaImagem(File(PASTA_TEMPORARIA.toString() + "\\" + capa.arquivo)))
+                    copiaItem(File(txtPastaOrigem.text + "\\" + capa.nome), mPASTA_TEMPORARIA)
+                    simularCapa(capa.tipo, carregaImagem(File(mPASTA_TEMPORARIA.toString() + "\\" + capa.arquivo)))
                 } catch (e: IOException) {
                     mLOG.warn("Erro ao reprocessar imagem: " + capa.tipo + ".", e)
                 }
@@ -1011,12 +1058,12 @@ class TelaInicialController : Initializable {
 
             if (completa.isPresent) if (completa.get().direita != null) {
                 try {
-                    copiaItem(File(txtPastaOrigem.text + "\\" + completa.get().nome), PASTA_TEMPORARIA)
-                    copiaItem(File(txtPastaOrigem.text + "\\" + completa.get().direita!!.nome), PASTA_TEMPORARIA)
+                    copiaItem(File(txtPastaOrigem.text + "\\" + completa.get().nome), mPASTA_TEMPORARIA)
+                    copiaItem(File(txtPastaOrigem.text + "\\" + completa.get().direita!!.nome), mPASTA_TEMPORARIA)
                     simularCapa(
                         TipoCapa.CAPA_COMPLETA, carregaImagem(
-                            File(PASTA_TEMPORARIA.toString() + "\\" + completa.get().arquivo),
-                            File(PASTA_TEMPORARIA.toString() + "\\" + completa.get().direita!!.arquivo)
+                            File(mPASTA_TEMPORARIA.toString() + "\\" + completa.get().arquivo),
+                            File(mPASTA_TEMPORARIA.toString() + "\\" + completa.get().direita!!.arquivo)
                         )
                     )
                 } catch (e: IOException) {
@@ -1024,10 +1071,10 @@ class TelaInicialController : Initializable {
                 }
             } else {
                 try {
-                    copiaItem(File(txtPastaOrigem.text + "\\" + completa.get().nome), PASTA_TEMPORARIA)
+                    copiaItem(File(txtPastaOrigem.text + "\\" + completa.get().nome), mPASTA_TEMPORARIA)
                     simularCapa(
                         TipoCapa.CAPA_COMPLETA,
-                        carregaImagem(File(PASTA_TEMPORARIA.toString() + "\\" + completa.get().arquivo))
+                        carregaImagem(File(mPASTA_TEMPORARIA.toString() + "\\" + completa.get().arquivo))
                     )
                 } catch (e: IOException) {
                     mLOG.warn("Erro ao reprocessar imagem: " + completa.get().tipo + ".", e)
@@ -1095,10 +1142,10 @@ class TelaInicialController : Initializable {
                     mLOG.info("Gerando capa completa...  mesclando arquivos....")
                     mLOG.info("Imagem frente: " + tudo.get().nome)
                     mLOG.info("Imagem trazeira: " + tudo.get().direita!!.nome)
-                    copiaItem(File(mCaminhoOrigem!!.path + "\\" + tudo.get().nome), PASTA_TEMPORARIA)
-                    copiaItem(File(mCaminhoOrigem!!.path + "\\" + tudo.get().direita!!.nome), PASTA_TEMPORARIA)
-                    val esquerda = File(PASTA_TEMPORARIA, tudo.get().nome)
-                    val direita = File(PASTA_TEMPORARIA, tudo.get().direita!!.nome)
+                    copiaItem(File(mCaminhoOrigem!!.path + "\\" + tudo.get().nome), mPASTA_TEMPORARIA)
+                    copiaItem(File(mCaminhoOrigem!!.path + "\\" + tudo.get().direita!!.nome), mPASTA_TEMPORARIA)
+                    val esquerda = File(mPASTA_TEMPORARIA, tudo.get().nome)
+                    val direita = File(mPASTA_TEMPORARIA, tudo.get().direita!!.nome)
                     val destino = File(destinoCapa.path + "\\" + nome + TUDO + ".png")
                     mesclarImagens(destino, esquerda, direita)
                     limpaMargemImagens(destino, true)
@@ -1118,8 +1165,8 @@ class TelaInicialController : Initializable {
 
                 if (tras.isEmpty || capa.isEmpty) {
                     mLOG.info("Copiando capa de frente e traz...")
-                    val esquerda = File(PASTA_TEMPORARIA, nome + FRENTE + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
-                    val direita = File(PASTA_TEMPORARIA, nome + TRAS + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
+                    val esquerda = File(mPASTA_TEMPORARIA, nome + FRENTE + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
+                    val direita = File(mPASTA_TEMPORARIA, nome + TRAS + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
 
                     if (capa.isEmpty)
                         renomeiaItem(copiaItem(File(mCaminhoOrigem, tudo.get().nome), destinoCapa), esquerda.name)
@@ -1150,10 +1197,10 @@ class TelaInicialController : Initializable {
 
                 if (tras.isEmpty || capa.isEmpty) {
                     mLOG.info("Dividindo a capa completa para gerar a capa de frente e traz...")
-                    copiaItem(File(mCaminhoOrigem!!.path + "\\" + tudo.get().nome), PASTA_TEMPORARIA)
-                    val temp = File(PASTA_TEMPORARIA, tudo.get().nome)
-                    val esquerda = File(PASTA_TEMPORARIA, nome + FRENTE + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
-                    val direita = File(PASTA_TEMPORARIA, nome + TRAS + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
+                    copiaItem(File(mCaminhoOrigem!!.path + "\\" + tudo.get().nome), mPASTA_TEMPORARIA)
+                    val temp = File(mPASTA_TEMPORARIA, tudo.get().nome)
+                    val esquerda = File(mPASTA_TEMPORARIA, nome + FRENTE + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
+                    val direita = File(mPASTA_TEMPORARIA, nome + TRAS + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
                     if (divideImagens(temp, esquerda, direita)) {
                         if (capa.isEmpty)
                             copiaItem(esquerda, destinoCapa)
@@ -1178,7 +1225,7 @@ class TelaInicialController : Initializable {
 
                     if (capa.isEmpty) {
                         mLOG.info("Copiando capa de frente e traz...")
-                        val esquerda = File(PASTA_TEMPORARIA, nome + FRENTE + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
+                        val esquerda = File(mPASTA_TEMPORARIA, nome + FRENTE + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
 
                         if (capa.isEmpty)
                             renomeiaItem(copiaItem(File(mCaminhoOrigem, tudo.get().nome), destinoCapa), esquerda.name)
@@ -1189,7 +1236,7 @@ class TelaInicialController : Initializable {
             }
         }
 
-        return destinoCapa;
+        return destinoCapa
     }
 
     private fun processar() {
@@ -1337,13 +1384,8 @@ class TelaInicialController : Initializable {
                             }
                     }
 
-                    val comic = mServiceComicInfo.find(mManga!!.nome, if (isJapanese) "ja" else "pt") ?: ComicInfo()
+                    val comic = mComicInfo
                     comic.pages = pages
-
-                    if (comic.id == null)
-                        mLOG.info("Gerando novo ComicInfo.")
-                    else
-                        mLOG.info("ComicInfo localizado: " + comic.title)
 
                     comic.let {
                         if (it.comic.isEmpty())
@@ -1419,7 +1461,7 @@ class TelaInicialController : Initializable {
     private var mProcess: Process? = null
     private fun compactaArquivo(rar: File, arquivos: File): Boolean {
         var success = true
-        var comando = ("rar a -ma4 -ep1 " + '"' + rar.path + '"' + " " + '"' + arquivos.path + '"')
+        val comando = ("rar a -ma4 -ep1 " + '"' + rar.path + '"' + " " + '"' + arquivos.path + '"')
         mLOG.info(comando)
         mProcess = null
         return try {
@@ -1433,15 +1475,16 @@ class TelaInicialController : Initializable {
                 }
             }
             var resultado = ""
-            val stdInput = BufferedReader(InputStreamReader(mProcess!!.getInputStream()))
+            val stdInput = BufferedReader(InputStreamReader(mProcess!!.inputStream))
             var s: String?
             while (stdInput.readLine().also { s = it } != null) resultado += "$s"
-            if (!resultado.isEmpty()) mLOG.info("Output comand:\n$resultado")
+            if (resultado.isNotEmpty())
+                mLOG.info("Output comand:\n$resultado")
             s = null
             resultado = ""
-            val stdError = BufferedReader(InputStreamReader(mProcess!!.getErrorStream()))
+            val stdError = BufferedReader(InputStreamReader(mProcess!!.errorStream))
             while (stdError.readLine().also { s = it } != null) resultado += "$s"
-            if (!resultado.isEmpty()) {
+            if (resultado.isNotEmpty()) {
                 success = false
                 mLOG.info("Error comand: $resultado Necessário adicionar o rar no path e reiniciar a aplicação.")
             }
@@ -1460,7 +1503,7 @@ class TelaInicialController : Initializable {
         var compactar = ""
         for (arquivo in arquivos)
             compactar += '"'.toString() + arquivo.path + '"' + ' '
-        var comando = "rar a -ma4 -ep1 " + '"' + rar.path + '"' + " " + compactar
+        val comando = "rar a -ma4 -ep1 " + '"' + rar.path + '"' + " " + compactar
         mLOG.info(comando)
         return try {
             val rt = Runtime.getRuntime()
@@ -1473,15 +1516,16 @@ class TelaInicialController : Initializable {
                 }
             }
             var resultado = ""
-            val stdInput = BufferedReader(InputStreamReader(mProcess!!.getInputStream()))
+            val stdInput = BufferedReader(InputStreamReader(mProcess!!.inputStream))
             var s: String?
             while (stdInput.readLine().also { s = it } != null) resultado += "$s"
-            if (!resultado.isEmpty()) mLOG.info("Output comand:\n$resultado")
+            if (resultado.isNotEmpty())
+                mLOG.info("Output comand:\n$resultado")
             s = null
             resultado = ""
-            val stdError = BufferedReader(InputStreamReader(mProcess!!.getErrorStream()))
+            val stdError = BufferedReader(InputStreamReader(mProcess!!.errorStream))
             while (stdError.readLine().also { s = it } != null) resultado += "$s"
-            if (!resultado.isEmpty()) {
+            if (resultado.isNotEmpty()) {
                 success = false
                 mLOG.info("Error comand: $resultado Necessário adicionar o rar no path e reiniciar a aplicação. ".trimIndent())
             }
@@ -1639,7 +1683,7 @@ class TelaInicialController : Initializable {
         return arquivo
     }
 
-    fun isPaginaDupla(arquivo: File?): Boolean {
+    private fun isPaginaDupla(arquivo: File?): Boolean {
         if (arquivo == null || !arquivo.exists()) return false
         val image: BufferedImage
         try {
@@ -1651,18 +1695,18 @@ class TelaInicialController : Initializable {
         return false
     }
 
-    fun carregaImagem(esquerda: File?, direita: File?): Image? {
+    private fun carregaImagem(esquerda: File?, direita: File?): Image? {
         if (direita == null || esquerda == null || !direita.exists() || !esquerda.exists()) return null
         try {
             limpaMargemImagens(direita, true)
             limpaMargemImagens(esquerda, true)
-            val img = File(PASTA_TEMPORARIA, "tudo.png")
+            val img = File(mPASTA_TEMPORARIA, "tudo.png")
             if (img.exists()) img.delete()
             img.createNewFile()
             if (cbMesclarCapaTudo.isSelected)
                 mesclarImagens(img, esquerda, direita)
             else
-                copiaItem(esquerda, PASTA_TEMPORARIA, img.name)
+                copiaItem(esquerda, mPASTA_TEMPORARIA, img.name)
             return Image(img.absolutePath)
         } catch (e: IOException) {
             mLOG.error("Erro ao verificar imagem.", e)
@@ -1670,7 +1714,7 @@ class TelaInicialController : Initializable {
         return null
     }
 
-    fun carregaImagem(arquivo: File?): Image? {
+    private fun carregaImagem(arquivo: File?): Image? {
         if (arquivo == null || !arquivo.exists()) return null
         limpaMargemImagens(arquivo, false)
         return Image(arquivo.absolutePath)
@@ -1796,13 +1840,13 @@ class TelaInicialController : Initializable {
 
     @FXML
     private fun onBtnSubtrair() {
-        if (!txtQuantidade.text.isEmpty())
+        if (txtQuantidade.text.isNotEmpty())
             modificaNumeroPaginas(Integer.valueOf(txtQuantidade.text) * -1)
     }
 
     @FXML
     private fun onBtnSomar() {
-        if (!txtQuantidade.text.isEmpty())
+        if (txtQuantidade.text.isNotEmpty())
             modificaNumeroPaginas(Integer.valueOf(txtQuantidade.text))
     }
 
@@ -1838,14 +1882,14 @@ class TelaInicialController : Initializable {
                 mListaCaminhos.add(Caminhos(linha[0], linha[1].trim(), nomePasta))
             }
             mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
-            tbViewTabela.setItems(mObsListaCaminhos)
+            tbViewTabela.items = mObsListaCaminhos
             tbViewTabela.refresh()
         }
     }
 
     @FXML
     private fun onBtnGerarCapitulos() {
-        if (!txtGerarInicio.text.trim { it <= ' ' }.isEmpty() && !txtGerarFim.text.trim { it <= ' ' }.isEmpty()) {
+        if (txtGerarInicio.text.trim { it <= ' ' }.isNotEmpty() && txtGerarFim.text.trim { it <= ' ' }.isNotEmpty()) {
             if (mManga == null)
                 mManga = geraManga(0)
             val inicio = getNumber(txtGerarInicio.text)?.toInt() ?: return
@@ -1875,9 +1919,9 @@ class TelaInicialController : Initializable {
                     if (it.tipo == TipoCapa.CAPA_COMPLETA)
                         CompletableFuture.runAsync {
                             try {
-                                simularCapa(it.tipo, carregaImagem(File(PASTA_TEMPORARIA.toString() + "\\" + it.nome)))
+                                simularCapa(it.tipo, carregaImagem(File(mPASTA_TEMPORARIA.toString() + "\\" + it.nome)))
                                 if (mObsListaImagesSelected.none { it.tipo == TipoCapa.CAPA })
-                                    simularCapa(TipoCapa.CAPA, Image(PASTA_TEMPORARIA.toString() + "\\" + it.arquivo))
+                                    simularCapa(TipoCapa.CAPA, Image(mPASTA_TEMPORARIA.toString() + "\\" + it.arquivo))
                             } catch (e: IOException) {
                                 mLOG.warn("Erro ao processar imagem: Capa ${it.tipo}.", e)
                             }
@@ -1885,7 +1929,7 @@ class TelaInicialController : Initializable {
                     else
                         CompletableFuture.runAsync {
                             try {
-                                simularCapa(it.tipo, carregaImagem(File(PASTA_TEMPORARIA.toString() + "\\" + it.arquivo)))
+                                simularCapa(it.tipo, carregaImagem(File(mPASTA_TEMPORARIA.toString() + "\\" + it.arquivo)))
                             } catch (e: IOException) {
                                 mLOG.warn("Erro ao processar imagem: Capa ${it.tipo}.", e)
                             }
@@ -1905,7 +1949,7 @@ class TelaInicialController : Initializable {
         }
     }
 
-    fun compartilhamento() {
+    private fun compartilhamento() {
         val compartilha: Task<Boolean> = object : Task<Boolean>() {
             override fun call(): Boolean {
                 sincronizacao.consultar()
@@ -1931,16 +1975,16 @@ class TelaInicialController : Initializable {
             else {
                 animacao.tmSincronizacao.stop()
                 if (isErro)
-                    imgCompartilhamento.setImage(imgAnimaCompartilhaErro)
+                    imgCompartilhamento.image = imgAnimaCompartilhaErro
                 else
-                    imgCompartilhamento.setImage(imgAnimaCompartilhaEnvio)
+                    imgCompartilhamento.image = imgAnimaCompartilhaEnvio
             }
         }
     }
 
-    val mostraFinalTexto: MutableSet<TextField> = HashSet()
+    private val mMostraFinalTexto: MutableSet<TextField> = HashSet()
     private fun textFieldMostraFinalTexto(txt: JFXTextField) {
-        mostraFinalTexto.add(txt)
+        mMostraFinalTexto.add(txt)
         val onFocus: MutableSet<TextField> = HashSet()
         val overrideNextCaratChange: MutableSet<TextField> = HashSet()
         val onLoseFocus =
@@ -1955,13 +1999,13 @@ class TelaInicialController : Initializable {
                     overrideNextCaratChange.add(tf)
             }
         val onCaratChange =
-            ChangeListener { observable: ObservableValue<out Number?>, oldValue: Number?, newValue: Number? ->
+            ChangeListener { observable: ObservableValue<out Number?>, _: Number?, _: Number? ->
                 val property = observable as ReadOnlyProperty<out Number?>
                 val tf = property.bean as TextField
                 if (overrideNextCaratChange.contains(tf)) {
                     tf.end()
                     overrideNextCaratChange.remove(tf)
-                } else if (!onFocus.contains(tf) && mostraFinalTexto.contains(tf))
+                } else if (!onFocus.contains(tf) && mMostraFinalTexto.contains(tf))
                     tf.end()
             }
         txt.focusedProperty().addListener(onLoseFocus)
@@ -2035,27 +2079,27 @@ class TelaInicialController : Initializable {
         val capaSelected = PseudoClass.getPseudoClass("capaSelected")
         val capaCompletaSelected = PseudoClass.getPseudoClass("capaCompletaSelected")
         val sumarioSelected = PseudoClass.getPseudoClass("sumarioSelected")
-        lsVwListaImagens.setCellFactory { lv: ListView<String> ->
+        lsVwListaImagens.setCellFactory {
             val cell: JFXListCell<String> = object : JFXListCell<String>() {
                 override fun updateItem(images: String?, empty: Boolean) {
                     super.updateItem(images, empty)
                     text = images
                 }
             }
-            val listenerCapa = InvalidationListener { obs: Observable? ->
+            val listenerCapa = InvalidationListener {
                 cell.pseudoClassStateChanged(
                     capaSelected,
                     cell.item != null && contemTipoSelecionado(TipoCapa.CAPA, cell.item)
                 )
             }
-            val listenerCapaCompleta = InvalidationListener { obs: Observable? ->
+            val listenerCapaCompleta = InvalidationListener {
                 cell.pseudoClassStateChanged(
                     capaCompletaSelected,
                     cell.item != null && contemTipoSelecionado(TipoCapa.CAPA_COMPLETA, cell.item)
                 )
                 simulaNome()
             }
-            val listenerSumario = InvalidationListener { obs: Observable? ->
+            val listenerSumario = InvalidationListener {
                 cell.pseudoClassStateChanged(
                     sumarioSelected,
                     cell.item != null && contemTipoSelecionado(TipoCapa.SUMARIO, cell.item)
@@ -2080,7 +2124,7 @@ class TelaInicialController : Initializable {
         }
         clNumeroPagina.cellFactory = TextFieldTableCell.forTableColumn()
         clNumeroPagina.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
-            e.tableView.items[e.tablePosition.row].addNumero(e.getNewValue())
+            e.tableView.items[e.tablePosition.row].addNumero(e.newValue)
         }
         clNomePasta.cellFactory = TextFieldTableCell.forTableColumn()
         clNomePasta.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
@@ -2103,11 +2147,12 @@ class TelaInicialController : Initializable {
 
         tbViewMal.onMouseClicked = EventHandler { click: MouseEvent ->
             if (click.clickCount > 1 && tbViewMal.items.isNotEmpty())
-                carregaMal(tbViewMal.selectionModel.selectedItem.id)
+                carregaMal(tbViewMal.selectionModel.selectedItem)
         }
     }
 
     private var mPastaAnterior = ""
+    private var mNomePastaAnterior = ""
     private fun configuraTextEdit() {
         textFieldMostraFinalTexto(txtSimularPasta)
         textFieldMostraFinalTexto(txtPastaOrigem)
@@ -2143,7 +2188,7 @@ class TelaInicialController : Initializable {
             }
         }
 
-        txtNomePastaManga.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? ->
+        txtNomePastaManga.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean ->
                 if (oldPropertyValue) {
                     txtNomePastaManga.text?.let {
                         if (it.isNotEmpty() && it.contains("  "))
@@ -2151,7 +2196,12 @@ class TelaInicialController : Initializable {
                     }
 
                     simulaNome()
+                    if (mNomePastaAnterior != txtNomePastaManga.text)
+                        carregaComicInfo()
                 }
+
+                if (newPropertyValue)
+                    mNomePastaAnterior = txtNomePastaManga.text
         }
         txtNomePastaManga.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
 
@@ -2188,7 +2238,7 @@ class TelaInicialController : Initializable {
         txtNomePastaCapitulo.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? -> if (oldPropertyValue) simulaNome() }
         txtNomePastaCapitulo.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code.toString() == "ENTER") clickTab() }
 
-        txtGerarInicio.focusedProperty().addListener { arg0: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
+        txtGerarInicio.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
             txtPastaDestino.unFocusColor = Color.GRAY
         }
         txtGerarInicio.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
@@ -2346,6 +2396,7 @@ class TelaInicialController : Initializable {
         cbMesclarCapaTudo.selectedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> reloadCapa() }
         cbAjustarMargemCapa.selectedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> reloadCapa() }
 
+        cbAgeRating.items.addAll(AgeRating.values())
         cbLanguage.items.addAll(Linguagem.JAPANESE, Linguagem.ENGLISH, Linguagem.PORTUGUESE)
         cbLanguage.selectionModel.select(Linguagem.JAPANESE)
 
@@ -2353,14 +2404,27 @@ class TelaInicialController : Initializable {
             if (newPropertyValue)
                 cbLanguage.setUnFocusColor(Color.web("#4059a9"))
             else {
-                if (cbLanguage.editor.textProperty().get().isEmpty())
-                    cbLanguage.setUnFocusColor(Color.RED)
-                else if (cbLanguage.value == null)
+                if (cbLanguage.value == null)
                     cbLanguage.setUnFocusColor(Color.RED)
                 else
                     cbLanguage.setUnFocusColor(Color.web("#4059a9"))
             }
         }
+
+        txtIdMal.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
+        cbAgeRating.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
+        cbLanguage.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
+        txtTitle.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
+        txtSeries.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
+        txtAlternateSeries.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
+        txtSeriesGroup.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
+        txtPublisher.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
+        txtStoryArc.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
+        txtImprint.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
+        txtGenre.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) clickTab() }
+
+        txtMalId.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) btnMalConsultar.fire() }
+        txtMalNome.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) btnMalConsultar.fire() }
 
         txtIdMal.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
             if (newValue != null && !newValue.matches(NUMBER_REGEX))
@@ -2368,7 +2432,7 @@ class TelaInicialController : Initializable {
         }
 
         txtMalId.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
-            if (newValue != null && !newValue.matches(NUMBER_REGEX))
+            if (newValue != null && newValue.isNotEmpty() && !newValue.matches(NUMBER_REGEX))
                 txtMalId.text = oldValue
         }
     }
@@ -2378,8 +2442,10 @@ class TelaInicialController : Initializable {
         val kcFimFocus: KeyCombination = KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN)
         val kcImportFocus: KeyCombination = KeyCodeCombination(KeyCode.M, KeyCombination.CONTROL_DOWN)
         val kcImportar: KeyCombination = KeyCodeCombination(KeyCode.ENTER, KeyCombination.CONTROL_DOWN)
-        val kcProcessar: KeyCombination = KeyCodeCombination(KeyCode.P, KeyCombination.CONTROL_DOWN)
+        val kcComicInfo: KeyCombination = KeyCodeCombination(KeyCode.W, KeyCombination.CONTROL_DOWN)
+        val kcArquivos: KeyCombination = KeyCodeCombination(KeyCode.D, KeyCombination.CONTROL_DOWN)
 
+        val kcProcessar: KeyCombination = KeyCodeCombination(KeyCode.P, KeyCombination.CONTROL_DOWN)
         val mnProcessar = Mnemonic(btnProcessar, kcProcessar)
         scene.addMnemonic(mnProcessar)
 
@@ -2412,16 +2478,38 @@ class TelaInicialController : Initializable {
 
             if (kcCompactar.match(ke))
                 btnCompactar.fire()
+
+            if (kcComicInfo.match(ke)) {
+                if (tbTabRoot.selectionModel.selectedItem == tbTabComicInfo) {
+                    if (txtMalId.text.isEmpty() && txtMalNome.text.isEmpty()) {
+                        var nome = txtNomePastaManga.text
+                        if (nome.contains("]"))
+                            nome = nome.substring(nome.indexOf("]")).replace("]", "").trim { it <= ' ' }
+
+                        if (nome.substring(nome.length - 1).equals("-", ignoreCase = true))
+                            nome = nome.substring(0, nome.length - 1).trim { it <= ' ' }
+
+                        txtMalNome.text = nome
+                    }
+                    btnMalConsultar.fire()
+                } else
+                    tbTabRoot.selectionModel.select(tbTabComicInfo)
+            }
+
+            if (kcArquivos.match(ke)) {
+                if (tbTabRoot.selectionModel.selectedItem != tbTabArquivo)
+                    tbTabRoot.selectionModel.select(tbTabArquivo)
+            }
         }
     }
 
     private fun configuraZoom(root: AnchorPane, imageView: ImageView, slider: JFXSlider): GesturePane {
         val pane = GesturePane(imageView)
         root.children.add(0, pane)
-        AnchorPane.setTopAnchor(pane, 0.0);
-        AnchorPane.setLeftAnchor(pane, 0.0);
-        AnchorPane.setRightAnchor(pane, 0.0);
-        AnchorPane.setBottomAnchor(pane, 0.0);
+        AnchorPane.setTopAnchor(pane, 0.0)
+        AnchorPane.setLeftAnchor(pane, 0.0)
+        AnchorPane.setRightAnchor(pane, 0.0)
+        AnchorPane.setBottomAnchor(pane, 0.0)
 
         pane.minScale = -0.1
         var zoomUpdate = false

@@ -351,8 +351,8 @@
                                                                               <Tooltip text="Ctrl + I" />
                                                                            </tooltip>
                                                                         </JFXTextField>
-                                                                        <JFXComboBox fx:id="cbAgeRating" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Classificação etária" styleClass="texto-stilo-2" unFocusColor="#4059a9" />
-                                                                        <JFXComboBox fx:id="cbLanguage" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Linguagem" styleClass="texto-stilo-2" unFocusColor="#4059a9" />
+                                                                        <JFXComboBox fx:id="cbAgeRating" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Classificação etária" styleClass="comboBox-stilo" unFocusColor="#4059a9" />
+                                                                        <JFXComboBox fx:id="cbLanguage" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Linguagem" styleClass="comboBox-stilo" unFocusColor="#4059a9" />
                                                                      </children>
                                                                   </HBox>
                                                                   <JFXTextField fx:id="txtTitle" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Titulo" styleClass="texto-stilo-2" unFocusColor="#4059a9">

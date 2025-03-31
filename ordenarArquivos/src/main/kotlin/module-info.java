@@ -36,10 +36,12 @@ module com.fenix.ordenararquivos {
     requires com.google.gson;
     requires AnimateFX;
     requires org.controlsfx.controls;
+    requires Mal4J;
+    requires java.net.http;
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;
     opens com.fenix.ordenararquivos.model.firebase to javafx.base, google.cloud.firestore, com.google.gson;
-    opens com.fenix.ordenararquivos.model.entities.comicinfo to java.xml.bind, jakarta.xml.bind;
+    opens com.fenix.ordenararquivos.model.entities.comicinfo to java.xml.bind, jakarta.xml.bind, javafx.base;
 
     opens db.migration;
 }
