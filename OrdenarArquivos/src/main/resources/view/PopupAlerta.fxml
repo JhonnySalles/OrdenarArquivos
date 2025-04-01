@@ -5,8 +5,10 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.text.Font?>
+
 <AnchorPane prefHeight="180.0" prefWidth="500.0" styleClass="Tela_Alerta" stylesheets="@../css/Dark_Alerts.css" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.PopupAlertaController">
    <children>
       <Label fx:id="lblTitulo" layoutX="22.0" layoutY="17.0" text="Alerta" textFill="#ffa100" AnchorPane.leftAnchor="15.0" AnchorPane.rightAnchor="15.0" AnchorPane.topAnchor="15.0">
@@ -21,7 +23,7 @@
                   <Image url="@../images/alert/icoAlerta_48.png" />
                </image>
             </ImageView>
-            <JFXTextArea fx:id="txtTexto" editable="false" text="Alerta" wrapText="true" />
+            <JFXTextArea fx:id="txtTexto" editable="false" styleClass="texto-stilo-1" text="Alerta" unFocusColor="#ddcccc" wrapText="true" />
          </children>
       </HBox>
       <JFXButton fx:id="btnOk" buttonType="RAISED" layoutX="434.0" layoutY="111.0" prefWidth="100.0" styleClass="btnAlerta" text="Ok" AnchorPane.bottomAnchor="15.0" AnchorPane.rightAnchor="15.0" />

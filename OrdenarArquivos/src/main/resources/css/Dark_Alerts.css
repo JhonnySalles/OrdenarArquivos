@@ -12,8 +12,13 @@
 }
 
 .Tela_Alerta {
-    -fx-background-color: linear-gradient(to bottom, #e6e6e6 0%, #ffffff 20%, #ffffff 80%, #f2f2f2
+    -fx-background-color: linear-gradient(to bottom, #000000 0%, #111111 20%, #111111 80%, #000000
     100%);
+}
+
+.texto-stilo-1 {
+    -fx-prompt-text-fill: white;
+    -fx-text-fill: white;
 }
 
 .btnAlerta {
