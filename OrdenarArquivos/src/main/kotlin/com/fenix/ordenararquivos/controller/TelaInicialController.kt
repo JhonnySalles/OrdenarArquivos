@@ -295,6 +295,9 @@ class TelaInicialController : Initializable {
     private lateinit var btnMalConsultar: JFXButton
 
     @FXML
+    private lateinit var btnGravarComicInfo: JFXButton
+
+    @FXML
     private lateinit var tbViewMal: TableView<Mal>
 
     @FXML
@@ -544,6 +547,8 @@ class TelaInicialController : Initializable {
                             tbViewMal.items = mObsListaMal
                             if (lista.isEmpty())
                                 Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
+                            else if (id != null && lista.size == 1)
+                                carregaMal(lista.first())
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
@@ -564,6 +569,34 @@ class TelaInicialController : Initializable {
         } else {
             AlertasPopup.alertaModal("Alerta", "Necessário informar um id ou nome.")
             txtMalNome.requestFocus();
+        }
+    }
+
+    @FXML
+    private fun onBtnGravarComicInfo() {
+        mServiceComicInfo.save(mComicInfo)
+
+        val comicInfo = File(mCaminhoDestino!!.path.trim { it <= ' ' }, "ComicInfo.xml")
+        if (comicInfo.exists())
+            comicInfo.delete()
+
+        try {
+            mLOG.info("Salvando xml do ComicInfo.")
+            val marshaller = JAXBContext.newInstance(ComicInfo::class.java).createMarshaller()
+            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
+            val out = FileOutputStream(comicInfo)
+            marshaller.marshal(mComicInfo, out)
+            out.close()
+
+            val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }
+            if (compactaArquivo(File(arquivoZip), comicInfo))
+                Notificacoes.notificacao(Notificacao.SUCESSO, "ComicInfo", "ComicInfo gerado e compactado.")
+            else {
+                txtSimularPasta.text = "Erro ao compactar o ComicInfo, necessário compacta-lo manualmente."
+                Notificacoes.notificacao(Notificacao.ALERTA, "ComicInfo", "Erro ao compactar o ComicInfo, necessário compacta-lo manualmente.")
+            }
+        } catch (e: Exception) {
+            mLOG.error("Erro ao gerar o xml do ComicInfo.", e)
         }
     }
 
@@ -921,12 +954,7 @@ class TelaInicialController : Initializable {
     @Throws(IOException::class)
     private fun copiaItem(arquivo: File, destino: File, nome: String = arquivo.name): Path {
         val arquivoDestino = Paths.get(destino.toPath().toString() + "/" + nome)
-        Files.copy(
-            arquivo.toPath(),
-            arquivoDestino,
-            StandardCopyOption.COPY_ATTRIBUTES,
-            StandardCopyOption.REPLACE_EXISTING
-        )
+        Files.copy(arquivo.toPath(), arquivoDestino, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
         return arquivoDestino
     }
 
@@ -1431,7 +1459,7 @@ class TelaInicialController : Initializable {
                     }
                 } catch (e: Exception) {
                     mLOG.error("Erro ao processar.", e)
-                    AlertasPopup.erroModal("Erro ao processar", e.stackTrace.toString())
+                    Platform.runLater { AlertasPopup.erroModal("Erro ao processar", e.stackTrace.toString()) }
                 }
                 return true
             }

@@ -342,7 +342,7 @@
                                                    <children>
                                                       <ScrollPane fitToWidth="true" prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                                          <content>
-                                                            <VBox alignment="CENTER" spacing="10.0" styleClass="background-Black3">
+                                                            <VBox alignment="CENTER" spacing="15.0" styleClass="background-Black3">
                                                                <children>
                                                                   <HBox spacing="5.0">
                                                                      <children>
@@ -395,7 +395,7 @@
                                                                         <Tooltip text="Ctrl + I" />
                                                                      </tooltip>
                                                                   </JFXTextField>
-                                                                  <JFXTextArea fx:id="txtNotes" focusColor="#0cff00" prefHeight="200.0" prefWidth="400.0" promptText="Notas" unFocusColor="#4059a9">
+                                                                  <JFXTextArea fx:id="txtNotes" focusColor="#0cff00" labelFloat="true" prefHeight="200.0" prefWidth="400.0" promptText="Notas" unFocusColor="#4059a9">
                                                                      <styleClass>
                                                                         <String fx:value="textArea" />
                                                                         <String fx:value="texto-stilo-2" />
@@ -406,7 +406,7 @@
                                                                   </JFXTextArea>
                                                                </children>
                                                                <padding>
-                                                                  <Insets bottom="10.0" left="5.0" right="5.0" top="10.0" />
+                                                                  <Insets bottom="15.0" left="5.0" right="5.0" top="15.0" />
                                                                </padding>
                                                             </VBox>
                                                          </content>
@@ -417,7 +417,7 @@
                                                    <children>
                                                       <VBox prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                                          <children>
-                                                            <VBox alignment="CENTER" prefHeight="100.0" prefWidth="100.0" spacing="10.0">
+                                                            <VBox alignment="CENTER" prefHeight="100.0" prefWidth="100.0" spacing="15.0">
                                                                <children>
                                                                   <JFXTextField fx:id="txtMalId" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="228.0" promptText="My Anime List ID" styleClass="texto-stilo-2" unFocusColor="#4059a9" />
                                                                   <JFXTextField fx:id="txtMalNome" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="228.0" promptText="Nome" styleClass="texto-stilo-2" unFocusColor="#4059a9" />
@@ -425,11 +425,16 @@
                                                                      <children>
                                                                         <JFXButton fx:id="btnMalAplicar" onAction="#onBtnMalAplicar" prefHeight="30.0" prefWidth="110.0" styleClass="background-Green2" text="Aplicar" textFill="WHITE" />
                                                                         <JFXButton fx:id="btnMalConsultar" onAction="#onBtnMalConsultar" prefHeight="25.0" prefWidth="110.0" styleClass="background-Blue3" text="Consultar" textFill="WHITE" />
+                                                                        <JFXButton fx:id="btnGravarComicInfo" onAction="#onBtnGravarComicInfo" prefHeight="25.0" prefWidth="110.0" styleClass="background-Purple2" text="Gravar ComicInfo" textFill="WHITE">
+                                                                           <tooltip>
+                                                                              <Tooltip text="Ctrl + Enter ou Ctrl + P" />
+                                                                           </tooltip>
+                                                                        </JFXButton>
                                                                      </children>
                                                                   </HBox>
                                                                </children>
                                                                <padding>
-                                                                  <Insets bottom="10.0" left="5.0" right="5.0" top="10.0" />
+                                                                  <Insets bottom="15.0" left="5.0" right="5.0" top="15.0" />
                                                                </padding>
                                                                <VBox.margin>
                                                                   <Insets left="10.0" right="10.0" />
