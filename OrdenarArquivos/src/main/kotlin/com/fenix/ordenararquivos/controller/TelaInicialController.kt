@@ -942,6 +942,9 @@ class TelaInicialController : Initializable {
             txtMalId.text = mComicInfo.idMal.toString()
         }
         txtMalNome.text = mComicInfo.comic
+
+        if (txtMalId.text.isNotEmpty() && mComicInfo.title.equals(nome, ignoreCase = true) && mComicInfo.series.isEmpty())
+            onBtnMalConsultar()
     }
 
     private fun criaPasta(caminho: String): File {
