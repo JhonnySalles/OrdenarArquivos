@@ -533,43 +533,7 @@ class TelaInicialController : Initializable {
     @FXML
     private fun onBtnMalConsultar() {
         tbTabRoot.selectionModel.select(tbTabComicInfo)
-        if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
-            val id : Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
-            val nome = txtMalNome.text
-
-            btnMalConsultar.isDisable = true
-            val consulta: Task<Void> = object : Task<Void>() {
-                override fun call(): Void? {
-                    try {
-                        val lista = mServiceComicInfo.getMal(id, nome)
-                        mObsListaMal = FXCollections.observableArrayList(lista)
-                        Platform.runLater {
-                            tbViewMal.items = mObsListaMal
-                            if (lista.isEmpty())
-                                Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
-                            else if (id != null && lista.size == 1)
-                                carregaMal(lista.first())
-                        }
-                    } catch (e: Exception) {
-                        mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
-                        Platform.runLater {
-                            Notificacoes.notificacao(Notificacao.ERRO, "My Anime List", "Erro ao realizar a consulta do MyAnimeList. " + e.message)
-                        }
-                    }
-                    return null
-                }
-                override fun succeeded() {
-                    Platform.runLater {
-                        btnMalConsultar.isDisable = false
-                    }
-                }
-            }
-
-            Thread(consulta).start()
-        } else {
-            AlertasPopup.alertaModal("Alerta", "Necessário informar um id ou nome.")
-            txtMalNome.requestFocus();
-        }
+        consultarMal()
     }
 
     @FXML
@@ -788,6 +752,46 @@ class TelaInicialController : Initializable {
         mSugestao.hide()
     }
 
+    private fun consultarMal() {
+        if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
+            val id : Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
+            val nome = txtMalNome.text
+
+            btnMalConsultar.isDisable = true
+            val consulta: Task<Void> = object : Task<Void>() {
+                override fun call(): Void? {
+                    try {
+                        val lista = mServiceComicInfo.getMal(id, nome)
+                        mObsListaMal = FXCollections.observableArrayList(lista)
+                        Platform.runLater {
+                            tbViewMal.items = mObsListaMal
+                            if (lista.isEmpty())
+                                Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
+                            else if (id != null && lista.size == 1)
+                                carregaMal(lista.first())
+                        }
+                    } catch (e: Exception) {
+                        mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
+                        Platform.runLater {
+                            Notificacoes.notificacao(Notificacao.ERRO, "My Anime List", "Erro ao realizar a consulta do MyAnimeList. " + e.message)
+                        }
+                    }
+                    return null
+                }
+                override fun succeeded() {
+                    Platform.runLater {
+                        btnMalConsultar.isDisable = false
+                    }
+                }
+            }
+
+            Thread(consulta).start()
+        } else {
+            AlertasPopup.alertaModal("Alerta", "Necessário informar um id ou nome.")
+            txtMalNome.requestFocus();
+        }
+    }
+
     private var mManga: Manga? = null
     private fun geraManga(id: Long): Manga {
         var nome = txtNomePastaManga.text
@@ -942,9 +946,7 @@ class TelaInicialController : Initializable {
             txtMalId.text = mComicInfo.idMal.toString()
         }
         txtMalNome.text = mComicInfo.comic
-
-        if (txtMalId.text.isNotEmpty() && mComicInfo.title.equals(nome, ignoreCase = true) && mComicInfo.series.isEmpty())
-            onBtnMalConsultar()
+        consultarMal()
     }
 
     private fun criaPasta(caminho: String): File {
