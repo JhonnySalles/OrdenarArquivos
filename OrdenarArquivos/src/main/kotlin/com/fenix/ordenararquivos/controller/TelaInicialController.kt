@@ -1900,10 +1900,11 @@ class TelaInicialController : Initializable {
 
     @FXML
     private fun onBtnImporta() {
-        if (!txtAreaImportar.text.trim { it <= ' ' }.isEmpty()) {
+        if (txtAreaImportar.text.trim { it <= ' ' }.isNotEmpty()) {
             var nomePasta = ""
             var separador = txtSeparador.text.trim { it <= ' ' }
-            if (separador.isEmpty()) separador = " "
+            if (separador.isEmpty())
+                separador = "-"
             txtSeparador.text = separador
             val linhas = txtAreaImportar.text.split("\\r?\\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
             var linha: Array<String>
@@ -1931,7 +1932,7 @@ class TelaInicialController : Initializable {
                 var texto = ""
                 val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
                 for (i in inicio..fim)
-                    texto += String.format(padding, i) + "-" + if (i < fim) "\r\n" else ""
+                    texto += String.format(padding, i) + txtSeparador.text + if (i < fim) "\r\n" else ""
                 txtAreaImportar.text = texto
             } else txtGerarInicio.unFocusColor = Color.GRAY
         } else {
@@ -2187,6 +2188,7 @@ class TelaInicialController : Initializable {
     private var mPastaAnterior = ""
     private var mNomePastaAnterior = ""
     private fun configuraTextEdit() {
+        txtSeparador.isDisable = true
         textFieldMostraFinalTexto(txtSimularPasta)
         textFieldMostraFinalTexto(txtPastaOrigem)
 
@@ -2291,7 +2293,7 @@ class TelaInicialController : Initializable {
             if (e.code == KeyCode.ENTER) {
                 onBtnGerarCapitulos()
                 txtAreaImportar.requestFocus()
-                val position = txtAreaImportar.text.indexOf('-') + 1
+                val position = txtAreaImportar.text.indexOf(txtSeparador.text) + 1
                 txtAreaImportar.positionCaret(position)
                 e.consume()
             } else if (e.code == KeyCode.TAB && !e.isShiftDown) {
@@ -2306,7 +2308,9 @@ class TelaInicialController : Initializable {
                 when (e.code) {
                     KeyCode.ENTER -> onBtnImporta()
                     KeyCode.D,
-                    KeyCode.E -> {
+                    KeyCode.E,
+                    in (KeyCode.NUMPAD0 .. KeyCode.NUMPAD9),
+                    in (KeyCode.DIGIT0 .. KeyCode.DIGIT9) -> {
                         if (txtAreaImportar.text.isEmpty())
                             return@EventHandler
 
@@ -2318,28 +2322,45 @@ class TelaInicialController : Initializable {
                         val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
                         before = before.substringBeforeLast(line)
 
+                        val pipe = txtSeparador.text
+                        val page = if (line.contains(pipe)) line.substringAfter(pipe) else ""
+
                         val newLine = when (e.code) {
                             KeyCode.E -> {
                                 if (line.contains("extra", true)) {
                                     val fim = getNumber(txtGerarFim.text)?.toInt() ?: 0
                                     val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
                                     var sequence = txt.split("\n").last { !it.contains("extra", ignoreCase = true) }
-                                    sequence = if (sequence.contains("-")) sequence.substringBefore("-") else sequence
-                                    val page = if (line.contains("-")) line.substringAfter("-") else ""
-                                    getNumber(sequence)?.toInt()?.let { "${String.format(padding, it+1)}-$page" } ?: sequence
+                                    sequence = if (sequence.contains(pipe)) sequence.substringBefore(pipe) else sequence
+                                    getNumber(sequence)?.toInt()?.let { "${String.format(padding, it+1)}$pipe$page" } ?: sequence
                                 } else {
                                     val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
-                                    val page = if (line.contains("-")) line.substringAfter("-") else ""
-                                    "Extra ${String.format("%02d", count + 1)}-$page"
+                                    "Extra ${String.format("%02d", count + 1)}$pipe$page"
                                 }
                             }
                             KeyCode.D ->  {
                                 if (line.contains("extra", true) && last.isEmpty()) {
                                     val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
-                                    val page = if (line.contains("-")) line.substringAfter("-") else ""
-                                    line + "\n" + "Extra ${String.format("%02d", count + 1)}-$page"
+                                    line + "\n" + "Extra ${String.format("%02d", count + 1)}$pipe$page"
                                 } else
                                     line + "\n" + line
+                            }
+                            in (KeyCode.NUMPAD0 .. KeyCode.NUMPAD9),
+                            in (KeyCode.DIGIT0 .. KeyCode.DIGIT9) -> {
+                                if (line.contains("extra", true)) {
+                                    val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
+                                    val number = if (e.code == KeyCode.DIGIT0 || e.code == KeyCode.NUMPAD0) count else e.text.toInt()
+                                    "Extra ${String.format("%02d", number)}$pipe$page"
+                                } else {
+                                    val chapter = if (line.contains("."))
+                                        line.substringBefore(".")
+                                    else if (line.contains(pipe))
+                                        line.substringBefore(pipe)
+                                    else
+                                        line
+                                    val number = if (e.code == KeyCode.DIGIT0 || e.code == KeyCode.NUMPAD0) "" else "." + e.text
+                                    "$chapter$number$pipe$page"
+                                }
                             }
                             else -> line
                         }
@@ -2347,7 +2368,7 @@ class TelaInicialController : Initializable {
                         val newText = before + newLine + last
 
                         txtAreaImportar.text = newText
-                        lastCaretPos = before.length + newLine.lastIndexOf("-") + 1
+                        lastCaretPos = before.length + newLine.length
                         txtAreaImportar.positionCaret(lastCaretPos)
                         txtAreaImportar.scrollTop = scroll
                     }
