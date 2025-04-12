@@ -89,7 +89,7 @@
                                     </JFXButton>
                                  </children>
                               </HBox>
-                              <HBox alignment="CENTER" prefHeight="40.0" spacing="2.0">
+                              <HBox alignment="CENTER" prefHeight="40.0" spacing="2.0" HBox.hgrow="ALWAYS">
                                  <children>
                                     <JFXTextField fx:id="txtPastaDestino" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta de destino" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
                                     <JFXButton fx:id="btnPesquisarPastaDestino" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPastaDestino" styleClass="background-Black3">

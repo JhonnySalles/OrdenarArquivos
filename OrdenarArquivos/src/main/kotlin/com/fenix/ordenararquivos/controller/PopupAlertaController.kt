@@ -63,6 +63,6 @@ class PopupAlertaController : Initializable {
 
     companion object {
         val IMG_ALERTA: Image = Image(PopupAlertaController::class.java.getResourceAsStream("/comum/imagens/alerta/icoAlerta_48.png"))
-        val fxmlLocate: URL get() = PopupAlertaController::class.java.getResource("/org/jisho/textosJapones/view/PopupAlerta.fxml") as URL
+        val fxmlLocate: URL get() = PopupAlertaController::class.java.getResource("/view/PopupAlerta.fxml") as URL
     }
 }

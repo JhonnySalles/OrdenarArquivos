@@ -1,7 +1,6 @@
 package com.fenix.ordenararquivos.notification
 
 import com.jfoenix.controls.*
-import com.jfoenix.controls.events.JFXDialogEvent
 import javafx.scene.Node
 import javafx.scene.control.Label
 import javafx.scene.effect.BoxBlur
@@ -15,17 +14,18 @@ import java.awt.SystemTray
 import java.awt.TrayIcon
 import java.awt.TrayIcon.MessageType
 import java.awt.image.BufferedImage
+import java.net.URL
 import java.util.*
 import javax.imageio.ImageIO
 
 object AlertasPopup {
-    private val ALERTA: ImageView = ImageView(Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/icoAlerta_48.png")))
-    private val AVISO: ImageView = ImageView(Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/icoAviso_48.png")))
-    private val ERRO: ImageView = ImageView(Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/icoErro_48.png")))
-    private val CONFIRMA: ImageView = ImageView(Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/icoConfirma_48.png")))
+    private val ALERTA: Image = Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/icoAlerta_48.png"))
+    private val AVISO: Image = Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/icoAviso_48.png"))
+    private val ERRO: Image = Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/icoErro_48.png"))
+    private val CONFIRMA: Image = Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/icoConfirma_48.png"))
 
-    private val CSS: String = AlertasPopup::class.java.getResource("/css/Dark_Alerts.css").toExternalForm()
-    private val CSS_THEME: String = AlertasPopup::class.java.getResource("/css/Dark_TelaInicial.css").toExternalForm()
+    private val CSS: String = (AlertasPopup::class.java.getResource("/css/Dark_Alerts.css") as URL).toExternalForm()
+    private val CSS_THEME: String = (AlertasPopup::class.java.getResource("/css/Dark_TelaInicial.css") as URL).toExternalForm()
     private lateinit var ROOT_STACK_PANE: StackPane
     private lateinit var NODE_BLUR: Node
 
@@ -55,7 +55,7 @@ object AlertasPopup {
      * @param Campo     **String** que irá conter a mensagem a ser exibida.
      */
     fun avisoModal(rootStackPane: StackPane, nodeBlur: Node, botoes: MutableList<JFXButton>, titulo: String, texto: String) =
-        dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, AVISO)
+        dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, ImageView(AVISO))
 
     /**
      *
@@ -65,7 +65,7 @@ object AlertasPopup {
      *
      *
      */
-    fun avisoModal(titulo: String, texto: String) = dialogModern(ROOT_STACK_PANE, NODE_BLUR, mutableListOf(), titulo, texto, AVISO)
+    fun avisoModal(titulo: String, texto: String) = dialogModern(ROOT_STACK_PANE, NODE_BLUR, mutableListOf(), titulo, texto, ImageView(AVISO))
 
     /**
      *
@@ -81,7 +81,7 @@ object AlertasPopup {
      * não informe por padrão irá adicionar um botão ok.
      * @param Campo     **String** que irá conter a mensagem a ser exibida.
      */
-    fun alertaModal(rootStackPane: StackPane, nodeBlur: Node, botoes: MutableList<JFXButton>, titulo: String, texto: String) = dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, ALERTA)
+    fun alertaModal(rootStackPane: StackPane, nodeBlur: Node, botoes: MutableList<JFXButton>, titulo: String, texto: String) = dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, ImageView(ALERTA))
 
     /**
      *
@@ -91,7 +91,7 @@ object AlertasPopup {
      *
      *
      */
-    fun alertaModal(titulo: String, texto: String) = dialogModern(ROOT_STACK_PANE, NODE_BLUR, mutableListOf(), titulo, texto, ALERTA)
+    fun alertaModal(titulo: String, texto: String) = dialogModern(ROOT_STACK_PANE, NODE_BLUR, mutableListOf(), titulo, texto, ImageView(ALERTA))
 
     /**
      *
@@ -108,7 +108,7 @@ object AlertasPopup {
      * @param Campo     **String** que irá conter a mensagem a ser exibida.
      */
     fun erroModal(rootStackPane: StackPane, nodeBlur: Node, botoes: MutableList<JFXButton>, titulo: String, texto: String) {
-        dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, ERRO)
+        dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, ImageView(ERRO))
     }
 
     /**
@@ -119,7 +119,7 @@ object AlertasPopup {
      *
      *
      */
-    fun erroModal(titulo: String, texto: String) = dialogModern(ROOT_STACK_PANE, NODE_BLUR, mutableListOf(), titulo, texto, ERRO)
+    fun erroModal(titulo: String, texto: String) = dialogModern(ROOT_STACK_PANE, NODE_BLUR, mutableListOf(), titulo, texto, ImageView(ERRO))
 
     /**
      *
@@ -136,7 +136,7 @@ object AlertasPopup {
      * @param Campo     **String** que irá conter a mensagem a ser exibida.
      * @return Resulta o valor referente ao botão cancelar ou confirmar.
      */
-    fun confirmacaoModal(rootStackPane: StackPane, nodeBlur: Node, titulo: String, texto: String): Boolean = alertModern(rootStackPane, nodeBlur, titulo, texto, CONFIRMA)
+    fun confirmacaoModal(rootStackPane: StackPane, nodeBlur: Node, titulo: String, texto: String): Boolean = alertModern(rootStackPane, nodeBlur, titulo, texto, ImageView(CONFIRMA))
 
     /**
      *
@@ -147,52 +147,52 @@ object AlertasPopup {
      *
      */
     fun confirmacaoModal(titulo: String, texto: String): Boolean {
-        return alertModern(ROOT_STACK_PANE, NODE_BLUR, titulo, texto, CONFIRMA)
+        return alertModern(ROOT_STACK_PANE, NODE_BLUR, titulo, texto, ImageView(CONFIRMA))
     }
 
     var RESULTADO = false
     private fun alertModern(rootStackPane: StackPane, nodeBlur: Node, titulo: String, texto: String, imagem: ImageView): Boolean {
         RESULTADO = false
         val blur = BoxBlur(3.0, 3.0, 3)
-        val alert: JFXAlert<String> = JFXAlert(rootStackPane.getScene().getWindow())
+        val alert: JFXAlert<String> = JFXAlert(rootStackPane.scene.window)
         alert.initModality(Modality.APPLICATION_MODAL)
-        alert.setOverlayClose(false)
+        alert.isOverlayClose = false
         val layout = JFXDialogLayout()
         val title = Label(titulo)
-        title.getStyleClass().add("texto-stilo-fundo-azul")
+        title.styleClass.add("texto-stilo-fundo-azul")
         layout.setHeading(title)
         val content = JFXTextArea(texto)
-        content.setEditable(false)
-        content.setPrefHeight(100.0)
-        content.getStyleClass().add("texto-stilo-fundo-azul")
-        layout.setBody(HBox(CONFIRMA, content))
-        layout.getStylesheets().add(CSS)
-        layout.getStylesheets().add(CSS_THEME)
+        content.isEditable = false
+        content.prefHeight = 100.0
+        content.styleClass.add("texto-stilo-fundo-azul")
+        layout.setBody(HBox(imagem, content))
+        layout.stylesheets.add(CSS)
+        layout.stylesheets.add(CSS_THEME)
         val confirmButton = JFXButton("Confirmar")
-        confirmButton.setDefaultButton(true)
-        confirmButton.setOnAction { ConfirmarEvent ->
+        confirmButton.isDefaultButton = true
+        confirmButton.setOnAction {
             RESULTADO = true
             alert.hideWithAnimation()
         }
-        confirmButton.getStyleClass().add("btnConfirma")
+        confirmButton.styleClass.add("btnConfirma")
         val cancelButton = JFXButton("Cancelar")
-        cancelButton.setCancelButton(true)
-        cancelButton.setOnAction { CancelarEvent ->
+        cancelButton.isCancelButton = true
+        cancelButton.setOnAction {
             RESULTADO = false
             alert.hideWithAnimation()
         }
-        cancelButton.getStyleClass().add("btnCancela")
+        cancelButton.styleClass.add("btnCancela")
         layout.setActions(cancelButton, confirmButton)
         alert.setContent(layout)
-        alert.onCloseRequestProperty().set { event1 -> nodeBlur.setEffect(null) }
-        nodeBlur.setEffect(blur)
+        alert.onCloseRequestProperty().set { nodeBlur.effect = null }
+        nodeBlur.effect = blur
 
         // Devido a um erro no componente, não funciona o retorno padrão, será feito
         // pela variável resultado.
-        alert.setResultConverter { buttonType -> null }
+        alert.setResultConverter { null }
         val result: Optional<String> = alert.showAndWait()
-        if (result.isPresent()) {
-            alert.setResult(null)
+        if (result.isPresent) {
+            alert.result = null
         }
         return RESULTADO
     }
@@ -205,16 +205,17 @@ object AlertasPopup {
 
         val dialogLayout = JFXDialogLayout()
         val dialog = JFXDialog(rootStackPane, dialogLayout, JFXDialog.DialogTransition.CENTER)
-        dialog.getStylesheets().add(CSS)
+        dialog.stylesheets.add(CSS)
+        dialog.stylesheets.add(CSS_THEME)
         botoes.forEach { controlButton ->
-            controlButton.getStyleClass().add("btnAlerta")
-            controlButton.addEventHandler(MouseEvent.MOUSE_CLICKED) { mouseEvent: MouseEvent -> dialog.close() }
+            controlButton.styleClass.add("btnAlerta")
+            controlButton.addEventHandler(MouseEvent.MOUSE_CLICKED) { dialog.close() }
         }
         dialogLayout.setHeading(Label(titulo))
         dialogLayout.setBody(HBox(imagem, Label(texto)))
         dialogLayout.setActions(botoes)
-        dialog.setOnDialogClosed { event1: JFXDialogEvent -> nodeBlur.setEffect(null) }
-        nodeBlur.setEffect(blur)
+        dialog.setOnDialogClosed { nodeBlur.effect = null }
+        nodeBlur.effect = blur
         dialog.show()
     }
 
@@ -225,8 +226,8 @@ object AlertasPopup {
             val tray: SystemTray = SystemTray.getSystemTray()
             val image: BufferedImage = ImageIO.read(AlertasPopup::class.java.getResource(CAMINHO_ICONE))
             val trayIcon = TrayIcon(image, "Teste")
-            trayIcon.setImageAutoSize(true)
-            trayIcon.setToolTip("Teste")
+            trayIcon.isImageAutoSize = true
+            trayIcon.toolTip = "Teste"
             tray.add(trayIcon)
             trayIcon.displayMessage(title, message, MessageType.INFO)
             tray.remove(trayIcon)

@@ -642,6 +642,22 @@ class TelaInicialController : Initializable {
             valida = false
         }
 
+        if (mCaminhoOrigem != null && mObsListaImagesSelected.isNotEmpty()) {
+            var itens = ""
+            for (capa in mObsListaImagesSelected) {
+                if (capa.nome.isNotEmpty() && !File(mCaminhoOrigem!!.path + "\\" + capa.nome).exists())
+                    itens += capa.nome + ", "
+
+                if (capa.direita != null && capa.direita!!.nome.isNotEmpty() && !File(mCaminhoOrigem!!.path + "\\" + capa.direita!!.nome).exists())
+                    itens += capa.nome + ", "
+            }
+
+            if (itens.isNotEmpty()) {
+                AlertasPopup.alertaModal("Alerta", "Alguns arquivos selecionados não foram encontrados, verifique os arquivos na pasta de origem.\n" + itens.substringBeforeLast(", ") + ".")
+                valida = false
+            }
+        }
+
         return valida
     }
 
@@ -1025,6 +1041,10 @@ class TelaInicialController : Initializable {
 
     private fun addCapa(tipo: TipoCapa, arquivo: String) {
         val img = File(txtPastaOrigem.text + "\\" + arquivo)
+
+        if (!img.exists())
+            return
+
         val isDupla = isPaginaDupla(img)
         if (tipo === TipoCapa.CAPA_COMPLETA) {
             var capas = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(tipo) == 0 && it.direita != null }.findFirst()
@@ -1347,7 +1367,6 @@ class TelaInicialController : Initializable {
 
 
                     updateMessage("Gerando o comic info..")
-
                     val isJapanese = nomePasta.contains("[JPN]")
                     val imagens = ".*\\.(jpg|jpeg|bmp|gif|png|webp)$".toRegex()
 
@@ -1417,6 +1436,7 @@ class TelaInicialController : Initializable {
                             }
                     }
 
+                    pastasComic.clear()
                     val comic = mComicInfo
                     comic.pages = pages
 
@@ -1762,7 +1782,8 @@ class TelaInicialController : Initializable {
                 apGlobal.cursorProperty().set(Cursor.WAIT)
                 desabilita()
                 processar()
-            } else mCANCELAR = true
+            } else
+                mCANCELAR = true
         }
     }
 

@@ -5,11 +5,8 @@
 <?import javafx.scene.effect.DropShadow?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
-
 <AnchorPane fx:id="notificacaoBackground" maxHeight="-Infinity" prefHeight="40.0" prefWidth="330.0" styleClass="notificacaoAvisoBackground" stylesheets="@../css/Dark_Alerts.css" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.PopupNotificacaoController">
    <children>
       <HBox alignment="CENTER_LEFT" layoutX="42.0" layoutY="17.0" prefHeight="108.0" prefWidth="556.0" spacing="5.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
