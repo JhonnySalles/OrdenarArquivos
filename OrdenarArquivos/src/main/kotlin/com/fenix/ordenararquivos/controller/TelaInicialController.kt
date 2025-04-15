@@ -443,7 +443,7 @@ class TelaInicialController : Initializable {
                     if (arquivo.nameWithoutExtension.length < padding) {
                         ajustado = true
                         val nome = arquivo.nameWithoutExtension.padStart(padding, '0') + "." + arquivo.extension
-                        renomeiaItem(arquivo.toPath(), nome)
+                        renomeiaItem(arquivo, nome)
                     }
                 }
             Platform.runLater {
@@ -973,15 +973,15 @@ class TelaInicialController : Initializable {
     }
 
     @Throws(IOException::class)
-    private fun copiaItem(arquivo: File, destino: File, nome: String = arquivo.name): Path {
-        val arquivoDestino = Paths.get(destino.toPath().toString() + "/" + nome)
-        Files.copy(arquivo.toPath(), arquivoDestino, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
-        return arquivoDestino
+    private fun copiaItem(arquivo: File, destino: File, nome: String = arquivo.name): File {
+        val path = Paths.get(destino.toPath().toString() + "/" + nome)
+        return Files.copy(arquivo.toPath(), path, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING).toFile()
     }
 
     @Throws(IOException::class)
-    private fun renomeiaItem(arquivo: Path, nome: String): File {
-        return Files.move(arquivo, arquivo.resolveSibling(nome), StandardCopyOption.REPLACE_EXISTING).toFile()
+    private fun renomeiaItem(arquivo: File, nome: String): File {
+        val path = arquivo.toPath()
+        return Files.move(path, path.resolveSibling(nome), StandardCopyOption.REPLACE_EXISTING).toFile()
     }
 
     private fun deletaItem(item: String) {
@@ -1093,10 +1093,10 @@ class TelaInicialController : Initializable {
     }
 
     private fun reloadCapa() {
-        if (mObsListaImagesSelected.isEmpty()) return
+        if (mObsListaImagesSelected.isEmpty())
+            return
         CompletableFuture.runAsync {
-            for (capa in mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) != 0 }
-                .toList()) {
+            for (capa in mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) != 0 }.toList()) {
                 try {
                     copiaItem(File(txtPastaOrigem.text + "\\" + capa.nome), mPASTA_TEMPORARIA)
                     simularCapa(capa.tipo, carregaImagem(File(mPASTA_TEMPORARIA.toString() + "\\" + capa.arquivo)))
@@ -1420,9 +1420,11 @@ class TelaInicialController : Initializable {
                                 }
 
                                 try {
-                                    val image = Image(FileInputStream(capa))
+                                    val input = FileInputStream(capa)
+                                    val image = Image(input)
                                     page.imageWidth = image.width.toInt()
                                     page.imageHeight = image.height.toInt()
+                                    input.close()
                                 } catch (e: IOException) {
                                     mLOG.error("Erro ao obter os tamanhos da imagem.", e)
                                 }
@@ -1749,7 +1751,8 @@ class TelaInicialController : Initializable {
     }
 
     private fun carregaImagem(esquerda: File?, direita: File?): Image? {
-        if (direita == null || esquerda == null || !direita.exists() || !esquerda.exists()) return null
+        if (direita == null || esquerda == null || !direita.exists() || !esquerda.exists())
+            return null
         try {
             limpaMargemImagens(direita, true)
             limpaMargemImagens(esquerda, true)
@@ -1768,7 +1771,8 @@ class TelaInicialController : Initializable {
     }
 
     private fun carregaImagem(arquivo: File?): Image? {
-        if (arquivo == null || !arquivo.exists()) return null
+        if (arquivo == null || !arquivo.exists())
+            return null
         limpaMargemImagens(arquivo, false)
         return Image(arquivo.absolutePath)
     }
@@ -1974,9 +1978,14 @@ class TelaInicialController : Initializable {
                     if (it.tipo == TipoCapa.CAPA_COMPLETA)
                         CompletableFuture.runAsync {
                             try {
-                                simularCapa(it.tipo, carregaImagem(File(mPASTA_TEMPORARIA.toString() + "\\" + it.nome)))
-                                if (mObsListaImagesSelected.none { it.tipo == TipoCapa.CAPA })
-                                    simularCapa(TipoCapa.CAPA, Image(mPASTA_TEMPORARIA.toString() + "\\" + it.arquivo))
+                                if (it.direita != null || mObsListaImagesSelected.none { ls -> ls.tipo == TipoCapa.CAPA_COMPLETA && !ls.arquivo.equals(it.arquivo, ignoreCase = true) }) {
+                                    if (it.direita != null)
+                                        simularCapa(it.tipo, carregaImagem(File(mPASTA_TEMPORARIA.toString() + "\\" + it.nome), File(mPASTA_TEMPORARIA.toString() + "\\" + it.direita!!.nome)))
+                                    else
+                                        simularCapa(it.tipo, carregaImagem(File(mPASTA_TEMPORARIA.toString() + "\\" + it.nome)))
+                                    if (mObsListaImagesSelected.none { ls -> ls.tipo == TipoCapa.CAPA })
+                                        simularCapa(TipoCapa.CAPA, Image(mPASTA_TEMPORARIA.toString() + "\\" + it.arquivo))
+                                }
                             } catch (e: IOException) {
                                 mLOG.warn("Erro ao processar imagem: Capa ${it.tipo}.", e)
                             }
