@@ -9,20 +9,20 @@ import jakarta.xml.bind.annotation.XmlRootElement
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlRootElement(name = "Page")
 data class Pages(
-    @XmlAttribute(name = "Bookmark")
+    @field:XmlAttribute(name = "Bookmark")
     var bookmark: String? = null,
-    @XmlAttribute(name = "Image")
+    @field:XmlAttribute(name = "Image")
     var image: Int? = null,
-    @XmlAttribute(name = "ImageHeight")
+    @field:XmlAttribute(name = "ImageHeight")
     var imageHeight: Int? = null,
-    @XmlAttribute(name = "ImageWidth")
+    @field:XmlAttribute(name = "ImageWidth")
     var imageWidth: Int? = null,
-    @XmlAttribute(name = "ImageSize")
+    @field:XmlAttribute(name = "ImageSize")
     var imageSize: Long? = null,
-    @XmlAttribute(name = "Type")
+    @field:XmlAttribute(name = "Type")
     var type: ComicPageType? = null,
-    @XmlAttribute(name = "DoublePage")
+    @field:XmlAttribute(name = "DoublePage")
     var doublePage: Boolean? = null,
-    @XmlAttribute(name = "Key")
+    @field:XmlAttribute(name = "Key")
     var key: String? = null
 ) { }
