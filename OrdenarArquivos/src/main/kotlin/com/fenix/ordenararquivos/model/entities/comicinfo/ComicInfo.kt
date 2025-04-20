@@ -98,7 +98,9 @@ data class ComicInfo(
     @field:XmlElement(name = "MainCharacterOrTeam")
     var mainCharacterOrTeam: String? = null,
     @field:XmlElement(name = "Review")
-    var review: String? = null
+    var review: String? = null,
+    @field:XmlElement(name = "GTIN")
+    var gtin: String? = null
 ) {
 
     constructor(
@@ -123,7 +125,7 @@ data class ComicInfo(
         comic.alternateSeries, comic.alternateNumber, comic.storyArc, comic.storyArcNumber, comic.seriesGroup, comic.alternateCount,
         comic.summary, comic.imprint, comic.genre, comic.languageISO, comic.format, comic.ageRating, comic.communityRating,
         comic.blackAndWhite, comic.manga, comic.characters, comic.teams, comic.locations, comic.scanInformation,
-        comic.mainCharacterOrTeam, comic.review
+        comic.mainCharacterOrTeam, comic.review, comic.gtin
     )
 
     fun merge(comic: ComicInfo) {

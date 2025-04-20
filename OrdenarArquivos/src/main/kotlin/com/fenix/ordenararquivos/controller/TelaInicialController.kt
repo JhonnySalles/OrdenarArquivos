@@ -6,6 +6,7 @@ import com.fenix.ordenararquivos.model.*
 import com.fenix.ordenararquivos.model.entities.Caminhos
 import com.fenix.ordenararquivos.model.entities.Capa
 import com.fenix.ordenararquivos.model.entities.Manga
+import com.fenix.ordenararquivos.model.entities.comet.CoMet
 import com.fenix.ordenararquivos.model.entities.comicinfo.*
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.model.enums.Notificacao
@@ -20,6 +21,7 @@ import com.fenix.ordenararquivos.service.SincronizacaoServices
 import com.jfoenix.controls.*
 import jakarta.xml.bind.JAXBContext
 import jakarta.xml.bind.Marshaller
+import jakarta.xml.bind.Unmarshaller
 import javafx.animation.Interpolator
 import javafx.application.Platform
 import javafx.beans.InvalidationListener
@@ -561,6 +563,35 @@ class TelaInicialController : Initializable {
             }
         } catch (e: Exception) {
             mLOG.error("Erro ao gerar o xml do ComicInfo.", e)
+        }
+
+        try {
+            mLOG.info("Salvando xml do CoMet.")
+
+            val file = File(mCaminhoDestino!!.path.trim { it <= ' ' }, "CoMet.xml")
+            val comet: CoMet = if (file.exists()) {
+                try {
+                    val unmarshaller: Unmarshaller = JAXBContext.newInstance(CoMet::class.java).createUnmarshaller()
+                    unmarshaller.unmarshal(file) as CoMet
+                } catch (e: Exception) {
+                    mLOG.error(e.message, e)
+                    CoMet(mComicInfo)
+                }
+            } else
+                CoMet(mComicInfo)
+
+            comet.toCoMet(mComicInfo)
+
+            val marshaller = JAXBContext.newInstance(CoMet::class.java).createMarshaller()
+            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
+            val out = FileOutputStream(file)
+            marshaller.marshal(comet, out)
+            out.close()
+
+            val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }
+            compactaArquivo(File(arquivoZip), file)
+        } catch (e: Exception) {
+            mLOG.error("Erro ao gerar o xml do CoMet.", e)
         }
     }
 
@@ -1438,9 +1469,9 @@ class TelaInicialController : Initializable {
                             }
                     }
 
-                    pastasComic.clear()
                     val comic = mComicInfo
                     comic.pages = pages
+                    comic.pageCount = pages.size
 
                     comic.let {
                         if (it.comic.isEmpty())
@@ -1472,6 +1503,33 @@ class TelaInicialController : Initializable {
                     } catch (e: Exception) {
                         mLOG.error("Erro ao gerar o xml do ComicInfo.", e)
                     }
+
+                    val comet = File(mCaminhoDestino!!.path.trim { it <= ' ' }, "CoMet.xml")
+                    if (comet.exists())
+                        comet.delete()
+
+                    val paths = mutableListOf<String>()
+                    for (pasta in pastasComic) {
+                        val path = pasta.value.path.substringAfter(txtPastaDestino.text).replace("\\", "/")
+                        if (pasta.value.listFiles() != null) {
+                            for (image in pasta.value.listFiles()!!)
+                                paths.add(path + "/" + image.name)
+                        }
+                    }
+
+                    try {
+                        mLOG.info("Salvando xml do CoMet.")
+                        val marshaller = JAXBContext.newInstance(CoMet::class.java).createMarshaller()
+                        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
+                        val out = FileOutputStream(comet)
+                        marshaller.marshal(CoMet(mComicInfo, paths), out)
+                        out.close()
+                        pastasCompactar.add(comet)
+                    } catch (e: Exception) {
+                        mLOG.error("Erro ao gerar o xml do CoMet.", e)
+                    }
+
+                    pastasComic.clear()
 
                     if (gerarArquivo) {
                         updateMessage("Compactando arquivo: $arquivoZip")
