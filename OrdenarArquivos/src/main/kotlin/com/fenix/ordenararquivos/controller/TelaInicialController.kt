@@ -991,6 +991,10 @@ class TelaInicialController : Initializable {
             mLOG.info("ComicInfo localizado: " + mComicInfo.title)
             txtMalId.text = mComicInfo.idMal.toString()
         }
+
+        if (mComicInfo.comic.isEmpty())
+            mComicInfo.comic = nome
+
         txtMalNome.text = mComicInfo.comic
         consultarMal()
     }
@@ -2367,10 +2371,21 @@ class TelaInicialController : Initializable {
         }
 
         txtVolume.onKeyPressed = EventHandler { e: KeyEvent ->
-            if (e.code == KeyCode.ENTER)
-                txtGerarInicio.requestFocus()
-            else if (e.code == KeyCode.TAB && !e.isControlDown && !e.isAltDown && !e.isShiftDown) {
-                txtGerarInicio.requestFocus()
+            when(e.code) {
+                KeyCode.ENTER -> txtGerarInicio.requestFocus()
+                KeyCode.TAB -> {
+                    if (!e.isControlDown && !e.isAltDown && !e.isShiftDown) {
+                        txtGerarInicio.requestFocus()
+                        e.consume()
+                    }
+                }
+                KeyCode.UP -> onBtnVolumeMais()
+                KeyCode.DOWN -> onBtnVolumeMenos()
+                else -> { }
+            }
+
+            if (e.code == KeyCode.UP || e.code == KeyCode.DOWN) {
+                txtVolume.positionCaret(txtVolume.text.length)
                 e.consume()
             }
         }
@@ -2400,10 +2415,12 @@ class TelaInicialController : Initializable {
                 }
                 KeyCode.UP -> {
                     txtGerarInicio.text = addCapitulo(txtGerarInicio.text)
+                    txtGerarInicio.positionCaret(txtGerarInicio.text.length)
                     e.consume()
                 }
                 KeyCode.DOWN -> {
                     txtGerarInicio.text = minCapitulo(txtGerarInicio.text)
+                    txtGerarInicio.positionCaret(txtGerarInicio.text.length)
                     e.consume()
                 }
                 else -> { }
@@ -2435,10 +2452,12 @@ class TelaInicialController : Initializable {
                 }
                 KeyCode.UP -> {
                     txtGerarFim.text = addCapitulo(txtGerarFim.text)
+                    txtGerarFim.positionCaret(txtGerarFim.text.length)
                     e.consume()
                 }
                 KeyCode.DOWN -> {
                     txtGerarFim.text = minCapitulo(txtGerarFim.text)
+                    txtGerarFim.positionCaret(txtGerarFim.text.length)
                     e.consume()
                 }
                 else -> { }
