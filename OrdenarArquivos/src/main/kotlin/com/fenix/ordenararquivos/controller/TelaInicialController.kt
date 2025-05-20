@@ -60,7 +60,6 @@ import java.io.*
 import java.math.RoundingMode
 import java.net.URL
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.text.DecimalFormat
@@ -2273,6 +2272,24 @@ class TelaInicialController : Initializable {
         }
     }
 
+    private fun addCapitulo(capitulo: String) : String {
+        if (capitulo.isEmpty())
+            return ""
+        val numero = getNumber(capitulo) ?: return ""
+        return numero.plus(1).toInt().toString()
+    }
+
+    private fun minCapitulo(capitulo: String) : String {
+        if (capitulo.isEmpty())
+            return ""
+        var numero = getNumber(capitulo) ?: return ""
+        numero = if (numero <= 1)
+            1.0
+        else
+            numero.minus(1)
+        return numero.toInt().toString()
+    }
+
     private var mPastaAnterior = ""
     private var mNomePastaAnterior = ""
     private fun configuraTextEdit() {
@@ -2363,12 +2380,36 @@ class TelaInicialController : Initializable {
 
         txtGerarInicio.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
             txtPastaDestino.unFocusColor = Color.GRAY
+
+            if (!txtGerarInicio.text.isNullOrEmpty() && !txtGerarFim.text.isNullOrEmpty()) {
+                val inicio = getNumber(txtGerarInicio.text)?.toInt() ?: return@addListener
+                val fim = getNumber(txtGerarFim.text)?.toInt() ?: return@addListener
+                if (inicio > fim)
+                    txtGerarFim.text = inicio.plus(1).toString()
+            }
         }
         txtGerarInicio.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
             if (newValue != null && !newValue.matches(NUMBER_REGEX))
                 txtGerarInicio.text = oldValue
         }
-        txtGerarInicio.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code.toString() == "ENTER") clickTab() }
+        txtGerarInicio.onKeyPressed = EventHandler { e: KeyEvent ->
+            when(e.code) {
+                KeyCode.ENTER -> {
+                    clickTab()
+                    e.consume()
+                }
+                KeyCode.UP -> {
+                    txtGerarInicio.text = addCapitulo(txtGerarInicio.text)
+                    e.consume()
+                }
+                KeyCode.DOWN -> {
+                    txtGerarInicio.text = minCapitulo(txtGerarInicio.text)
+                    e.consume()
+                }
+                else -> { }
+            }
+
+        }
 
         txtGerarFim.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
             txtPastaDestino.unFocusColor = Color.GRAY
@@ -2378,15 +2419,29 @@ class TelaInicialController : Initializable {
                 txtGerarFim.text = oldValue
         }
         txtGerarFim.onKeyPressed = EventHandler { e: KeyEvent ->
-            if (e.code == KeyCode.ENTER) {
-                onBtnGerarCapitulos()
-                txtAreaImportar.requestFocus()
-                val position = txtAreaImportar.text.indexOf(txtSeparador.text) + 1
-                txtAreaImportar.positionCaret(position)
-                e.consume()
-            } else if (e.code == KeyCode.TAB && !e.isShiftDown) {
-                txtAreaImportar.requestFocus()
-                e.consume()
+            when(e.code) {
+                KeyCode.ENTER -> {
+                    onBtnGerarCapitulos()
+                    txtAreaImportar.requestFocus()
+                    val position = txtAreaImportar.text.indexOf(txtSeparador.text) + 1
+                    txtAreaImportar.positionCaret(position)
+                    e.consume()
+                }
+                KeyCode.TAB  -> {
+                    if (!e.isShiftDown) {
+                        txtAreaImportar.requestFocus()
+                        e.consume()
+                    }
+                }
+                KeyCode.UP -> {
+                    txtGerarFim.text = addCapitulo(txtGerarFim.text)
+                    e.consume()
+                }
+                KeyCode.DOWN -> {
+                    txtGerarFim.text = minCapitulo(txtGerarFim.text)
+                    e.consume()
+                }
+                else -> { }
             }
         }
 
