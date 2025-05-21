@@ -79,6 +79,7 @@ object Configuracao {
             try {
                 FileOutputStream("secrets.properties").use { os ->
                     secrets.setProperty("my_anime_list_client_id", "")
+                    secrets.setProperty("gemini_api_key", "")
                     secrets.store(os, "")
                 }
             } catch (e: IOException) {
@@ -97,4 +98,5 @@ object Configuracao {
     }
 
     val myAnimeListClient: String get() = secrets.getProperty("my_anime_list_client_id", "")
+    val geminiKey: String get() = secrets.getProperty("gemini_api_key", "")
 }

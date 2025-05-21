@@ -33,6 +33,8 @@
         <ocr.opencv.version>3.2.0-1</ocr.opencv.version>
         <ocr.libsvm.version>3.35</ocr.libsvm.version>
         <ocr.colt.version>1.2.0</ocr.colt.version>
+        <ocr.okhttp.version>2.7.5</ocr.okhttp.version>
+        <ocr.json.version>20240303</ocr.json.version>
         <jakarta.xml.version>4.0.1</jakarta.xml.version>
         <jaxb.version>4.0.0</jaxb.version>
     </properties>
@@ -267,6 +269,18 @@
             <groupId>colt</groupId>
             <artifactId>colt</artifactId>
             <version>${ocr.colt.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.squareup.okhttp</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>${ocr.okhttp.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>${ocr.json.version}</version>
         </dependency>
 
         <!-- XML -->

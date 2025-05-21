@@ -1,11 +1,18 @@
 package com.fenix.ordenararquivos.process
 
+import com.fenix.ordenararquivos.configuration.Configuracao
 import com.fenix.ordenararquivos.exceptions.OcrException
+import com.squareup.okhttp.MediaType
+import com.squareup.okhttp.OkHttpClient
+import com.squareup.okhttp.Request
+import com.squareup.okhttp.RequestBody
 import net.sourceforge.tess4j.ITesseract
 import net.sourceforge.tess4j.Tesseract
 import net.sourceforge.tess4j.TesseractException
 import net.sourceforge.tess4j.util.LoadLibs
 import org.apache.commons.lang3.SystemUtils
+import org.json.JSONException
+import org.json.JSONObject
 import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
@@ -13,15 +20,21 @@ import org.slf4j.LoggerFactory
 import java.awt.image.DataBufferByte
 import java.io.File
 import java.io.IOException
+import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.*
 import javax.imageio.ImageIO
 
 
 object Ocr {
+    private val OCR_CHAPTER_REGEX = Regex("第?([\\d]+)話?[\\D]*([\\d]+)")
 
     private val mLOG = LoggerFactory.getLogger(Ocr::class.java)
     private const val mGerarImagens = true
     var mLibs = false
+        private set
+
+    var mGemini = false
         private set
 
 
@@ -36,6 +49,8 @@ object Ocr {
             mLOG.error("Erro ao carregar as libs do Opencv", e)
             false
         }
+
+        mGemini = Configuracao.geminiKey.isNotEmpty()
     }
 
     /**
@@ -114,6 +129,9 @@ object Ocr {
     private lateinit var aux : Mat
 
     fun prepare(isJapanese : Boolean) {
+        if (TESSERACT == null && mGemini)
+            return
+
         if (TESSERACT == null)
             throw TesseractException("Erro ao iniciar o Tesseract.\nArquivos de dados do Tesseract não encontrado.")
 
@@ -136,7 +154,15 @@ object Ocr {
             block.delete()
     }
 
-    fun process(image : File) : String {
+    fun process(image : File, separadorPagina : String, separadorCapitulo: String) : String {
+        return if (mGemini)
+            processGemini(image, separadorPagina, separadorCapitulo)
+        else
+            ocrToCapitulo(processTesseract(image), separadorPagina, separadorCapitulo)
+    }
+
+    //<--------------------------  TESSERACT   -------------------------->
+    private fun processTesseract(image: File): String {
         try {
             ocrFile = File(PASTA_TEMPORARIA.toString() + "\\ocr_" + image.name.substringBeforeLast(".") + ".jpg")
             val ocrImage = ImageIO.read(image)
@@ -261,6 +287,35 @@ object Ocr {
             mLOG.error("Erro ao processar o OCR.", e)
             throw OcrException(e.message ?: "Erro ao processar o OCR.")
         }
+    }
+
+    private fun ocrToCapitulo(textos: String, separadorPagina : String = "-", separadorCapitulo: String = "|"): String {
+        if (textos.isEmpty())
+            return ""
+
+        val linhas = textos.split("\n")
+
+        val capitulos = mutableMapOf<Int, Int>()
+        for (linha in linhas) {
+            OCR_CHAPTER_REGEX.matchEntire(linha)?.let {
+                if (it.groups.size > 2) {
+                    if (it.groups[1] != null && it.groups[2] != null)
+                        capitulos[Integer.parseInt(it.groups[1]!!.value)] = Integer.parseInt(it.groups[2]!!.value)
+                }
+            }
+        }
+
+        var capAnterior = 0
+        var pagAnterior = 0
+        var sugestao = ""
+        capitulos.keys.sorted().forEach {
+            if (it > capAnterior && capitulos[it]!! > pagAnterior) {
+                capAnterior = it
+                pagAnterior = capitulos[it]!!
+                sugestao += it.toString() + separadorPagina + capitulos[it] + "\n"
+            }
+        }
+        return sugestao.substringBefore("\n", missingDelimiterValue = sugestao)
     }
 
     /**
@@ -477,6 +532,52 @@ object Ocr {
             Size(13.0, 13.0)
         } else {
             Size(15.0, 15.0)
+        }
+    }
+
+    //<--------------------------  GEMINI   -------------------------->
+    private fun converteToBase64(imagem: File): String {
+        val bytes = imagem.readBytes()
+        return Base64.getEncoder().encodeToString(bytes)
+    }
+
+    private fun mimeType(imagem: File): String {
+        val mimeType = Files.probeContentType(imagem.toPath())
+        return mimeType ?: "image/jpg"
+    }
+
+    private val URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
+    private val TEXTO = "Esta é uma imagem de um sumário, extraia o texto nela e formate a saída separando os capitulos por linha, no formato 'Descrição do capítulo %s Número do capítulo %s Número da Página'. Por exemplo: 'Introdução%s000%s5', 'O Início%s001%s12', 'Apêndice A%s000%s150'. Não inclua cabeçalhos ou texto extra, apenas a lista formatada."
+
+    private fun processGemini(imagem : File, separadorPagina : String = "-", separadorCapitulo: String = "|") : String {
+        mLOG.info("Preparando consulta ao Gemini.")
+        val client = OkHttpClient()
+        val mediaType = MediaType.parse("application/json")
+        val base64 = converteToBase64(imagem)
+        val mime = mimeType(imagem)
+        val texto = String.format(TEXTO, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina)
+        val body = RequestBody.create(mediaType, "{\"contents\":[{\"parts\":[{\"text\":\"$texto\"},{\"inline_data\":{\"mime_type\":\"$mime\",\"data\":\"$base64\"}}]}]}")
+
+        val request = Request.Builder()
+            .url(URL_GEMINI + Configuracao.geminiKey)
+            .method("POST", body)
+            .addHeader("Content-Type", "application/json")
+            .build()
+        mLOG.info("Consultando Gemini.")
+        val response = client.newCall(request).execute()
+        mLOG.info("Resposta Gemini: ${response.code()} - ${response.message()}")
+
+        if (response.code() > 299 || response.body() == null)
+            return ""
+
+        return try {
+            val body = response.body()!!.string()
+            mLOG.info("Resposta Gemini: $body")
+            val jsonObject = JSONObject(body)
+            jsonObject.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text")
+        } catch (e: JSONException) {
+            mLOG.error(e.message, e)
+            ""
         }
     }
 

@@ -38,6 +38,8 @@ module com.fenix.ordenararquivos {
     requires org.controlsfx.controls;
     requires Mal4J;
     requires java.net.http;
+    requires okhttp;
+    requires org.json;
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;
     opens com.fenix.ordenararquivos.model.firebase to javafx.base, google.cloud.firestore, com.google.gson;

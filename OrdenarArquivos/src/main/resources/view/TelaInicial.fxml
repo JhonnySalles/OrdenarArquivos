@@ -28,7 +28,7 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<AnchorPane fx:id="apGlobal" minHeight="700.0" minWidth="700.0" prefHeight="700.0" prefWidth="800.0" styleClass="background-Black1" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.TelaInicialController">
+<AnchorPane fx:id="apGlobal" minHeight="700.0" minWidth="700.0" prefHeight="700.0" prefWidth="800.0" styleClass="background-Black1" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.TelaInicialController">
    <children>
       <StackPane fx:id="rootStackPane" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
@@ -73,44 +73,6 @@
                               <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                            </padding>
                         </HBox>
-                        <HBox alignment="CENTER" minHeight="50.0" minWidth="500.0" prefHeight="50.0" prefWidth="700.0" spacing="10.0">
-                           <children>
-                              <HBox alignment="CENTER" minWidth="340.0" prefHeight="36.0" spacing="2.0" HBox.hgrow="ALWAYS">
-                                 <children>
-                                    <JFXTextField fx:id="txtPastaOrigem" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta de Origem" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
-                                    <JFXButton fx:id="btnPesquisarPastaOrigem" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPastaOrigem" styleClass="background-Black3">
-                                       <graphic>
-                                          <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
-                                             <image>
-                                                <Image url="@../images/icoAbrir_48.png" />
-                                             </image>
-                                          </ImageView>
-                                       </graphic>
-                                    </JFXButton>
-                                 </children>
-                              </HBox>
-                              <HBox alignment="CENTER" prefHeight="40.0" spacing="2.0" HBox.hgrow="ALWAYS">
-                                 <children>
-                                    <JFXTextField fx:id="txtPastaDestino" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta de destino" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
-                                    <JFXButton fx:id="btnPesquisarPastaDestino" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPastaDestino" styleClass="background-Black3">
-                                       <graphic>
-                                          <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
-                                             <image>
-                                                <Image url="@../images/icoAbrir_48.png" />
-                                             </image>
-                                          </ImageView>
-                                       </graphic>
-                                    </JFXButton>
-                                 </children>
-                              </HBox>
-                           </children>
-                           <VBox.margin>
-                              <Insets />
-                           </VBox.margin>
-                           <padding>
-                              <Insets left="5.0" right="5.0" />
-                           </padding>
-                        </HBox>
                         <HBox spacing="10.0">
                            <VBox.margin>
                               <Insets bottom="5.0" />
@@ -118,6 +80,44 @@
                            <children>
                               <VBox spacing="10.0" HBox.hgrow="ALWAYS">
                                  <children>
+                                    <HBox alignment="CENTER" minHeight="50.0" minWidth="500.0" prefHeight="50.0" prefWidth="700.0" spacing="10.0">
+                                       <children>
+                                          <HBox alignment="CENTER" minWidth="340.0" prefHeight="36.0" spacing="2.0" HBox.hgrow="ALWAYS">
+                                             <children>
+                                                <JFXTextField fx:id="txtPastaOrigem" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta de Origem" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                                                <JFXButton fx:id="btnPesquisarPastaOrigem" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPastaOrigem" styleClass="background-Black3">
+                                                   <graphic>
+                                                      <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
+                                                         <image>
+                                                            <Image url="@../images/icoAbrir_48.png" />
+                                                         </image>
+                                                      </ImageView>
+                                                   </graphic>
+                                                </JFXButton>
+                                             </children>
+                                          </HBox>
+                                          <HBox alignment="CENTER" prefHeight="40.0" spacing="2.0" HBox.hgrow="ALWAYS">
+                                             <children>
+                                                <JFXTextField fx:id="txtPastaDestino" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta de destino" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                                                <JFXButton fx:id="btnPesquisarPastaDestino" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPastaDestino" styleClass="background-Black3">
+                                                   <graphic>
+                                                      <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
+                                                         <image>
+                                                            <Image url="@../images/icoAbrir_48.png" />
+                                                         </image>
+                                                      </ImageView>
+                                                   </graphic>
+                                                </JFXButton>
+                                             </children>
+                                          </HBox>
+                                       </children>
+                                       <VBox.margin>
+                                          <Insets />
+                                       </VBox.margin>
+                                       <padding>
+                                          <Insets left="5.0" right="5.0" />
+                                       </padding>
+                                    </HBox>
                                     <HBox alignment="CENTER" minHeight="40.0" prefHeight="40.0" spacing="10.0">
                                        <children>
                                           <VBox minWidth="260.0" HBox.hgrow="ALWAYS">
@@ -174,6 +174,7 @@
                                     <JFXCheckBox fx:id="cbCompactarArquivo" checkedColor="#4059a9" selected="true" text="Compactar arquivo" textFill="WHITE" unCheckedColor="GREY" />
                                     <JFXCheckBox fx:id="cbMesclarCapaTudo" checkedColor="#4059a9" selected="true" text="Mesclar capa tudo" textFill="WHITE" unCheckedColor="GREY" />
                                     <JFXCheckBox fx:id="cbAjustarMargemCapa" checkedColor="#4059a9" selected="true" text="Ajustar margem capa" textFill="WHITE" unCheckedColor="GREY" />
+                                    <JFXCheckBox fx:id="cbGerarCapitulo" checkedColor="#4059a9" selected="true" text="Gerar tag Capítulo" textFill="WHITE" unCheckedColor="GREY" />
                                  </children>
                               </VBox>
                            </children>
@@ -244,33 +245,22 @@
                                                       </VBox>
                                                       <HBox alignment="CENTER_LEFT" spacing="10.0">
                                                          <children>
-                                                            <VBox>
-                                                               <children>
-                                                                  <JFXTextField fx:id="txtSeparador" alignment="CENTER" focusColor="#0cff00" labelFloat="true" minWidth="60.0" prefHeight="25.0" prefWidth="60.0" promptText="Pipe" styleClass="texto-stilo-2" unFocusColor="#4059a9" VBox.vgrow="ALWAYS" />
-                                                               </children>
-                                                            </VBox>
-                                                            <VBox>
-                                                               <children>
-                                                                  <JFXTextField fx:id="txtGerarInicio" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="150.0" promptText="Início" styleClass="texto-stilo-2" unFocusColor="#4059a9" VBox.vgrow="ALWAYS">
-                                                                     <tooltip>
-                                                                        <Tooltip text="Ctrl + I" />
-                                                                     </tooltip>
-                                                                  </JFXTextField>
-                                                               </children>
-                                                            </VBox>
-                                                            <VBox>
-                                                               <children>
-                                                                  <JFXTextField fx:id="txtGerarFim" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="150.0" promptText="Fim" styleClass="texto-stilo-2" unFocusColor="#4059a9" VBox.vgrow="ALWAYS">
-                                                                     <tooltip>
-                                                                        <Tooltip text="Ctrl + F" />
-                                                                     </tooltip>
-                                                                  </JFXTextField>
-                                                               </children>
-                                                            </VBox>
+                                                            <JFXTextField fx:id="txtSeparadorPagina" alignment="CENTER" focusColor="#0cff00" labelFloat="true" minWidth="60.0" prefHeight="25.0" prefWidth="60.0" promptText="Pipe" styleClass="texto-stilo-2" text="-" unFocusColor="#4059a9" />
+                                                            <JFXTextField fx:id="txtSeparadorCapitulo" alignment="CENTER" focusColor="#0cff00" labelFloat="true" minWidth="60.0" prefHeight="25.0" prefWidth="60.0" promptText="Separador" styleClass="texto-stilo-2" text="|" unFocusColor="#4059a9" />
+                                                            <JFXTextField fx:id="txtGerarInicio" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="150.0" promptText="Início" styleClass="texto-stilo-2" unFocusColor="#4059a9">
+                                                               <tooltip>
+                                                                  <Tooltip text="Ctrl + I" />
+                                                               </tooltip>
+                                                            </JFXTextField>
+                                                            <JFXTextField fx:id="txtGerarFim" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="150.0" promptText="Fim" styleClass="texto-stilo-2" unFocusColor="#4059a9">
+                                                               <tooltip>
+                                                                  <Tooltip text="Ctrl + F" />
+                                                               </tooltip>
+                                                            </JFXTextField>
                                                             <JFXButton fx:id="btnGerar" onAction="#onBtnGerarCapitulos" prefHeight="25.0" prefWidth="140.0" styleClass="background-White1" text="Gerar Capitulos" />
                                                          </children>
                                                       </HBox>
-                                                      <HBox>
+                                                      <HBox spacing="10.0">
                                                          <children>
                                                             <JFXTextArea fx:id="txtAreaImportar" focusColor="#0cff00" prefHeight="200.0" prefWidth="400.0" unFocusColor="#4059a9" HBox.hgrow="ALWAYS">
                                                                <styleClass>
@@ -300,7 +290,8 @@
                                                         <columns>
                                                           <TableColumn fx:id="clCapitulo" prefWidth="59.0" text="Capítulo" />
                                                           <TableColumn fx:id="clNumeroPagina" prefWidth="68.0" text="Nr. Página" />
-                                                            <TableColumn fx:id="clNomePasta" prefWidth="347.0" text="Nome Pasta" />
+                                                            <TableColumn fx:id="clTag" prefWidth="41.0" text="Tag Comic Info" />
+                                                            <TableColumn fx:id="clNomePasta" prefWidth="400.0" text="Nome Pasta" />
                                                         </columns>
                                                       </TableView>
                                                       <HBox alignment="CENTER_LEFT" maxHeight="15.0" prefHeight="15.0" spacing="10.0">

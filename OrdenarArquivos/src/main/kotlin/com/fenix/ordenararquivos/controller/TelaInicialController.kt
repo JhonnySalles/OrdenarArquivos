@@ -165,6 +165,9 @@ class TelaInicialController : Initializable {
     private lateinit var cbAjustarMargemCapa: JFXCheckBox
 
     @FXML
+    private lateinit var cbGerarCapitulo: JFXCheckBox
+
+    @FXML
     private lateinit var lsVwListaImagens: JFXListView<String>
 
     @FXML
@@ -174,7 +177,10 @@ class TelaInicialController : Initializable {
     private lateinit var txtGerarFim: JFXTextField
 
     @FXML
-    private lateinit var txtSeparador: JFXTextField
+    private lateinit var txtSeparadorPagina: JFXTextField
+
+    @FXML
+    private lateinit var txtSeparadorCapitulo: JFXTextField
 
     @FXML
     private lateinit var txtAreaImportar: JFXTextArea
@@ -205,6 +211,9 @@ class TelaInicialController : Initializable {
 
     @FXML
     private lateinit var clNomePasta: TableColumn<Caminhos, String>
+
+    @FXML
+    private lateinit var clTag: TableColumn<Caminhos, String>
 
     @FXML
     private lateinit var lblAviso: Label
@@ -359,7 +368,8 @@ class TelaInicialController : Initializable {
         txtNomePastaManga.text = "[JPN] Manga -"
         txtVolume.text = "Volume 01"
         txtNomePastaCapitulo.text = "Capítulo"
-        txtSeparador.text = "-"
+        txtSeparadorPagina.text = "-"
+        txtSeparadorCapitulo.text = "|"
         onBtnLimpar()
         mObsListaItens = FXCollections.observableArrayList("")
         lsVwListaImagens.items = mObsListaItens
@@ -734,38 +744,15 @@ class TelaInicialController : Initializable {
         val ocr: Task<Void> = object : Task<Void>() {
             override fun call(): Void? {
                 try {
-                    if (!Ocr.mLibs)
+                    if (!Ocr.mGemini && !Ocr.mLibs)
                         throw LibException("Bibliotecas OCR não instânciadas.")
 
                     Ocr.prepare(isJapanese)
-                    val textos = Ocr.process(sumario)
-                    mLOG.info("OCR processado: $textos")
-                    val linhas = textos.split("\n")
-
-                    val capitulos = mutableMapOf<Int, Int>()
-                    for (linha in linhas) {
-                        OCR_CHAPTER_REGEX.matchEntire(linha)?.let {
-                            if (it.groups.size > 2) {
-                                if (it.groups[1] != null && it.groups[2] != null)
-                                    capitulos[Integer.parseInt(it.groups[1]!!.value)] = Integer.parseInt(it.groups[2]!!.value)
-                            }
-                        }
-                    }
-
-                    var capAnterio = 0
-                    var pagAnterio = 0
-                    var sugestao = ""
-                    capitulos.keys.sorted().forEach {
-                        if (it > capAnterio && capitulos[it]!! > pagAnterio) {
-                            capAnterio = it
-                            pagAnterio = capitulos[it]!!
-                            sugestao += it.toString() + txtSeparador.text + capitulos[it] + "\n"
-                        }
-                    }
-
+                    val sugestao = Ocr.process(sumario, txtSeparadorPagina.text, txtSeparadorCapitulo.text)
+                    mLOG.info("OCR processado: $sugestao")
                     if (sugestao.isNotEmpty())
                         Platform.runLater {
-                            addSugestao(sugestao.substringBefore("\n", missingDelimiterValue = sugestao))
+                            addSugestao(sugestao)
                         }
                 } catch (e: Exception) {
                     mLOG.info("Erro ao realizar o OCR do arquivo de sumário.", e)
@@ -868,7 +855,6 @@ class TelaInicialController : Initializable {
             txtAreaImportar.text = it.capitulos
 
             val quantidade = mObsListaItens.size
-
             lblAlerta.text = if (it.quantidade != quantidade) "Difereça na quantidade de imagens." else ""
 
             if (it.quantidade != quantidade)
@@ -1423,7 +1409,6 @@ class TelaInicialController : Initializable {
                                     continue
 
                                 mLOG.info("Gerando pagina do ComicInfo: " + capa.name)
-
                                 i++
                                 updateProgress(i.toLong(), max.toLong())
                                 updateMessage("Processando item " + i + " de " + max + ". Gerando ComicInfo - Capítulo $key | " + capa.name)
@@ -1446,10 +1431,15 @@ class TelaInicialController : Initializable {
                                 } else {
                                     if (!capitulo.equals(key, true) && !key.equals("000", true)  && !key.lowercase().contains("extra")) {
                                         capitulo = key
+                                        val tag = if (cbGerarCapitulo.isSelected) {
+                                            val caminho = mListaCaminhos.stream().filter { it.capitulo.equals(key, ignoreCase = true) }.findFirst()
+                                            if (caminho.isPresent) " - " + caminho.get().tag else ""
+                                        } else
+                                            ""
                                         page.bookmark = if (isJapanese)
-                                            "第${capitulo}話"
+                                            "第${capitulo}話$tag"
                                         else
-                                            "Capítulo $capitulo"
+                                            "Capítulo $capitulo$tag"
                                     }
                                 }
 
@@ -1988,18 +1978,31 @@ class TelaInicialController : Initializable {
     private fun onBtnImporta() {
         if (txtAreaImportar.text.trim { it <= ' ' }.isNotEmpty()) {
             var nomePasta = ""
-            var separador = txtSeparador.text.trim { it <= ' ' }
+            var pipe = txtSeparadorPagina.text.trim { it <= ' ' }
+            if (pipe.isEmpty())
+                pipe = "-"
+            txtSeparadorPagina.text = pipe
+
+            var separador = txtSeparadorCapitulo.text.trim { it <= ' ' }
             if (separador.isEmpty())
-                separador = "-"
-            txtSeparador.text = separador
+                separador = "|"
+            txtSeparadorCapitulo.text = separador
+
             val linhas = txtAreaImportar.text.split("\\r?\\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
             var linha: Array<String>
             mListaCaminhos = ArrayList()
+
+            val pasta = txtNomePastaCapitulo.text.trim { it <= ' ' }
             for (ls in linhas) {
-                linha = ls.split(txtSeparador.text.toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-                nomePasta = if (txtNomePastaCapitulo.text.trim { it <= ' ' }.equals("Capítulo", ignoreCase = true) && linha[0].uppercase(Locale.getDefault()).contains("EXTRA"))
-                    linha[0].trim { it <= ' ' } else txtNomePastaCapitulo.text.trim { it <= ' ' } + " " + linha[0].trim { it <= ' ' }
-                mListaCaminhos.add(Caminhos(linha[0], linha[1].trim(), nomePasta))
+                val texto = if (ls.contains(separador)) ls.substringAfter(separador) else ls
+                linha = texto.split(txtSeparadorPagina.text.toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+                nomePasta = if (pasta.equals("Capítulo", ignoreCase = true) && linha[0].uppercase(Locale.getDefault()).contains("EXTRA"))
+                    linha[0].trim { it <= ' ' }
+                else
+                    pasta + " " + linha[0].trim { it <= ' ' }
+
+                val tag = if (cbGerarCapitulo.isSelected && ls.contains(separador)) ls.substringBefore(separador) else ""
+                mListaCaminhos.add(Caminhos(linha[0], linha[1].trim(), nomePasta, tag))
             }
             mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
             tbViewTabela.items = mObsListaCaminhos
@@ -2018,7 +2021,7 @@ class TelaInicialController : Initializable {
                 var texto = ""
                 val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
                 for (i in inicio..fim)
-                    texto += String.format(padding, i) + txtSeparador.text + if (i < fim) "\r\n" else ""
+                    texto += String.format(padding, i) + txtSeparadorPagina.text + if (i < fim) "\r\n" else ""
                 txtAreaImportar.text = texto
             } else txtGerarInicio.unFocusColor = Color.GRAY
         } else {
@@ -2244,8 +2247,7 @@ class TelaInicialController : Initializable {
         clCapitulo.cellFactory = TextFieldTableCell.forTableColumn()
         clCapitulo.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
             e.tableView.items[e.tablePosition.row].capitulo = e.newValue
-            e.tableView.items[e.tablePosition.row]
-                .nomePasta = txtNomePastaCapitulo.text.trim { it <= ' ' } + " " + e.newValue
+            e.tableView.items[e.tablePosition.row].nomePasta = txtNomePastaCapitulo.text.trim { it <= ' ' } + " " + e.newValue
         }
         clNumeroPagina.cellFactory = TextFieldTableCell.forTableColumn()
         clNumeroPagina.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
@@ -2255,12 +2257,18 @@ class TelaInicialController : Initializable {
         clNomePasta.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
             e.tableView.items[e.tablePosition.row].nomePasta = e.newValue
         }
+
+        clTag.cellFactory = TextFieldTableCell.forTableColumn()
+        clTag.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
+            e.tableView.items[e.tablePosition.row].tag = e.newValue
+        }
     }
 
     private fun linkaCelulas() {
         clCapitulo.cellValueFactory = PropertyValueFactory("capitulo")
         clNumeroPagina.cellValueFactory = PropertyValueFactory("numeroPagina")
         clNomePasta.cellValueFactory = PropertyValueFactory("nomePasta")
+        clTag.cellValueFactory = PropertyValueFactory("tag")
 
         clMalId.cellValueFactory = PropertyValueFactory("idVisual")
         clMalNome.cellValueFactory = PropertyValueFactory("nome")
@@ -2297,7 +2305,8 @@ class TelaInicialController : Initializable {
     private var mPastaAnterior = ""
     private var mNomePastaAnterior = ""
     private fun configuraTextEdit() {
-        txtSeparador.isDisable = true
+        txtSeparadorPagina.isDisable = true
+        txtSeparadorCapitulo.isDisable = true
         textFieldMostraFinalTexto(txtSimularPasta)
         textFieldMostraFinalTexto(txtPastaOrigem)
 
@@ -2440,7 +2449,7 @@ class TelaInicialController : Initializable {
                 KeyCode.ENTER -> {
                     onBtnGerarCapitulos()
                     txtAreaImportar.requestFocus()
-                    val position = txtAreaImportar.text.indexOf(txtSeparador.text) + 1
+                    val position = txtAreaImportar.text.indexOf(txtSeparadorPagina.text) + 1
                     txtAreaImportar.positionCaret(position)
                     e.consume()
                 }
@@ -2484,44 +2493,47 @@ class TelaInicialController : Initializable {
                         val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
                         before = before.substringBeforeLast(line)
 
-                        val pipe = txtSeparador.text
+                        val pipe = txtSeparadorPagina.text
+                        val separador = txtSeparadorCapitulo.text
+                        val tag = if (line.contains(separador)) line.substringBefore(separador) + separador else ""
+                        val texto = if (line.contains(separador)) line.substringAfter(separador) + separador else line
                         val page = if (line.contains(pipe)) line.substringAfter(pipe) else ""
 
                         val newLine = when (e.code) {
                             KeyCode.E -> {
-                                if (line.contains("extra", true)) {
+                                if (texto.contains("extra", true)) {
                                     val fim = getNumber(txtGerarFim.text)?.toInt() ?: 0
                                     val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
                                     var sequence = txt.split("\n").last { !it.contains("extra", ignoreCase = true) }
                                     sequence = if (sequence.contains(pipe)) sequence.substringBefore(pipe) else sequence
-                                    getNumber(sequence)?.toInt()?.let { "${String.format(padding, it+1)}$pipe$page" } ?: sequence
+                                    tag + (getNumber(sequence)?.toInt()?.let { "${String.format(padding, it+1)}$pipe$page" } ?: sequence)
                                 } else {
                                     val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
-                                    "Extra ${String.format("%02d", count + 1)}$pipe$page"
+                                    "${tag}Extra ${String.format("%02d", count + 1)}$pipe$page"
                                 }
                             }
                             KeyCode.D ->  {
                                 if (line.contains("extra", true) && last.isEmpty()) {
                                     val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
-                                    line + "\n" + "Extra ${String.format("%02d", count + 1)}$pipe$page"
+                                    line + "\n" + "${tag}Extra ${String.format("%02d", count + 1)}$pipe$page"
                                 } else
                                     line + "\n" + line
                             }
                             in (KeyCode.NUMPAD0 .. KeyCode.NUMPAD9),
                             in (KeyCode.DIGIT0 .. KeyCode.DIGIT9) -> {
-                                if (line.contains("extra", true)) {
+                                if (texto.contains("extra", true)) {
                                     val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
                                     val number = if (e.code == KeyCode.DIGIT0 || e.code == KeyCode.NUMPAD0) count else e.text.toInt()
-                                    "Extra ${String.format("%02d", number)}$pipe$page"
+                                    "${tag}Extra ${String.format("%02d", number)}$pipe$page"
                                 } else {
-                                    val chapter = if (line.contains("."))
-                                        line.substringBefore(".")
-                                    else if (line.contains(pipe))
-                                        line.substringBefore(pipe)
+                                    val chapter = if (texto.contains("."))
+                                        texto.substringBefore(".")
+                                    else if (texto.contains(pipe))
+                                        texto.substringBefore(pipe)
                                     else
-                                        line
+                                        texto
                                     val number = if (e.code == KeyCode.DIGIT0 || e.code == KeyCode.NUMPAD0) "" else "." + e.text
-                                    "$chapter$number$pipe$page"
+                                    "$tag$chapter$number$pipe$page"
                                 }
                             }
                             else -> line
@@ -2835,7 +2847,6 @@ class TelaInicialController : Initializable {
         private const val NUMBER_PATTERN = "[\\d.]+"
         private val NUMBER_REGEX = Regex("\\d*")
         private val ONLY_NUMBER_REGEX = Regex("^\\d+")
-        private val OCR_CHAPTER_REGEX = Regex("第?([\\d]+)話?[\\D]*([\\d]+)")
 
         val fxmlLocate: URL get() = TelaInicialController::class.java.getResource("/view/TelaInicial.fxml")
         val iconLocate: String get() = "/images/icoProcessar_512.png"
