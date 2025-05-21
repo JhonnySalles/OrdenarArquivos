@@ -503,6 +503,56 @@
                                     </AnchorPane>
                                 </content>
                               </Tab>
+                              <Tab text="OCR Capítulos">
+                                <content>
+                                  <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" styleClass="background-Black3">
+                                       <children>
+                                          <VBox prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                             <children>
+                                                <HBox prefWidth="200.0" spacing="10.0">
+                                                   <children>
+                                                      <HBox alignment="CENTER" minWidth="340.0" spacing="2.0" HBox.hgrow="ALWAYS">
+                                                         <children>
+                                                            <JFXTextField fx:id="txtPastaOcr" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta de Processar" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                                                            <JFXButton fx:id="btnPesquisarPastaOcr" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPastaOcr" styleClass="background-Black3">
+                                                               <graphic>
+                                                                  <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
+                                                                     <image>
+                                                                        <Image url="@../images/icoAbrir_48.png" />
+                                                                     </image>
+                                                                  </ImageView>
+                                                               </graphic>
+                                                            </JFXButton>
+                                                         </children>
+                                                      </HBox>
+                                                      <HBox alignment="CENTER_LEFT" prefWidth="200.0" spacing="10.0">
+                                                         <children>
+                                                            <JFXButton fx:id="btnOcrProcessar" onAction="#onBtnOcrProcessar" prefHeight="25.0" prefWidth="100.0" styleClass="background-Blue3" text="Processar" textFill="WHITE" />
+                                                         </children>
+                                                      </HBox>
+                                                   </children>
+                                                   <VBox.margin>
+                                                      <Insets bottom="10.0" left="10.0" right="10.0" top="15.0" />
+                                                   </VBox.margin>
+                                                </HBox>
+                                                <TableView fx:id="tbViewOcr" editable="true" prefHeight="400.0" prefWidth="400.0" VBox.vgrow="ALWAYS">
+                                                   <columns>
+                                                      <TableColumn fx:id="clOCRArquivo" prefWidth="200.0" text="Arquivo" />
+                                                      <TableColumn fx:id="clOCRSerie" prefWidth="100.0" text="Série" />
+                                                      <TableColumn fx:id="clOCRTitulo" prefWidth="100.0" text="Título" />
+                                                      <TableColumn fx:id="clOCREditora" prefWidth="100.0" text="Editora" />
+                                                      <TableColumn fx:id="clOCRPublicacao" prefWidth="100.0" text="Publicação" />
+                                                      <TableColumn fx:id="clOCRTags" prefWidth="100.0" text="Tags" />
+                                                      <TableColumn fx:id="clProcessarOCR" prefWidth="76.0" text="OCR" />
+                                                      <TableColumn fx:id="clSalvarOCR" prefWidth="76.0" text="Salvar" />
+                                                   </columns>
+                                                </TableView>
+                                             </children>
+                                          </VBox>
+                                       </children>
+                                    </AnchorPane>
+                                </content>
+                              </Tab>
                            </tabs>
                         </JFXTabPane>
                         <VBox alignment="CENTER_LEFT" styleClass="background-Black1">

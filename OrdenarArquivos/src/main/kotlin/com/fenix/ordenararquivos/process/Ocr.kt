@@ -156,7 +156,7 @@ object Ocr {
 
     fun process(image : File, separadorPagina : String, separadorCapitulo: String) : String {
         return if (mGemini)
-            processGemini(image, separadorPagina, separadorCapitulo)
+            processGemini(image, String.format(TEXTO_PADRAO, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina))
         else
             ocrToCapitulo(processTesseract(image), separadorPagina, separadorCapitulo)
     }
@@ -546,16 +546,15 @@ object Ocr {
         return mimeType ?: "image/jpg"
     }
 
-    private val URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
-    private val TEXTO = "Esta é uma imagem de um sumário, extraia o texto nela e formate a saída separando os capitulos por linha, no formato 'Descrição do capítulo %s Número do capítulo %s Número da Página'. Por exemplo: 'Introdução%s000%s5', 'O Início%s001%s12', 'Apêndice A%s000%s150'. Não inclua cabeçalhos ou texto extra, apenas a lista formatada."
+    private const val URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
+    private const val TEXTO_PADRAO = "Esta é uma imagem de um sumário, extraia o texto nela e formate a saída separando os capitulos por linha, no formato 'Descrição do capítulo %s Número do capítulo %s Número da Página'. Por exemplo: 'Introdução%s000%s5', 'O Início%s001%s12', 'Apêndice A%s000%s150'. Não inclua cabeçalhos ou texto extra, apenas a lista formatada."
 
-    private fun processGemini(imagem : File, separadorPagina : String = "-", separadorCapitulo: String = "|") : String {
+    private fun processGemini(imagem : File, texto : String = "") : String {
         mLOG.info("Preparando consulta ao Gemini.")
         val client = OkHttpClient()
         val mediaType = MediaType.parse("application/json")
         val base64 = converteToBase64(imagem)
         val mime = mimeType(imagem)
-        val texto = String.format(TEXTO, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina)
         val body = RequestBody.create(mediaType, "{\"contents\":[{\"parts\":[{\"text\":\"$texto\"},{\"inline_data\":{\"mime_type\":\"$mime\",\"data\":\"$base64\"}}]}]}")
 
         val request = Request.Builder()
@@ -579,6 +578,11 @@ object Ocr {
             mLOG.error(e.message, e)
             ""
         }
+    }
+
+    fun processaGemini(imagem: File, separadorCapitulo: String = "|"): String {
+        val texto = "Esta é uma imagem de um sumário, extraia o texto nela e formate a saída separando os capitulos por linha, no formato 'Número do capítulo %s Descrição do capítulo'. Por exemplo: '000%sIntrodução', '001%sO Início', '000%sApêndice A'. Não inclua cabeçalhos ou texto extra, apenas a lista formatada."
+        return processGemini(imagem, String.format(texto, separadorCapitulo, separadorCapitulo, separadorCapitulo, separadorCapitulo))
     }
 
 }

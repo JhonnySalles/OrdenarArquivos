@@ -1,11 +1,13 @@
 package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.animation.Animacao
+import com.fenix.ordenararquivos.components.TextAreaTableCell
 import com.fenix.ordenararquivos.exceptions.LibException
 import com.fenix.ordenararquivos.model.*
 import com.fenix.ordenararquivos.model.entities.Caminhos
 import com.fenix.ordenararquivos.model.entities.Capa
 import com.fenix.ordenararquivos.model.entities.Manga
+import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.entities.comet.CoMet
 import com.fenix.ordenararquivos.model.entities.comicinfo.*
 import com.fenix.ordenararquivos.model.enums.Linguagem
@@ -18,6 +20,7 @@ import com.fenix.ordenararquivos.process.Ocr
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.SincronizacaoServices
+import com.fenix.ordenararquivos.util.Utils
 import com.jfoenix.controls.*
 import jakarta.xml.bind.JAXBContext
 import jakarta.xml.bind.Marshaller
@@ -27,6 +30,7 @@ import javafx.application.Platform
 import javafx.beans.InvalidationListener
 import javafx.beans.Observable
 import javafx.beans.property.ReadOnlyProperty
+import javafx.beans.property.SimpleStringProperty
 import javafx.beans.value.ChangeListener
 import javafx.beans.value.ObservableValue
 import javafx.collections.FXCollections
@@ -322,15 +326,52 @@ class TelaInicialController : Initializable {
     @FXML
     private lateinit var clMalImagem: TableColumn<Mal, ImageView?>
 
+    //<--------------------------  OCR Capítulos   -------------------------->
+    @FXML
+    private lateinit var txtPastaOcr: JFXTextField
+
+    @FXML
+    private lateinit var btnPesquisarPastaOcr: JFXButton
+
+    @FXML
+    private lateinit var btnOcrProcessar: JFXButton
+
+    @FXML
+    private lateinit var tbViewOcr: TableView<Processar>
+
+    @FXML
+    private lateinit var clOCRArquivo: TableColumn<Processar, String>
+
+    @FXML
+    private lateinit var clOCRSerie: TableColumn<Processar, String>
+
+    @FXML
+    private lateinit var clOCRTitulo: TableColumn<Processar, String>
+
+    @FXML
+    private lateinit var clOCREditora: TableColumn<Processar, String>
+
+    @FXML
+    private lateinit var clOCRPublicacao: TableColumn<Processar, String>
+
+    @FXML
+    private lateinit var clOCRTags: TableColumn<Processar, String>
+
+    @FXML
+    private lateinit var clProcessarOCR: TableColumn<Processar, JFXButton?>
+
+    @FXML
+    private lateinit var clSalvarOCR: TableColumn<Processar, JFXButton?>
+
 
     private val mSugestao: JFXAutoCompletePopup<String> = JFXAutoCompletePopup<String>()
-
 
     private var mListaCaminhos: MutableList<Caminhos> = arrayListOf()
     private var mObsListaCaminhos: ObservableList<Caminhos> = FXCollections.observableArrayList(mListaCaminhos)
     private var mObsListaItens: ObservableList<String> = FXCollections.observableArrayList("")
     private var mObsListaImagesSelected: ObservableList<Capa> = FXCollections.observableArrayList()
     private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
+    private var mObsListaOCR: ObservableList<Processar> = FXCollections.observableArrayList()
 
     private var mCaminhoOrigem: File? = null
     private var mCaminhoDestino: File? = null
@@ -382,6 +423,9 @@ class TelaInicialController : Initializable {
         mComicInfo = ComicInfo()
         txtMalId.text = ""
         txtMalNome.text = ""
+
+        mObsListaOCR = FXCollections.observableArrayList()
+        tbViewOcr.items = mObsListaOCR
     }
 
     private val mFilterNomeArquivo: FilenameFilter
@@ -604,6 +648,21 @@ class TelaInicialController : Initializable {
         }
     }
 
+    @FXML
+    private fun onBtnOcrProcessar() {
+        carregarItensOcr()
+    }
+
+    @FXML
+    private fun onBtnCarregarPastaOcr() {
+        val caminho = selecionaPasta(txtPastaOcr.text)
+        if (caminho != null)
+            txtPastaOcr.text = caminho.absolutePath
+        else
+            txtPastaOcr.text = ""
+        carregarItensOcr()
+    }
+
     private fun desabilita() {
         btnGerarCapa.isDisable = true
         btnLimparTudo.isDisable = true
@@ -821,7 +880,7 @@ class TelaInicialController : Initializable {
             Thread(consulta).start()
         } else {
             AlertasPopup.alertaModal("Alerta", "Necessário informar um id ou nome.")
-            txtMalNome.requestFocus();
+            txtMalNome.requestFocus()
         }
     }
 
@@ -2067,6 +2126,231 @@ class TelaInicialController : Initializable {
         }
     }
 
+    private fun extraiInfo(arquivo: File): File? {
+        var comicInfo : File? = null
+        var proc: Process? = null
+        val comando = "rar e -ma4 -y " + '"' + arquivo.path + '"' + " " + '"' + Utils.getCaminho(arquivo.path) + '"' + " " + '"' + COMICINFO + '"'
+        try {
+            val rt: Runtime = Runtime.getRuntime()
+            proc = rt.exec(comando)
+            var resultado = ""
+            val stdInput = BufferedReader(InputStreamReader(proc.inputStream))
+            var s: String?
+            while (stdInput.readLine().also { s = it } != null)
+                resultado += "$s"
+
+            s = null
+            var error = ""
+            val stdError = BufferedReader(InputStreamReader(proc.errorStream))
+            while (stdError.readLine().also { s = it } != null)
+                error += "$s"
+            if (resultado.isEmpty() && error.isNotEmpty())
+                mLOG.info("Error comand: $resultado Não foi possível extrair o arquivo $COMICINFO.")
+            else
+                comicInfo = File(Utils.getCaminho(arquivo.path) + '\\' + COMICINFO)
+        } catch (e: Exception) {
+            mLOG.error(e.message, e)
+        } finally {
+            proc?.destroy()
+        }
+        return comicInfo
+    }
+
+    private fun insereInfo(arquivo: File, info: File) {
+        val comando = "rar a -ma4 -ep1 " + '"' + arquivo.path + '"' + " " + '"' + info.path + '"'
+        var proc: Process? = null
+        try {
+            val rt: Runtime = Runtime.getRuntime()
+            proc = rt.exec(comando)
+            var resultado = ""
+            val stdInput = BufferedReader(InputStreamReader(proc.inputStream))
+            var s: String? = null
+            while (stdInput.readLine().also { s = it } != null)
+                resultado += "$s"
+
+            if (resultado.isNotEmpty())
+                mLOG.info("Output comand:\n$resultado")
+            s = null
+            var error = ""
+            val stdError = BufferedReader(InputStreamReader(proc.errorStream))
+            while (stdError.readLine().also { s = it } != null)
+                error += "$s"
+
+            if (resultado.isEmpty() && error.isNotEmpty()) {
+                info.renameTo(File(arquivo.path + Utils.getNome(arquivo.name) + Utils.getExtenssao(info.name)))
+                mLOG.info("Error comand:\n$resultado\nNecessário adicionar o rar no path e reiniciar a aplicação.")
+            } else
+                info.delete()
+        } catch (e: Exception) {
+            mLOG.error(e.message, e)
+        } finally {
+            proc?.destroy()
+        }
+    }
+
+    private fun carregarItensOcr() {
+        val pasta = File(txtPastaOcr.text)
+        if (txtPastaOcr.text.isNotEmpty() && pasta.exists()) {
+            btnOcrProcessar.isDisable = true
+
+            val ocr: Task<Void> = object : Task<Void>() {
+                override fun call(): Void? {
+                    try {
+                        val lista = mutableListOf<Processar>()
+
+                        val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
+                        for (arquivo in pasta.listFiles()!!) {
+                            if (!Utils.isRar(arquivo.name))
+                                continue
+
+                            val info: File = extraiInfo(arquivo) ?: continue
+                            val comic: ComicInfo = try {
+                                val unmarshaller = jaxb.createUnmarshaller()
+                                unmarshaller.unmarshal(info) as ComicInfo
+                            } catch (e: Exception) {
+                                mLOG.error(e.message, e)
+                                continue
+                            }
+
+                            val bookMarks = comic.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + SEPARADOR_IMAGEM + it.bookmark }?.toSet() ?: emptySet()
+                            val processar = JFXButton("Processar")
+                            val salvar = JFXButton("Salvar")
+                            val tags = bookMarks.joinToString(separator = "\n")
+                            val item = Processar(arquivo.name, tags, arquivo, comic, processar, salvar)
+
+                            processar.styleClass.add("background-White1")
+                            processar.setOnAction { ocrItem(item) }
+                            salvar.styleClass.add("background-White1")
+                            salvar.setOnAction { salvarItem(item) }
+
+                            lista.add(item)
+                        }
+
+                        mObsListaOCR = FXCollections.observableArrayList(lista)
+                        Platform.runLater { tbViewOcr.items = mObsListaOCR }
+                    } catch (e: Exception) {
+                        mLOG.info("Erro ao realizar a gerar itens para processamento de OCR.", e)
+                        Platform.runLater {
+                            Notificacoes.notificacao(Notificacao.ERRO, "OCR Capítulos", "Erro ao realizar a gerar itens para processamento de OCR. " + e.message)
+                        }
+                    }
+                    return null
+                }
+                override fun succeeded() {
+                    Platform.runLater {
+                        btnOcrProcessar.isDisable = false
+                    }
+                }
+            }
+
+            Thread(ocr).start()
+        } else {
+            AlertasPopup.alertaModal("Alerta", "Necessário informar uma pasta para processar.")
+            txtPastaOcr.requestFocus()
+        }
+    }
+
+
+    private fun salvarItem(item: Processar) {
+        try {
+            val info = File(item.file!!.parent, "ComicInfo.xml")
+            if (info.exists())
+                info.delete()
+
+            val tags = item.tags.split("\n")
+            for (tag in tags) {
+                val imagem = tag.substringBefore(SEPARADOR_IMAGEM)
+                var capitulo = tag.substringAfter(SEPARADOR_IMAGEM).trim()
+                if (capitulo.isEmpty())
+                    continue
+
+                if (capitulo.endsWith("-"))
+                    capitulo = capitulo.substringBeforeLast("-").trim()
+
+                val page = item.comicInfo?.pages?.firstOrNull { it.image.toString() == imagem } ?: continue
+                page.bookmark = capitulo
+            }
+
+            val marshaller = JAXBContext.newInstance(ComicInfo::class.java).createMarshaller()
+            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
+            val out = FileOutputStream(info)
+            marshaller.marshal(item.comicInfo, out)
+            out.close()
+            insereInfo(item.file!!, info)
+            mObsListaOCR.remove(item)
+        } catch (e: Exception) {
+            mLOG.error(e.message, e)
+            AlertasPopup.alertaModal("Erro", "Erro ao salvar o arquivo ComicInfo.xml. " + e.message)
+        }
+    }
+
+    private fun extraiSumario(arquivo: File): File? {
+        var sumario : File? = null
+        var proc: Process? = null
+
+        for (arquivos in mPASTA_TEMPORARIA.listFiles()!!) {
+            if (arquivos.name.contains("zSumário", ignoreCase = true))
+                arquivos.delete()
+        }
+
+        val comando = "rar e -ma4 -y " + '"' + arquivo.path + '"' + " " + '"' + mPASTA_TEMPORARIA.path + '"' + " " + '"' + "*zSumário.*" + '"'
+        try {
+            val rt: Runtime = Runtime.getRuntime()
+            proc = rt.exec(comando)
+            var resultado = ""
+            val stdInput = BufferedReader(InputStreamReader(proc.inputStream))
+            var s: String?
+            while (stdInput.readLine().also { s = it } != null)
+                resultado += "$s"
+
+            s = null
+            var error = ""
+            val stdError = BufferedReader(InputStreamReader(proc.errorStream))
+            while (stdError.readLine().also { s = it } != null)
+                error += "$s"
+            if (resultado.isEmpty() && error.isNotEmpty())
+                mLOG.info("Error comand: $resultado Não foi possível extrair o sumário.")
+            else {
+                for (arquivos in mPASTA_TEMPORARIA.listFiles()!!) {
+                    if (arquivos.name.contains("zSumário", ignoreCase = true)) {
+                        sumario = arquivos
+                        break
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            mLOG.error(e.message, e)
+        } finally {
+            proc?.destroy()
+        }
+        return sumario
+    }
+
+    private fun ocrItem(item: Processar) {
+        val sumario = extraiSumario(item.file!!) ?: return
+        val capitulos = Ocr.processaGemini(sumario, txtSeparadorCapitulo.text).split("\n")
+        val newTag = mutableSetOf<String>()
+        val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
+
+        var index = -1
+        for (tag in tags) {
+            if (tag.contains("capítulo", ignoreCase = true) || tag.contains("第", ignoreCase = true)) {
+                index++
+                val capitulo = if (index < capitulos.size) capitulos[index] else ""
+                newTag.add("$tag - $capitulo")
+            } else
+                newTag.add(tag)
+        }
+
+        if (index < capitulos.size) {
+            for (i in index + 1 until capitulos.size)
+                newTag.add("0$SEPARADOR_IMAGEM${capitulos[i]}")
+        }
+
+        item.tags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
+        tbViewOcr.refresh()
+    }
+
     fun setLog(texto: String, isError : Boolean = false) {
         if (isError) {
             lblAlerta.text = texto
@@ -2262,6 +2546,11 @@ class TelaInicialController : Initializable {
         clTag.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
             e.tableView.items[e.tablePosition.row].tag = e.newValue
         }
+
+        clOCRTags.cellFactory = TextAreaTableCell.forTableColumn()
+        clOCRTags.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
+            e.tableView.items[e.tablePosition.row].tags = e.newValue
+        }
     }
 
     private fun linkaCelulas() {
@@ -2274,6 +2563,43 @@ class TelaInicialController : Initializable {
         clMalNome.cellValueFactory = PropertyValueFactory("nome")
         clMalSite.cellValueFactory = PropertyValueFactory("site")
         clMalImagem.cellValueFactory = PropertyValueFactory("imagem")
+
+        clOCRArquivo.cellValueFactory = PropertyValueFactory("arquivo")
+        clOCRSerie.setCellValueFactory { param ->
+            val item = param.value
+            if (item.comicInfo != null)
+                SimpleStringProperty(item.comicInfo!!.series)
+            else
+                SimpleStringProperty("")
+        }
+
+        clOCRTitulo.setCellValueFactory { param ->
+            val item = param.value
+            if (item.comicInfo != null)
+                SimpleStringProperty(item.comicInfo!!.title)
+            else
+                SimpleStringProperty("")
+        }
+
+        clOCREditora.setCellValueFactory { param ->
+            val item = param.value
+            if (item.comicInfo != null)
+                SimpleStringProperty(item.comicInfo!!.publisher)
+            else
+                SimpleStringProperty("")
+        }
+
+        clOCRPublicacao.setCellValueFactory { param ->
+            val item = param.value
+            if (item.comicInfo != null && item.comicInfo!!.year != null)
+                SimpleStringProperty("${item.comicInfo!!.day}/${item.comicInfo!!.month}/${item.comicInfo!!.year}")
+            else
+                SimpleStringProperty("")
+        }
+
+        clOCRTags.cellValueFactory = PropertyValueFactory("tags")
+        clProcessarOCR.cellValueFactory = PropertyValueFactory("processar")
+        clSalvarOCR.cellValueFactory = PropertyValueFactory("salvar")
 
         editaColunas()
         selecionaImagens()
@@ -2842,6 +3168,9 @@ class TelaInicialController : Initializable {
     }
 
     companion object {
+        private val COMICINFO = "ComicInfo.xml"
+        private val SEPARADOR_IMAGEM = ";"
+
         private const val IMAGE_PATTERN = "(.*/)*.+\\.(png|jpg|gif|bmp|jpeg|PNG|JPG|GIF|BMP|JPEG)$"
         private var LAST_PROCESS_FOLDERS: MutableList<File> = ArrayList()
         private const val NUMBER_PATTERN = "[\\d.]+"
