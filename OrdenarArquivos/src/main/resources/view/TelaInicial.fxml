@@ -513,7 +513,7 @@
                                                    <children>
                                                       <HBox alignment="CENTER" minWidth="340.0" spacing="2.0" HBox.hgrow="ALWAYS">
                                                          <children>
-                                                            <JFXTextField fx:id="txtPastaOcr" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta de Processar" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                                                            <JFXTextField fx:id="txtPastaOcr" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta para carregar itens" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
                                                             <JFXButton fx:id="btnPesquisarPastaOcr" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPastaOcr" styleClass="background-Black3">
                                                                <graphic>
                                                                   <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
@@ -525,9 +525,10 @@
                                                             </JFXButton>
                                                          </children>
                                                       </HBox>
-                                                      <HBox alignment="CENTER_LEFT" prefWidth="200.0" spacing="10.0">
+                                                      <HBox alignment="CENTER_LEFT" spacing="10.0">
                                                          <children>
-                                                            <JFXButton fx:id="btnOcrProcessar" onAction="#onBtnOcrProcessar" prefHeight="25.0" prefWidth="100.0" styleClass="background-Blue3" text="Processar" textFill="WHITE" />
+                                                            <JFXButton fx:id="btnOcrCarregar" onAction="#onBtnOcrCarregar" prefHeight="25.0" prefWidth="120.0" styleClass="background-Blue3" text="Carregar" textFill="WHITE" />
+                                                            <JFXButton fx:id="btnOcrProcessar" accessibleText="PROCESSA" onAction="#onBtnOcrProcessar" prefHeight="30.0" prefWidth="130.0" styleClass="background-Green2" text="OCR proximos 10" textFill="WHITE" />
                                                          </children>
                                                       </HBox>
                                                    </children>
@@ -537,6 +538,7 @@
                                                 </HBox>
                                                 <TableView fx:id="tbViewOcr" editable="true" prefHeight="400.0" prefWidth="400.0" VBox.vgrow="ALWAYS">
                                                    <columns>
+                                                      <TableColumn fx:id="clOCRProcessado" prefWidth="40.0" />
                                                       <TableColumn fx:id="clOCRArquivo" prefWidth="200.0" text="Arquivo" />
                                                       <TableColumn fx:id="clOCRSerie" prefWidth="100.0" text="Série" />
                                                       <TableColumn fx:id="clOCRTitulo" prefWidth="100.0" text="Título" />

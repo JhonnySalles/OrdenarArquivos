@@ -1,6 +1,7 @@
 package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.animation.Animacao
+import com.fenix.ordenararquivos.components.CheckBoxTableCellCustom
 import com.fenix.ordenararquivos.components.TextAreaTableCell
 import com.fenix.ordenararquivos.exceptions.LibException
 import com.fenix.ordenararquivos.model.*
@@ -30,6 +31,7 @@ import javafx.application.Platform
 import javafx.beans.InvalidationListener
 import javafx.beans.Observable
 import javafx.beans.property.ReadOnlyProperty
+import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.beans.value.ChangeListener
 import javafx.beans.value.ObservableValue
@@ -43,6 +45,7 @@ import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.geometry.Point2D
+import javafx.geometry.Pos
 import javafx.scene.Cursor
 import javafx.scene.Scene
 import javafx.scene.control.*
@@ -334,10 +337,16 @@ class TelaInicialController : Initializable {
     private lateinit var btnPesquisarPastaOcr: JFXButton
 
     @FXML
+    private lateinit var btnOcrCarregar: JFXButton
+
+    @FXML
     private lateinit var btnOcrProcessar: JFXButton
 
     @FXML
     private lateinit var tbViewOcr: TableView<Processar>
+
+    @FXML
+    private lateinit var clOCRProcessado: TableColumn<Processar, Boolean>
 
     @FXML
     private lateinit var clOCRArquivo: TableColumn<Processar, String>
@@ -649,8 +658,22 @@ class TelaInicialController : Initializable {
     }
 
     @FXML
-    private fun onBtnOcrProcessar() {
+    private fun onBtnOcrCarregar() {
         carregarItensOcr()
+    }
+
+    @FXML
+    private fun onBtnOcrProcessar() {
+        if (mObsListaOCR.isNotEmpty()) {
+            if (btnOcrProcessar.accessibleTextProperty().value.equals("PROCESSA", ignoreCase = true)) {
+                btnOcrProcessar.accessibleTextProperty().set("CANCELA")
+                btnOcrProcessar.text = "Cancelar"
+                apGlobal.cursorProperty().set(Cursor.WAIT)
+                desabilita()
+                processaOCR()
+            } else
+                mCANCELAR = true
+        }
     }
 
     @FXML
@@ -678,6 +701,10 @@ class TelaInicialController : Initializable {
         btnLimpar.isDisable = true
         btnImportar.isDisable = true
         tbViewTabela.isDisable = true
+        txtPastaOcr.isDisable = true
+        btnPesquisarPastaOcr.isDisable = true
+        btnOcrCarregar.isDisable = true
+        tbViewOcr.isDisable = true
     }
 
     private fun habilita() {
@@ -697,6 +724,12 @@ class TelaInicialController : Initializable {
         tbViewTabela.isDisable = false
         btnProcessar.accessibleTextProperty().set("PROCESSA")
         btnProcessar.text = "Processar"
+        txtPastaOcr.isDisable = false
+        btnPesquisarPastaOcr.isDisable = false
+        btnOcrCarregar.isDisable = false
+        tbViewOcr.isDisable = false
+        btnOcrProcessar.accessibleTextProperty().set("PROCESSA")
+        btnOcrProcessar.text = "OCR proximos 10"
         apGlobal.cursorProperty().set(null)
     }
 
@@ -2126,6 +2159,89 @@ class TelaInicialController : Initializable {
         }
     }
 
+    private fun processaOCR() {
+        val separador = txtSeparadorCapitulo.text
+        val processaOCR: Task<Boolean> = object : Task<Boolean>() {
+            override fun call(): Boolean {
+                try {
+                    mCANCELAR = false
+                    val max = 10L
+                    var i = 0
+                    updateMessage("Processando o OCR...")
+
+                    for (item in mObsListaOCR) {
+                        if (item.isProcessado)
+                            continue
+                        i++
+                        if (mCANCELAR || i > max)
+                            break
+
+                        updateProgress(i.toLong(), max)
+                        updateMessage("Processando item " + i + " de " + max + ". Processando OCR - " + item.arquivo)
+
+                        val sumario = extraiSumario(item.file!!)
+                        if (sumario == null) {
+                            i--
+                            continue
+                        }
+
+                        val capitulos = Ocr.processaGemini(sumario, separador).split("\n")
+                        val newTag = mutableSetOf<String>()
+                        val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
+
+                        var index = -1
+                        for (tag in tags) {
+                            if (tag.contains("capítulo", ignoreCase = true) || tag.contains("第", ignoreCase = true)) {
+                                index++
+                                val capitulo = if (index < capitulos.size) capitulos[index] else ""
+                                newTag.add("$tag - $capitulo")
+                            } else
+                                newTag.add(tag)
+                        }
+
+                        if (index < capitulos.size) {
+                            for (i in index + 1 until capitulos.size)
+                                newTag.add("0$SEPARADOR_IMAGEM${capitulos[i]}")
+                        }
+
+                        item.tags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
+                        item.isProcessado = true
+                    }
+
+                    if (!mCANCELAR) {
+                        updateProgress(max, max)
+                        updateMessage("Processamento de OCR finalizado.")
+                    }
+                } catch (e: Exception) {
+                    mLOG.error("Erro ao processar o OCR.", e)
+                    Platform.runLater { AlertasPopup.erroModal("Erro ao processar o OCR", e.stackTrace.toString()) }
+                }
+                return true
+            }
+
+            override fun succeeded() {
+                updateMessage("OCR processado com sucesso.")
+                pbProgresso.progressProperty().unbind()
+                lblProgresso.textProperty().unbind()
+                habilita()
+                tbViewOcr.refresh()
+            }
+
+            override fun failed() {
+                super.failed()
+                updateMessage("Erro ao processar o OCR.")
+                AlertasPopup.erroModal("Erro ao processar o OCR", super.getMessage())
+                habilita()
+                tbViewOcr.refresh()
+            }
+        }
+        pbProgresso.progressProperty().bind(processaOCR.progressProperty())
+        lblProgresso.textProperty().bind(processaOCR.messageProperty())
+        val t = Thread(processaOCR)
+        t.isDaemon = true
+        t.start()
+    }
+
     private fun extraiInfo(arquivo: File): File? {
         var comicInfo : File? = null
         var proc: Process? = null
@@ -2191,7 +2307,7 @@ class TelaInicialController : Initializable {
     private fun carregarItensOcr() {
         val pasta = File(txtPastaOcr.text)
         if (txtPastaOcr.text.isNotEmpty() && pasta.exists()) {
-            btnOcrProcessar.isDisable = true
+            btnOcrCarregar.isDisable = true
 
             val ocr: Task<Void> = object : Task<Void>() {
                 override fun call(): Void? {
@@ -2238,7 +2354,7 @@ class TelaInicialController : Initializable {
                 }
                 override fun succeeded() {
                     Platform.runLater {
-                        btnOcrProcessar.isDisable = false
+                        btnOcrCarregar.isDisable = false
                     }
                 }
             }
@@ -2348,6 +2464,7 @@ class TelaInicialController : Initializable {
         }
 
         item.tags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
+        item.isProcessado = true
         tbViewOcr.refresh()
     }
 
@@ -2547,6 +2664,22 @@ class TelaInicialController : Initializable {
             e.tableView.items[e.tablePosition.row].tag = e.newValue
         }
 
+        clOCRProcessado.setCellValueFactory { param ->
+            val item = param.value
+
+            val booleanProp = SimpleBooleanProperty(item.isProcessado)
+            booleanProp.addListener { _, _, newValue ->
+                item.isProcessado = newValue
+                tbViewOcr.refresh()
+            }
+            return@setCellValueFactory booleanProp
+        }
+        clOCRProcessado.setCellFactory {
+            val cell : CheckBoxTableCellCustom<Processar, Boolean> = CheckBoxTableCellCustom()
+            cell.alignment = Pos.CENTER
+            cell
+        }
+
         clOCRTags.cellFactory = TextAreaTableCell.forTableColumn()
         clOCRTags.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
             e.tableView.items[e.tablePosition.row].tags = e.newValue
@@ -2659,6 +2792,7 @@ class TelaInicialController : Initializable {
         clMalSite.cellValueFactory = PropertyValueFactory("site")
         clMalImagem.cellValueFactory = PropertyValueFactory("imagem")
 
+        clOCRProcessado.cellValueFactory = PropertyValueFactory("isProcessado")
         clOCRArquivo.cellValueFactory = PropertyValueFactory("arquivo")
         clOCRSerie.setCellValueFactory { param ->
             val item = param.value

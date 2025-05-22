@@ -11,5 +11,5 @@ data class Processar(
     var comicInfo: ComicInfo? = null,
     var processar: JFXButton? = null,
     var salvar: JFXButton? = null,
-    var isMarcado: Boolean = false
+    var isProcessado: Boolean = false
 )
