@@ -2194,14 +2194,14 @@ class TelaInicialController : Initializable {
                             if (tag.contains("capítulo", ignoreCase = true) || tag.contains("第", ignoreCase = true)) {
                                 index++
                                 val capitulo = if (index < capitulos.size) capitulos[index] else ""
-                                newTag.add("$tag - $capitulo")
+                                newTag.add("$tag $SEPARADOR_CAPITULO $capitulo")
                             } else
                                 newTag.add(tag)
                         }
 
                         if (index < capitulos.size) {
                             for (i in index + 1 until capitulos.size)
-                                newTag.add("0$SEPARADOR_IMAGEM${capitulos[i]}")
+                                newTag.add("0$SEPARADOR_IMAGEM Capítulo novo $SEPARADOR_CAPITULO ${capitulos[i]}")
                         }
 
                         item.tags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
@@ -2225,6 +2225,7 @@ class TelaInicialController : Initializable {
                 lblProgresso.textProperty().unbind()
                 habilita()
                 tbViewOcr.refresh()
+                Notificacoes.notificacao(Notificacao.SUCESSO, "OCR Capítulos", "OCR processado com sucesso.")
             }
 
             override fun failed() {
@@ -2335,9 +2336,9 @@ class TelaInicialController : Initializable {
                             val item = Processar(arquivo.name, tags, arquivo, comic, processar, salvar)
 
                             processar.styleClass.add("background-White1")
-                            processar.setOnAction { ocrItem(item) }
+                            processar.setOnAction { processarOcrItem(item) }
                             salvar.styleClass.add("background-White1")
-                            salvar.setOnAction { salvarItem(item) }
+                            salvar.setOnAction { salvarOcrItem(item) }
 
                             lista.add(item)
                         }
@@ -2367,7 +2368,7 @@ class TelaInicialController : Initializable {
     }
 
 
-    private fun salvarItem(item: Processar) {
+    private fun salvarOcrItem(item: Processar) {
         try {
             val info = File(item.file!!.parent, "ComicInfo.xml")
             if (info.exists())
@@ -2377,11 +2378,12 @@ class TelaInicialController : Initializable {
             for (tag in tags) {
                 val imagem = tag.substringBefore(SEPARADOR_IMAGEM)
                 var capitulo = tag.substringAfter(SEPARADOR_IMAGEM).trim()
+
+                if (capitulo.endsWith(SEPARADOR_CAPITULO))
+                    capitulo = capitulo.substringBeforeLast(SEPARADOR_CAPITULO).trim()
+
                 if (capitulo.isEmpty())
                     continue
-
-                if (capitulo.endsWith("-"))
-                    capitulo = capitulo.substringBeforeLast("-").trim()
 
                 val page = item.comicInfo?.pages?.firstOrNull { it.image.toString() == imagem } ?: continue
                 page.bookmark = capitulo
@@ -2396,7 +2398,7 @@ class TelaInicialController : Initializable {
             mObsListaOCR.remove(item)
         } catch (e: Exception) {
             mLOG.error(e.message, e)
-            AlertasPopup.alertaModal("Erro", "Erro ao salvar o arquivo ComicInfo.xml. " + e.message)
+            AlertasPopup.alertaModal("Erro", "Erro ao salvar o OCR no arquivo ComicInfo.xml. " + e.message)
         }
     }
 
@@ -2442,7 +2444,7 @@ class TelaInicialController : Initializable {
         return sumario
     }
 
-    private fun ocrItem(item: Processar) {
+    private fun processarOcrItem(item: Processar) {
         val sumario = extraiSumario(item.file!!) ?: return
         val capitulos = Ocr.processaGemini(sumario, txtSeparadorCapitulo.text).split("\n")
         val newTag = mutableSetOf<String>()
@@ -2453,14 +2455,14 @@ class TelaInicialController : Initializable {
             if (tag.contains("capítulo", ignoreCase = true) || tag.contains("第", ignoreCase = true)) {
                 index++
                 val capitulo = if (index < capitulos.size) capitulos[index] else ""
-                newTag.add("$tag - $capitulo")
+                newTag.add("$tag $SEPARADOR_CAPITULO $capitulo")
             } else
                 newTag.add(tag)
         }
 
         if (index < capitulos.size) {
             for (i in index + 1 until capitulos.size)
-                newTag.add("0$SEPARADOR_IMAGEM${capitulos[i]}")
+                newTag.add("-1$SEPARADOR_IMAGEM Capítulo novo $SEPARADOR_CAPITULO ${capitulos[i]}")
         }
 
         item.tags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
@@ -2692,7 +2694,7 @@ class TelaInicialController : Initializable {
                 when (key.code) {
                     KeyCode.UP,
                     KeyCode.DOWN -> {
-                        if (textArea.text.isEmpty() || !textArea.text.contains("\n") || !textArea.text.contains(txtSeparadorCapitulo.text))
+                        if (textArea.text.isEmpty() || !textArea.text.contains("\n") || !textArea.text.contains(SEPARADOR_CAPITULO))
                             return@setOnKeyPress true
 
                         val lastCaretPos = textArea.caretPosition
@@ -2705,10 +2707,9 @@ class TelaInicialController : Initializable {
                         val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
                         val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
 
-                        if (!line.contains(txtSeparadorCapitulo.text))
+                        if (!line.contains(SEPARADOR_CAPITULO))
                             return@setOnKeyPress true
 
-                        val separador = txtSeparadorCapitulo.text
                         var caret = before.indexOf(line)
 
                         var index = -1
@@ -2726,7 +2727,7 @@ class TelaInicialController : Initializable {
 
                                 var spaco = -1
                                 for (i in (index - 1) downTo 2) {
-                                    if (!lines[i].contains(separador)) {
+                                    if (!lines[i].contains(SEPARADOR_CAPITULO)) {
                                         spaco = i
                                         break
                                     }
@@ -2737,15 +2738,15 @@ class TelaInicialController : Initializable {
                                     inicio = spaco + 1
 
                                 for (i in inicio until index + 1) {
-                                    lines[i-1] = lines[i-1] + if (lines[i].contains(separador)) separador + lines[i].substringAfterLast(separador) else ""
-                                    lines[i] = lines[i].substringBeforeLast(separador)
+                                    lines[i-1] = lines[i-1] + if (lines[i].contains(SEPARADOR_CAPITULO)) SEPARADOR_CAPITULO + lines[i].substringAfterLast(SEPARADOR_CAPITULO) else ""
+                                    lines[i] = lines[i].substringBeforeLast(SEPARADOR_CAPITULO)
                                 }
                             }
                         } else if (key.code == KeyCode.DOWN) {
                             if (index < lines.size - 1) {
                                 var spaco = -1
                                 for (i in index + 1 until lines.size) {
-                                    if (!lines[i].contains(separador)) {
+                                    if (!lines[i].contains(SEPARADOR_CAPITULO)) {
                                         spaco = i
                                         break
                                     }
@@ -2756,8 +2757,8 @@ class TelaInicialController : Initializable {
                                     inicio = spaco - 1
 
                                 for (i in inicio downTo index) {
-                                    lines[i+1] = lines[i+1] + if (lines[i].contains(separador)) separador + lines[i].substringAfterLast(separador) else ""
-                                    lines[i] = lines[i].substringBeforeLast(separador)
+                                    lines[i+1] = lines[i+1] + if (lines[i].contains(SEPARADOR_CAPITULO)) SEPARADOR_CAPITULO + lines[i].substringAfterLast(SEPARADOR_CAPITULO) else ""
+                                    lines[i] = lines[i].substringBeforeLast(SEPARADOR_CAPITULO)
                                 }
                             }
                         }
@@ -2765,9 +2766,9 @@ class TelaInicialController : Initializable {
                         textArea.text = lines.joinToString(separator = "\n")
 
                         if (key.code == KeyCode.UP)
-                            caret = textArea.text.substring(0, caret).lastIndexOf(separador)
+                            caret = textArea.text.substring(0, caret).lastIndexOf(SEPARADOR_CAPITULO)
                         else
-                            caret = textArea.text.indexOf(separador, caret)
+                            caret = textArea.text.indexOf(SEPARADOR_CAPITULO, caret)
 
                         textArea.positionCaret(caret)
                         textArea.scrollTop = scroll
@@ -3488,6 +3489,7 @@ class TelaInicialController : Initializable {
     companion object {
         private val COMICINFO = "ComicInfo.xml"
         private val SEPARADOR_IMAGEM = ";"
+        private val SEPARADOR_CAPITULO = "#"
 
         private const val IMAGE_PATTERN = "(.*/)*.+\\.(png|jpg|gif|bmp|jpeg|PNG|JPG|GIF|BMP|JPEG)$"
         private var LAST_PROCESS_FOLDERS: MutableList<File> = ArrayList()
