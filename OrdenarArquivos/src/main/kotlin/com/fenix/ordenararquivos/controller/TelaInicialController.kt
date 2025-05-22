@@ -2053,14 +2053,14 @@ class TelaInicialController : Initializable {
 
             val pasta = txtNomePastaCapitulo.text.trim { it <= ' ' }
             for (ls in linhas) {
-                val texto = if (ls.contains(separador)) ls.substringAfter(separador) else ls
+                val texto = if (ls.contains(separador)) ls.substringBefore(separador) else ls
                 linha = texto.split(txtSeparadorPagina.text.toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
                 nomePasta = if (pasta.equals("Capítulo", ignoreCase = true) && linha[0].uppercase(Locale.getDefault()).contains("EXTRA"))
                     linha[0].trim { it <= ' ' }
                 else
                     pasta + " " + linha[0].trim { it <= ' ' }
 
-                val tag = if (cbGerarCapitulo.isSelected && ls.contains(separador)) ls.substringBefore(separador) else ""
+                val tag = if (cbGerarCapitulo.isSelected && ls.contains(separador)) ls.substringAfter(separador) else ""
                 mListaCaminhos.add(Caminhos(linha[0], linha[1].trim(), nomePasta, tag))
             }
             mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
@@ -2551,6 +2551,101 @@ class TelaInicialController : Initializable {
         clOCRTags.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
             e.tableView.items[e.tablePosition.row].tags = e.newValue
         }
+
+        TextAreaTableCell.setOnKeyPress { pair ->
+            val textArea = pair.key
+            val key = pair.value
+            if (key.isShiftDown && key.isAltDown) {
+                when (key.code) {
+                    KeyCode.UP,
+                    KeyCode.DOWN -> {
+                        if (textArea.text.isEmpty() || !textArea.text.contains("\n") || !textArea.text.contains(txtSeparadorCapitulo.text))
+                            return@setOnKeyPress true
+
+                        val lastCaretPos = textArea.caretPosition
+
+                        val txt = textArea.text ?: ""
+                        val lines = txt.split("\n").toMutableList()
+                        val scroll = textArea.scrollTopProperty().value
+
+                        val before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
+                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+                        val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
+
+                        if (!line.contains(txtSeparadorCapitulo.text))
+                            return@setOnKeyPress true
+
+                        val separador = txtSeparadorCapitulo.text
+                        var caret = before.indexOf(line)
+
+                        var index = -1
+                        for ((idx, item) in lines.withIndex()) {
+                            if (item == line) {
+                                index = idx
+                                break
+                            }
+                        }
+
+                        if (key.code == KeyCode.UP) {
+                            if (index > 0) {
+                                if (index >= lines.size)
+                                    index = lines.size - 2
+
+                                var spaco = -1
+                                for (i in (index - 1) downTo 2) {
+                                    if (!lines[i].contains(separador)) {
+                                        spaco = i
+                                        break
+                                    }
+                                }
+
+                                var inicio = 1
+                                if (spaco > 0)
+                                    inicio = spaco + 1
+
+                                for (i in inicio until index + 1) {
+                                    lines[i-1] = lines[i-1] + if (lines[i].contains(separador)) separador + lines[i].substringAfterLast(separador) else ""
+                                    lines[i] = lines[i].substringBeforeLast(separador)
+                                }
+                            }
+                        } else if (key.code == KeyCode.DOWN) {
+                            if (index < lines.size - 1) {
+                                var spaco = -1
+                                for (i in index + 1 until lines.size) {
+                                    if (!lines[i].contains(separador)) {
+                                        spaco = i
+                                        break
+                                    }
+                                }
+
+                                var inicio = lines.size - 2
+                                if (spaco > 0 && spaco < lines.size -1)
+                                    inicio = spaco - 1
+
+                                for (i in inicio downTo index) {
+                                    lines[i+1] = lines[i+1] + if (lines[i].contains(separador)) separador + lines[i].substringAfterLast(separador) else ""
+                                    lines[i] = lines[i].substringBeforeLast(separador)
+                                }
+                            }
+                        }
+
+                        textArea.text = lines.joinToString(separator = "\n")
+
+                        if (key.code == KeyCode.UP)
+                            caret = textArea.text.substring(0, caret).lastIndexOf(separador)
+                        else
+                            caret = textArea.text.indexOf(separador, caret)
+
+                        textArea.positionCaret(caret)
+                        textArea.scrollTop = scroll
+                    }
+                    else -> {}
+                }
+            }
+
+            return@setOnKeyPress true
+        }
+
     }
 
     private fun linkaCelulas() {
@@ -2801,7 +2896,7 @@ class TelaInicialController : Initializable {
 
         var lastCaretPos = 0
         txtAreaImportar.onKeyPressed = EventHandler { e: KeyEvent ->
-            if (e.isControlDown && !e.isShiftDown) {
+            if (e.isControlDown && !e.isShiftDown && !e.isAltDown) {
                 when (e.code) {
                     KeyCode.ENTER -> onBtnImporta()
                     KeyCode.D,
@@ -2821,9 +2916,13 @@ class TelaInicialController : Initializable {
 
                         val pipe = txtSeparadorPagina.text
                         val separador = txtSeparadorCapitulo.text
-                        val tag = if (line.contains(separador)) line.substringBefore(separador) + separador else ""
-                        val texto = if (line.contains(separador)) line.substringAfter(separador) + separador else line
-                        val page = if (line.contains(pipe)) line.substringAfter(pipe) else ""
+                        var tag = ""
+                        val texto = if (line.contains(separador)) {
+                            tag = separador + line.substringAfter(separador)
+                            line.substringBefore(separador)
+                        } else
+                            line
+                        val page = if (texto.contains(pipe)) texto.substringAfter(pipe) else ""
 
                         val newLine = when (e.code) {
                             KeyCode.E -> {
@@ -2832,16 +2931,16 @@ class TelaInicialController : Initializable {
                                     val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
                                     var sequence = txt.split("\n").last { !it.contains("extra", ignoreCase = true) }
                                     sequence = if (sequence.contains(pipe)) sequence.substringBefore(pipe) else sequence
-                                    tag + (getNumber(sequence)?.toInt()?.let { "${String.format(padding, it+1)}$pipe$page" } ?: sequence)
+                                    (getNumber(sequence)?.toInt()?.let { "${String.format(padding, it+1)}$pipe$page" } ?: sequence) + tag
                                 } else {
                                     val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
-                                    "${tag}Extra ${String.format("%02d", count + 1)}$pipe$page"
+                                    "Extra ${String.format("%02d", count + 1)}$pipe$page$tag"
                                 }
                             }
                             KeyCode.D ->  {
                                 if (line.contains("extra", true) && last.isEmpty()) {
                                     val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
-                                    line + "\n" + "${tag}Extra ${String.format("%02d", count + 1)}$pipe$page"
+                                    line + "\n" + "Extra ${String.format("%02d", count + 1)}$pipe$page$tag"
                                 } else
                                     line + "\n" + line
                             }
@@ -2850,7 +2949,7 @@ class TelaInicialController : Initializable {
                                 if (texto.contains("extra", true)) {
                                     val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
                                     val number = if (e.code == KeyCode.DIGIT0 || e.code == KeyCode.NUMPAD0) count else e.text.toInt()
-                                    "${tag}Extra ${String.format("%02d", number)}$pipe$page"
+                                    "Extra ${String.format("%02d", number)}$pipe$page$tag"
                                 } else {
                                     val chapter = if (texto.contains("."))
                                         texto.substringBefore(".")
@@ -2859,22 +2958,23 @@ class TelaInicialController : Initializable {
                                     else
                                         texto
                                     val number = if (e.code == KeyCode.DIGIT0 || e.code == KeyCode.NUMPAD0) "" else "." + e.text
-                                    "$tag$chapter$number$pipe$page"
+                                    "$chapter$number$pipe$page$tag"
                                 }
                             }
                             else -> line
                         }
 
                         val newText = before + newLine + last
+                        val position = if (newLine.contains(separador)) newLine.lastIndexOf(separador) else newLine.length
 
                         txtAreaImportar.text = newText
-                        lastCaretPos = before.length + newLine.length
+                        lastCaretPos = before.length + position
                         txtAreaImportar.positionCaret(lastCaretPos)
                         txtAreaImportar.scrollTop = scroll
                     }
                     else -> {}
                 }
-            } else if (e.isControlDown && e.isShiftDown) {
+            } else if (e.isControlDown && (e.isShiftDown || e.isAltDown)) {
                 when (e.code) {
                     KeyCode.UP,
                     KeyCode.DOWN -> {
@@ -2933,6 +3033,90 @@ class TelaInicialController : Initializable {
 
                         txtAreaImportar.text = newText.substringBeforeLast("\n")
                         txtAreaImportar.positionCaret(txtAreaImportar.text.indexOf(line))
+                        txtAreaImportar.scrollTop = scroll
+                    }
+                    else -> {}
+                }
+            } else if (e.isShiftDown && e.isAltDown) {
+                when (e.code) {
+                    KeyCode.UP,
+                    KeyCode.DOWN -> {
+                        if (txtAreaImportar.text.isEmpty() || !txtAreaImportar.text.contains("\n") || !txtAreaImportar.text.contains(txtSeparadorCapitulo.text))
+                            return@EventHandler
+
+                        val txt = txtAreaImportar.text ?: ""
+                        val lines = txt.split("\n").toMutableList()
+                        val scroll = txtAreaImportar.scrollTopProperty().value
+
+                        val before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
+                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+                        val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
+
+                        if (!line.contains(txtSeparadorCapitulo.text))
+                            return@EventHandler
+
+                        val separador = txtSeparadorCapitulo.text
+                        var caret = before.indexOf(line)
+
+                        var index = -1
+                        for ((idx, item) in lines.withIndex()) {
+                            if (item == line) {
+                                index = idx
+                                break
+                            }
+                        }
+
+                        if (e.code == KeyCode.UP) {
+                            if (index > 0) {
+                                if (index >= lines.size)
+                                    index = lines.size - 2
+
+                                var spaco = -1
+                                for (i in (index - 1) downTo 2) {
+                                    if (!lines[i].contains(separador)) {
+                                        spaco = i
+                                        break
+                                    }
+                                }
+
+                                var inicio = 1
+                                if (spaco > 0)
+                                    inicio = spaco + 1
+
+                                for (i in inicio until index + 1) {
+                                    lines[i-1] = lines[i-1] + if (lines[i].contains(separador)) separador + lines[i].substringAfterLast(separador) else ""
+                                    lines[i] = lines[i].substringBeforeLast(separador)
+                                }
+                            }
+                        } else if (e.code == KeyCode.DOWN) {
+                            if (index < lines.size - 1) {
+                                var spaco = -1
+                                for (i in index + 1 until lines.size) {
+                                    if (!lines[i].contains(separador)) {
+                                        spaco = i
+                                        break
+                                    }
+                                }
+
+                                var inicio = lines.size - 2
+                                if (spaco > 0 && spaco < lines.size -1)
+                                    inicio = spaco - 1
+
+                                for (i in inicio downTo index) {
+                                    lines[i+1] = lines[i+1] + if (lines[i].contains(separador)) separador + lines[i].substringAfterLast(separador) else ""
+                                    lines[i] = lines[i].substringBeforeLast(separador)
+                                }
+                            }
+                        }
+
+                        txtAreaImportar.text = lines.joinToString(separator = "\n")
+
+                        if (e.code == KeyCode.UP)
+                            caret = txtAreaImportar.text.substring(0, caret).lastIndexOf(separador)
+                        else
+                            caret = txtAreaImportar.text.indexOf(separador, caret)
+
+                        txtAreaImportar.positionCaret(caret)
                         txtAreaImportar.scrollTop = scroll
                     }
                     else -> {}

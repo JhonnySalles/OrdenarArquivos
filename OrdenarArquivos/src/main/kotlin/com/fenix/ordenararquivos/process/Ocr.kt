@@ -156,7 +156,7 @@ object Ocr {
 
     fun process(image : File, separadorPagina : String, separadorCapitulo: String) : String {
         return if (mGemini)
-            processGemini(image, String.format(TEXTO_PADRAO, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina))
+            processGemini(image, String.format(TEXTO_PADRAO, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo,))
         else
             ocrToCapitulo(processTesseract(image), separadorPagina, separadorCapitulo)
     }
@@ -547,7 +547,7 @@ object Ocr {
     }
 
     private const val URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
-    private const val TEXTO_PADRAO = "Esta é uma imagem de um sumário, extraia o texto nela e formate a saída separando os capitulos por linha, no formato 'Descrição do capítulo %s Número do capítulo %s Número da Página'. Por exemplo: 'Introdução%s000%s5', 'O Início%s001%s12', 'Apêndice A%s000%s150'. Não inclua cabeçalhos ou texto extra, apenas a lista formatada."
+    private const val TEXTO_PADRAO = "Esta é uma imagem de um sumário, extraia o texto nela e formate a saída separando os capitulos por linha, no formato 'Número do capítulo %s Número da Página %s Descrição do capítulo'. Por exemplo: '000%s5%sIntrodução', '001%s12%sO Início', '000%s150%sApêndice A'. Não inclua cabeçalhos ou texto extra, apenas a lista formatada."
 
     private fun processGemini(imagem : File, texto : String = "") : String {
         mLOG.info("Preparando consulta ao Gemini.")

@@ -1,5 +1,6 @@
 package com.fenix.ordenararquivos.components;
 
+import com.google.cloud.Tuple;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -8,11 +9,15 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.util.Callback;
+import javafx.util.Pair;
 import javafx.util.StringConverter;
 import javafx.util.converter.DefaultStringConverter;
 
 public class TextAreaTableCell<S, T> extends TableCell<S, T> {
+
+    private static Callback<Pair<TextArea, KeyEvent>, Boolean> keyPressHandler;
 
     public static <S> Callback<TableColumn<S, String>, TableCell<S, String>> forTableColumn() {
         return forTableColumn(new DefaultStringConverter());
@@ -29,6 +34,10 @@ public class TextAreaTableCell<S, T> extends TableCell<S, T> {
 
     private static <T> TextArea createTextArea(final Cell<T> cell, final StringConverter<T> converter) {
         TextArea textArea = new TextArea(getItemText(cell, converter));
+        textArea.setOnKeyPressed(t -> {
+            if (keyPressHandler != null)
+                keyPressHandler.call(new Pair<>(textArea, t));
+        });
         textArea.setOnKeyReleased(t -> {
             if (t.getCode() == KeyCode.ESCAPE) {
                 cell.cancelEdit();
@@ -135,6 +144,10 @@ public class TextAreaTableCell<S, T> extends TableCell<S, T> {
     public void updateItem(T item, boolean empty) {
         super.updateItem(item, empty);
         updateItem(this, getConverter());
+    }
+
+    public static void setOnKeyPress(Callback<Pair<TextArea, KeyEvent>, Boolean> value) {
+        keyPressHandler = value;
     }
 
 }
