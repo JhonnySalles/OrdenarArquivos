@@ -1076,6 +1076,9 @@ class TelaInicialController : Initializable {
         if (mComicInfo.comic.isEmpty())
             mComicInfo.comic = nome
 
+        if (mComicInfo.series.isEmpty())
+            mComicInfo.series = nome
+
         txtMalNome.text = mComicInfo.comic
         consultarMal()
     }

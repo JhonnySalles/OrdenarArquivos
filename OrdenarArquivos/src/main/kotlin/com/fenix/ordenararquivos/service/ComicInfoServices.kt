@@ -281,11 +281,11 @@ class ComicInfoServices {
 
     private val mDESCRIPTION_MAL = "Tagged with MyAnimeList on "
     fun updateMal(comic: ComicInfo, mal: Mal, linguagem : Linguagem) {
-        val mal = mal.mal
-        comic.idMal = mal.id
+        val dados = mal.mal
+        comic.idMal = dados.id
         comic.languageISO = linguagem.sigla
 
-        for (author in mal.authors) {
+        for (author in dados.authors) {
             if (author.role.equals("art", ignoreCase = true)) {
                 if (comic.penciller == null || comic.penciller!!.isEmpty())
                     comic.penciller = (author.firstName + " " + author.lastName).trim()
@@ -318,33 +318,34 @@ class ComicInfoServices {
 
         if (comic.genre == null || comic.genre!!.isEmpty()) {
             var genero = ""
-            for (genre in mal.genres)
+            for (genre in dados.genres)
                 genero += genre.name + "; "
             comic.genre = genero.substring(0, genero.lastIndexOf("; "))
         }
 
+        comic.series = mal.nome
         if (linguagem == Linguagem.PORTUGUESE) {
-            if (mal.alternativeTitles.english != null && mal.alternativeTitles.english.isNotEmpty()) {
-                comic.title = mal.title
-                comic.series = mal.alternativeTitles.english
+            if (dados.alternativeTitles.english != null && dados.alternativeTitles.english.isNotEmpty()) {
+                comic.title = dados.title
+                comic.series = dados.alternativeTitles.english
             }
         } else if (linguagem == Linguagem.JAPANESE) {
-            if (mal.alternativeTitles.japanese != null && mal.alternativeTitles.japanese.isNotEmpty())
-                comic.title = mal.alternativeTitles.japanese
+            if (dados.alternativeTitles.japanese != null && dados.alternativeTitles.japanese.isNotEmpty())
+                comic.title = dados.alternativeTitles.japanese
         }
 
         var title: String = comic.title
         if (comic.alternateSeries == null || comic.alternateSeries!!.isEmpty()) {
             title = ""
-            if (mal.alternativeTitles.japanese != null && mal.alternativeTitles.japanese.isNotEmpty())
-                title += mal.alternativeTitles.japanese + "; "
+            if (dados.alternativeTitles.japanese != null && dados.alternativeTitles.japanese.isNotEmpty())
+                title += dados.alternativeTitles.japanese + "; "
 
-            if (mal.alternativeTitles.english != null && mal.alternativeTitles.english.isNotEmpty())
-                title += mal.alternativeTitles.english + "; "
+            if (dados.alternativeTitles.english != null && dados.alternativeTitles.english.isNotEmpty())
+                title += dados.alternativeTitles.english + "; "
 
 
-            if (mal.alternativeTitles.synonyms != null)
-                for (synonym in mal.alternativeTitles.synonyms)
+            if (dados.alternativeTitles.synonyms != null)
+                for (synonym in dados.alternativeTitles.synonyms)
                     title += "$synonym; "
 
             if (title.isNotEmpty())
@@ -353,7 +354,7 @@ class ComicInfoServices {
 
         if (comic.publisher == null || comic.publisher!!.isEmpty()) {
             var publisher = ""
-            for (pub in mal.serialization)
+            for (pub in dados.serialization)
                 publisher += pub.name + "; "
 
             if (publisher.isNotEmpty())
@@ -366,22 +367,22 @@ class ComicInfoServices {
             if (comic.notes!!.contains(";")) {
                 for (note in comic.notes!!.split(";"))
                     notes += if (note.lowercase(Locale.getDefault()).contains(mDESCRIPTION_MAL.lowercase(Locale.getDefault())))
-                        mDESCRIPTION_MAL + dateTime.format(LocalDateTime.now()) + ". [Issue ID " + mal.id + "]; "
+                        mDESCRIPTION_MAL + dateTime.format(LocalDateTime.now()) + ". [Issue ID " + dados.id + "]; "
                     else
                         note.trim() + "; "
             } else if (comic.notes!!.lowercase(Locale.getDefault()).contains(mDESCRIPTION_MAL.lowercase(Locale.getDefault())))
-                notes = mDESCRIPTION_MAL + dateTime.format(LocalDateTime.now()) + ". [Issue ID " + mal.id + "]; "
+                notes = mDESCRIPTION_MAL + dateTime.format(LocalDateTime.now()) + ". [Issue ID " + dados.id + "]; "
             else
-                notes += ((comic.notes + "; " + mDESCRIPTION_MAL + dateTime.format(LocalDateTime.now())) + ". [Issue ID " + mal.id) + "]; "
+                notes += ((comic.notes + "; " + mDESCRIPTION_MAL + dateTime.format(LocalDateTime.now())) + ". [Issue ID " + dados.id) + "]; "
         } else
-            notes += mDESCRIPTION_MAL + dateTime.format(LocalDateTime.now()) + ". [Issue ID " + mal.id + "]; "
+            notes += mDESCRIPTION_MAL + dateTime.format(LocalDateTime.now()) + ". [Issue ID " + dados.id + "]; "
 
         comic.notes = notes.substring(0, notes.lastIndexOf("; "))
 
         try {
             val reqBuilder: HttpRequest.Builder = HttpRequest.newBuilder()
             val request: HttpRequest = reqBuilder
-                .uri(URI(String.format("https://api.jikan.moe/v4/manga/%s/characters", mal.id)))
+                .uri(URI(String.format("https://api.jikan.moe/v4/manga/%s/characters", dados.id)))
                 .GET()
                 .build()
             val response: HttpResponse<String> = HttpClient.newBuilder()
