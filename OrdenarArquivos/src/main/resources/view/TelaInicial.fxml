@@ -174,6 +174,7 @@
                                     <JFXCheckBox fx:id="cbCompactarArquivo" checkedColor="#4059a9" selected="true" text="Compactar arquivo" textFill="WHITE" unCheckedColor="GREY" />
                                     <JFXCheckBox fx:id="cbMesclarCapaTudo" checkedColor="#4059a9" selected="true" text="Mesclar capa tudo" textFill="WHITE" unCheckedColor="GREY" />
                                     <JFXCheckBox fx:id="cbAjustarMargemCapa" checkedColor="#4059a9" selected="true" text="Ajustar margem capa" textFill="WHITE" unCheckedColor="GREY" />
+                                    <JFXCheckBox fx:id="cbOcrSumario" checkedColor="#4059a9" selected="true" text="OCR no sumário" textFill="WHITE" unCheckedColor="GREY" />
                                     <JFXCheckBox fx:id="cbGerarCapitulo" checkedColor="#4059a9" selected="true" text="Gerar tag Capítulo" textFill="WHITE" unCheckedColor="GREY" />
                                  </children>
                               </VBox>

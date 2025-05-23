@@ -172,6 +172,9 @@ class TelaInicialController : Initializable {
     private lateinit var cbAjustarMargemCapa: JFXCheckBox
 
     @FXML
+    private lateinit var cbOcrSumario: JFXCheckBox
+
+    @FXML
     private lateinit var cbGerarCapitulo: JFXCheckBox
 
     @FXML
@@ -1199,7 +1202,7 @@ class TelaInicialController : Initializable {
             mObsListaImagesSelected.add(capa)
             copiaItem(img, mPASTA_TEMPORARIA)
 
-            if (tipo == TipoCapa.SUMARIO)
+            if (tipo == TipoCapa.SUMARIO && cbOcrSumario.isSelected)
                 ocrSumario(File(mPASTA_TEMPORARIA.toString() + "\\" + arquivo))
         }
     }
@@ -3034,6 +3037,10 @@ class TelaInicialController : Initializable {
             if (e.isControlDown && !e.isShiftDown && !e.isAltDown) {
                 when (e.code) {
                     KeyCode.ENTER -> onBtnImporta()
+                    KeyCode.S -> {
+                        if (mSugestao.suggestions.isNotEmpty())
+                            mSugestao.show(txtAreaImportar)
+                    }
                     KeyCode.D,
                     KeyCode.E,
                     in (KeyCode.NUMPAD0 .. KeyCode.NUMPAD9),
@@ -3246,10 +3253,10 @@ class TelaInicialController : Initializable {
 
                         txtAreaImportar.text = lines.joinToString(separator = "\n")
 
-                        if (e.code == KeyCode.UP)
-                            caret = txtAreaImportar.text.substring(0, caret).lastIndexOf(separador)
+                        caret = if (e.code == KeyCode.UP)
+                            txtAreaImportar.text.substring(0, caret).lastIndexOf(separador)
                         else
-                            caret = txtAreaImportar.text.indexOf(separador, caret)
+                            txtAreaImportar.text.indexOf(separador, caret)
 
                         txtAreaImportar.positionCaret(caret)
                         txtAreaImportar.scrollTop = scroll
@@ -3259,6 +3266,45 @@ class TelaInicialController : Initializable {
             }
             lastCaretPos = txtAreaImportar.caretPosition
         }
+        val menu = ContextMenu()
+        val sugestao = MenuItem("Abrir menu sugestão")
+        sugestao.setOnAction {
+            if (mSugestao.suggestions.isNotEmpty())
+                mSugestao.show(txtAreaImportar)
+        }
+        val capitulos = MenuItem("Importar capítulos da sugestão")
+        capitulos.setOnAction {
+            if (mSugestao.suggestions.isNotEmpty()) {
+                var texto = ""
+                val capitulos = mSugestao.suggestions[0].split("\n")
+                val separador = txtSeparadorCapitulo.text
+                if (capitulos.isNotEmpty() && mSugestao.suggestions[0].contains(separador)) {
+                    val importar = txtAreaImportar.text.split("\n")
+                    for ((index, capitulo) in capitulos.withIndex()) {
+                        if (capitulo.contains(separador)) {
+                            texto += if (index < importar.size)
+                                importar[index] + separador + capitulo.substringAfter(separador) + "\n"
+                            else
+                                separador + capitulo.substringAfter(separador) + "\n"
+                        }
+                    }
+                    if (importar.size > capitulos.size) {
+                        for (i in capitulos.size until importar.size)
+                            texto += importar[i] + "\n"
+                    }
+
+                    val caret = txtAreaImportar.caretPosition
+                    val scroll = txtAreaImportar.scrollTopProperty().value
+                    txtAreaImportar.text = texto.substringBeforeLast("\n")
+                    txtAreaImportar.positionCaret(caret)
+                    txtAreaImportar.scrollTop = scroll
+                    lastCaretPos = txtAreaImportar.caretPosition
+                }
+            }
+        }
+        menu.items.add(sugestao)
+        menu.items.add(capitulos)
+        txtAreaImportar.contextMenu = menu
 
         txtQuantidade.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> txtPastaDestino.unFocusColor = Color.GRAY }
         txtQuantidade.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->

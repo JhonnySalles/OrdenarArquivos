@@ -310,7 +310,6 @@
 
 .progress-barAzul {
     -fx-background-color: #106ebe;
-
 }
 
 .progress-barAzul .track{
@@ -353,4 +352,22 @@
 .jfx-tab-pane .tab-header-background {
 	-fx-background-color: #1A237E;
 	-fx-background-color: linear-gradient(to top right, #0277BD, #1A237E);
+}
+
+/*---------- Menu ----------*/
+.context-menu {
+    -fx-background-color: #333333;
+    -fx-text-fill: white;
+}
+
+.menu-item .label {
+    -fx-text-fill: white;
+}
+
+.menu-item:focused {
+    -fx-background-color: #106ebe;
+}
+
+.menu-item:focused .label {
+    -fx-text-fill: white;
 }
