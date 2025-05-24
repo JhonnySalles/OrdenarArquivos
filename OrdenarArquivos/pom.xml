@@ -37,6 +37,7 @@
         <ocr.json.version>20240303</ocr.json.version>
         <jakarta.xml.version>4.0.1</jakarta.xml.version>
         <jaxb.version>4.0.0</jaxb.version>
+        <jsoup.version>1.15.3</jsoup.version>
     </properties>
 
     <repositories>
@@ -301,6 +302,13 @@
             <groupId>dev.katsute</groupId>
             <artifactId>mal4j</artifactId>
             <version>3.0.1</version>
+        </dependency>
+
+        <!-- Amazon -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>${jsoup.version}</version>
         </dependency>
 
         <!-- OUTROS -->

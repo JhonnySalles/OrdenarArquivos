@@ -371,3 +371,21 @@
 .menu-item:focused .label {
     -fx-text-fill: white;
 }
+
+/*---------- DatePicker ----------*/
+.jfx-date-picker .text-field{
+    -jfx-unfocus-color: #106ebe;
+    -fx-prompt-text-fill: white;
+    -fx-text-fill: #71afe5;
+}
+
+/*---------- Dialog ----------*/
+.jfx-dialog-layout {
+    -fx-background-color: #212121;
+    -fx-text-fill: white;
+}
+
+.jfx-dialog-layout > .jfx-dialog-heading {
+    -fx-text-fill: white;
+}
+

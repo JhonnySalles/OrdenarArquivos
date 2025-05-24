@@ -9,6 +9,8 @@ import javafx.scene.image.ImageView
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout.HBox
 import javafx.scene.layout.StackPane
+import javafx.scene.paint.Color
+import javafx.scene.text.Font
 import javafx.stage.Modality
 import java.awt.SystemTray
 import java.awt.TrayIcon
@@ -160,6 +162,8 @@ object AlertasPopup {
         val layout = JFXDialogLayout()
         val title = Label(titulo)
         title.styleClass.add("texto-stilo-fundo-azul")
+        title.font = Font.font(20.0)
+        title.textFill = Color.web("#ffffff", 0.8)
         layout.setHeading(title)
         val content = JFXTextArea(texto)
         content.isEditable = false

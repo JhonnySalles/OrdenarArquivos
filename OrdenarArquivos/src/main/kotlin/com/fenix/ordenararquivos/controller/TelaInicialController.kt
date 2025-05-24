@@ -59,6 +59,7 @@ import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.scene.robot.Robot
 import javafx.stage.DirectoryChooser
+import javafx.util.Callback
 import javafx.util.Duration
 import net.kurobako.gesturefx.GesturePane
 import org.slf4j.LoggerFactory
@@ -334,6 +335,9 @@ class TelaInicialController : Initializable {
 
     //<--------------------------  OCR Capítulos   -------------------------->
     @FXML
+    private lateinit var cbLinguagem: JFXComboBox<Linguagem>
+
+    @FXML
     private lateinit var txtPastaOcr: JFXTextField
 
     @FXML
@@ -371,6 +375,9 @@ class TelaInicialController : Initializable {
 
     @FXML
     private lateinit var clProcessarOCR: TableColumn<Processar, JFXButton?>
+
+    @FXML
+    private lateinit var clAmazon: TableColumn<Processar, JFXButton?>
 
     @FXML
     private lateinit var clSalvarOCR: TableColumn<Processar, JFXButton?>
@@ -2352,12 +2359,15 @@ class TelaInicialController : Initializable {
 
                             val bookMarks = comic.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + SEPARADOR_IMAGEM + it.bookmark }?.toSet() ?: emptySet()
                             val processar = JFXButton("Processar")
+                            val amazon = JFXButton("Amazon")
                             val salvar = JFXButton("Salvar")
                             val tags = bookMarks.joinToString(separator = "\n")
-                            val item = Processar(arquivo.name, tags, arquivo, comic, processar, salvar)
+                            val item = Processar(arquivo.name, tags, arquivo, comic, processar, amazon, salvar)
 
                             processar.styleClass.add("background-White1")
                             processar.setOnAction { processarOcrItem(item) }
+                            amazon.styleClass.add("background-White1")
+                            amazon.setOnAction { openSiteAmazon(item)}
                             salvar.styleClass.add("background-White1")
                             salvar.setOnAction { salvarOcrItem(item) }
 
@@ -2425,11 +2435,10 @@ class TelaInicialController : Initializable {
                 summary = if (summary.isNullOrEmpty())
                     sumario
                 else {
-                    val content = summary!!.substringBefore("*Chapter Titles*", summary ?: "").trim()
-                    if (content.isEmpty())
-                        sumario
+                    if (!summary!!.lowercase().contains("*chapter titles*"))
+                        summary!! + "\n\n" + sumario
                     else
-                        content + "\n\n" + sumario
+                        summary!!
                 }
             }
 
@@ -2512,6 +2521,15 @@ class TelaInicialController : Initializable {
         item.tags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
         item.isProcessado = true
         tbViewOcr.refresh()
+    }
+
+    private fun openSiteAmazon(item: Processar) {
+        val callback: Callback<ComicInfo, Boolean> = Callback<ComicInfo, Boolean> { param ->
+            item.comicInfo = param
+            tbViewOcr.refresh()
+            null
+        }
+        PopupAmazon.abreTelaAmazon(rootStackPane, root, callback, item.comicInfo, cbLinguagem.value)
     }
 
     fun setLog(texto: String, isError : Boolean = false) {
@@ -2873,6 +2891,7 @@ class TelaInicialController : Initializable {
 
         clOCRTags.cellValueFactory = PropertyValueFactory("tags")
         clProcessarOCR.cellValueFactory = PropertyValueFactory("processar")
+        clAmazon.cellValueFactory = PropertyValueFactory("amazon")
         clSalvarOCR.cellValueFactory = PropertyValueFactory("salvar")
 
         editaColunas()
@@ -2905,6 +2924,9 @@ class TelaInicialController : Initializable {
     private var mPastaAnterior = ""
     private var mNomePastaAnterior = ""
     private fun configuraTextEdit() {
+        cbLinguagem.items.addAll(Linguagem.JAPANESE, Linguagem.ENGLISH)
+        cbLinguagem.selectionModel.selectFirst()
+
         txtSeparadorPagina.isDisable = true
         txtSeparadorCapitulo.isDisable = true
         textFieldMostraFinalTexto(txtSimularPasta)

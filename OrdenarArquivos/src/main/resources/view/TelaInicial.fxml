@@ -510,11 +510,12 @@
                                        <children>
                                           <VBox prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                              <children>
-                                                <HBox prefWidth="200.0" spacing="10.0">
+                                                <HBox alignment="CENTER_LEFT" prefWidth="200.0" spacing="10.0">
                                                    <children>
+                                                      <JFXComboBox fx:id="cbLinguagem" focusColor="#71afe5" labelFloat="true" prefWidth="200.0" promptText="Linguagem" styleClass="comboBox-stilo" unFocusColor="#106ebe" />
                                                       <HBox alignment="CENTER" minWidth="340.0" spacing="2.0" HBox.hgrow="ALWAYS">
                                                          <children>
-                                                            <JFXTextField fx:id="txtPastaOcr" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta para carregar itens" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                                                            <JFXTextField fx:id="txtPastaOcr" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta para carregar itens" styleClass="texto-stilo-2" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
                                                             <JFXButton fx:id="btnPesquisarPastaOcr" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPastaOcr" styleClass="background-Black3">
                                                                <graphic>
                                                                   <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
@@ -545,8 +546,13 @@
                                                       <TableColumn fx:id="clOCRTitulo" prefWidth="100.0" text="Título" />
                                                       <TableColumn fx:id="clOCREditora" prefWidth="100.0" text="Editora" />
                                                       <TableColumn fx:id="clOCRPublicacao" prefWidth="100.0" text="Publicação" />
-                                                      <TableColumn fx:id="clOCRTags" prefWidth="100.0" text="Tags" />
-                                                      <TableColumn fx:id="clProcessarOCR" prefWidth="76.0" text="OCR" />
+                                                      <TableColumn prefWidth="75.0" text="OCR">
+                                                         <columns>
+                                                            <TableColumn fx:id="clOCRTags" prefWidth="100.0" text="Tags" />
+                                                            <TableColumn fx:id="clProcessarOCR" prefWidth="76.0" text="OCR" />
+                                                         </columns>
+                                                      </TableColumn>
+                                                      <TableColumn fx:id="clAmazon" text="Amazon" />
                                                       <TableColumn fx:id="clSalvarOCR" prefWidth="76.0" text="Salvar" />
                                                    </columns>
                                                 </TableView>

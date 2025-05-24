@@ -10,6 +10,7 @@ data class Processar(
     var file: File? = null,
     var comicInfo: ComicInfo? = null,
     var processar: JFXButton? = null,
+    var amazon: JFXButton? = null,
     var salvar: JFXButton? = null,
     var isProcessado: Boolean = false
 )
