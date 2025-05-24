@@ -1527,11 +1527,14 @@ class TelaInicialController : Initializable {
                                     page.bookmark = "Sumary"
                                     page.type = ComicPageType.InnerCover
                                 } else {
-                                    if (!capitulo.equals(key, true) && !key.equals("000", true)  && !key.lowercase().contains("extra")) {
+                                    if (!capitulo.equals(key, true) && !key.equals("000", true) && !key.lowercase().contains("extra")) {
                                         capitulo = key
                                         val tag = if (cbGerarCapitulo.isSelected) {
                                             val caminho = mListaCaminhos.stream().filter { it.capitulo.equals(key, ignoreCase = true) }.findFirst()
-                                            if (caminho.isPresent) " - " + caminho.get().tag else ""
+                                            if (caminho.isPresent)
+                                                " - " + caminho.get().tag
+                                            else
+                                                ""
                                         } else
                                             ""
                                         page.bookmark = if (isJapanese)
@@ -1563,6 +1566,18 @@ class TelaInicialController : Initializable {
                     val comic = mComicInfo
                     comic.pages = pages
                     comic.pageCount = pages.size
+
+                    if (mListaCaminhos.stream().anyMatch { it.tag.isNotEmpty() }) {
+                        var sumary = "*Chapter Titles*\n"
+                        for (key in pastasComic.keys) {
+                            if (key.equals("000", ignoreCase = true))
+                                continue
+
+                            val caminho = mListaCaminhos.stream().filter { it.capitulo.equals(key, ignoreCase = true) }.findFirst()
+                            sumary += "Chapter $key" + (if (caminho.isPresent) ": " + caminho.get().tag else "") + "\n"
+                        }
+                        comic.summary = if (comic.summary.isNullOrEmpty()) sumary else comic.summary + "\n\n" + sumary
+                    }
 
                     comic.let {
                         if (it.comic.isEmpty())
@@ -2380,6 +2395,7 @@ class TelaInicialController : Initializable {
             if (info.exists())
                 info.delete()
 
+            var sumario = "*Chapter Titles*\n"
             val tags = item.tags.split("\n")
             for (tag in tags) {
                 val imagem = tag.substringBefore(SEPARADOR_IMAGEM)
@@ -2391,8 +2407,30 @@ class TelaInicialController : Initializable {
                 if (capitulo.isEmpty())
                     continue
 
+                capitulo.lowercase().let {
+                    if (it.contains("第") || it.contains("chapter") || it.contains("capítulo")) {
+                        val numero = if (it.contains("第"))
+                            it.substringBefore("-").replace("第", "Chapter ").replace("話", "").trim()
+                        else
+                            it.substringBefore("-").replace("capítulo", "Chapter").replace("chapter", "Chapter").trim()
+                        sumario += numero + ": " + capitulo.substringAfter("-").trim() + "\n"
+                    }
+                }
+
                 val page = item.comicInfo?.pages?.firstOrNull { it.image.toString() == imagem } ?: continue
                 page.bookmark = capitulo
+            }
+
+            item.comicInfo?.run {
+                summary = if (summary.isNullOrEmpty())
+                    sumario
+                else {
+                    val content = summary!!.substringBefore("*Chapter Titles*", summary ?: "").trim()
+                    if (content.isEmpty())
+                        sumario
+                    else
+                        content + "\n\n" + sumario
+                }
             }
 
             val marshaller = JAXBContext.newInstance(ComicInfo::class.java).createMarshaller()
