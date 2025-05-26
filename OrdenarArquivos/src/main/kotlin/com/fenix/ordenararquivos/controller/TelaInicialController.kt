@@ -9,6 +9,7 @@ import com.fenix.ordenararquivos.model.entities.Caminhos
 import com.fenix.ordenararquivos.model.entities.Capa
 import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.Processar
+import com.fenix.ordenararquivos.model.entities.capitulos.Volume
 import com.fenix.ordenararquivos.model.entities.comet.CoMet
 import com.fenix.ordenararquivos.model.entities.comicinfo.*
 import com.fenix.ordenararquivos.model.enums.Linguagem
@@ -71,6 +72,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 import java.time.LocalDateTime
 import java.util.*
 import java.util.concurrent.CompletableFuture
@@ -310,6 +312,9 @@ class TelaInicialController : Initializable {
     private lateinit var txtMalNome: JFXTextField
 
     @FXML
+    private lateinit var btnAmazonConsultar: JFXButton
+
+    @FXML
     private lateinit var btnMalAplicar: JFXButton
 
     @FXML
@@ -333,54 +338,60 @@ class TelaInicialController : Initializable {
     @FXML
     private lateinit var clMalImagem: TableColumn<Mal, ImageView?>
 
-    //<--------------------------  OCR Capítulos   -------------------------->
+    //<--------------------------  Processamento OCR Capítulos  -------------------------->
     @FXML
     private lateinit var cbLinguagem: JFXComboBox<Linguagem>
 
     @FXML
-    private lateinit var txtPastaOcr: JFXTextField
+    private lateinit var txtPastaProcessar: JFXTextField
 
     @FXML
-    private lateinit var btnPesquisarPastaOcr: JFXButton
+    private lateinit var btnPesquisarPastaProcessar: JFXButton
 
     @FXML
-    private lateinit var btnOcrCarregar: JFXButton
+    private lateinit var btnCarregarProcessar: JFXButton
 
     @FXML
     private lateinit var btnOcrProcessar: JFXButton
 
     @FXML
-    private lateinit var tbViewOcr: TableView<Processar>
+    private lateinit var btnCapitulos: JFXButton
 
     @FXML
-    private lateinit var clOCRProcessado: TableColumn<Processar, Boolean>
+    private lateinit var tbViewProcessar: TableView<Processar>
 
     @FXML
-    private lateinit var clOCRArquivo: TableColumn<Processar, String>
+    private lateinit var clComicInfoProcessado: TableColumn<Processar, Boolean>
 
     @FXML
-    private lateinit var clOCRSerie: TableColumn<Processar, String>
+    private lateinit var clComicInfoArquivo: TableColumn<Processar, String>
 
     @FXML
-    private lateinit var clOCRTitulo: TableColumn<Processar, String>
+    private lateinit var clComicInfoSerie: TableColumn<Processar, String>
 
     @FXML
-    private lateinit var clOCREditora: TableColumn<Processar, String>
+    private lateinit var clComicInfoTitulo: TableColumn<Processar, String>
 
     @FXML
-    private lateinit var clOCRPublicacao: TableColumn<Processar, String>
+    private lateinit var clComicInfoEditora: TableColumn<Processar, String>
 
     @FXML
-    private lateinit var clOCRTags: TableColumn<Processar, String>
+    private lateinit var clComicInfoPublicacao: TableColumn<Processar, String>
+
+    @FXML
+    private lateinit var clComicInfoResumo: TableColumn<Processar, String>
+
+    @FXML
+    private lateinit var clComicInfoTags: TableColumn<Processar, String>
 
     @FXML
     private lateinit var clProcessarOCR: TableColumn<Processar, JFXButton?>
 
     @FXML
-    private lateinit var clAmazon: TableColumn<Processar, JFXButton?>
+    private lateinit var clProcessarAmazon: TableColumn<Processar, JFXButton?>
 
     @FXML
-    private lateinit var clSalvarOCR: TableColumn<Processar, JFXButton?>
+    private lateinit var clSalvarComicInfo: TableColumn<Processar, JFXButton?>
 
 
     private val mSugestao: JFXAutoCompletePopup<String> = JFXAutoCompletePopup<String>()
@@ -390,7 +401,7 @@ class TelaInicialController : Initializable {
     private var mObsListaItens: ObservableList<String> = FXCollections.observableArrayList("")
     private var mObsListaImagesSelected: ObservableList<Capa> = FXCollections.observableArrayList()
     private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
-    private var mObsListaOCR: ObservableList<Processar> = FXCollections.observableArrayList()
+    private var mObsListaProcessar: ObservableList<Processar> = FXCollections.observableArrayList()
 
     private var mCaminhoOrigem: File? = null
     private var mCaminhoDestino: File? = null
@@ -443,8 +454,8 @@ class TelaInicialController : Initializable {
         txtMalId.text = ""
         txtMalNome.text = ""
 
-        mObsListaOCR = FXCollections.observableArrayList()
-        tbViewOcr.items = mObsListaOCR
+        mObsListaProcessar = FXCollections.observableArrayList()
+        tbViewProcessar.items = mObsListaProcessar
     }
 
     private val mFilterNomeArquivo: FilenameFilter
@@ -599,6 +610,15 @@ class TelaInicialController : Initializable {
     }
 
     @FXML
+    private fun onBtnAmazonConsultar() {
+        val callback: Callback<ComicInfo, Boolean> = Callback<ComicInfo, Boolean> { param ->
+            mComicInfo = param
+            null
+        }
+        PopupAmazon.abreTelaAmazon(rootStackPane, root, callback, mComicInfo, cbLinguagem.value)
+    }
+
+    @FXML
     private fun onBtnMalAplicar() {
         if (tbViewMal.items.isNotEmpty())
             carregaMal(tbViewMal.selectionModel.selectedItem)
@@ -668,13 +688,55 @@ class TelaInicialController : Initializable {
     }
 
     @FXML
-    private fun onBtnOcrCarregar() {
-        carregarItensOcr()
+    private fun onBtnCapitulos() {
+        val callback: Callback<ObservableList<Volume>, Boolean> = Callback<ObservableList<Volume>, Boolean> { param ->
+            val decimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
+            val linguagem = cbLinguagem.value
+            val separador = txtSeparadorCapitulo.text
+            for (volume in param)
+                if (volume.marcado && volume.arquivo.isNotEmpty()) {
+                    val item = mObsListaProcessar.find { it.arquivo == volume.arquivo } ?: continue
+                    val capitulos = volume.capitulos.toMutableList()
+                    val tags = mutableListOf<String>()
+                    for (tag in item.tags.split("\n")) {
+                        var capitulo = if (tag.contains(SEPARADOR_CAPITULO)) tag.substringBefore(SEPARADOR_CAPITULO).trim() else tag
+
+                        capitulo.lowercase().substringAfter(SEPARADOR_IMAGEM).let {
+                            if (it.contains("第") || it.contains("chapter") || it.contains("capítulo")) {
+                                val numero = if (it.contains("第"))
+                                    it.replace("第", "").replace("話", "").trim().toDoubleOrNull()
+                                else
+                                    it.replace("capítulo", "").replace("chapter", "").trim().toDoubleOrNull()
+
+                                capitulos.find { c -> c.capitulo == numero }?.run {
+                                    capitulos.remove(this)
+                                    capitulo += " " + SEPARADOR_CAPITULO + " " + decimal.format(this.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && this.japones.isNotEmpty()) this.japones else this.ingles
+                                }
+                            }
+                        }
+                        tags.add(capitulo)
+                    }
+
+                    if (capitulos.isNotEmpty())
+                        for (capitulo in capitulos)
+                            tags.add("-1$SEPARADOR_IMAGEM Capítulo novo $SEPARADOR_CAPITULO ${decimal.format(capitulo.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && capitulo.japones.isNotEmpty()) capitulo.japones else capitulo.ingles}")
+
+                    item.tags = tags.joinToString("\n")
+                }
+            tbViewProcessar.refresh()
+            null
+        }
+        PopupCapitulos.abreTelaCapitulos(rootStackPane, root, callback, cbLinguagem.value, mObsListaProcessar.map { it.arquivo }, txtSeparadorCapitulo.text)
+    }
+
+    @FXML
+    private fun onBtnCarregarProcessar() {
+        carregarItensProcessar()
     }
 
     @FXML
     private fun onBtnOcrProcessar() {
-        if (mObsListaOCR.isNotEmpty()) {
+        if (mObsListaProcessar.isNotEmpty()) {
             if (btnOcrProcessar.accessibleTextProperty().value.equals("PROCESSA", ignoreCase = true)) {
                 btnOcrProcessar.accessibleTextProperty().set("CANCELA")
                 btnOcrProcessar.text = "Cancelar"
@@ -687,13 +749,13 @@ class TelaInicialController : Initializable {
     }
 
     @FXML
-    private fun onBtnCarregarPastaOcr() {
-        val caminho = selecionaPasta(txtPastaOcr.text)
+    private fun onBtnCarregarPasta() {
+        val caminho = selecionaPasta(txtPastaProcessar.text)
         if (caminho != null)
-            txtPastaOcr.text = caminho.absolutePath
+            txtPastaProcessar.text = caminho.absolutePath
         else
-            txtPastaOcr.text = ""
-        carregarItensOcr()
+            txtPastaProcessar.text = ""
+        carregarItensProcessar()
     }
 
     private fun desabilita() {
@@ -711,10 +773,10 @@ class TelaInicialController : Initializable {
         btnLimpar.isDisable = true
         btnImportar.isDisable = true
         tbViewTabela.isDisable = true
-        txtPastaOcr.isDisable = true
-        btnPesquisarPastaOcr.isDisable = true
-        btnOcrCarregar.isDisable = true
-        tbViewOcr.isDisable = true
+        txtPastaProcessar.isDisable = true
+        btnPesquisarPastaProcessar.isDisable = true
+        btnCarregarProcessar.isDisable = true
+        tbViewProcessar.isDisable = true
     }
 
     private fun habilita() {
@@ -734,10 +796,10 @@ class TelaInicialController : Initializable {
         tbViewTabela.isDisable = false
         btnProcessar.accessibleTextProperty().set("PROCESSA")
         btnProcessar.text = "Processar"
-        txtPastaOcr.isDisable = false
-        btnPesquisarPastaOcr.isDisable = false
-        btnOcrCarregar.isDisable = false
-        tbViewOcr.isDisable = false
+        txtPastaProcessar.isDisable = false
+        btnPesquisarPastaProcessar.isDisable = false
+        btnCarregarProcessar.isDisable = false
+        tbViewProcessar.isDisable = false
         btnOcrProcessar.accessibleTextProperty().set("PROCESSA")
         btnOcrProcessar.text = "OCR proximos 10"
         apGlobal.cursorProperty().set(null)
@@ -2197,7 +2259,7 @@ class TelaInicialController : Initializable {
                     var i = 0
                     updateMessage("Processando o OCR...")
 
-                    for (item in mObsListaOCR) {
+                    for (item in mObsListaProcessar) {
                         if (item.isProcessado)
                             continue
                         i++
@@ -2252,7 +2314,7 @@ class TelaInicialController : Initializable {
                 pbProgresso.progressProperty().unbind()
                 lblProgresso.textProperty().unbind()
                 habilita()
-                tbViewOcr.refresh()
+                tbViewProcessar.refresh()
                 Notificacoes.notificacao(Notificacao.SUCESSO, "OCR Capítulos", "OCR processado com sucesso.")
             }
 
@@ -2261,7 +2323,7 @@ class TelaInicialController : Initializable {
                 updateMessage("Erro ao processar o OCR.")
                 AlertasPopup.erroModal("Erro ao processar o OCR", super.getMessage())
                 habilita()
-                tbViewOcr.refresh()
+                tbViewProcessar.refresh()
             }
         }
         pbProgresso.progressProperty().bind(processaOCR.progressProperty())
@@ -2271,7 +2333,7 @@ class TelaInicialController : Initializable {
         t.start()
     }
 
-    private fun extraiInfo(arquivo: File): File? {
+    private fun extraiComicInfo(arquivo: File): File? {
         var comicInfo : File? = null
         var proc: Process? = null
         val comando = "rar e -ma4 -y " + '"' + arquivo.path + '"' + " " + '"' + Utils.getCaminho(arquivo.path) + '"' + " " + '"' + COMICINFO + '"'
@@ -2301,7 +2363,7 @@ class TelaInicialController : Initializable {
         return comicInfo
     }
 
-    private fun insereInfo(arquivo: File, info: File) {
+    private fun insereComicInfo(arquivo: File, info: File) {
         val comando = "rar a -ma4 -ep1 " + '"' + arquivo.path + '"' + " " + '"' + info.path + '"'
         var proc: Process? = null
         try {
@@ -2333,12 +2395,12 @@ class TelaInicialController : Initializable {
         }
     }
 
-    private fun carregarItensOcr() {
-        val pasta = File(txtPastaOcr.text)
-        if (txtPastaOcr.text.isNotEmpty() && pasta.exists()) {
-            btnOcrCarregar.isDisable = true
+    private fun carregarItensProcessar() {
+        val pasta = File(txtPastaProcessar.text)
+        if (txtPastaProcessar.text.isNotEmpty() && pasta.exists()) {
+            btnCarregarProcessar.isDisable = true
 
-            val ocr: Task<Void> = object : Task<Void>() {
+            val processar: Task<Void> = object : Task<Void>() {
                 override fun call(): Void? {
                     try {
                         val lista = mutableListOf<Processar>()
@@ -2348,7 +2410,7 @@ class TelaInicialController : Initializable {
                             if (!Utils.isRar(arquivo.name))
                                 continue
 
-                            val info: File = extraiInfo(arquivo) ?: continue
+                            val info: File = extraiComicInfo(arquivo) ?: continue
                             val comic: ComicInfo = try {
                                 val unmarshaller = jaxb.createUnmarshaller()
                                 unmarshaller.unmarshal(info) as ComicInfo
@@ -2369,37 +2431,36 @@ class TelaInicialController : Initializable {
                             amazon.styleClass.add("background-White1")
                             amazon.setOnAction { openSiteAmazon(item)}
                             salvar.styleClass.add("background-White1")
-                            salvar.setOnAction { salvarOcrItem(item) }
+                            salvar.setOnAction { salvarComicInfoItem(item) }
 
                             lista.add(item)
                         }
 
-                        mObsListaOCR = FXCollections.observableArrayList(lista)
-                        Platform.runLater { tbViewOcr.items = mObsListaOCR }
+                        mObsListaProcessar = FXCollections.observableArrayList(lista)
+                        Platform.runLater { tbViewProcessar.items = mObsListaProcessar }
                     } catch (e: Exception) {
-                        mLOG.info("Erro ao realizar a gerar itens para processamento de OCR.", e)
+                        mLOG.info("Erro ao realizar a gerar itens para processamento de mangas.", e)
                         Platform.runLater {
-                            Notificacoes.notificacao(Notificacao.ERRO, "OCR Capítulos", "Erro ao realizar a gerar itens para processamento de OCR. " + e.message)
+                            Notificacoes.notificacao(Notificacao.ERRO, "Mangas Processamento", "Erro ao realizar a gerar itens para processamento de mangas. " + e.message)
                         }
                     }
                     return null
                 }
                 override fun succeeded() {
                     Platform.runLater {
-                        btnOcrCarregar.isDisable = false
+                        btnCarregarProcessar.isDisable = false
                     }
                 }
             }
 
-            Thread(ocr).start()
+            Thread(processar).start()
         } else {
             AlertasPopup.alertaModal("Alerta", "Necessário informar uma pasta para processar.")
-            txtPastaOcr.requestFocus()
+            txtPastaProcessar.requestFocus()
         }
     }
 
-
-    private fun salvarOcrItem(item: Processar) {
+    private fun salvarComicInfoItem(item: Processar) {
         try {
             val info = File(item.file!!.parent, "ComicInfo.xml")
             if (info.exists())
@@ -2447,11 +2508,11 @@ class TelaInicialController : Initializable {
             val out = FileOutputStream(info)
             marshaller.marshal(item.comicInfo, out)
             out.close()
-            insereInfo(item.file!!, info)
-            mObsListaOCR.remove(item)
+            insereComicInfo(item.file!!, info)
+            mObsListaProcessar.remove(item)
         } catch (e: Exception) {
             mLOG.error(e.message, e)
-            AlertasPopup.alertaModal("Erro", "Erro ao salvar o OCR no arquivo ComicInfo.xml. " + e.message)
+            AlertasPopup.alertaModal("Erro", "Erro ao salvar o ComicInfo no arquivo ComicInfo.xml. " + e.message)
         }
     }
 
@@ -2520,13 +2581,13 @@ class TelaInicialController : Initializable {
 
         item.tags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
         item.isProcessado = true
-        tbViewOcr.refresh()
+        tbViewProcessar.refresh()
     }
 
     private fun openSiteAmazon(item: Processar) {
         val callback: Callback<ComicInfo, Boolean> = Callback<ComicInfo, Boolean> { param ->
             item.comicInfo = param
-            tbViewOcr.refresh()
+            tbViewProcessar.refresh()
             null
         }
         PopupAmazon.abreTelaAmazon(rootStackPane, root, callback, item.comicInfo, cbLinguagem.value)
@@ -2728,25 +2789,57 @@ class TelaInicialController : Initializable {
             e.tableView.items[e.tablePosition.row].tag = e.newValue
         }
 
-        clOCRProcessado.setCellValueFactory { param ->
+        clComicInfoProcessado.setCellValueFactory { param ->
             val item = param.value
 
             val booleanProp = SimpleBooleanProperty(item.isProcessado)
             booleanProp.addListener { _, _, newValue ->
                 item.isProcessado = newValue
-                tbViewOcr.refresh()
+                tbViewProcessar.refresh()
             }
             return@setCellValueFactory booleanProp
         }
-        clOCRProcessado.setCellFactory {
+        clComicInfoProcessado.setCellFactory {
             val cell : CheckBoxTableCellCustom<Processar, Boolean> = CheckBoxTableCellCustom()
             cell.alignment = Pos.CENTER
             cell
         }
 
-        clOCRTags.cellFactory = TextAreaTableCell.forTableColumn()
-        clOCRTags.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
+        clComicInfoTags.cellFactory = TextAreaTableCell.forTableColumn()
+        clComicInfoTags.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
             e.tableView.items[e.tablePosition.row].tags = e.newValue
+        }
+
+        val menu = ContextMenu()
+        val salvar = MenuItem("Salvar ComicInfo")
+        salvar.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null)
+                salvarComicInfoItem(tbViewProcessar.selectionModel.selectedItem)
+        }
+        val processar = MenuItem("Processar OCR")
+        processar.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null)
+                processarOcrItem(tbViewProcessar.selectionModel.selectedItem)
+        }
+        val remover = MenuItem("Remover registro")
+        remover.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null)
+                if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover o registro?")) {
+                    mObsListaProcessar.remove(tbViewProcessar.selectionModel.selectedItem)
+                    tbViewProcessar.refresh()
+                }
+        }
+        menu.items.add(salvar)
+        menu.items.add(processar)
+        menu.items.add(remover)
+
+        tbViewProcessar.contextMenu = menu
+        tbViewProcessar.setOnKeyPressed { event ->
+            if (event.code == KeyCode.DELETE && tbViewProcessar.selectionModel.selectedItem != null)
+                if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover o registro?")) {
+                    mObsListaProcessar.remove(tbViewProcessar.selectionModel.selectedItem)
+                    tbViewProcessar.refresh()
+                }
         }
 
         TextAreaTableCell.setOnKeyPress { pair ->
@@ -2754,6 +2847,42 @@ class TelaInicialController : Initializable {
             val key = pair.value
             if (key.isShiftDown && key.isAltDown) {
                 when (key.code) {
+                    KeyCode.ENTER -> {
+                        if (textArea.text.isEmpty() || !textArea.text.contains("\n") || !textArea.text.contains(SEPARADOR_CAPITULO))
+                            return@setOnKeyPress true
+
+                        val txt = textArea.text ?: ""
+                        val linhas = mutableListOf<String>()
+                        val separador = txtSeparadorCapitulo.text
+                        for (linha in txt.split("\n"))
+                            linhas.add(if (linha.contains(SEPARADOR_CAPITULO)) linha.substringBeforeLast(SEPARADOR_CAPITULO).trim() + " - " + linha.substringAfterLast(separador) else linha)
+
+                        textArea.text = linhas.joinToString("\n")
+                    }
+                    KeyCode.LEFT -> {
+                        if (textArea.text.isEmpty() || !textArea.text.contains("\n") || !textArea.text.contains(SEPARADOR_CAPITULO))
+                            return@setOnKeyPress true
+
+                        val lastCaretPos = textArea.caretPosition
+
+                        val txt = textArea.text ?: ""
+                        val scroll = textArea.scrollTopProperty().value
+
+                        var before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
+                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+                        val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
+                        before = before.substringBeforeLast(line)
+
+                        if (!line.contains(SEPARADOR_CAPITULO))
+                            return@setOnKeyPress true
+
+                        val separador = txtSeparadorCapitulo.text
+                        val newLine = line.substringBeforeLast(SEPARADOR_CAPITULO).trim() + " - " + line.substringAfterLast(separador)
+                        textArea.text = before + newLine + last
+                        val caret = before.length + newLine.lastIndexOf(" - ")
+                        textArea.positionCaret(caret)
+                        textArea.scrollTop = scroll
+                    }
                     KeyCode.UP,
                     KeyCode.DOWN -> {
                         if (textArea.text.isEmpty() || !textArea.text.contains("\n") || !textArea.text.contains(SEPARADOR_CAPITULO))
@@ -2827,10 +2956,10 @@ class TelaInicialController : Initializable {
 
                         textArea.text = lines.joinToString(separator = "\n")
 
-                        if (key.code == KeyCode.UP)
-                            caret = textArea.text.substring(0, caret).lastIndexOf(SEPARADOR_CAPITULO)
+                        caret = if (key.code == KeyCode.UP)
+                            textArea.text.substring(0, caret).lastIndexOf(SEPARADOR_CAPITULO)
                         else
-                            caret = textArea.text.indexOf(SEPARADOR_CAPITULO, caret)
+                            textArea.text.indexOf(SEPARADOR_CAPITULO, caret)
 
                         textArea.positionCaret(caret)
                         textArea.scrollTop = scroll
@@ -2855,9 +2984,9 @@ class TelaInicialController : Initializable {
         clMalSite.cellValueFactory = PropertyValueFactory("site")
         clMalImagem.cellValueFactory = PropertyValueFactory("imagem")
 
-        clOCRProcessado.cellValueFactory = PropertyValueFactory("isProcessado")
-        clOCRArquivo.cellValueFactory = PropertyValueFactory("arquivo")
-        clOCRSerie.setCellValueFactory { param ->
+        clComicInfoProcessado.cellValueFactory = PropertyValueFactory("isProcessado")
+        clComicInfoArquivo.cellValueFactory = PropertyValueFactory("arquivo")
+        clComicInfoSerie.setCellValueFactory { param ->
             val item = param.value
             if (item.comicInfo != null)
                 SimpleStringProperty(item.comicInfo!!.series)
@@ -2865,7 +2994,7 @@ class TelaInicialController : Initializable {
                 SimpleStringProperty("")
         }
 
-        clOCRTitulo.setCellValueFactory { param ->
+        clComicInfoTitulo.setCellValueFactory { param ->
             val item = param.value
             if (item.comicInfo != null)
                 SimpleStringProperty(item.comicInfo!!.title)
@@ -2873,7 +3002,7 @@ class TelaInicialController : Initializable {
                 SimpleStringProperty("")
         }
 
-        clOCREditora.setCellValueFactory { param ->
+        clComicInfoEditora.setCellValueFactory { param ->
             val item = param.value
             if (item.comicInfo != null)
                 SimpleStringProperty(item.comicInfo!!.publisher)
@@ -2881,7 +3010,7 @@ class TelaInicialController : Initializable {
                 SimpleStringProperty("")
         }
 
-        clOCRPublicacao.setCellValueFactory { param ->
+        clComicInfoPublicacao.setCellValueFactory { param ->
             val item = param.value
             if (item.comicInfo != null && item.comicInfo!!.year != null)
                 SimpleStringProperty("${item.comicInfo!!.day}/${item.comicInfo!!.month}/${item.comicInfo!!.year}")
@@ -2889,10 +3018,18 @@ class TelaInicialController : Initializable {
                 SimpleStringProperty("")
         }
 
-        clOCRTags.cellValueFactory = PropertyValueFactory("tags")
+        clComicInfoResumo.setCellValueFactory { param ->
+            val item = param.value
+            if (item.comicInfo != null && item.comicInfo!!.summary != null)
+                SimpleStringProperty(item.comicInfo!!.summary)
+            else
+                SimpleStringProperty("")
+        }
+
+        clComicInfoTags.cellValueFactory = PropertyValueFactory("tags")
         clProcessarOCR.cellValueFactory = PropertyValueFactory("processar")
-        clAmazon.cellValueFactory = PropertyValueFactory("amazon")
-        clSalvarOCR.cellValueFactory = PropertyValueFactory("salvar")
+        clProcessarAmazon.cellValueFactory = PropertyValueFactory("amazon")
+        clSalvarComicInfo.cellValueFactory = PropertyValueFactory("salvar")
 
         editaColunas()
         selecionaImagens()

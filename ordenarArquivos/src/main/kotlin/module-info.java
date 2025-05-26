@@ -46,6 +46,7 @@ module com.fenix.ordenararquivos {
     opens com.fenix.ordenararquivos.model.firebase to javafx.base, google.cloud.firestore, com.google.gson;
     opens com.fenix.ordenararquivos.model.entities.comicinfo to java.xml.bind, jakarta.xml.bind, javafx.base;
     opens com.fenix.ordenararquivos.model.entities.comet to java.xml.bind, jakarta.xml.bind, javafx.base;
+    opens com.fenix.ordenararquivos.model.entities.capitulos to java.xml.bind, jakarta.xml.bind, javafx.base;
 
     opens db.migration;
 }

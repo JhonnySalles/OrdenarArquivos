@@ -15,8 +15,7 @@ import javafx.util.StringConverter
 
 
 // Reimplementado a classe apenas para trocar o checkbox pelo JFoenix.
-class CheckBoxTableCellCustom<S, T> @JvmOverloads constructor(getSelectedProperty: Callback<Int, ObservableValue<Boolean>>? = null, converter: StringConverter<T>? = null) :
-    TableCell<S, T>() {
+class CheckBoxTableCellCustom<S, T> @JvmOverloads constructor(getSelectedProperty: Callback<Int, ObservableValue<Boolean>>? = null, converter: StringConverter<T>? = null) : TableCell<S, T>() {
 
     private val checkBox: JFXCheckBox
     private var showLabel = false
@@ -45,7 +44,7 @@ class CheckBoxTableCellCustom<S, T> @JvmOverloads constructor(getSelectedPropert
     )
 
     init {
-        this.styleClass.add("check-box-tree-table-cell")
+        this.styleClass.add("check-box-table-cell")
         checkBox = JFXCheckBox()
         graphic = null
         setSelectedStateCallback(getSelectedProperty)

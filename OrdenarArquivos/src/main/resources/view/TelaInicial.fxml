@@ -415,15 +415,17 @@
                                                                   <JFXTextField fx:id="txtMalNome" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="228.0" promptText="Nome" styleClass="texto-stilo-2" unFocusColor="#4059a9" />
                                                                   <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" spacing="10.0">
                                                                      <children>
-                                                                        <JFXButton fx:id="btnMalAplicar" onAction="#onBtnMalAplicar" prefHeight="30.0" prefWidth="110.0" styleClass="background-Green2" text="Aplicar" textFill="WHITE" />
-                                                                        <JFXButton fx:id="btnMalConsultar" onAction="#onBtnMalConsultar" prefHeight="25.0" prefWidth="110.0" styleClass="background-Blue3" text="Consultar" textFill="WHITE" />
-                                                                        <JFXButton fx:id="btnGravarComicInfo" onAction="#onBtnGravarComicInfo" prefHeight="25.0" prefWidth="110.0" styleClass="background-Purple2" text="Gravar ComicInfo" textFill="WHITE">
+                                                                        <JFXButton fx:id="btnAmazonConsultar" onAction="#onBtnAmazonConsultar" prefHeight="30.0" prefWidth="100.0" styleClass="background-White1" text="Amazon" />
+                                                                        <JFXButton fx:id="btnMalAplicar" onAction="#onBtnMalAplicar" prefHeight="30.0" prefWidth="100.0" styleClass="background-Green2" text="Aplicar" textFill="WHITE" />
+                                                                        <JFXButton fx:id="btnMalConsultar" onAction="#onBtnMalConsultar" prefHeight="25.0" prefWidth="100.0" styleClass="background-Blue3" text="Consultar" textFill="WHITE" />
+                                                                        <JFXButton fx:id="btnGravarComicInfo" onAction="#onBtnGravarComicInfo" prefHeight="25.0" prefWidth="140.0" styleClass="background-Purple2" text="Gravar ComicInfo" textFill="WHITE">
                                                                            <tooltip>
                                                                               <Tooltip text="Ctrl + Enter ou Ctrl + P" />
                                                                            </tooltip>
                                                                         </JFXButton>
                                                                      </children>
                                                                   </HBox>
+                                                                  <HBox prefHeight="100.0" prefWidth="200.0" />
                                                                </children>
                                                                <padding>
                                                                   <Insets bottom="15.0" left="5.0" right="5.0" top="15.0" />
@@ -504,7 +506,7 @@
                                     </AnchorPane>
                                 </content>
                               </Tab>
-                              <Tab text="OCR Capítulos">
+                              <Tab text="Processar">
                                 <content>
                                   <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" styleClass="background-Black3">
                                        <children>
@@ -515,8 +517,8 @@
                                                       <JFXComboBox fx:id="cbLinguagem" focusColor="#71afe5" labelFloat="true" prefWidth="200.0" promptText="Linguagem" styleClass="comboBox-stilo" unFocusColor="#106ebe" />
                                                       <HBox alignment="CENTER" minWidth="340.0" spacing="2.0" HBox.hgrow="ALWAYS">
                                                          <children>
-                                                            <JFXTextField fx:id="txtPastaOcr" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta para carregar itens" styleClass="texto-stilo-2" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
-                                                            <JFXButton fx:id="btnPesquisarPastaOcr" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPastaOcr" styleClass="background-Black3">
+                                                            <JFXTextField fx:id="txtPastaProcessar" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta para carregar itens" styleClass="texto-stilo-2" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                                                            <JFXButton fx:id="btnPesquisarPastaProcessar" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPasta" styleClass="background-Black3">
                                                                <graphic>
                                                                   <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
                                                                      <image>
@@ -529,8 +531,9 @@
                                                       </HBox>
                                                       <HBox alignment="CENTER_LEFT" spacing="10.0">
                                                          <children>
-                                                            <JFXButton fx:id="btnOcrCarregar" onAction="#onBtnOcrCarregar" prefHeight="25.0" prefWidth="120.0" styleClass="background-Blue3" text="Carregar" textFill="WHITE" />
-                                                            <JFXButton fx:id="btnOcrProcessar" accessibleText="PROCESSA" onAction="#onBtnOcrProcessar" prefHeight="30.0" prefWidth="130.0" styleClass="background-Green2" text="OCR proximos 10" textFill="WHITE" />
+                                                            <JFXButton fx:id="btnCarregarProcessar" onAction="#onBtnCarregarProcessar" prefHeight="30.0" prefWidth="120.0" styleClass="background-Blue3" text="Carregar" textFill="WHITE" />
+                                                            <JFXButton fx:id="btnOcrProcessar" accessibleText="PROCESSA" onAction="#onBtnOcrProcessar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Green2" text="OCR proximos 10" textFill="WHITE" />
+                                                            <JFXButton fx:id="btnCapitulos" onAction="#onBtnCapitulos" prefHeight="30.0" prefWidth="100.0" styleClass="background-White1" text="Capítulos" />
                                                          </children>
                                                       </HBox>
                                                    </children>
@@ -538,22 +541,23 @@
                                                       <Insets bottom="10.0" left="10.0" right="10.0" top="15.0" />
                                                    </VBox.margin>
                                                 </HBox>
-                                                <TableView fx:id="tbViewOcr" editable="true" prefHeight="400.0" prefWidth="400.0" VBox.vgrow="ALWAYS">
+                                                <TableView fx:id="tbViewProcessar" editable="true" prefHeight="400.0" prefWidth="400.0" VBox.vgrow="ALWAYS">
                                                    <columns>
-                                                      <TableColumn fx:id="clOCRProcessado" prefWidth="40.0" />
-                                                      <TableColumn fx:id="clOCRArquivo" prefWidth="200.0" text="Arquivo" />
-                                                      <TableColumn fx:id="clOCRSerie" prefWidth="100.0" text="Série" />
-                                                      <TableColumn fx:id="clOCRTitulo" prefWidth="100.0" text="Título" />
-                                                      <TableColumn fx:id="clOCREditora" prefWidth="100.0" text="Editora" />
-                                                      <TableColumn fx:id="clOCRPublicacao" prefWidth="100.0" text="Publicação" />
+                                                      <TableColumn fx:id="clComicInfoProcessado" prefWidth="40.0" />
+                                                      <TableColumn fx:id="clComicInfoArquivo" prefWidth="200.0" text="Arquivo" />
+                                                      <TableColumn fx:id="clComicInfoSerie" prefWidth="100.0" text="Série" />
+                                                      <TableColumn fx:id="clComicInfoTitulo" prefWidth="100.0" text="Título" />
+                                                      <TableColumn fx:id="clComicInfoEditora" prefWidth="100.0" text="Editora" />
+                                                      <TableColumn fx:id="clComicInfoPublicacao" prefWidth="100.0" text="Publicação" />
+                                                      <TableColumn fx:id="clComicInfoResumo" prefWidth="100.0" text="Resumo" />
                                                       <TableColumn prefWidth="75.0" text="OCR">
                                                          <columns>
-                                                            <TableColumn fx:id="clOCRTags" prefWidth="100.0" text="Tags" />
+                                                            <TableColumn fx:id="clComicInfoTags" prefWidth="100.0" text="Tags" />
                                                             <TableColumn fx:id="clProcessarOCR" prefWidth="76.0" text="OCR" />
                                                          </columns>
                                                       </TableColumn>
-                                                      <TableColumn fx:id="clAmazon" text="Amazon" />
-                                                      <TableColumn fx:id="clSalvarOCR" prefWidth="76.0" text="Salvar" />
+                                                      <TableColumn fx:id="clProcessarAmazon" text="Amazon" />
+                                                      <TableColumn fx:id="clSalvarComicInfo" prefWidth="76.0" text="Salvar" />
                                                    </columns>
                                                 </TableView>
                                              </children>

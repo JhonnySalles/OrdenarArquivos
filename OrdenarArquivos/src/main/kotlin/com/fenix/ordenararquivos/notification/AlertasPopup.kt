@@ -56,8 +56,7 @@ object AlertasPopup {
      * não informe por padrão irá adicionar um botão ok.
      * @param Campo     **String** que irá conter a mensagem a ser exibida.
      */
-    fun avisoModal(rootStackPane: StackPane, nodeBlur: Node, botoes: MutableList<JFXButton>, titulo: String, texto: String) =
-        dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, ImageView(AVISO))
+    fun avisoModal(rootStackPane: StackPane, nodeBlur: Node?, botoes: MutableList<JFXButton>, titulo: String, texto: String) = dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, ImageView(AVISO))
 
     /**
      *
@@ -83,7 +82,7 @@ object AlertasPopup {
      * não informe por padrão irá adicionar um botão ok.
      * @param Campo     **String** que irá conter a mensagem a ser exibida.
      */
-    fun alertaModal(rootStackPane: StackPane, nodeBlur: Node, botoes: MutableList<JFXButton>, titulo: String, texto: String) = dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, ImageView(ALERTA))
+    fun alertaModal(rootStackPane: StackPane, nodeBlur: Node?, botoes: MutableList<JFXButton>, titulo: String, texto: String) = dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, ImageView(ALERTA))
 
     /**
      *
@@ -109,7 +108,7 @@ object AlertasPopup {
      * não informe por padrão irá adicionar um botão ok.
      * @param Campo     **String** que irá conter a mensagem a ser exibida.
      */
-    fun erroModal(rootStackPane: StackPane, nodeBlur: Node, botoes: MutableList<JFXButton>, titulo: String, texto: String) {
+    fun erroModal(rootStackPane: StackPane, nodeBlur: Node?, botoes: MutableList<JFXButton>, titulo: String, texto: String) {
         dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, ImageView(ERRO))
     }
 
@@ -201,7 +200,7 @@ object AlertasPopup {
         return RESULTADO
     }
 
-    private fun dialogModern(rootStackPane: StackPane, nodeBlur: Node, botoes: MutableList<JFXButton>, titulo: String, texto: String, imagem: ImageView) {
+    private fun dialogModern(rootStackPane: StackPane, nodeBlur: Node?, botoes: MutableList<JFXButton>, titulo: String, texto: String, imagem: ImageView) {
         val blur = BoxBlur(3.0, 3.0, 3)
 
         if (botoes.isEmpty())
@@ -218,8 +217,8 @@ object AlertasPopup {
         dialogLayout.setHeading(Label(titulo))
         dialogLayout.setBody(HBox(imagem, Label(texto)))
         dialogLayout.setActions(botoes)
-        dialog.setOnDialogClosed { nodeBlur.effect = null }
-        nodeBlur.effect = blur
+        dialog.setOnDialogClosed { nodeBlur?.effect = null }
+        nodeBlur?.effect = blur
         dialog.show()
     }
 

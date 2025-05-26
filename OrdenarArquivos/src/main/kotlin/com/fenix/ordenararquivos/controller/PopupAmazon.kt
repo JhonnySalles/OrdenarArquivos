@@ -13,7 +13,6 @@ import javafx.scene.Parent
 import javafx.scene.control.Label
 import javafx.scene.effect.BoxBlur
 import javafx.scene.input.KeyCode
-import javafx.scene.layout.Background
 import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.scene.robot.Robot
@@ -343,7 +342,7 @@ class PopupAmazon : Initializable {
         }
     }
 
-    private fun configuraListenert() {
+    private fun configuraListeners() {
         txtSiteAmazon.focusedProperty().addListener { _, oldVal, _ ->
             if (oldVal)
                 consulta()
@@ -375,12 +374,12 @@ class PopupAmazon : Initializable {
                 robot.keyPress(KeyCode.TAB)
         }
 
-        configuraListenert()
+        configuraListeners()
     }
 
     companion object {
         private val LOGGER: Logger = LoggerFactory.getLogger(PopupAmazon::class.java)
-        private val STYLE_SHEET: String = AlertasPopup::class.java.getResource("/css/Dark_TelaInicial.css").toExternalForm()
+        private val STYLE_SHEET: String = PopupAmazon::class.java.getResource("/css/Dark_TelaInicial.css").toExternalForm()
         private lateinit var btnConfirmar: JFXButton
         private lateinit var btnVoltar: JFXButton
         private lateinit var dialog: JFXDialog

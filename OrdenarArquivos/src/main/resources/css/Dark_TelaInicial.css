@@ -54,6 +54,25 @@
     -fx-text-fill: white;
 }
 
+/*---------- Combo Box Table View ----------*/
+.combo-box {
+    -fx-text-fill: white;
+    -fx-background-color: #333333;
+    -fx-prompt-text-fill: #ababab;
+}
+
+.combo-box .text-field {
+    -fx-text-fill: white;
+}
+
+.combo-box>.list-cell {
+    -fx-text-fill: white;
+}
+
+.combo-box-popup {
+    -fx-background-color: #333333;
+}
+
 /*---------- Text Area ----------*/
 .textArea {
     -fx-background-color: #4059a9;
