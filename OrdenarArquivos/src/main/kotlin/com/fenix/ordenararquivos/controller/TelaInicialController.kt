@@ -726,7 +726,7 @@ class TelaInicialController : Initializable {
             tbViewProcessar.refresh()
             null
         }
-        PopupCapitulos.abreTelaCapitulos(rootStackPane, root, callback, cbLinguagem.value, mObsListaProcessar.map { it.arquivo }, txtSeparadorCapitulo.text)
+        PopupCapitulos.abreTelaCapitulos(rootStackPane, root, callback, cbLinguagem.value, mObsListaProcessar, txtSeparadorCapitulo.text)
     }
 
     @FXML

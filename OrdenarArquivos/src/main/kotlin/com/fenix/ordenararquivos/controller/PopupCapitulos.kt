@@ -2,6 +2,7 @@ package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.components.CheckBoxTableCellCustom
 import com.fenix.ordenararquivos.components.TextAreaTableCell
+import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.entities.capitulos.Capitulo
 import com.fenix.ordenararquivos.model.entities.capitulos.Volume
 import com.fenix.ordenararquivos.model.enums.Linguagem
@@ -101,6 +102,7 @@ class PopupCapitulos : Initializable {
 
     private var mLista: ObservableList<Volume> = FXCollections.observableArrayList()
     private var mArquivos: List<String> = listOf()
+    private var mProcessar: List<Processar> = listOf()
 
     @FXML
     private fun onBtnExecutar() {
@@ -185,6 +187,10 @@ class PopupCapitulos : Initializable {
 
     fun setLinguagem(linguagem : Linguagem) = cbLinguagem.selectionModel.select(linguagem)
 
+    fun setProcessar(processar : List<Processar>) {
+        mProcessar = processar
+    }
+
     private fun consulta() {
         if (txtEndereco.text.isNullOrEmpty())
             return
@@ -243,14 +249,48 @@ class PopupCapitulos : Initializable {
     private val formater = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
     private fun formatar(valor : Double) : String = formater.format(valor)
 
-    private fun preparar(list: List<Volume>) {
+    private fun preparar(lista: List<Volume>) {
         val linguagem = cbLinguagem.value
-        for (item in list) {
-            item.tags = item.capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + SEPARADOR + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles }
-            item.arquivo = mArquivos.find { it.lowercase().contains("volume " + formatar(item.volume)) } ?: ""
+
+        val processada = if (lista.size == 1 && lista[0].volume < 0) {
+            val list = lista[0].capitulos
+            val volumes = mutableListOf<Volume>()
+            for (processar in mProcessar) {
+                val capitulos = mutableListOf<Capitulo>()
+
+                for (tag in processar.tags.split("\n")) {
+                    var capitulo = tag.substringAfter(SEPARADOR_IMAGEM).trim()
+
+                    if (capitulo.endsWith(SEPARADOR_CAPITULO))
+                        capitulo = capitulo.substringBeforeLast(SEPARADOR_CAPITULO).trim()
+
+                    if (capitulo.isEmpty())
+                        continue
+
+                    capitulo.lowercase().let { c ->
+                        if (c.contains("第") || c.contains("chapter") || c.contains("capítulo")) {
+                            val numero = if (c.contains("第"))
+                                c.replace("第", "").replace("話", "").trim().toDoubleOrNull()
+                            else
+                                c.replace("capítulo", "").replace("chapter", "").trim().toDoubleOrNull()
+                            list.find { l -> l.capitulo == numero }?.run { capitulos.add(this) }
+                        }
+                    }
+                }
+
+                val tags = capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + SEPARADOR + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles }
+                volumes.add(Volume(arquivo = processar.arquivo, volume = processar.comicInfo?.volume?.toDouble() ?: 0.0, capitulos = capitulos, tags = tags))
+            }
+            volumes
+        } else {
+            for (item in lista) {
+                item.tags = item.capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + SEPARADOR + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles }
+                item.arquivo = mArquivos.find { it.lowercase().contains("volume " + formatar(item.volume)) } ?: ""
+            }
+            lista
         }
 
-        mLista = FXCollections.observableArrayList(list)
+        mLista = FXCollections.observableArrayList(processada)
         tbViewTabela.items = mLista
     }
 
@@ -441,7 +481,7 @@ class PopupCapitulos : Initializable {
 
     //<--------------------------  Manga Fire  -------------------------->
     private fun extractMangaFire(pagina: Document) : List<Volume> {
-        val volume = Volume(volume = 0.0, capitulos = mutableListOf())
+        val volume = Volume(volume = -1.0, capitulos = mutableListOf())
 
         // Seleciona a lista de capítulos
         // A estrutura é ul.scroll-sm dentro de div.list-body que está dentro de div.tab-content[data-name="chapter"]
@@ -641,6 +681,8 @@ class PopupCapitulos : Initializable {
     }
 
     companion object {
+        private val SEPARADOR_IMAGEM = ";"
+        private val SEPARADOR_CAPITULO = "#"
         private val LOGGER: Logger = LoggerFactory.getLogger(PopupAmazon::class.java)
         private val STYLE_SHEET: String = PopupCapitulos::class.java.getResource("/css/Dark_TelaInicial.css").toExternalForm()
         private lateinit var btnConfirmar: JFXButton
@@ -648,7 +690,7 @@ class PopupCapitulos : Initializable {
         private lateinit var dialog: JFXDialog
         private var SEPARADOR : String = "|"
 
-        fun abreTelaCapitulos(rootStackPane: StackPane, nodeBlur: Node, callback: Callback<ObservableList<Volume>, Boolean>, linguagem: Linguagem, arquivos: List<String>, separador : String) {
+        fun abreTelaCapitulos(rootStackPane: StackPane, nodeBlur: Node, callback: Callback<ObservableList<Volume>, Boolean>, linguagem: Linguagem, processar: List<Processar>, separador : String) {
             try {
                 SEPARADOR = separador
                 val blur = BoxBlur(3.0, 3.0, 3)
@@ -659,7 +701,8 @@ class PopupCapitulos : Initializable {
                 val newAnchorPane: Parent = loader.load()
                 val cnt: PopupCapitulos = loader.getController()
                 cnt.setLinguagem(linguagem)
-                cnt.setArquivos(arquivos)
+                cnt.setArquivos(processar.map { it.arquivo })
+                cnt.setProcessar(processar)
                 val titulo = Label("Importando capitulos")
                 titulo.font = Font.font(20.0)
                 titulo.textFill = Color.web("#ffffff", 0.8)
