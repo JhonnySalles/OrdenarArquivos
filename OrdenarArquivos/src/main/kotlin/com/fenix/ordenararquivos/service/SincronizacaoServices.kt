@@ -1,6 +1,6 @@
 package com.fenix.ordenararquivos.service
 
-import com.fenix.ordenararquivos.controller.TelaInicialController
+import com.fenix.ordenararquivos.controller.AbaArquivoController
 import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.database.DataBase.instancia
 import com.fenix.ordenararquivos.model.entities.Sincronizacao
@@ -36,7 +36,7 @@ import java.util.Date
 import java.util.stream.Collectors
 
 
-class SincronizacaoServices(private val controller: TelaInicialController) : TimerTask() {
+class SincronizacaoServices(private val controller: AbaArquivoController) : TimerTask() {
 
     private val mLOG = LoggerFactory.getLogger(SincronizacaoServices::class.java)
 

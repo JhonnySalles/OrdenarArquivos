@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.jfoenix.controls.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import java.lang.String?>
+<?import java.net.URL?>
+<AnchorPane fx:id="apRoot" minHeight="0.0" minWidth="0.0" prefHeight="800.0" prefWidth="900.0" styleClass="background-Black3" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.AbaPastasController">
+   <children>
+      <VBox prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <children>
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+               <children>
+                  <JFXTextField fx:id="txtNomePastaManga" focusColor="#0cff00" labelFloat="true" minHeight="25.0" prefHeight="25.0" prefWidth="300.0" promptText="Manga" styleClass="texto-stilo-1" unFocusColor="#4059a9" />
+                  <HBox alignment="CENTER" minWidth="340.0" spacing="2.0" HBox.hgrow="ALWAYS">
+                     <children>
+                        <JFXTextField fx:id="txtPastaProcessar" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta para carregar itens" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                        <JFXButton fx:id="btnPesquisarPastaProcessar" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPasta" styleClass="background-Black3">
+                           <graphic>
+                              <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
+                                 <image>
+                                    <Image url="@../images/icoAbrir_48.png" />
+                                 </image>
+                              </ImageView>
+                           </graphic>
+                        </JFXButton>
+                     </children>
+                  </HBox>
+                  <HBox alignment="CENTER_LEFT" spacing="10.0">
+                     <children>
+                        <JFXButton fx:id="btnCarregar" minWidth="70.0" onAction="#onBtnCarregar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Blue3" text="Carregar" textFill="WHITE" />
+                        <JFXButton fx:id="btnAplicar" minWidth="70.0" prefHeight="30.0" prefWidth="150.0" styleClass="background-Green2" text="Aplicar" textFill="WHITE" />
+                     </children>
+                  </HBox>
+               </children>
+               <VBox.margin>
+                  <Insets bottom="10.0" left="10.0" right="10.0" top="15.0" />
+               </VBox.margin>
+            </HBox>
+            <JFXTabPane fx:id="tbTabRoot" styleClass="background-Black3" VBox.vgrow="ALWAYS">
+               <tabs>
+                  <Tab fx:id="tbTabArquivo" text="Arquivos">
+                     <content>
+                        <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" styleClass="background-Black3">
+                           <children>
+                              <TableView fx:id="tbViewProcessar" editable="true" prefHeight="400.0" prefWidth="400.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                 <columns>
+                                    <TableColumn fx:id="clComicInfoArquivo" prefWidth="200.0" text="Pasta" />
+                                    <TableColumn fx:id="clComicInfoSerie" prefWidth="150.0" text="Scan" />
+                                    <TableColumn fx:id="clComicInfoTitulo" prefWidth="100.0" text="Volume" />
+                                    <TableColumn fx:id="clComicInfoEditora" prefWidth="90.0" text="Capítulo" />
+                                    <TableColumn fx:id="clComicInfoPublicacao" prefWidth="200.0" text="Formatado" />
+                                 </columns>
+                              </TableView>
+                           </children>
+                        </AnchorPane>
+                     </content>
+                  </Tab>
+                  <Tab fx:id="tbTabComicInfo" text="ComicInfo">
+                     <content>
+                        <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" styleClass="background-Black3">
+                           <children>
+                              <SplitPane dividerPositions="0.5" prefHeight="160.0" prefWidth="200.0" styleClass="background-Black3" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                 <items>
+                                    <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="160.0" prefWidth="100.0" styleClass="background-Black3">
+                                       <children>
+                                          <ScrollPane fitToWidth="true" prefHeight="200.0" prefWidth="200.0" styleClass="background-Black3" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                             <content>
+                                                <VBox alignment="CENTER" spacing="15.0" styleClass="background-Black3">
+                                                   <children>
+                                                      <HBox spacing="5.0">
+                                                         <children>
+                                                            <JFXTextField fx:id="txtIdMal" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="My Anime List ID" styleClass="texto-stilo-2" unFocusColor="#4059a9" HBox.hgrow="ALWAYS">
+                                                               <tooltip>
+                                                                  <Tooltip text="Ctrl + I" />
+                                                               </tooltip>
+                                                            </JFXTextField>
+                                                            <JFXComboBox fx:id="cbAgeRating" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Classificação etária" styleClass="combo-box-stilo-2" unFocusColor="#4059a9" />
+                                                            <JFXComboBox fx:id="cbLinguagem" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Linguagem" styleClass="combo-box-stilo-2" unFocusColor="#4059a9" />
+                                                         </children>
+                                                      </HBox>
+                                                      <JFXTextField fx:id="txtTitle" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Titulo" styleClass="texto-stilo-2" unFocusColor="#4059a9">
+                                                         <tooltip>
+                                                            <Tooltip text="Ctrl + I" />
+                                                         </tooltip>
+                                                      </JFXTextField>
+                                                      <JFXTextField fx:id="txtSeries" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Série" styleClass="texto-stilo-2" unFocusColor="#4059a9">
+                                                         <tooltip>
+                                                            <Tooltip text="Ctrl + I" />
+                                                         </tooltip>
+                                                      </JFXTextField>
+                                                      <JFXTextField fx:id="txtPublisher" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Editora" styleClass="texto-stilo-2" unFocusColor="#4059a9">
+                                                         <tooltip>
+                                                            <Tooltip text="Ctrl + I" />
+                                                         </tooltip>
+                                                      </JFXTextField>
+                                                      <JFXTextField fx:id="txtAlternateSeries" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Série alternativa" styleClass="texto-stilo-2" unFocusColor="#4059a9">
+                                                         <tooltip>
+                                                            <Tooltip text="Ctrl + I" />
+                                                         </tooltip>
+                                                      </JFXTextField>
+                                                      <JFXTextField fx:id="txtSeriesGroup" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Grupo de série" styleClass="texto-stilo-2" unFocusColor="#4059a9">
+                                                         <tooltip>
+                                                            <Tooltip text="Ctrl + I" />
+                                                         </tooltip>
+                                                      </JFXTextField>
+                                                      <JFXTextField fx:id="txtStoryArc" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Arco da estória" styleClass="texto-stilo-2" unFocusColor="#4059a9">
+                                                         <tooltip>
+                                                            <Tooltip text="Ctrl + I" />
+                                                         </tooltip>
+                                                      </JFXTextField>
+                                                      <JFXTextField fx:id="txtGenre" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Gêneros" styleClass="texto-stilo-2" unFocusColor="#4059a9">
+                                                         <tooltip>
+                                                            <Tooltip text="Ctrl + I" />
+                                                         </tooltip>
+                                                      </JFXTextField>
+                                                      <JFXTextField fx:id="txtImprint" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Impressão" styleClass="texto-stilo-2" unFocusColor="#4059a9">
+                                                         <tooltip>
+                                                            <Tooltip text="Ctrl + I" />
+                                                         </tooltip>
+                                                      </JFXTextField>
+                                                      <JFXTextArea fx:id="txtNotes" focusColor="#0cff00" labelFloat="true" prefHeight="200.0" prefWidth="400.0" promptText="Notas" unFocusColor="#4059a9">
+                                                         <styleClass>
+                                                            <String fx:value="textArea" />
+                                                            <String fx:value="texto-stilo-2" />
+                                                         </styleClass>
+                                                         <tooltip>
+                                                            <Tooltip text="Ctrl + M" />
+                                                         </tooltip>
+                                                      </JFXTextArea>
+                                                   </children>
+                                                   <padding>
+                                                      <Insets bottom="15.0" left="5.0" right="5.0" top="15.0" />
+                                                   </padding>
+                                                </VBox>
+                                             </content>
+                                          </ScrollPane>
+                                       </children>
+                                    </AnchorPane>
+                                    <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="160.0" prefWidth="100.0" styleClass="background-Black3">
+                                       <children>
+                                          <VBox prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                             <children>
+                                                <VBox alignment="CENTER" prefHeight="100.0" prefWidth="100.0" spacing="15.0">
+                                                   <children>
+                                                      <JFXTextField fx:id="txtMalId" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="228.0" promptText="My Anime List ID" styleClass="texto-stilo-2" unFocusColor="#4059a9" />
+                                                      <JFXTextField fx:id="txtMalNome" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="228.0" promptText="Nome" styleClass="texto-stilo-2" unFocusColor="#4059a9" />
+                                                      <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" spacing="10.0">
+                                                         <children>
+                                                            <JFXButton fx:id="btnAmazonConsultar" onAction="#onBtnAmazonConsultar" prefHeight="30.0" prefWidth="100.0" styleClass="background-White1" text="Amazon" />
+                                                            <JFXButton fx:id="btnMalAplicar" onAction="#onBtnMalAplicar" prefHeight="30.0" prefWidth="100.0" styleClass="background-Green2" text="Aplicar" textFill="WHITE" />
+                                                            <JFXButton fx:id="btnMalConsultar" onAction="#onBtnMalConsultar" prefHeight="25.0" prefWidth="100.0" styleClass="background-Blue3" text="Consultar" textFill="WHITE" />
+                                                         </children>
+                                                      </HBox>
+                                                      <HBox prefHeight="100.0" prefWidth="200.0" />
+                                                   </children>
+                                                   <padding>
+                                                      <Insets bottom="15.0" left="5.0" right="5.0" top="15.0" />
+                                                   </padding>
+                                                   <VBox.margin>
+                                                      <Insets left="10.0" right="10.0" />
+                                                   </VBox.margin>
+                                                </VBox>
+                                                <TableView fx:id="tbViewMal" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
+                                                   <columns>
+                                                      <TableColumn fx:id="clMalId" prefWidth="75.0" text="ID" />
+                                                      <TableColumn fx:id="clMalNome" prefWidth="150.0" text="Nome" />
+                                                      <TableColumn fx:id="clMalSite" prefWidth="75.0" text="Site" />
+                                                      <TableColumn fx:id="clMalImagem" prefWidth="200.0" text="Imagem" />
+                                                   </columns>
+                                                </TableView>
+                                             </children>
+                                          </VBox>
+                                       </children>
+                                    </AnchorPane>
+                                 </items>
+                              </SplitPane>
+                           </children>
+                        </AnchorPane>
+                     </content>
+                  </Tab>
+               </tabs>
+            </JFXTabPane>
+         </children>
+      </VBox>
+   </children>
+   <stylesheets>
+      <URL value="@../css/Paleta_Cores.css" />
+      <URL value="@../css/Dark_TelaInicial.css" />
+   </stylesheets>
+</AnchorPane>

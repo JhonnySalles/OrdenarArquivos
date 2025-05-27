@@ -725,8 +725,12 @@ class PopupCapitulos : Initializable {
                 dialogLayout.styleClass.add("dialog-black")
                 dialog.stylesheets.add(STYLE_SHEET)
                 dialog.padding = Insets(0.0, 0.0, 0.0, 0.0)
-                dialog.setOnDialogClosed { nodeBlur.effect = null }
+                dialog.setOnDialogClosed {
+                    nodeBlur.effect = null
+                    nodeBlur.isDisable = false
+                }
                 nodeBlur.effect = blur
+                nodeBlur.isDisable = true
                 dialog.show()
             } catch (e: IOException) {
                 LOGGER.error(e.message, e)

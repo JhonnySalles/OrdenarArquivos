@@ -53,7 +53,7 @@
 
 .combo-box > .list-cell {
     -fx-text-fill: white;
-    -fx-background-color: #333333;
+    -fx-background-color: transparent;
 }
 
 .combo-box-popup {
@@ -64,6 +64,13 @@
     -fx-background-color: #000000;
     -fx-background-insets: 0;
     -fx-padding: 0;
+}
+
+/*---------- Combo Box ----------*/
+.combo-box-stilo-2 {
+    -fx-text-fill: white;
+    -fx-background-color: #000000;
+    -fx-prompt-text-fill: #ababab;
 }
 
 /*---------- Text Area ----------*/

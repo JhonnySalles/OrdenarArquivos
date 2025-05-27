@@ -187,8 +187,12 @@ object AlertasPopup {
         cancelButton.styleClass.add("btnCancela")
         layout.setActions(cancelButton, confirmButton)
         alert.setContent(layout)
-        alert.onCloseRequestProperty().set { nodeBlur.effect = null }
+        alert.onCloseRequestProperty().set {
+            nodeBlur.effect = null
+            nodeBlur.isDisable = false
+        }
         nodeBlur.effect = blur
+        nodeBlur.isDisable = true
 
         // Devido a um erro no componente, não funciona o retorno padrão, será feito
         // pela variável resultado.
@@ -217,8 +221,12 @@ object AlertasPopup {
         dialogLayout.setHeading(Label(titulo))
         dialogLayout.setBody(HBox(imagem, Label(texto)))
         dialogLayout.setActions(botoes)
-        dialog.setOnDialogClosed { nodeBlur?.effect = null }
+        dialog.setOnDialogClosed {
+            nodeBlur?.effect = null
+            nodeBlur?.isDisable = false
+        }
         nodeBlur?.effect = blur
+        nodeBlur?.isDisable = true
         dialog.show()
     }
 

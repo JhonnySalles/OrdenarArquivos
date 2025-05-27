@@ -1,6 +1,5 @@
 package com.fenix.ordenararquivos.model.entities.comet
 
-import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicPageType
 import com.fenix.ordenararquivos.model.entities.comicinfo.Manga
@@ -8,8 +7,6 @@ import jakarta.xml.bind.annotation.XmlAccessType
 import jakarta.xml.bind.annotation.XmlAccessorType
 import jakarta.xml.bind.annotation.XmlElement
 import jakarta.xml.bind.annotation.XmlRootElement
-import java.net.URI
-import java.util.*
 
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlRootElement(name = "comet")

@@ -1,6 +1,5 @@
 package com.fenix.ordenararquivos.components;
 
-import com.google.cloud.Tuple;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
