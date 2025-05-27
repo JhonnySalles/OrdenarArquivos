@@ -343,8 +343,8 @@
                                                                               <Tooltip text="Ctrl + I" />
                                                                            </tooltip>
                                                                         </JFXTextField>
-                                                                        <JFXComboBox fx:id="cbAgeRating" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Classificação etária" styleClass="comboBox-stilo" unFocusColor="#4059a9" />
-                                                                        <JFXComboBox fx:id="cbLanguage" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Linguagem" styleClass="comboBox-stilo" unFocusColor="#4059a9" />
+                                                                        <JFXComboBox fx:id="cbAgeRating" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Classificação etária" styleClass="combo-box" unFocusColor="#4059a9" />
+                                                                        <JFXComboBox fx:id="cbLanguage" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Linguagem" styleClass="combo-box" unFocusColor="#4059a9" />
                                                                      </children>
                                                                   </HBox>
                                                                   <JFXTextField fx:id="txtTitle" focusColor="#0cff00" labelFloat="true" minHeight="27.0" prefHeight="30.0" prefWidth="150.0" promptText="Titulo" styleClass="texto-stilo-2" unFocusColor="#4059a9">
@@ -514,7 +514,7 @@
                                              <children>
                                                 <HBox alignment="CENTER_LEFT" prefWidth="200.0" spacing="10.0">
                                                    <children>
-                                                      <JFXComboBox fx:id="cbLinguagem" focusColor="#71afe5" labelFloat="true" prefWidth="200.0" promptText="Linguagem" styleClass="comboBox-stilo" unFocusColor="#106ebe" />
+                                                      <JFXComboBox fx:id="cbLinguagem" focusColor="#71afe5" labelFloat="true" prefWidth="200.0" promptText="Linguagem" styleClass="combo-box" unFocusColor="#106ebe" />
                                                       <HBox alignment="CENTER" minWidth="340.0" spacing="2.0" HBox.hgrow="ALWAYS">
                                                          <children>
                                                             <JFXTextField fx:id="txtPastaProcessar" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta para carregar itens" styleClass="texto-stilo-2" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
@@ -547,15 +547,11 @@
                                                       <TableColumn fx:id="clComicInfoArquivo" prefWidth="200.0" text="Arquivo" />
                                                       <TableColumn fx:id="clComicInfoSerie" prefWidth="100.0" text="Série" />
                                                       <TableColumn fx:id="clComicInfoTitulo" prefWidth="100.0" text="Título" />
-                                                      <TableColumn fx:id="clComicInfoEditora" prefWidth="100.0" text="Editora" />
-                                                      <TableColumn fx:id="clComicInfoPublicacao" prefWidth="100.0" text="Publicação" />
+                                                      <TableColumn fx:id="clComicInfoEditora" prefWidth="90.0" text="Editora" />
+                                                      <TableColumn fx:id="clComicInfoPublicacao" prefWidth="90.0" text="Publicação" />
                                                       <TableColumn fx:id="clComicInfoResumo" prefWidth="100.0" text="Resumo" />
-                                                      <TableColumn prefWidth="75.0" text="OCR">
-                                                         <columns>
-                                                            <TableColumn fx:id="clComicInfoTags" prefWidth="100.0" text="Tags" />
-                                                            <TableColumn fx:id="clProcessarOCR" prefWidth="76.0" text="OCR" />
-                                                         </columns>
-                                                      </TableColumn>
+                                                      <TableColumn fx:id="clComicInfoTags" prefWidth="150.0" text="Tags" />
+                                                      <TableColumn fx:id="clProcessarOCR" prefWidth="76.0" text="OCR" />
                                                       <TableColumn fx:id="clProcessarAmazon" text="Amazon" />
                                                       <TableColumn fx:id="clSalvarComicInfo" prefWidth="76.0" text="Salvar" />
                                                    </columns>

@@ -23,7 +23,7 @@
          <children>
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                <children>
-                  <JFXComboBox fx:id="cbLinguagem" focusColor="#71afe5" labelFloat="true" prefWidth="200.0" promptText="Linguagem" styleClass="comboBox-stilo" unFocusColor="#106ebe" />
+                  <JFXComboBox fx:id="cbLinguagem" focusColor="#71afe5" labelFloat="true" prefWidth="200.0" promptText="Linguagem" styleClass="combo-box" unFocusColor="#106ebe" />
                   <VBox HBox.hgrow="ALWAYS">
                      <children>
                         <Label prefWidth="50.0" text="Sites:" textFill="WHITE" />

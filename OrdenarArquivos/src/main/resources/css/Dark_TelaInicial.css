@@ -40,21 +40,6 @@
 }
 
 /*---------- Combo Box ----------*/
-.comboBox-stilo {
-    -fx-text-fill: white;
-    -fx-background-color: #000000;
-    -fx-prompt-text-fill: #ababab;
-}
-
-.comboBox-stilo .text-field {
-    -fx-text-fill: white;
-}
-
-.comboBox-stilo>.list-cell {
-    -fx-text-fill: white;
-}
-
-/*---------- Combo Box Table View ----------*/
 .combo-box {
     -fx-text-fill: white;
     -fx-background-color: #333333;
@@ -63,14 +48,22 @@
 
 .combo-box .text-field {
     -fx-text-fill: white;
+    -fx-background-color: transparent;
 }
 
-.combo-box>.list-cell {
+.combo-box > .list-cell {
     -fx-text-fill: white;
+    -fx-background-color: #333333;
 }
 
 .combo-box-popup {
     -fx-background-color: #333333;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #000000;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
 }
 
 /*---------- Text Area ----------*/
@@ -98,7 +91,6 @@
     -fx-box-border: #000000;
     -fx-padding: 1;
 }
-
 
 /*---------- Estilos do scroll ----------*/
 .scroll-pane {

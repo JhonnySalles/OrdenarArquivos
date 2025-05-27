@@ -17,7 +17,7 @@
          <children>
             <VBox>
                <children>
-                  <JFXComboBox fx:id="cbLinguagem" focusColor="#71afe5" labelFloat="true" prefWidth="200.0" promptText="Linguagem" styleClass="comboBox-stilo" unFocusColor="#106ebe" />
+                  <JFXComboBox fx:id="cbLinguagem" focusColor="#71afe5" labelFloat="true" prefWidth="200.0" promptText="Linguagem" styleClass="combo-box" unFocusColor="#106ebe" />
                </children>
             </VBox>
             <JFXTextField fx:id="txtSiteAmazon" focusColor="#71afe5" labelFloat="true" prefHeight="25.0" prefWidth="228.0" promptText="Endereço Amazon" styleClass="texto-stilo-1" unFocusColor="#106ebe" />
