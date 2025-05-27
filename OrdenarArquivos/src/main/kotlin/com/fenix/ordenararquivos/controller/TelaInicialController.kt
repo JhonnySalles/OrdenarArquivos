@@ -355,6 +355,9 @@ class TelaInicialController : Initializable {
     private lateinit var btnOcrProcessar: JFXButton
 
     @FXML
+    private lateinit var btnTagsProcessar: JFXButton
+
+    @FXML
     private lateinit var btnCapitulos: JFXButton
 
     @FXML
@@ -703,11 +706,7 @@ class TelaInicialController : Initializable {
 
                         capitulo.lowercase().substringAfter(SEPARADOR_IMAGEM).let {
                             if (it.contains("第") || it.contains("chapter") || it.contains("capítulo")) {
-                                val numero = if (it.contains("第"))
-                                    it.replace("第", "").replace("話", "").trim().toDoubleOrNull()
-                                else
-                                    it.replace("capítulo", "").replace("chapter", "").trim().toDoubleOrNull()
-
+                                val numero = getNumber(it)
                                 capitulos.find { c -> c.capitulo == numero }?.run {
                                     capitulos.remove(this)
                                     capitulo += " " + SEPARADOR_CAPITULO + " " + decimal.format(this.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && this.japones.isNotEmpty()) this.japones else this.ingles
@@ -745,6 +744,15 @@ class TelaInicialController : Initializable {
                 processaOCR()
             } else
                 mCANCELAR = true
+        }
+    }
+
+    @FXML
+    private fun onBtnTagsProcessar() {
+        if (mObsListaProcessar.isNotEmpty()) {
+            for (item in mObsListaProcessar)
+                gerarTagItem(item)
+            tbViewProcessar.refresh()
         }
     }
 
@@ -2584,6 +2592,23 @@ class TelaInicialController : Initializable {
         tbViewProcessar.refresh()
     }
 
+    private fun gerarTagItem(item: Processar) {
+        val decimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
+        val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+        val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { p ->
+            p.image.toString() + SEPARADOR_IMAGEM + p.bookmark!!.substringBeforeLast("-", p.bookmark!!).trim()
+                .let { b -> if (b.lowercase().contains("第") || b.lowercase().contains("chapter") || b.lowercase().contains("capítulo")) {
+                    val capitulo = getNumber(b) ?: 0.0
+                    when (language) {
+                        Linguagem.JAPANESE -> "第${decimal.format(capitulo)}話"
+                        Linguagem.PORTUGUESE -> "Capítulo ${decimal.format(capitulo)}"
+                        else -> "Chapter ${decimal.format(capitulo)}"
+                    }
+                } else b }
+        }?.toList() ?: emptyList()
+        item.tags = tags.joinToString(separator = "\n")
+    }
+
     private fun openSiteAmazon(item: Processar) {
         val callback: Callback<ComicInfo, Boolean> = Callback<ComicInfo, Boolean> { param ->
             item.comicInfo = param
@@ -2671,8 +2696,8 @@ class TelaInicialController : Initializable {
             .anyMatch { capa: Capa -> capa.tipo == tipo && capa.nome.equals(caminho, ignoreCase = true) }
     }
 
-    private var mDellaySubir: Timer? = null
-    private var mDellayDescer: Timer? = null
+    private var mDelaySubir: Timer? = null
+    private var mDelayDescer: Timer? = null
     private fun selecionaImagens() {
         mObsListaImagesSelected = FXCollections.observableArrayList()
         lsVwListaImagens.addEventFilter(ScrollEvent.ANY) { e: ScrollEvent ->
@@ -2680,14 +2705,14 @@ class TelaInicialController : Initializable {
                 if (e.deltaY > 10) {
                     btnScrollSubir.isVisible = true
                     btnScrollSubir.isDisable = false
-                    if (mDellaySubir != null)
-                        mDellaySubir!!.cancel()
-                    mDellaySubir = Timer()
-                    mDellaySubir!!.schedule(object : TimerTask() {
+                    if (mDelaySubir != null)
+                        mDelaySubir!!.cancel()
+                    mDelaySubir = Timer()
+                    mDelaySubir!!.schedule(object : TimerTask() {
                         override fun run() {
                             btnScrollSubir.isVisible = false
                             btnScrollSubir.isDisable = true
-                            mDellaySubir = null
+                            mDelaySubir = null
                         }
                     }, 3000)
                 }
@@ -2695,14 +2720,14 @@ class TelaInicialController : Initializable {
                 if (e.deltaY < 10) {
                     btnScrollDescer.isVisible = true
                     btnScrollDescer.isDisable = false
-                    if (mDellayDescer != null)
-                        mDellayDescer!!.cancel()
-                    mDellayDescer = Timer()
-                    mDellayDescer!!.schedule(object : TimerTask() {
+                    if (mDelayDescer != null)
+                        mDelayDescer!!.cancel()
+                    mDelayDescer = Timer()
+                    mDelayDescer!!.schedule(object : TimerTask() {
                         override fun run() {
                             btnScrollDescer.isVisible = false
                             btnScrollDescer.isDisable = true
-                            mDellayDescer = null
+                            mDelayDescer = null
                         }
                     }, 3000)
                 }
@@ -2821,6 +2846,13 @@ class TelaInicialController : Initializable {
             if (tbViewProcessar.selectionModel.selectedItem != null)
                 processarOcrItem(tbViewProcessar.selectionModel.selectedItem)
         }
+        val tags = MenuItem("Gerar Tags")
+        tags.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null) {
+                gerarTagItem(tbViewProcessar.selectionModel.selectedItem)
+                tbViewProcessar.refresh()
+            }
+        }
         val remover = MenuItem("Remover registro")
         remover.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null)
@@ -2831,6 +2863,7 @@ class TelaInicialController : Initializable {
         }
         menu.items.add(salvar)
         menu.items.add(processar)
+        menu.items.add(tags)
         menu.items.add(remover)
 
         tbViewProcessar.contextMenu = menu
