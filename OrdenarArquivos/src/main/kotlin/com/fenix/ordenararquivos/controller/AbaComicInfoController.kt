@@ -79,31 +79,31 @@ class AbaComicInfoController : Initializable {
     private lateinit var tbViewProcessar: TableView<Processar>
 
     @FXML
-    private lateinit var clComicInfoProcessado: TableColumn<Processar, Boolean>
+    private lateinit var clProcessado: TableColumn<Processar, Boolean>
 
     @FXML
-    private lateinit var clComicInfoArquivo: TableColumn<Processar, String>
+    private lateinit var clArquivo: TableColumn<Processar, String>
 
     @FXML
-    private lateinit var clComicInfoSerie: TableColumn<Processar, String>
+    private lateinit var clSerie: TableColumn<Processar, String>
 
     @FXML
-    private lateinit var clComicInfoTitulo: TableColumn<Processar, String>
+    private lateinit var clTitulo: TableColumn<Processar, String>
 
     @FXML
-    private lateinit var clComicInfoEditora: TableColumn<Processar, String>
+    private lateinit var clEditora: TableColumn<Processar, String>
 
     @FXML
-    private lateinit var clComicInfoPublicacao: TableColumn<Processar, String>
+    private lateinit var clPublicacao: TableColumn<Processar, String>
 
     @FXML
-    private lateinit var clComicInfoResumo: TableColumn<Processar, String>
+    private lateinit var clResumo: TableColumn<Processar, String>
 
     @FXML
-    private lateinit var clComicInfoTags: TableColumn<Processar, String>
+    private lateinit var clTags: TableColumn<Processar, String>
 
     @FXML
-    private lateinit var clProcessarOCR: TableColumn<Processar, JFXButton?>
+    private lateinit var clProcessarOcr: TableColumn<Processar, JFXButton?>
 
     @FXML
     private lateinit var clProcessarAmazon: TableColumn<Processar, JFXButton?>
@@ -139,7 +139,7 @@ class AbaComicInfoController : Initializable {
                                 val numero = Utils.getNumber(it)
                                 capitulos.find { c -> c.capitulo == numero }?.run {
                                     capitulos.remove(this)
-                                    capitulo += " " + com.fenix.ordenararquivos.util.Utils.SEPARADOR_IMPORTACAO + " " + decimal.format(this.capitulo) + separador + if (linguagem == com.fenix.ordenararquivos.model.enums.Linguagem.JAPANESE && this.japones.isNotEmpty()) this.japones else this.ingles
+                                    capitulo += " " + com.fenix.ordenararquivos.util.Utils.SEPARADOR_IMPORTACAO + " " + decimal.format(this.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && this.japones.isNotEmpty()) this.japones else this.ingles
                                 }
                             }
                         }
@@ -365,6 +365,7 @@ class AbaComicInfoController : Initializable {
         val pasta = File(txtPastaProcessar.text)
         if (txtPastaProcessar.text.isNotEmpty() && pasta.exists()) {
             btnCarregarProcessar.isDisable = true
+            controllerPai.setCursor(Cursor.WAIT)
 
             val processar: Task<Void> = object : Task<Void>() {
                 override fun call(): Void? {
@@ -424,6 +425,7 @@ class AbaComicInfoController : Initializable {
                     controllerPai.rootProgress.progressProperty().unbind()
                     controllerPai.rootMessage.textProperty().unbind()
                     controllerPai.clearProgress()
+                    controllerPai.setCursor(null)
                     btnCarregarProcessar.isDisable = false
                 }
             }
@@ -441,6 +443,8 @@ class AbaComicInfoController : Initializable {
             val info = File(item.file!!.parent, "ComicInfo.xml")
             if (info.exists())
                 info.delete()
+
+            item.comicInfo?.pages?.forEach { it.bookmark = "" }
 
             var sumario = "*Chapter Titles*\n"
             val tags = item.tags.split("\n")
@@ -588,7 +592,7 @@ class AbaComicInfoController : Initializable {
     }
 
     private fun editaColunas() {
-        clComicInfoProcessado.setCellValueFactory { param ->
+        clProcessado.setCellValueFactory { param ->
             val item = param.value
 
             val booleanProp = SimpleBooleanProperty(item.isProcessado)
@@ -598,14 +602,14 @@ class AbaComicInfoController : Initializable {
             }
             return@setCellValueFactory booleanProp
         }
-        clComicInfoProcessado.setCellFactory {
+        clProcessado.setCellFactory {
             val cell : CheckBoxTableCellCustom<Processar, Boolean> = CheckBoxTableCellCustom()
             cell.alignment = Pos.CENTER
             cell
         }
 
-        clComicInfoTags.cellFactory = TextAreaTableCell.forTableColumn()
-        clComicInfoTags.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
+        clTags.cellFactory = TextAreaTableCell.forTableColumn()
+        clTags.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
             e.tableView.items[e.tablePosition.row].tags = e.newValue
         }
 
@@ -781,9 +785,9 @@ class AbaComicInfoController : Initializable {
     }
 
     private fun linkaCelulas() {
-        clComicInfoProcessado.cellValueFactory = PropertyValueFactory("isProcessado")
-        clComicInfoArquivo.cellValueFactory = PropertyValueFactory("arquivo")
-        clComicInfoSerie.setCellValueFactory { param ->
+        clProcessado.cellValueFactory = PropertyValueFactory("isProcessado")
+        clArquivo.cellValueFactory = PropertyValueFactory("arquivo")
+        clSerie.setCellValueFactory { param ->
             val item = param.value
             if (item.comicInfo != null)
                 SimpleStringProperty(item.comicInfo!!.series)
@@ -791,7 +795,7 @@ class AbaComicInfoController : Initializable {
                 SimpleStringProperty("")
         }
 
-        clComicInfoTitulo.setCellValueFactory { param ->
+        clTitulo.setCellValueFactory { param ->
             val item = param.value
             if (item.comicInfo != null)
                 SimpleStringProperty(item.comicInfo!!.title)
@@ -799,7 +803,7 @@ class AbaComicInfoController : Initializable {
                 SimpleStringProperty("")
         }
 
-        clComicInfoEditora.setCellValueFactory { param ->
+        clEditora.setCellValueFactory { param ->
             val item = param.value
             if (item.comicInfo != null)
                 SimpleStringProperty(item.comicInfo!!.publisher)
@@ -807,7 +811,7 @@ class AbaComicInfoController : Initializable {
                 SimpleStringProperty("")
         }
 
-        clComicInfoPublicacao.setCellValueFactory { param ->
+        clPublicacao.setCellValueFactory { param ->
             val item = param.value
             if (item.comicInfo != null && item.comicInfo!!.year != null)
                 SimpleStringProperty("${item.comicInfo!!.day}/${item.comicInfo!!.month}/${item.comicInfo!!.year}")
@@ -815,7 +819,7 @@ class AbaComicInfoController : Initializable {
                 SimpleStringProperty("")
         }
 
-        clComicInfoResumo.setCellValueFactory { param ->
+        clResumo.setCellValueFactory { param ->
             val item = param.value
             if (item.comicInfo != null && item.comicInfo!!.summary != null)
                 SimpleStringProperty(item.comicInfo!!.summary)
@@ -823,8 +827,8 @@ class AbaComicInfoController : Initializable {
                 SimpleStringProperty("")
         }
 
-        clComicInfoTags.cellValueFactory = PropertyValueFactory("tags")
-        clProcessarOCR.cellValueFactory = PropertyValueFactory("processar")
+        clTags.cellValueFactory = PropertyValueFactory("tags")
+        clProcessarOcr.cellValueFactory = PropertyValueFactory("processar")
         clProcessarAmazon.cellValueFactory = PropertyValueFactory("amazon")
         clSalvarComicInfo.cellValueFactory = PropertyValueFactory("salvar")
 
@@ -832,7 +836,7 @@ class AbaComicInfoController : Initializable {
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
-        cbLinguagem.items.addAll(Linguagem.JAPANESE, Linguagem.ENGLISH)
+        cbLinguagem.items.addAll(Linguagem.JAPANESE, Linguagem.ENGLISH, Linguagem.PORTUGUESE)
         cbLinguagem.selectionModel.selectFirst()
         linkaCelulas()
     }

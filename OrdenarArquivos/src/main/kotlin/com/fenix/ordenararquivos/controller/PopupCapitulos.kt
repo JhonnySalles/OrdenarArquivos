@@ -148,6 +148,7 @@ class PopupCapitulos : Initializable {
             db.files.firstOrNull()?.let { file ->
                 // Atualiza o TextField com o caminho absoluto
                 txtEndereco.text = file.absolutePath
+                consulta()
                 success = true
             } ?: run {
                 AlertasPopup.alertaModal(AlertasPopup.rootStackPane, null, mutableListOf(),"Alerta", "Falha ao obter o arquivo.")
@@ -249,6 +250,10 @@ class PopupCapitulos : Initializable {
     private val formater = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
     private fun formatar(valor : Double) : String = formater.format(valor)
 
+    //Regex case insentive, no qual pode começar com capítulo, numero ou formato japoneas.
+    private val replace = "(?i)^(ch|chapter|第|[0-9])[0-9０-９ .]+(話|:)?".toRegex()
+    private fun formatar(linguagem : Linguagem, ingles : String, japones : String) : String = if (linguagem == Linguagem.JAPANESE && japones.isNotEmpty()) japones.replace(replace, "").trim() else ingles.replace(replace, "").trim()
+
     private fun preparar(lista: List<Volume>) {
         val linguagem = cbLinguagem.value
 
@@ -278,13 +283,13 @@ class PopupCapitulos : Initializable {
                     }
                 }
 
-                val tags = capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + SEPARADOR + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles }
+                val tags = capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + SEPARADOR + formatar(linguagem, it.ingles, it.japones) }
                 volumes.add(Volume(arquivo = processar.arquivo, volume = processar.comicInfo?.volume?.toDouble() ?: 0.0, capitulos = capitulos, tags = tags))
             }
             volumes
         } else {
             for (item in lista) {
-                item.tags = item.capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + SEPARADOR + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles }
+                item.tags = item.capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + SEPARADOR + formatar(linguagem, it.ingles, it.japones) }
                 item.arquivo = mArquivos.find { it.lowercase().contains("volume " + formatar(item.volume)) } ?: ""
             }
             lista
@@ -292,6 +297,7 @@ class PopupCapitulos : Initializable {
 
         mLista = FXCollections.observableArrayList(processada)
         tbViewTabela.items = mLista
+        tbViewTabela.refresh()
     }
 
     private fun openSite(site: String) {
@@ -329,7 +335,7 @@ class PopupCapitulos : Initializable {
                     if (chapterNumber != null) {
                         val listItem = ulElement.selectFirst("li.list-group-item")
                         if (listItem != null) {
-                            val inglesTitulo = listItem.selectFirst("h3")?.text()?.trim() ?: ""
+                            val inglesTitulo = listItem.selectFirst("h3")?.let { it.selectFirst("p")?.text() ?: it.text()  }?.trim() ?: ""
                             val japanesTitulo = listItem.selectFirst("p span.jp_fonts")?.text()?.trim() ?: ""
 
                             val ingles = cleanEnglishTitle(inglesTitulo)
@@ -646,7 +652,7 @@ class PopupCapitulos : Initializable {
             val item = param.value
             var descricao = ""
             if (item.capitulos.isNotEmpty())
-                descricao = item.capitulos.joinToString { it.capitulo.toString() }
+                descricao = item.capitulos.joinToString(separator = "\n") { it.capitulo.toString() }
             SimpleStringProperty(descricao)
         }
         clDescricoes.setCellValueFactory { param ->
@@ -654,9 +660,9 @@ class PopupCapitulos : Initializable {
             var descricao = ""
             if (item.capitulos.isNotEmpty()) {
                 descricao = if (cbLinguagem.value == Linguagem.JAPANESE)
-                    item.capitulos.joinToString { it.capitulo.toString() + ": " + it.japones }
+                    item.capitulos.joinToString(separator = "\n") { it.capitulo.toString() + ": " + it.japones }
                 else
-                    item.capitulos.joinToString { it.capitulo.toString() + ": " + it.ingles }
+                    item.capitulos.joinToString(separator = "\n") { it.capitulo.toString() + ": " + it.ingles }
             }
             SimpleStringProperty(descricao)
         }
