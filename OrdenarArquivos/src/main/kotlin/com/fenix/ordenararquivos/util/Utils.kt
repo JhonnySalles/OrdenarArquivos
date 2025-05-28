@@ -115,6 +115,31 @@ class Utils {
             }
             return fileChooser.showDialog(null)
         }
+
+        fun normaliza(texto: String, locale: Locale = Locale.getDefault()): String {
+            if (texto.isBlank() || texto.isEmpty())
+                return texto
+
+            val sb = StringBuilder()
+            var capitalizeNext = true
+            for (char in texto.trim().lowercase(locale)) {
+                when {
+                    // Se for um separador (espaço, hífen, apóstrofo), anexa e marca a próxima para capitalizar
+                    char.isWhitespace() || char == '-' || char == '\'' -> {
+                        sb.append(char)
+                        capitalizeNext = true
+                    }
+                    // Se for para capitalizar, anexa a versão maiúscula e desmarca
+                    capitalizeNext -> {
+                        sb.append(char.titlecaseChar())
+                        capitalizeNext = false
+                    }
+                    // Caso contrário, apenas anexa o caractere minúsculo
+                    else -> sb.append(char)
+                }
+            }
+            return sb.toString()
+        }
     }
 
 }

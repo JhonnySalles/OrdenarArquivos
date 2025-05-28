@@ -73,6 +73,9 @@ class AbaComicInfoController : Initializable {
     private lateinit var btnTagsProcessar: JFXButton
 
     @FXML
+    private lateinit var btnTagsNormaliza: JFXButton
+
+    @FXML
     private lateinit var btnCapitulos: JFXButton
 
     @FXML
@@ -182,6 +185,36 @@ class AbaComicInfoController : Initializable {
         if (mObsListaProcessar.isNotEmpty()) {
             for (item in mObsListaProcessar)
                 gerarTagItem(item)
+            tbViewProcessar.refresh()
+        }
+    }
+
+
+    @FXML
+    private fun onBtnTagsNormaliza() {
+        if (mObsListaProcessar.isNotEmpty()) {
+            val decimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
+            val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+            for (item in mObsListaProcessar) {
+                val linhas = item.tags.split("\n")
+                val tags = mutableListOf<String>()
+                for (linha in linhas) {
+                    if (linha.contains("第") || linha.lowercase().contains("capítulo")  || linha.lowercase().contains("capitulo") || linha.lowercase().contains("chapter")) {
+                        val imagem = linha.substringBefore(Utils.SEPARADOR_IMAGEM)
+                        var capitulo = linha.substringAfter(Utils.SEPARADOR_IMAGEM).substringBefore("-").trim()
+                        val numero = Utils.getNumber(if (capitulo.contains("第")) Utils.fromNumberJapanese(capitulo) else capitulo) ?: 0.0
+                        capitulo = when (language) {
+                            Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(decimal.format(numero))}話"
+                            Linguagem.PORTUGUESE -> "Capítulo ${decimal.format(numero)}"
+                            else -> "Chapter ${decimal.format(numero)}"
+                        }
+                        val titulo = Utils.normaliza(linha.substringAfter("-").trim())
+                        tags.add(imagem + Utils.SEPARADOR_IMAGEM + capitulo + " - " + titulo)
+                    } else
+                        tags.add(linha)
+                }
+                item.tags = tags.joinToString(separator = "\n")
+            }
             tbViewProcessar.refresh()
         }
     }
@@ -570,7 +603,7 @@ class AbaComicInfoController : Initializable {
         val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
         val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { p ->
             p.image.toString() + Utils.SEPARADOR_IMAGEM + p.bookmark!!.substringBeforeLast("-", p.bookmark!!).trim()
-                .let { b -> if (b.lowercase().contains("第") || b.lowercase().contains("chapter") || b.lowercase().contains("capítulo")) {
+                .let { b -> if (b.contains("第") || b.lowercase().contains("capítulo") || b.lowercase().contains("chapter")) {
                     val capitulo = Utils.getNumber(if (b.lowercase().contains("第")) Utils.fromNumberJapanese(b) else b) ?: 0.0
                     when (language) {
                         Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(decimal.format(capitulo))}話"
