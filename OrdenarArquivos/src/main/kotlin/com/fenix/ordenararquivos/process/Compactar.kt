@@ -84,7 +84,7 @@ object Compactar {
         }
     }
 
-    fun compactar(destino : File, zip : File, manga : Manga, comicInfo: ComicInfo, pastas: MutableList<File>, comic : MutableMap<String, File>, linguagem: Linguagem, isCompactar : Boolean, isGerarCapitulos: Boolean, callback: Callback<Triple<Long, Long, String>, Boolean>) : Boolean {
+    fun compactar(destino : File, zip : File, manga : Manga, comicInfo: ComicInfo, pastas: MutableList<File>, comic : MutableMap<String, File>, linguagem: Linguagem, isCompactar : Boolean, isGerarCapitulos: Boolean, isAtualizarComic: Boolean = true, callback: Callback<Triple<Long, Long, String>, Boolean>) : Boolean {
         callback.call(Triple(0 ,0, "Gerando o comic info.."))
 
         val imagens = ".*\\.(jpg|jpeg|bmp|gif|png|webp)$".toRegex()
@@ -189,9 +189,11 @@ object Compactar {
             if (it.title.isEmpty())
                 it.title = manga.nome
 
-            it.number = manga.volume.replace(Regex("\\D"), "").toFloat()
-            it.volume = it.number.toInt()
-            it.count = it.volume
+            if (isAtualizarComic) {
+                it.number = manga.volume.replace(Regex("\\D"), "").toFloat()
+                it.volume = it.number.toInt()
+                it.count = it.volume
+            }
 
             it.languageISO = when (linguagem) {
                 Linguagem.JAPANESE -> "ja"

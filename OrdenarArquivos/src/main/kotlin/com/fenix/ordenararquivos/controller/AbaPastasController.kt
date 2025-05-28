@@ -422,17 +422,20 @@ class AbaPastasController : Initializable {
         val nome = cbManga.value
         val manga = Manga()
         manga.nome = nome
+        mComicInfo.count = mObsListaProcessar.maxOf { it.volume }.toInt()
 
         var sequencia = 1
         var vol = 0f
         for (item in mObsListaProcessar) {
             if (item.volume > 0f && item.volume != vol) {
                 if (vol > 0f) {
+                    mComicInfo.volume = vol.toInt()
+                    mComicInfo.number = vol
                     manga.volume = volume.format(item.volume)
                     val arquivoZip = destino.path.trim { it <= ' ' } + "\\" + nome.trim { it <= ' ' } + " - Volume " + manga.volume + ".cbr"
                     manga.caminhos = caminhos
                     val callback = Callback<Triple<Long, Long, String>, Boolean> { param -> true }
-                    Compactar.compactar(destino, File(arquivoZip), manga, mComicInfo, compactar, comic, Linguagem.PORTUGUESE, isCompactar = true, isGerarCapitulos = true, callback)
+                    Compactar.compactar(destino, File(arquivoZip), manga, mComicInfo, compactar, comic, Linguagem.PORTUGUESE, isCompactar = true, isGerarCapitulos = true, isAtualizarComic = false, callback)
                     compactar.clear()
                     comic.clear()
                     caminhos.clear()

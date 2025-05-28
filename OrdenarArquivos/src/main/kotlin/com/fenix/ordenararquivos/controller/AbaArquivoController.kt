@@ -1408,7 +1408,7 @@ class AbaArquivoController : Initializable {
                     manga.merge(mManga!!)
                     manga.caminhos = mListaCaminhos
 
-                    if (Compactar.compactar(mCaminhoDestino!!, File(arquivoZip), manga, mComicInfo, pastasCompactar, pastasComic, linguagem, cbCompactarArquivo.isSelected, cbGerarCapitulo.isSelected, callback))
+                    if (Compactar.compactar(mCaminhoDestino!!, File(arquivoZip), manga, mComicInfo, pastasCompactar, pastasComic, linguagem, cbCompactarArquivo.isSelected, cbGerarCapitulo.isSelected, callback = callback))
                         LAST_PROCESS_FOLDERS = pastasCompactar
                 } catch (e: Exception) {
                     mLOG.error("Erro ao processar.", e)
