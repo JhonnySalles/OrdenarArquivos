@@ -21,8 +21,10 @@ class MangaServices {
     private val mINSERT_CAMINHO = "INSERT INTO Caminho (id_manga, capitulo, pagina, pasta) VALUES (?,?,?,?)"
     private val mSELECT_CAMINHO = "SELECT id, capitulo, pagina, pasta FROM Caminho WHERE id_manga = ?"
     private val mDELETE_CAMINHO = "DELETE FROM Caminho WHERE id_manga = ?"
+    private val mSELECT_ALL_MANGA = "SELECT nome FROM Manga WHERE nome LIKE ?"
 
     private val mSELECT_ENVIO = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE atualizacao >= ?"
+    private val mLIST_MANGA = "SELECT nome FROM Manga GROUP BY nome ORDER BY nome"
 
     private var conn: Connection = instancia
 
@@ -60,6 +62,32 @@ class MangaServices {
                 SincronizacaoServices.enviar(manga)
         } catch (e: Exception) {
             mLOG.warn("Erro ao salvar o manga.")
+        }
+    }
+
+    @Throws(SQLException::class)
+    fun findAll(nome: String): List<Manga> {
+        var st: PreparedStatement? = null
+        var rs: ResultSet? = null
+        return try {
+            st = conn.prepareStatement(mSELECT_ALL_MANGA)
+            st.setString(1, nome)
+            rs = st.executeQuery()
+            val mangas = mutableListOf<Manga>()
+            while (rs.next())
+                mangas.add(
+                    Manga(rs.getLong("id"), rs.getString("nome"), rs.getString("volume"),
+                        rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
+                        rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
+                    )
+                )
+            mangas
+        } catch (e: SQLException) {
+            mLOG.error("Erro ao buscar o manga.", e)
+            throw e
+        } finally {
+            closeStatement(st)
+            closeResultSet(rs)
         }
     }
 
@@ -189,12 +217,13 @@ class MangaServices {
             st.setLong(1, manga.id)
             rs = st.executeQuery()
             val list = ArrayList<Caminhos>()
-            while (rs.next()) list.add(
-                Caminhos(
-                    rs.getLong("id"), manga, rs.getString("capitulo"), rs.getInt("pagina"),
-                    rs.getString("pasta")
+            while (rs.next())
+                list.add(
+                    Caminhos(
+                        rs.getLong("id"), manga, rs.getString("capitulo"), rs.getInt("pagina"),
+                        rs.getString("pasta")
+                    )
                 )
-            )
             list
         } catch (e: SQLException) {
             mLOG.error("Erro ao buscar os caminhos.", e)
@@ -283,6 +312,26 @@ class MangaServices {
             list
         } catch (e: SQLException) {
             mLOG.error("Erro ao buscar os envios.", e)
+            throw e
+        } finally {
+            closeStatement(st)
+            closeResultSet(rs)
+        }
+    }
+
+    @Throws(SQLException::class)
+    fun listar(): List<String> {
+        var st: PreparedStatement? = null
+        var rs: ResultSet? = null
+        return try {
+            st = conn.prepareStatement(mLIST_MANGA)
+            rs = st.executeQuery()
+            val list = ArrayList<String>()
+            while (rs.next())
+                list.add(rs.getString("nome"))
+            list
+        } catch (e: SQLException) {
+            mLOG.error("Erro ao listar os mangas.", e)
             throw e
         } finally {
             closeStatement(st)

@@ -14,25 +14,7 @@ data class Manga(
     @Exclude @set:Exclude @get:Exclude var atualizacao: LocalDateTime = LocalDateTime.now(),
     var caminhos: MutableList<Caminhos> = arrayListOf()
 ) {
-    constructor(
-        id: Long,
-        nome: String,
-        volume: String,
-        capitulo: String,
-        arquivo: String,
-        quantidade: Int,
-        capitulos: String,
-        atualizacao: LocalDateTime
-    ) : this(
-        id,
-        nome,
-        volume,
-        capitulo,
-        arquivo,
-        capitulos,
-        quantidade,
-        atualizacao
-    ) { }
+    constructor(id: Long, nome: String, volume: String, capitulo: String, arquivo: String, quantidade: Int, capitulos: String, atualizacao: LocalDateTime) : this(id, nome, volume, capitulo, arquivo, capitulos, quantidade, atualizacao) { }
 
     fun addCaminhos(caminhos: Caminhos) {
         this.caminhos.add(caminhos)

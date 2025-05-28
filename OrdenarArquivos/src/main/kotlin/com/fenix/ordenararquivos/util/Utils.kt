@@ -23,10 +23,7 @@ class Utils {
         val NUMBER_REGEX = Regex("\\d*")
         val ONLY_NUMBER_REGEX = Regex("^\\d+")
 
-        fun clickTab() {
-            val robot = Robot()
-            robot.keyPress(KeyCode.TAB)
-        }
+        fun clickTab() = Robot().keyPress(KeyCode.TAB)
 
         fun toDateTime(dateTime: String): LocalDateTime {
             return if (dateTime.isEmpty()) LocalDateTime.MIN else LocalDateTime.parse(dateTime)

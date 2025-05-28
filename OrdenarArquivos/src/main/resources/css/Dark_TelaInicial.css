@@ -43,7 +43,7 @@
 .combo-box {
     -fx-text-fill: white;
     -fx-background-color: #333333;
-    -fx-prompt-text-fill: #ababab;
+    -fx-prompt-text-fill: white;
 }
 
 .combo-box .text-field {

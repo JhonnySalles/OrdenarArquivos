@@ -1022,8 +1022,8 @@ class AbaArquivoController : Initializable {
     private fun verificaPaginaDupla(arquivo: File): Boolean {
         var result = false
         try {
-            val img: BufferedImage? = ImageIO.read(arquivo)
-            result = img!!.width / img.height > 0.9
+            val img = ImageIO.read(arquivo) ?: return false
+            result = img.width / img.height > 0.9
         } catch (e: IOException) {
             mLOG.error("Erro ao verificar a página dupla.", e)
         }
@@ -1819,7 +1819,7 @@ class AbaArquivoController : Initializable {
         if (arquivo == null || !arquivo.exists()) return false
         val image: BufferedImage
         try {
-            image = ImageIO.read(arquivo)
+            image = ImageIO.read(arquivo) ?: return false
             return image.width / image.height > 0.9
         } catch (e: IOException) {
             mLOG.error("Erro ao verificar imagem.", e)

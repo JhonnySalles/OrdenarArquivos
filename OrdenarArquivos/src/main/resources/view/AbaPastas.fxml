@@ -26,11 +26,11 @@
          <children>
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                <children>
-                  <JFXTextField fx:id="txtNomePastaManga" focusColor="#0cff00" labelFloat="true" minHeight="25.0" prefHeight="25.0" prefWidth="300.0" promptText="Manga" styleClass="texto-stilo-1" unFocusColor="#4059a9" />
+                  <JFXComboBox fx:id="cbManga" editable="true" focusColor="#0cff00" labelFloat="true" prefWidth="200.0" promptText="Manga" styleClass="comboBox-stilo" unFocusColor="#4059a9" />
                   <HBox alignment="CENTER" minWidth="340.0" spacing="2.0" HBox.hgrow="ALWAYS">
                      <children>
-                        <JFXTextField fx:id="txtPastaProcessar" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta para carregar itens" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
-                        <JFXButton fx:id="btnPesquisarPastaProcessar" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPasta" styleClass="background-Black3">
+                        <JFXTextField fx:id="txtPasta" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta para carregar itens" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                        <JFXButton fx:id="btnPesquisarPasta" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPasta" styleClass="background-Black3">
                            <graphic>
                               <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
                                  <image>
@@ -44,7 +44,7 @@
                   <HBox alignment="CENTER_LEFT" spacing="10.0">
                      <children>
                         <JFXButton fx:id="btnCarregar" minWidth="70.0" onAction="#onBtnCarregar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Blue3" text="Carregar" textFill="WHITE" />
-                        <JFXButton fx:id="btnAplicar" minWidth="70.0" prefHeight="30.0" prefWidth="150.0" styleClass="background-Green2" text="Aplicar" textFill="WHITE" />
+                        <JFXButton fx:id="btnAplicar" minWidth="70.0" onAction="#onBtnAplicar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Green2" text="Aplicar" textFill="WHITE" />
                      </children>
                   </HBox>
                </children>
@@ -60,11 +60,11 @@
                            <children>
                               <TableView fx:id="tbViewProcessar" editable="true" prefHeight="400.0" prefWidth="400.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                  <columns>
-                                    <TableColumn fx:id="clComicInfoArquivo" prefWidth="200.0" text="Pasta" />
-                                    <TableColumn fx:id="clComicInfoSerie" prefWidth="150.0" text="Scan" />
-                                    <TableColumn fx:id="clComicInfoTitulo" prefWidth="100.0" text="Volume" />
-                                    <TableColumn fx:id="clComicInfoEditora" prefWidth="90.0" text="Capítulo" />
-                                    <TableColumn fx:id="clComicInfoPublicacao" prefWidth="200.0" text="Formatado" />
+                                    <TableColumn fx:id="clArquivo" prefWidth="250.0" text="Pasta" />
+                                    <TableColumn fx:id="clScan" prefWidth="150.0" text="Scan" />
+                                    <TableColumn fx:id="clVolume" prefWidth="100.0" text="Volume" />
+                                    <TableColumn fx:id="clCapitulo" prefWidth="90.0" text="Capítulo" />
+                                    <TableColumn fx:id="clFormatado" prefWidth="250.0" text="Formatado" />
                                  </columns>
                               </TableView>
                            </children>
@@ -167,7 +167,6 @@
                                                             <JFXButton fx:id="btnMalConsultar" onAction="#onBtnMalConsultar" prefHeight="25.0" prefWidth="100.0" styleClass="background-Blue3" text="Consultar" textFill="WHITE" />
                                                          </children>
                                                       </HBox>
-                                                      <HBox prefHeight="100.0" prefWidth="200.0" />
                                                    </children>
                                                    <padding>
                                                       <Insets bottom="15.0" left="5.0" right="5.0" top="15.0" />

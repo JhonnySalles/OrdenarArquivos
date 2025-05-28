@@ -64,7 +64,7 @@ class AbaComicInfoController : Initializable {
     private lateinit var btnPesquisarPastaProcessar: JFXButton
 
     @FXML
-    private lateinit var btnCarregarProcessar: JFXButton
+    private lateinit var btnCarregar: JFXButton
 
     @FXML
     private lateinit var btnOcrProcessar: JFXButton
@@ -139,7 +139,7 @@ class AbaComicInfoController : Initializable {
                                 val numero = Utils.getNumber(it)
                                 capitulos.find { c -> c.capitulo == numero }?.run {
                                     capitulos.remove(this)
-                                    capitulo += " " + com.fenix.ordenararquivos.util.Utils.SEPARADOR_IMPORTACAO + " " + decimal.format(this.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && this.japones.isNotEmpty()) this.japones else this.ingles
+                                    capitulo += " " + Utils.SEPARADOR_IMPORTACAO + " " + decimal.format(this.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && this.japones.isNotEmpty()) this.japones else this.ingles
                                 }
                             }
                         }
@@ -159,8 +159,8 @@ class AbaComicInfoController : Initializable {
     }
 
     @FXML
-    private fun onBtnCarregarProcessar() {
-        carregarItensProcessar()
+    private fun onBtnCarregar() {
+        carregarItens()
     }
 
     @FXML
@@ -193,20 +193,20 @@ class AbaComicInfoController : Initializable {
             txtPastaProcessar.text = caminho.absolutePath
         else
             txtPastaProcessar.text = ""
-        carregarItensProcessar()
+        carregarItens()
     }
 
     private fun desabilita() {
         txtPastaProcessar.isDisable = true
         btnPesquisarPastaProcessar.isDisable = true
-        btnCarregarProcessar.isDisable = true
+        btnCarregar.isDisable = true
         tbViewProcessar.isDisable = true
     }
 
     private fun habilita() {
         txtPastaProcessar.isDisable = false
         btnPesquisarPastaProcessar.isDisable = false
-        btnCarregarProcessar.isDisable = false
+        btnCarregar.isDisable = false
         tbViewProcessar.isDisable = false
         btnOcrProcessar.accessibleTextProperty().set("PROCESSA")
         btnOcrProcessar.text = "OCR proximos 10"
@@ -361,10 +361,10 @@ class AbaComicInfoController : Initializable {
         }
     }
 
-    private fun carregarItensProcessar() {
+    private fun carregarItens() {
         val pasta = File(txtPastaProcessar.text)
         if (txtPastaProcessar.text.isNotEmpty() && pasta.exists()) {
-            btnCarregarProcessar.isDisable = true
+            btnCarregar.isDisable = true
             controllerPai.setCursor(Cursor.WAIT)
 
             val processar: Task<Void> = object : Task<Void>() {
@@ -426,7 +426,7 @@ class AbaComicInfoController : Initializable {
                     controllerPai.rootMessage.textProperty().unbind()
                     controllerPai.clearProgress()
                     controllerPai.setCursor(null)
-                    btnCarregarProcessar.isDisable = false
+                    btnCarregar.isDisable = false
                 }
             }
             controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
@@ -446,7 +446,7 @@ class AbaComicInfoController : Initializable {
 
             item.comicInfo?.pages?.forEach { it.bookmark = "" }
 
-            var sumario = "*Chapter Titles*\n"
+            var sumario = "*Chapter Titles Manual*\n"
             val tags = item.tags.split("\n")
             for (tag in tags) {
                 val imagem = tag.substringBefore(Utils.SEPARADOR_IMAGEM)
@@ -476,10 +476,10 @@ class AbaComicInfoController : Initializable {
                 summary = if (summary.isNullOrEmpty())
                     sumario
                 else {
-                    if (!summary!!.lowercase().contains("*chapter titles*"))
-                        summary!! + "\n\n" + sumario
+                    if (summary!!.lowercase().contains("*chapter titles manual*"))
+                        summary!!.substring(0, summary!!.lowercase().indexOf("*chapter titles manual*")).trim() + "\n\n" + sumario
                     else
-                        summary!!
+                        summary!! + "\n\n" + sumario
                 }
             }
 

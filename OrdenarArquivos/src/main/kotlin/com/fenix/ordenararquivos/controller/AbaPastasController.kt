@@ -1,6 +1,7 @@
 package com.fenix.ordenararquivos.controller
 
-import com.fenix.ordenararquivos.model.entities.Processar
+import com.fenix.ordenararquivos.components.NumberTextFieldTableCell
+import com.fenix.ordenararquivos.model.entities.Pasta
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
@@ -12,8 +13,8 @@ import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.util.Utils
 import com.jfoenix.controls.*
-import jakarta.xml.bind.JAXBContext
 import javafx.application.Platform
+import javafx.beans.property.SimpleStringProperty
 import javafx.beans.value.ObservableValue
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
@@ -21,10 +22,9 @@ import javafx.concurrent.Task
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
-import javafx.scene.control.Tab
-import javafx.scene.control.TableColumn
-import javafx.scene.control.TableView
+import javafx.scene.control.*
 import javafx.scene.control.cell.PropertyValueFactory
+import javafx.scene.control.cell.TextFieldTableCell
 import javafx.scene.image.ImageView
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
@@ -32,11 +32,17 @@ import javafx.scene.input.MouseEvent
 import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
 import javafx.util.Callback
+import javafx.util.converter.NumberStringConverter
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.net.URL
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 import java.util.*
 import kotlin.properties.Delegates
+
 
 class AbaPastasController : Initializable {
 
@@ -57,10 +63,13 @@ class AbaPastasController : Initializable {
     private lateinit var tbTabComicInfo: Tab
 
     @FXML
-    private lateinit var txtPastaProcessar: JFXTextField
+    private lateinit var cbManga: JFXComboBox<String>
 
     @FXML
-    private lateinit var btnPesquisarPastaProcessar: JFXButton
+    private lateinit var txtPasta: JFXTextField
+
+    @FXML
+    private lateinit var btnPesquisarPasta: JFXButton
 
     @FXML
     private lateinit var btnCarregar: JFXButton
@@ -68,38 +77,25 @@ class AbaPastasController : Initializable {
     @FXML
     private lateinit var btnAplicar: JFXButton
 
-    @FXML
-    private lateinit var tbViewProcessar: TableView<Processar>
+    //<--------------------------  Arquivos   -------------------------->
 
     @FXML
-    private lateinit var clComicInfoArquivo: TableColumn<Processar, String>
+    private lateinit var tbViewProcessar: TableView<Pasta>
 
     @FXML
-    private lateinit var clComicInfoSerie: TableColumn<Processar, String>
+    private lateinit var clArquivo: TableColumn<Pasta, String>
 
     @FXML
-    private lateinit var clComicInfoTitulo: TableColumn<Processar, String>
+    private lateinit var clScan: TableColumn<Pasta, String>
 
     @FXML
-    private lateinit var clComicInfoEditora: TableColumn<Processar, String>
+    private lateinit var clVolume: TableColumn<Pasta, Number>
 
     @FXML
-    private lateinit var clComicInfoPublicacao: TableColumn<Processar, String>
+    private lateinit var clCapitulo: TableColumn<Pasta, Number>
 
     @FXML
-    private lateinit var clComicInfoResumo: TableColumn<Processar, String>
-
-    @FXML
-    private lateinit var clComicInfoTags: TableColumn<Processar, String>
-
-    @FXML
-    private lateinit var clProcessarOCR: TableColumn<Processar, JFXButton?>
-
-    @FXML
-    private lateinit var clProcessarAmazon: TableColumn<Processar, JFXButton?>
-
-    @FXML
-    private lateinit var clSalvarComicInfo: TableColumn<Processar, JFXButton?>
+    private lateinit var clFormatado: TableColumn<Pasta, String>
 
     //<--------------------------  COMIC INFO   -------------------------->
     @FXML
@@ -181,7 +177,7 @@ class AbaPastasController : Initializable {
         }
 
     private var mComicInfo by Delegates.observable(ComicInfo()) { _, _, newValue -> carregaComicInfo(newValue) }
-    private var mObsListaProcessar: ObservableList<Processar> = FXCollections.observableArrayList()
+    private var mObsListaProcessar: ObservableList<Pasta> = FXCollections.observableArrayList()
     private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
 
     private val mServiceManga = MangaServices()
@@ -189,17 +185,22 @@ class AbaPastasController : Initializable {
 
     @FXML
     private fun onBtnCarregar() {
-        carregarItensProcessar()
+        carregarItens()
     }
 
     @FXML
     private fun onBtnCarregarPasta() {
-        val caminho = Utils.selecionaPasta(txtPastaProcessar.text)
+        val caminho = Utils.selecionaPasta(txtPasta.text)
         if (caminho != null)
-            txtPastaProcessar.text = caminho.absolutePath
+            txtPasta.text = caminho.absolutePath
         else
-            txtPastaProcessar.text = ""
-        carregarItensProcessar()
+            txtPasta.text = ""
+        carregarItens()
+    }
+
+    @FXML
+    private fun onBtnAplicar() {
+        aplicar()
     }
 
     @FXML
@@ -300,64 +301,129 @@ class AbaPastasController : Initializable {
         }
     }
 
-    private fun carregarItensProcessar() {
-        val pasta = File(txtPastaProcessar.text)
-        if (txtPastaProcessar.text.isNotEmpty() && pasta.exists()) {
+    private fun carregarItens() {
+        val pasta = File(txtPasta.text)
+        if (txtPasta.text.isNotEmpty() && pasta.exists()) {
             btnCarregar.isDisable = true
 
             val processar: Task<Void> = object : Task<Void>() {
                 override fun call(): Void? {
                     try {
-                        val lista = mutableListOf<Processar>()
+                        val lista = mutableListOf<Pasta>()
 
-                        val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
-                        for (arquivo in pasta.listFiles()!!) {
-                            if (!Utils.isRar(arquivo.name))
+                        val regexCapitulo = "(?i)(chapter|chap| ch\\.?)[ \\d.]+".toRegex()
+                        val regexVolume = "(?i)(volume|vol\\.?)[ \\d.]+".toRegex()
+                        val apenasNumeros = "^[\\d.]+".toRegex()
+
+                        val max = pasta.listFiles()?.size ?: 0
+                        var i = 0
+
+                        for (file in pasta.listFiles()!!) {
+                            i++
+                            if (file.isFile)
                                 continue
 
-                            //lista.add(item)
+                            updateProgress(i.toLong(), max.toLong())
+                            updateMessage("Carregando item $i de $max.")
+
+                            val nome = if (file.name.contains(",")) file.name.replace(",", "") else file.name
+
+                            var volume = "0"
+                            var capitulos = "0"
+                            var scan = ""
+                            var titulo = ""
+
+                            if (nome.matches(apenasNumeros))
+                                capitulos = nome
+                            else {
+                                regexCapitulo.find(nome)?.let { match ->
+                                    capitulos = match.value.replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "")
+                                    val before = nome.substringBefore(match.value).trim()
+                                    scan = regexVolume.find(before)?.let { if (it.value.isNotEmpty()) before.substringBefore(it.value) else before } ?: before
+                                    titulo = nome.substringAfter(match.value).trim()
+                                }
+                                regexVolume.find(nome)?.let { match ->
+                                    if (match.value.isNotEmpty())
+                                        volume = match.value.replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "")
+                                }
+
+                                if (scan.contains("_"))
+                                    scan = scan.replace("_", " ").trim()
+
+                                if (titulo.contains("_"))
+                                    titulo = titulo.replace("_", " ").trim()
+
+                                if (titulo.startsWith("-"))
+                                    titulo = titulo.substring(1).trim()
+                            }
+
+                            lista.add(Pasta(pasta = file, arquivo = file.name, nome = cbManga.editor.text, volume = volume.toFloatOrNull() ?: 0f, capitulo = capitulos.toFloatOrNull() ?: 0f, scan = scan, titulo = titulo))
                         }
 
                         mObsListaProcessar = FXCollections.observableArrayList(lista)
                         Platform.runLater { tbViewProcessar.items = mObsListaProcessar }
                     } catch (e: Exception) {
-                        mLOG.info("Erro ao realizar a gerar itens para processamento de mangas.", e)
+                        mLOG.info("Erro ao carregar pastas.", e)
                         Platform.runLater {
-                            Notificacoes.notificacao(Notificacao.ERRO, "Mangas Processamento", "Erro ao realizar a gerar itens para processamento de mangas. " + e.message)
+                            Notificacoes.notificacao(Notificacao.ERRO, "Carregar Pastas", "Erro ao carregar pastas. " + e.message)
                         }
                     }
                     return null
                 }
                 override fun succeeded() {
-                    Platform.runLater {
-                        btnCarregar.isDisable = false
-                    }
+                    updateMessage("Pastas carregadas com sucesso.")
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    controllerPai.clearProgress()
+                    btnCarregar.isDisable = false
                 }
             }
-
+            controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
+            controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
             Thread(processar).start()
         } else {
-            AlertasPopup.alertaModal("Alerta", "Necessário informar uma pasta para processar.")
-            txtPastaProcessar.requestFocus()
+            AlertasPopup.alertaModal("Alerta", "Necessário informar uma pasta para carregar.")
+            txtPasta.requestFocus()
         }
     }
 
-    private fun configuraTextEdit() {
-        cbAgeRating.items.addAll(AgeRating.values())
-        cbLinguagem.items.addAll(Linguagem.JAPANESE, Linguagem.ENGLISH, Linguagem.PORTUGUESE)
-        cbLinguagem.selectionModel.select(Linguagem.JAPANESE)
-
-        cbLinguagem.focusedProperty().addListener { _, _, newPropertyValue ->
-            if (newPropertyValue)
-                cbLinguagem.setUnFocusColor(Color.web("#4059a9"))
-            else {
-                if (cbLinguagem.value == null)
-                    cbLinguagem.setUnFocusColor(Color.RED)
-                else
-                    cbLinguagem.setUnFocusColor(Color.web("#4059a9"))
+    private fun aplicar() {
+        val volume = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
+        val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
+        val compactar = mutableListOf<File>()
+        var vol = 0f
+        for (item in mObsListaProcessar) {
+            if (item.volume > 0f && item.volume != vol) {
+                if (vol > 0f) {
+                    // adicionar o compacta
+                    compactar.clear()
+                }
+                vol = item.volume
             }
-        }
 
+            val pasta = "[${item.scan}] ${item.nome} - Volume ${volume.format(item.volume)} Capítulo ${capitulo.format(item.capitulo)}"
+            val path = item.pasta.toPath()
+            val file = Files.move(path, path.resolveSibling(pasta), StandardCopyOption.REPLACE_EXISTING).toFile()
+            compactar.add(file)
+        }
+        mObsListaProcessar = FXCollections.observableArrayList(mutableListOf())
+        tbViewProcessar.items = mObsListaProcessar
+        Notificacoes.notificacao(Notificacao.SUCESSO, "Renomear Pastas", "Pastas renomeadas com sucesso.")
+    }
+
+    private fun importarVolumes() {
+        if (cbManga.editor.text.isNullOrEmpty())
+            return
+
+        val formater = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
+        val mangas = mServiceManga.findAll(cbManga.editor.text)
+        val volumes = mangas.associate { it.capitulo to it.volume }
+        for (item in mObsListaProcessar)
+            item.volume = if (item.capitulo > 0) volumes[formater.format(item.capitulo)]?.toFloatOrNull() ?: 0f else 0f
+        tbViewProcessar.refresh()
+    }
+
+    private fun configuraTextEdit() {
         txtIdMal.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
         cbAgeRating.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
         cbLinguagem.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
@@ -384,7 +450,125 @@ class AbaPastasController : Initializable {
         }
     }
 
+    private fun configuraComboBox() {
+        cbAgeRating.items.addAll(AgeRating.values())
+        cbLinguagem.items.addAll(Linguagem.JAPANESE, Linguagem.ENGLISH, Linguagem.PORTUGUESE)
+        cbLinguagem.selectionModel.select(Linguagem.JAPANESE)
+
+        cbLinguagem.focusedProperty().addListener { _, _, newPropertyValue ->
+            if (newPropertyValue)
+                cbLinguagem.setUnFocusColor(Color.web("#4059a9"))
+            else {
+                if (cbLinguagem.value == null)
+                    cbLinguagem.setUnFocusColor(Color.RED)
+                else
+                    cbLinguagem.setUnFocusColor(Color.web("#4059a9"))
+            }
+        }
+
+        try {
+            cbManga.items.setAll(mServiceManga.listar())
+        } catch (e: Exception) {
+            mLOG.error(e.message, e)
+        }
+
+        val autoCompletePopup: JFXAutoCompletePopup<String> = JFXAutoCompletePopup()
+        autoCompletePopup.suggestions.addAll(cbManga.items)
+        autoCompletePopup.setSelectionHandler { event -> cbManga.setValue(event.getObject()) }
+        cbManga.editor.textProperty().addListener { _, _, _ ->
+            autoCompletePopup.filter { item -> item.lowercase(Locale.getDefault()).contains(cbManga.editor.text.lowercase(Locale.getDefault())) }
+            if (autoCompletePopup.filteredSuggestions.isEmpty() || cbManga.showingProperty().get() || cbManga.editor.text.isEmpty())
+                autoCompletePopup.hide()
+            else
+                autoCompletePopup.show(cbManga.editor)
+        }
+        cbManga.setOnKeyPressed { ke -> if (ke.code.equals(KeyCode.ENTER)) Utils.clickTab() }
+        cbManga.focusedProperty().addListener { _, oldValue, _ ->
+            if (oldValue) {
+                for (item in mObsListaProcessar)
+                    item.nome = cbManga.value
+                tbViewProcessar.refresh()
+            }
+        }
+    }
+
+    private fun editaColunas() {
+        clScan.cellFactory = TextFieldTableCell.forTableColumn()
+        clScan.setOnEditCommit { e ->
+            e.tableView.items[e.tablePosition.row].scan = e.newValue
+            tbViewProcessar.refresh()
+        }
+        clVolume.cellFactory = NumberTextFieldTableCell.forTableColumn(NumberStringConverter(Locale.US, "00.##"))
+        clVolume.setOnEditCommit { e ->
+            e.tableView.items[e.tablePosition.row].volume = e.newValue.toFloat()
+            tbViewProcessar.refresh()
+        }
+        clCapitulo.cellFactory = NumberTextFieldTableCell.forTableColumn(NumberStringConverter(Locale.US, "000.##"))
+        clCapitulo.setOnEditCommit { e ->
+            e.tableView.items[e.tablePosition.row].capitulo = e.newValue.toFloat()
+            tbViewProcessar.refresh()
+        }
+    }
+
     private fun linkaCelulas() {
+        clArquivo.cellValueFactory = PropertyValueFactory("arquivo")
+        clScan.cellValueFactory = PropertyValueFactory("scan")
+        clVolume.cellValueFactory = PropertyValueFactory("volume")
+        clCapitulo.cellValueFactory = PropertyValueFactory("capitulo")
+
+        val volume = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
+        val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
+
+        clFormatado.setCellValueFactory { param -> SimpleStringProperty("[${param.value.scan}] ${param.value.nome} - Volume ${volume.format(param.value.volume)} Capítulo ${capitulo.format(param.value.capitulo)}") }
+
+        val menu = ContextMenu()
+        val scanProximos = MenuItem("Aplicar scan nos arquivos próximos")
+        scanProximos.setOnAction {
+            tbViewProcessar.selectionModel.selectedItem?.run {
+                val scan = this.scan
+                val index = mObsListaProcessar.indexOf(this)
+                if (scan.isNotEmpty() && index < tbViewProcessar.items.size - 1) {
+                    for (i in index + 1 until tbViewProcessar.items.size)
+                        mObsListaProcessar[i].scan = scan
+                    tbViewProcessar.refresh()
+                }
+            }
+        }
+        val scanAnterior = MenuItem("Aplicar scan nos arquivos anteriores")
+        scanAnterior.setOnAction {
+            tbViewProcessar.selectionModel.selectedItem?.run {
+                val scan = this.scan
+                val index = mObsListaProcessar.indexOf(this)
+                if (scan.isNotEmpty() && index > 0) {
+                    for (i in index - 1 downTo 0)
+                        mObsListaProcessar[i].scan = scan
+                    tbViewProcessar.refresh()
+                }
+            }
+        }
+        val volumesZerar = MenuItem("Zerar volumes")
+        volumesZerar.setOnAction {
+            mObsListaProcessar.forEach { item -> item.volume = 0f }
+            tbViewProcessar.refresh()
+        }
+        val volumesImportar = MenuItem("Importar volumes")
+        volumesImportar.setOnAction { importarVolumes() }
+        val remover = MenuItem("Remover registro")
+        remover.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null)
+                if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover o registro?")) {
+                    mObsListaProcessar.remove(tbViewProcessar.selectionModel.selectedItem)
+                    tbViewProcessar.refresh()
+                }
+        }
+        menu.items.add(scanProximos)
+        menu.items.add(scanAnterior)
+        menu.items.add(volumesZerar)
+        menu.items.add(volumesImportar)
+        menu.items.add(remover)
+
+        tbViewProcessar.contextMenu = menu
+
         clMalId.cellValueFactory = PropertyValueFactory("idVisual")
         clMalNome.cellValueFactory = PropertyValueFactory("nome")
         clMalSite.cellValueFactory = PropertyValueFactory("site")
@@ -394,11 +578,14 @@ class AbaPastasController : Initializable {
             if (click.clickCount > 1 && tbViewMal.items.isNotEmpty())
                 carregaMal(tbViewMal.selectionModel.selectedItem)
         }
+
+        editaColunas()
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         linkaCelulas()
         configuraTextEdit()
+        configuraComboBox()
     }
 
     companion object {

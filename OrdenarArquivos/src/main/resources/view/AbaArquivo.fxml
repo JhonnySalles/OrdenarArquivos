@@ -418,7 +418,6 @@
                                                             </JFXButton>
                                                          </children>
                                                       </HBox>
-                                                      <HBox prefHeight="100.0" prefWidth="200.0" />
                                                    </children>
                                                    <padding>
                                                       <Insets bottom="15.0" left="5.0" right="5.0" top="15.0" />

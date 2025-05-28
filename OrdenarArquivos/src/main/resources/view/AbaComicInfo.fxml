@@ -36,7 +36,7 @@
                   </HBox>
                   <HBox alignment="CENTER_LEFT" spacing="10.0">
                      <children>
-                        <JFXButton fx:id="btnCarregarProcessar" minWidth="70.0" onAction="#onBtnCarregarProcessar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Blue3" text="Carregar" textFill="WHITE" />
+                        <JFXButton fx:id="btnCarregar" minWidth="70.0" onAction="#onBtnCarregar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Blue3" text="Carregar" textFill="WHITE" />
                         <JFXButton fx:id="btnCapitulos" minWidth="70.0" onAction="#onBtnCapitulos" prefHeight="30.0" prefWidth="150.0" styleClass="background-White1" text="Capítulos" />
                      </children>
                   </HBox>
