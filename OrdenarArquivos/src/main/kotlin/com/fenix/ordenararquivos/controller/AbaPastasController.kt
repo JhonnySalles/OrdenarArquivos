@@ -213,17 +213,19 @@ class AbaPastasController : Initializable {
     private fun onBtnGerarCapas() {
         val decimal = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
         var volume = 0f
-        val lista = mObsListaProcessar.toMutableList()
+        val lista = mutableListOf<Pasta>()
         for (item in mObsListaProcessar) {
-            if (item.volume.compareTo(volume) != 0 && mObsListaProcessar.none { it.isCapa && it.volume.compareTo(volume) == 0}) {
+            if (item.volume.compareTo(volume) != 0 && mObsListaProcessar.none { it.isCapa && it.volume.compareTo(volume) == 0} && !item.isCapa) {
                 volume = item.volume
                 val pasta = File(item.pasta.parent, "[${item.scan}] ${item.nome} - Volume ${decimal.format(item.volume)} Capa")
                 if (!pasta.exists())
                     Files.createDirectories(pasta.toPath())
-                lista.add(Pasta(pasta, pasta.name, pasta.name, item.volume, scan = item.scan, isCapa = true))
+                lista.add(Pasta(pasta, pasta.name, item.nome, item.volume, scan = item.scan, isCapa = true))
             }
+
+            lista.add(item)
         }
-        mObsListaProcessar = FXCollections.observableArrayList(mutableListOf())
+        mObsListaProcessar = FXCollections.observableArrayList(lista)
         tbViewProcessar.items = mObsListaProcessar
         tbViewProcessar.refresh()
     }
@@ -336,8 +338,8 @@ class AbaPastasController : Initializable {
                     try {
                         val lista = mutableListOf<Pasta>()
 
-                        val regexCapitulo = "(?i)(chapter|chap| ch\\.?)[ \\d.]+".toRegex()
-                        val regexVolume = "(?i)(volume|vol\\.?)[ \\d.]+".toRegex()
+                        val regexCapitulo = "(?i)(chapter|chap| ch\\.?)([ \\d.]+)".toRegex()
+                        val regexVolume = "(?i)(volume|vol\\.?)([ \\d.]+)".toRegex()
                         val apenasNumeros = "^[\\d.]+".toRegex()
 
                         val max = pasta.listFiles()?.size ?: 0
@@ -351,38 +353,58 @@ class AbaPastasController : Initializable {
                             updateProgress(i.toLong(), max.toLong())
                             updateMessage("Carregando item $i de $max.")
 
-                            val nome = if (file.name.contains(",")) file.name.replace(",", "") else file.name
+                            var nome = if (file.name.contains(",")) file.name.replace(",", "") else file.name
 
                             var volume = "0"
                             var capitulos = "0"
                             var scan = ""
                             var titulo = ""
+                            var isCapa = false
 
                             if (nome.matches(apenasNumeros))
                                 capitulos = nome
                             else {
                                 regexCapitulo.find(nome)?.let { match ->
-                                    capitulos = match.value.replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "")
+                                    capitulos = if (match.groups.size > 2 && match.groups[2] != null)
+                                        match.groups[2]!!.value.trim()
+                                    else
+                                        match.value.lowercase().replace("ch.", "").replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "")
                                     val before = nome.substringBefore(match.value).trim()
                                     scan = regexVolume.find(before)?.let { if (it.value.isNotEmpty()) before.substringBefore(it.value) else before } ?: before
                                     titulo = nome.substringAfter(match.value).trim()
                                 }
                                 regexVolume.find(nome)?.let { match ->
                                     if (match.value.isNotEmpty())
-                                        volume = match.value.replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "")
+                                        volume = if (match.groups.size > 2 && match.groups[2] != null)
+                                            match.groups[2]!!.value.trim()
+                                        else
+                                            match.value.replace("vol.", "").replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "")
                                 }
 
                                 if (scan.contains("_"))
                                     scan = scan.replace("_", " ").trim()
+                                else if (scan.isEmpty() && nome.contains("]"))
+                                    scan = nome.substringBefore("]").replace("[", "")
+
+                                if (scan.contains("]"))
+                                    scan = scan.substringBefore("]").replace("[", "")
+
+                                if (nome.contains("]"))
+                                    nome = nome.substringAfter("]").substringBefore("-").trim()
 
                                 if (titulo.contains("_"))
                                     titulo = titulo.replace("_", " ").trim()
 
                                 if (titulo.startsWith("-"))
                                     titulo = titulo.substring(1).trim()
+
+                                isCapa = file.name.lowercase().contains("capa")
+
+                                if (isCapa)
+                                    capitulos = "0"
                             }
 
-                            lista.add(Pasta(pasta = file, arquivo = file.name, nome = cbManga.editor.text, volume = volume.toFloatOrNull() ?: 0f, capitulo = capitulos.toFloatOrNull() ?: 0f, scan = scan, titulo = titulo))
+                            lista.add(Pasta(pasta = file, arquivo = file.name, nome = cbManga.editor.text, volume = volume.toFloatOrNull() ?: 0f, capitulo = capitulos.toFloatOrNull() ?: 0f, scan = scan, titulo = titulo, isCapa = isCapa))
                         }
 
                         mObsListaProcessar = FXCollections.observableArrayList(lista)
@@ -413,6 +435,18 @@ class AbaPastasController : Initializable {
     }
 
     private fun aplicar() {
+        if (txtPasta.text.isNullOrEmpty()) {
+            txtPasta.unFocusColor = Color.RED
+            AlertasPopup.alertaModal("Alerta", "Não informado a pasta para processamento.")
+            return
+        }
+
+        if (cbManga.value.isNotEmpty()) {
+            cbManga.unFocusColor = Color.RED
+            AlertasPopup.alertaModal("Alerta", "Não informado o nome do manga.")
+            return
+        }
+
         val volume = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
         val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
         val compactar = mutableListOf<File>()
@@ -473,6 +507,17 @@ class AbaPastasController : Initializable {
     }
 
     private fun configuraTextEdit() {
+        var oldPasta = ""
+        txtPasta.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean ->
+            if (newPropertyValue)
+                oldPasta = txtPasta.text
+
+            if (oldPropertyValue && txtPasta.text.compareTo(oldPasta, ignoreCase = true) != 0)
+                carregarItens()
+
+            txtPasta.unFocusColor = Color.web("#4059a9")
+        }
+
         txtIdMal.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
         cbAgeRating.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
         cbLinguagem.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
@@ -538,6 +583,8 @@ class AbaPastasController : Initializable {
                     item.nome = cbManga.value
                 tbViewProcessar.refresh()
             }
+
+            cbManga.unFocusColor = Color.web("#4059a9")
         }
     }
 
@@ -568,7 +615,7 @@ class AbaPastasController : Initializable {
         val volume = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
         val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
 
-        clFormatado.setCellValueFactory { param -> SimpleStringProperty("[${param.value.scan}] ${param.value.nome} - Volume ${volume.format(param.value.volume)} Capítulo ${capitulo.format(param.value.capitulo)}") }
+        clFormatado.setCellValueFactory { param -> SimpleStringProperty("[${param.value.scan}] ${param.value.nome} - Volume ${volume.format(param.value.volume)} ${if (param.value.isCapa) "Capa" else "Capítulo " + capitulo.format(param.value.capitulo)}") }
 
         val menu = ContextMenu()
         val scanProximos = MenuItem("Aplicar scan nos arquivos próximos")
