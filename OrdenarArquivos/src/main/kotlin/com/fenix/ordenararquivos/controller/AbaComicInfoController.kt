@@ -619,6 +619,45 @@ class AbaComicInfoController : Initializable {
             if (tbViewProcessar.selectionModel.selectedItem != null)
                 salvarComicInfoItem(tbViewProcessar.selectionModel.selectedItem)
         }
+        val salvarAnteriores = MenuItem("Salvar ComicInfo até o item atual")
+        salvarAnteriores.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null) {
+                controllerPai.setCursor(Cursor.WAIT)
+                tbViewProcessar.isDisable = true
+
+                val processar: Task<Void> = object : Task<Void>() {
+                    override fun call(): Void? {
+                        try {
+                            updateMessage("Salvando ComicInfo...")
+                            val list = mObsListaProcessar.toList()
+                            val index = list.indexOf(tbViewProcessar.selectionModel.selectedItem)
+                            for (i in 0 until index +1) {
+                                updateProgress(i.toLong(), index.toLong())
+                                updateMessage("Salvando ComicInfo $i de $index.")
+                                Platform.runLater { salvarComicInfoItem(list[i]) }
+                            }
+                        } catch (e: Exception) {
+                            mLOG.info("Erro ao salvar o ComicInfo.", e)
+                            Platform.runLater {
+                                Notificacoes.notificacao(Notificacao.ERRO, "Salvar ComicInfo", "Erro ao salvar o ComicInfo. " + e.message)
+                            }
+                        }
+                        return null
+                    }
+                    override fun succeeded() {
+                        updateMessage("ComicInfo salvo com sucesso.")
+                        controllerPai.rootProgress.progressProperty().unbind()
+                        controllerPai.rootMessage.textProperty().unbind()
+                        controllerPai.clearProgress()
+                        controllerPai.setCursor(null)
+                        tbViewProcessar.isDisable = false
+                    }
+                }
+                controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
+                controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
+                Thread(processar).start()
+            }
+        }
         val processar = MenuItem("Processar OCR")
         processar.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null)
@@ -631,6 +670,17 @@ class AbaComicInfoController : Initializable {
                 tbViewProcessar.refresh()
             }
         }
+        val tagsAnteriores = MenuItem("Gerar Tags até o item atual")
+        tagsAnteriores.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null) {
+                controllerPai.setCursor(Cursor.WAIT)
+                val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem)
+                for (i in 0 until index +1)
+                    gerarTagItem(mObsListaProcessar[i])
+                tbViewProcessar.refresh()
+                controllerPai.setCursor(null)
+            }
+        }
         val remover = MenuItem("Remover registro")
         remover.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null)
@@ -639,10 +689,26 @@ class AbaComicInfoController : Initializable {
                     tbViewProcessar.refresh()
                 }
         }
+        val removerAnteriores = MenuItem("Remover registros anteriores")
+        removerAnteriores.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null)
+                if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover os registros anteriores?")) {
+                    controllerPai.setCursor(Cursor.WAIT)
+                    val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem)
+                    if (index > 0) {
+                        mObsListaProcessar.remove(0, index-1)
+                        tbViewProcessar.refresh()
+                    }
+                    controllerPai.setCursor(null)
+                }
+        }
         menu.items.add(salvar)
         menu.items.add(processar)
+        menu.items.add(salvarAnteriores)
         menu.items.add(tags)
+        menu.items.add(tagsAnteriores)
         menu.items.add(remover)
+        menu.items.add(removerAnteriores)
 
         tbViewProcessar.contextMenu = menu
         tbViewProcessar.setOnKeyPressed { event ->

@@ -14,6 +14,7 @@ import com.fenix.ordenararquivos.model.enums.Tipo
 import com.fenix.ordenararquivos.model.enums.TipoCapa
 import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.notification.Notificacoes
+import com.fenix.ordenararquivos.process.Compactar
 import com.fenix.ordenararquivos.process.Ocr
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
@@ -411,10 +412,7 @@ class AbaArquivoController : Initializable {
     @FXML
     private fun onBtnCompactar() {
         if (mCaminhoDestino!!.exists() && txtNomeArquivo.text.isNotEmpty() && LAST_PROCESS_FOLDERS.isNotEmpty())
-            compactaArquivo(
-                File(mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }),
-                LAST_PROCESS_FOLDERS
-            )
+            compactaArquivo(File(mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }), LAST_PROCESS_FOLDERS)
     }
 
     @FXML
@@ -1331,16 +1329,14 @@ class AbaArquivoController : Initializable {
                         mSelecionado = lsVwListaImagens.selectionModel.selectedItem
 
                     mCANCELAR = false
-                    var i = 0
-                    var max: Int = mCaminhoOrigem!!.listFiles(mFilterNomeArquivo).size
+                    var i = 0L
+                    var max = mCaminhoOrigem!!.listFiles(mFilterNomeArquivo)?.size?.toLong() ?: 0L
                     val pastasCompactar: MutableList<File> = ArrayList()
                     LAST_PROCESS_FOLDERS.clear()
-                    val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }
                     val mesclarCapaTudo = cbMesclarCapaTudo.isSelected
-                    val gerarArquivo = cbCompactarArquivo.isSelected
                     val verificaPagDupla = cbVerificaPaginaDupla.isSelected
                     val pastasComic = mutableMapOf<String, File>()
-                    updateProgress(i.toLong(), max.toLong())
+                    updateProgress(i, max)
 
                     updateMessage("Criando diretórios...")
                     val nomePasta = (mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomePastaManga.text.trim { it <= ' ' } + " " + txtVolume.text.trim { it <= ' ' })
@@ -1384,7 +1380,7 @@ class AbaArquivoController : Initializable {
                                 proxCapitulo = Integer.valueOf(mListaCaminhos[pagina].numeroPagina)
                         }
                         i++
-                        updateProgress(i.toLong(), max.toLong())
+                        updateProgress(i, max)
                         updateMessage("Processando item " + i + " de " + max + ". Copiando - " + arquivos.absolutePath)
                         copiaItem(arquivos, destino)
 
@@ -1395,171 +1391,25 @@ class AbaArquivoController : Initializable {
                             break
                     }
 
+                    val linguagem = if (nomePasta.contains("[JPN]")) Linguagem.JAPANESE else Linguagem.PORTUGUESE
 
-                    updateMessage("Gerando o comic info..")
-                    val isJapanese = nomePasta.contains("[JPN]")
-                    val imagens = ".*\\.(jpg|jpeg|bmp|gif|png|webp)$".toRegex()
-
-                    i = 0
-                    max = 0
-                    for (key in pastasComic.keys) {
-                        if (pastasComic[key]!!.listFiles() != null)
-                            for (capa in pastasComic[key]!!.listFiles()!!)
-                                max++
-                    }
-
-                    pagina = 0
-                    val pages = mutableListOf<Pages>()
-                    var capitulo = ""
-                    for (key in pastasComic.keys) {
-                        val pasta = pastasComic[key]!!
-                        if (pasta.listFiles() != null)
-                            for (capa in pasta.listFiles()!!) {
-                                if (!capa.name.lowercase(Locale.getDefault()).matches(imagens))
-                                    continue
-
-                                mLOG.info("Gerando pagina do ComicInfo: " + capa.name)
-                                i++
-                                updateProgress(i.toLong(), max.toLong())
-                                updateMessage("Processando item " + i + " de " + max + ". Gerando ComicInfo - Capítulo $key | " + capa.name)
-
-                                val page = Pages()
-                                val imagem: String = capa.name.lowercase(Locale.getDefault())
-                                if (imagem.contains("frente")) {
-                                    page.bookmark = "Cover"
-                                    page.type = ComicPageType.FrontCover
-                                } else if (imagem.contains("tras")) {
-                                    page.bookmark = "Back"
-                                    page.type = ComicPageType.BackCover
-                                } else if (imagem.contains("tudo")) {
-                                    page.bookmark = "All cover"
-                                    page.doublePage = true
-                                    page.type = ComicPageType.Other
-                                } else if (imagem.contains("zsumário") || imagem.contains("zsumario")) {
-                                    page.bookmark = "Sumary"
-                                    page.type = ComicPageType.InnerCover
-                                } else {
-                                    if (!capitulo.equals(key, true) && !key.equals("000", true) && !key.lowercase().contains("extra")) {
-                                        capitulo = key
-                                        val tag = if (cbGerarCapitulo.isSelected) {
-                                            val caminho = mListaCaminhos.stream().filter { it.capitulo.equals(key, ignoreCase = true) }.findFirst()
-                                            if (caminho.isPresent)
-                                                " - " + caminho.get().tag
-                                            else
-                                                ""
-                                        } else
-                                            ""
-                                        page.bookmark = if (isJapanese)
-                                            "第${capitulo}話$tag"
-                                        else
-                                            "Capítulo $capitulo$tag"
-                                    }
-                                }
-
-                                try {
-                                    val input = FileInputStream(capa)
-                                    val image = Image(input)
-                                    page.imageWidth = image.width.toInt()
-                                    page.imageHeight = image.height.toInt()
-                                    input.close()
-                                } catch (e: IOException) {
-                                    mLOG.error("Erro ao obter os tamanhos da imagem.", e)
-                                }
-                                if (page.imageWidth != null && page.imageHeight != null && page.imageHeight!! > 0)
-                                    if (page.imageWidth!! / page.imageHeight!! > 0.9)
-                                        page.doublePage = true
-
-                                page.imageSize = capa.length()
-                                page.image = pagina++
-                                pages.add(page)
-                            }
-                    }
-
-                    val comic = mComicInfo
-                    comic.pages = pages
-                    comic.pageCount = pages.size
-
-                    if (mListaCaminhos.stream().anyMatch { it.tag.isNotEmpty() }) {
-                        var sumary = "*Chapter Titles*\n"
-                        for (key in pastasComic.keys) {
-                            if (key.equals("000", ignoreCase = true))
-                                continue
-
-                            val caminho = mListaCaminhos.stream().filter { it.capitulo.equals(key, ignoreCase = true) }.findFirst()
-                            sumary += "Chapter $key" + (if (caminho.isPresent) ": " + caminho.get().tag else "") + "\n"
+                    val callback = Callback<Triple<Long, Long, String>, Boolean> { param ->
+                        if (param.first == -1L) {
+                            Platform.runLater { txtSimularPasta.text = param.third }
+                        } else {
+                            updateProgress(param.first, param.second)
+                            updateMessage(param.third)
                         }
-                        comic.summary = if (comic.summary.isNullOrEmpty()) sumary else comic.summary + "\n\n" + sumary
+                        true
                     }
+                    val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }
 
-                    comic.let {
-                        if (it.comic.isEmpty())
-                            it.comic = mManga!!.nome
-                        if (it.title.isEmpty())
-                            it.title = mManga!!.nome
+                    val manga = Manga()
+                    manga.merge(mManga!!)
+                    manga.caminhos = mListaCaminhos
 
-                        it.number = mManga!!.volume.replace(Regex("\\D"), "").toFloat()
-                        it.volume = it.number.toInt()
-                        it.count = it.volume
-
-                        it.languageISO = if (isJapanese) "ja" else "pt"
-                    }
-
-                    mServiceComicInfo.save(comic)
-
-                    val comicInfo = File(mCaminhoDestino!!.path.trim { it <= ' ' }, "ComicInfo.xml")
-                    if (comicInfo.exists())
-                        comicInfo.delete()
-
-                    try {
-                        mLOG.info("Salvando xml do ComicInfo.")
-                        val marshaller = JAXBContext.newInstance(ComicInfo::class.java).createMarshaller()
-                        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
-                        val out = FileOutputStream(comicInfo)
-                        marshaller.marshal(comic, out)
-                        out.close()
-                        pastasCompactar.add(comicInfo)
-                    } catch (e: Exception) {
-                        mLOG.error("Erro ao gerar o xml do ComicInfo.", e)
-                    }
-
-                    val comet = File(mCaminhoDestino!!.path.trim { it <= ' ' }, "CoMet.xml")
-                    if (comet.exists())
-                        comet.delete()
-
-                    val paths = mutableListOf<String>()
-                    for (pasta in pastasComic) {
-                        val path = pasta.value.path.substringAfter(txtPastaDestino.text).replace("\\", "/")
-                        if (pasta.value.listFiles() != null) {
-                            for (image in pasta.value.listFiles()!!)
-                                paths.add(path + "/" + image.name)
-                        }
-                    }
-
-                    try {
-                        mLOG.info("Salvando xml do CoMet.")
-                        val marshaller = JAXBContext.newInstance(CoMet::class.java).createMarshaller()
-                        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
-                        val out = FileOutputStream(comet)
-                        marshaller.marshal(CoMet(mComicInfo, paths), out)
-                        out.close()
-                        pastasCompactar.add(comet)
-                    } catch (e: Exception) {
-                        mLOG.error("Erro ao gerar o xml do CoMet.", e)
-                    }
-
-                    pastasComic.clear()
-
-                    if (gerarArquivo) {
-                        updateMessage("Compactando arquivo: $arquivoZip")
-                        destino = File(arquivoZip)
-
-                        if (destino.exists())
-                            destino.delete()
-
+                    if (Compactar.compactar(mCaminhoDestino!!, File(arquivoZip), manga, mComicInfo, pastasCompactar, pastasComic, linguagem, cbCompactarArquivo.isSelected, cbGerarCapitulo.isSelected, callback))
                         LAST_PROCESS_FOLDERS = pastasCompactar
-                        if (!compactaArquivo(destino, pastasCompactar))
-                            Platform.runLater { txtSimularPasta.text = "Erro ao gerar o arquivo, necessário compacta-lo manualmente." }
-                    }
                 } catch (e: Exception) {
                     mLOG.error("Erro ao processar.", e)
                     Platform.runLater { AlertasPopup.erroModal("Erro ao processar", e.stackTrace.toString()) }
