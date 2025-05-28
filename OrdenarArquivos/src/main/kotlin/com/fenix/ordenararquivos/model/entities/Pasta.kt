@@ -3,7 +3,6 @@ package com.fenix.ordenararquivos.model.entities
 import java.io.File
 
 data class Pasta(
-    var id: Long = 0,
     var pasta: File,
     var arquivo: String = "",
     var nome: String = "",
@@ -12,10 +11,11 @@ data class Pasta(
     var capitulos: String = "",
     var scan: String = "",
     var titulo: String = "",
+    var isCapa : Boolean = false
 ) {
 
     override fun toString(): String {
-        return ("Pasta [id=" + id + ", nome=" + nome + ", volume=" + volume + ", capitulo=" + capitulo + ", arquivo=" + arquivo + ", scan=" + scan + ", titulo=" + titulo + "]")
+        return ("Pasta [nome=" + nome + ", volume=" + volume + ", capitulo=" + capitulo + ", arquivo=" + arquivo + ", scan=" + scan + ", titulo=" + titulo + "]")
     }
 
     override fun equals(other: Any?): Boolean {

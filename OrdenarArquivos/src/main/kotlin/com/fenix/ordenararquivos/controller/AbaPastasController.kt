@@ -1,6 +1,8 @@
 package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.components.NumberTextFieldTableCell
+import com.fenix.ordenararquivos.model.entities.Caminhos
+import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.Pasta
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
@@ -9,6 +11,7 @@ import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.notification.Notificacoes
+import com.fenix.ordenararquivos.process.Compactar
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.util.Utils
@@ -76,6 +79,9 @@ class AbaPastasController : Initializable {
 
     @FXML
     private lateinit var btnAplicar: JFXButton
+
+    @FXML
+    private lateinit var btnGerarCapas: JFXButton
 
     //<--------------------------  Arquivos   -------------------------->
 
@@ -201,6 +207,25 @@ class AbaPastasController : Initializable {
     @FXML
     private fun onBtnAplicar() {
         aplicar()
+    }
+
+    @FXML
+    private fun onBtnGerarCapas() {
+        val decimal = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
+        var volume = 0f
+        val lista = mObsListaProcessar.toMutableList()
+        for (item in mObsListaProcessar) {
+            if (item.volume.compareTo(volume) != 0 && mObsListaProcessar.none { it.isCapa && it.volume.compareTo(volume) == 0}) {
+                volume = item.volume
+                val pasta = File(item.pasta.parent, "[${item.scan}] ${item.nome} - Volume ${decimal.format(item.volume)} Capa")
+                if (!pasta.exists())
+                    Files.createDirectories(pasta.toPath())
+                lista.add(Pasta(pasta, pasta.name, pasta.name, item.volume, scan = item.scan, isCapa = true))
+            }
+        }
+        mObsListaProcessar = FXCollections.observableArrayList(mutableListOf())
+        tbViewProcessar.items = mObsListaProcessar
+        tbViewProcessar.refresh()
     }
 
     @FXML
@@ -391,20 +416,41 @@ class AbaPastasController : Initializable {
         val volume = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
         val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
         val compactar = mutableListOf<File>()
+        val comic = mutableMapOf<String, File>()
+        val destino = File(txtPasta.text)
+        val caminhos = mutableListOf<Caminhos>()
+        val nome = cbManga.value
+        val manga = Manga()
+        manga.nome = nome
+
+        var sequencia = 1
         var vol = 0f
         for (item in mObsListaProcessar) {
             if (item.volume > 0f && item.volume != vol) {
                 if (vol > 0f) {
-                    // adicionar o compacta
+                    manga.volume = volume.format(item.volume)
+                    val arquivoZip = destino.path.trim { it <= ' ' } + "\\" + nome.trim { it <= ' ' } + " - Volume " + manga.volume + ".cbr"
+                    manga.caminhos = caminhos
+                    val callback = Callback<Triple<Long, Long, String>, Boolean> { param -> true }
+                    Compactar.compactar(destino, File(arquivoZip), manga, mComicInfo, compactar, comic, Linguagem.PORTUGUESE, isCompactar = true, isGerarCapitulos = true, callback)
                     compactar.clear()
+                    comic.clear()
+                    caminhos.clear()
+                    sequencia = 1
                 }
                 vol = item.volume
             }
 
-            val pasta = "[${item.scan}] ${item.nome} - Volume ${volume.format(item.volume)} Capítulo ${capitulo.format(item.capitulo)}"
+            val pasta = "[${item.scan}] ${item.nome} - Volume ${volume.format(item.volume)} ${if (item.isCapa) "Capa" else "Capítulo " + capitulo.format(item.capitulo)}"
             val path = item.pasta.toPath()
             val file = Files.move(path, path.resolveSibling(pasta), StandardCopyOption.REPLACE_EXISTING).toFile()
             compactar.add(file)
+            if (item.isCapa)
+                comic["000"] = file
+            else
+                comic[capitulo.format(item.capitulo)] = file
+            caminhos.add(Caminhos(capitulo.format(item.capitulo), sequencia.toString(), "Capítulo " + capitulo.format(item.capitulo), ""))
+            sequencia += file.listFiles()?.size ?: 0
         }
         mObsListaProcessar = FXCollections.observableArrayList(mutableListOf())
         tbViewProcessar.items = mObsListaProcessar
