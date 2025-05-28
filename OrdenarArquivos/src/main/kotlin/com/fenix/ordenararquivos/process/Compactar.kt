@@ -7,6 +7,7 @@ import com.fenix.ordenararquivos.model.entities.comicinfo.Pages
 import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.service.ComicInfoServices
+import com.fenix.ordenararquivos.util.Utils
 import jakarta.xml.bind.JAXBContext
 import jakarta.xml.bind.Marshaller
 import javafx.application.Platform
@@ -22,25 +23,6 @@ object Compactar {
     private val mLOG = LoggerFactory.getLogger(Compactar::class.java)
 
     private val mServiceComicInfo = ComicInfoServices()
-
-    private fun toJapanese(capitulo: String) : String {
-        var numbero = ""
-        for (c in capitulo.lowercase())
-            numbero += when (c) {
-                '0' -> "\uFF10"
-                '1' -> "\uFF11"
-                '2' -> "\uFF12"
-                '3' -> "\uFF13"
-                '4' -> "\uFF14"
-                '5' -> "\uFF15"
-                '6' -> "\uFF16"
-                '7' -> "\uFF17"
-                '8' -> "\uFF18"
-                '9' -> "\uFF19"
-                else -> c
-            }
-        return numbero
-    }
 
     private var mProcess: Process? = null
     private fun compactaArquivo(rar: File, arquivos: List<File>): Boolean {
@@ -138,7 +120,7 @@ object Compactar {
                             } else
                                 ""
                             page.bookmark = when (linguagem) {
-                                Linguagem.JAPANESE -> "第${toJapanese(capitulo)}話$tag"
+                                Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(capitulo)}話$tag"
                                 Linguagem.ENGLISH -> "Chapter $capitulo$tag"
                                 Linguagem.PORTUGUESE -> "Capítulo $capitulo$tag"
                                 else -> "Capítulo $capitulo$tag"

@@ -136,7 +136,7 @@ class AbaComicInfoController : Initializable {
 
                         capitulo.lowercase().substringAfter(Utils.SEPARADOR_IMAGEM).let {
                             if (it.contains("第") || it.contains("chapter") || it.contains("capítulo")) {
-                                val numero = Utils.getNumber(it)
+                                val numero = Utils.getNumber(if (it.lowercase().contains("第")) Utils.fromNumberJapanese(it) else it)
                                 capitulos.find { c -> c.capitulo == numero }?.run {
                                     capitulos.remove(this)
                                     capitulo += " " + Utils.SEPARADOR_IMPORTACAO + " " + decimal.format(this.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && this.japones.isNotEmpty()) this.japones else this.ingles
@@ -444,7 +444,7 @@ class AbaComicInfoController : Initializable {
             if (info.exists())
                 info.delete()
 
-            item.comicInfo?.pages?.forEach { it.bookmark = "" }
+            item.comicInfo?.pages?.forEach { it.bookmark = null }
 
             var sumario = "*Chapter Titles Manual*\n"
             val tags = item.tags.split("\n")
@@ -461,7 +461,7 @@ class AbaComicInfoController : Initializable {
                 capitulo.lowercase().let {
                     if (it.contains("第") || it.contains("chapter") || it.contains("capítulo")) {
                         val numero = if (it.contains("第"))
-                            it.substringBefore("-").replace("第", "Chapter ").replace("話", "").trim()
+                            Utils.fromNumberJapanese(it.substringBefore("-").replace("第", "Chapter ").replace("話", "").trim())
                         else
                             it.substringBefore("-").replace("capítulo", "Chapter").replace("chapter", "Chapter").trim()
                         sumario += numero + ": " + capitulo.substringAfter("-").trim() + "\n"
@@ -565,18 +565,18 @@ class AbaComicInfoController : Initializable {
         tbViewProcessar.refresh()
     }
 
-    private fun gerarTagItem(item: Processar) {
+    private fun gerarTagItem(item: Processar, isAjustar : Boolean = false) {
         val decimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
         val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
         val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { p ->
             p.image.toString() + Utils.SEPARADOR_IMAGEM + p.bookmark!!.substringBeforeLast("-", p.bookmark!!).trim()
                 .let { b -> if (b.lowercase().contains("第") || b.lowercase().contains("chapter") || b.lowercase().contains("capítulo")) {
-                    val capitulo = Utils.getNumber(b) ?: 0.0
+                    val capitulo = Utils.getNumber(if (b.lowercase().contains("第")) Utils.fromNumberJapanese(b) else b) ?: 0.0
                     when (language) {
-                        Linguagem.JAPANESE -> "第${decimal.format(capitulo)}話"
+                        Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(decimal.format(capitulo))}話"
                         Linguagem.PORTUGUESE -> "Capítulo ${decimal.format(capitulo)}"
                         else -> "Chapter ${decimal.format(capitulo)}"
-                    }
+                    } + if (isAjustar) " - " + p.bookmark!!.substringAfterLast("-").trim() else ""
                 } else b }
         }?.toList() ?: emptyList()
         item.tags = tags.joinToString(separator = "\n")
@@ -634,7 +634,7 @@ class AbaComicInfoController : Initializable {
                             for (i in 0 until index +1) {
                                 updateProgress(i.toLong(), index.toLong())
                                 updateMessage("Salvando ComicInfo $i de $index.")
-                                Platform.runLater { salvarComicInfoItem(list[i]) }
+                                salvarComicInfoItem(list[i])
                             }
                         } catch (e: Exception) {
                             mLOG.info("Erro ao salvar o ComicInfo.", e)
@@ -681,6 +681,13 @@ class AbaComicInfoController : Initializable {
                 controllerPai.setCursor(null)
             }
         }
+        val tagsAjustar = MenuItem("Ajustar Tags")
+        tagsAjustar.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null) {
+                gerarTagItem(tbViewProcessar.selectionModel.selectedItem, isAjustar = true)
+                tbViewProcessar.refresh()
+            }
+        }
         val remover = MenuItem("Remover registro")
         remover.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null)
@@ -703,10 +710,11 @@ class AbaComicInfoController : Initializable {
                 }
         }
         menu.items.add(salvar)
-        menu.items.add(processar)
         menu.items.add(salvarAnteriores)
+        menu.items.add(processar)
         menu.items.add(tags)
         menu.items.add(tagsAnteriores)
+        menu.items.add(tagsAjustar)
         menu.items.add(remover)
         menu.items.add(removerAnteriores)
 

@@ -66,6 +66,46 @@ class Utils {
             }
         }
 
+        fun fromNumberJapanese(capitulo: String) : String {
+            var numbero = ""
+            for (c in capitulo)
+                numbero += when (c) {
+                    '\uFF10' -> "0"
+                    '\uFF11' -> "1"
+                    '\uFF12' -> "2"
+                    '\uFF13' -> "3"
+                    '\uFF14' -> "4"
+                    '\uFF15' -> "5"
+                    '\uFF16' -> "6"
+                    '\uFF17' -> "7"
+                    '\uFF18' -> "8"
+                    '\uFF19' -> "9"
+                    '\uFF0E' -> "."
+                    else -> c
+                }
+            return numbero
+        }
+
+        fun toNumberJapanese(capitulo: String) : String {
+            var numbero = ""
+            for (c in capitulo.lowercase())
+                numbero += when (c) {
+                    '0' -> "\uFF10"
+                    '1' -> "\uFF11"
+                    '2' -> "\uFF12"
+                    '3' -> "\uFF13"
+                    '4' -> "\uFF14"
+                    '5' -> "\uFF15"
+                    '6' -> "\uFF16"
+                    '7' -> "\uFF17"
+                    '8' -> "\uFF18"
+                    '9' -> "\uFF19"
+                    '.' -> "\uFF0E"
+                    else -> c
+                }
+            return numbero
+        }
+
         fun selecionaPasta(pasta: String): File? {
             val fileChooser = DirectoryChooser()
             fileChooser.title = "Selecione o arquivo."
