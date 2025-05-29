@@ -142,7 +142,7 @@ class AbaComicInfoController : Initializable {
                                 val numero = Utils.getNumber(if (it.lowercase().contains("第")) Utils.fromNumberJapanese(it) else it)
                                 capitulos.find { c -> c.capitulo == numero }?.run {
                                     capitulos.remove(this)
-                                    capitulo += " " + Utils.SEPARADOR_IMPORTACAO + " " + decimal.format(this.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && this.japones.isNotEmpty()) this.japones else this.ingles
+                                    capitulo += " ${Utils.SEPARADOR_IMPORTACAO} " + decimal.format(this.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && this.japones.isNotEmpty()) this.japones else this.ingles
                                 }
                             }
                         }
@@ -199,7 +199,12 @@ class AbaComicInfoController : Initializable {
                 val linhas = item.tags.split("\n")
                 val tags = mutableListOf<String>()
                 for (linha in linhas) {
-                    if (linha.contains("第") || linha.lowercase().contains("capítulo")  || linha.lowercase().contains("capitulo") || linha.lowercase().contains("chapter")) {
+                    if (linha.contains("Capítulo Novo", ignoreCase = true)) {
+                        if (linha.contains(Utils.SEPARADOR_CAPITULO))
+                            tags.add(linha.substringBefore(Utils.SEPARADOR_CAPITULO) + Utils.SEPARADOR_CAPITULO + Utils.normaliza(linha.substringAfter(Utils.SEPARADOR_CAPITULO)))
+                        else
+                            tags.add(linha)
+                    } else if (linha.contains("第") || linha.lowercase().contains("capítulo")  || linha.lowercase().contains("capitulo") || linha.lowercase().contains("chapter")) {
                         val imagem = linha.substringBefore(Utils.SEPARADOR_IMAGEM)
                         var capitulo = linha.substringAfter(Utils.SEPARADOR_IMAGEM).substringBefore("-").trim()
                         val numero = Utils.getNumber(if (capitulo.contains("第")) Utils.fromNumberJapanese(capitulo) else capitulo) ?: 0.0
@@ -208,8 +213,13 @@ class AbaComicInfoController : Initializable {
                             Linguagem.PORTUGUESE -> "Capítulo ${decimal.format(numero)}"
                             else -> "Chapter ${decimal.format(numero)}"
                         }
-                        val titulo = Utils.normaliza(linha.substringAfter("-").trim())
-                        tags.add(imagem + Utils.SEPARADOR_IMAGEM + capitulo + " - " + titulo)
+                        val titulo = if (linhas.contains(Utils.SEPARADOR_IMPORTACAO))
+                          " ${Utils.SEPARADOR_IMPORTACAO} " + linha.substringAfter(Utils.SEPARADOR_IMPORTACAO).substringBefore(Utils.SEPARADOR_CAPITULO).trim() + Utils.SEPARADOR_CAPITULO + Utils.normaliza(linha.substringAfterLast(Utils.SEPARADOR_CAPITULO).trim())
+                        else if (linha.contains("-"))
+                            " - " + Utils.normaliza(linha.substringAfter("-").trim())
+                        else
+                            ""
+                        tags.add(imagem + Utils.SEPARADOR_IMAGEM + capitulo + titulo)
                     } else
                         tags.add(linha)
                 }
@@ -486,7 +496,7 @@ class AbaComicInfoController : Initializable {
                 var capitulo = tag.substringAfter(Utils.SEPARADOR_IMAGEM).trim()
 
                 if (capitulo.endsWith(Utils.SEPARADOR_IMPORTACAO))
-                    capitulo = capitulo.substringBeforeLast(Utils.SEPARADOR_IMPORTACAO).trim()
+                    capitulo = capitulo.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
 
                 if (capitulo.isEmpty())
                     continue
@@ -602,7 +612,7 @@ class AbaComicInfoController : Initializable {
         val decimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
         val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
         val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { p ->
-            p.image.toString() + Utils.SEPARADOR_IMAGEM + p.bookmark!!.substringBeforeLast("-", p.bookmark!!).trim()
+            p.image.toString() + Utils.SEPARADOR_IMAGEM + p.bookmark!!.substringBefore("-", p.bookmark!!).trim()
                 .let { b -> if (b.contains("第") || b.lowercase().contains("capítulo") || b.lowercase().contains("chapter")) {
                     val capitulo = Utils.getNumber(if (b.lowercase().contains("第")) Utils.fromNumberJapanese(b) else b) ?: 0.0
                     when (language) {
@@ -773,9 +783,28 @@ class AbaComicInfoController : Initializable {
                         val linhas = mutableListOf<String>()
                         val separador = Utils.SEPARADOR_CAPITULO
                         for (linha in txt.split("\n"))
-                            linhas.add(if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) linha.substringBeforeLast(Utils.SEPARADOR_IMPORTACAO).trim() + " - " + linha.substringAfterLast(separador) else linha)
+                            linhas.add(if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) linha.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim() + " - " + linha.substringAfterLast(separador) else linha)
 
-                        textArea.text = linhas.joinToString("\n")
+                        textArea.replaceText(0, textArea.length, linhas.joinToString(separator = "\n"))
+                    }
+                    KeyCode.DELETE -> {
+                        if (textArea.text.isEmpty() || !textArea.text.contains("\n"))
+                            return@setOnKeyPress true
+
+                        val lastCaretPos = textArea.caretPosition
+
+                        val txt = textArea.text ?: ""
+                        val scroll = textArea.scrollTopProperty().value
+
+                        var before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
+                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+                        val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
+                        before = before.substringBeforeLast(line)
+
+                        textArea.replaceText(0, textArea.length, (before + last).trim())
+                        textArea.positionCaret(before.length)
+                        textArea.scrollTop = scroll
+                        key.consume()
                     }
                     KeyCode.LEFT -> {
                         if (textArea.text.isEmpty() || !textArea.text.contains("\n") || !textArea.text.contains(Utils.SEPARADOR_IMPORTACAO))
@@ -795,8 +824,8 @@ class AbaComicInfoController : Initializable {
                             return@setOnKeyPress true
 
                         val separador = Utils.SEPARADOR_CAPITULO
-                        val newLine = line.substringBeforeLast(Utils.SEPARADOR_IMPORTACAO).trim() + " - " + line.substringAfterLast(separador)
-                        textArea.text = before + newLine + last
+                        val newLine = line.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim() + " - " + line.substringAfterLast(separador)
+                        textArea.replaceText(0, textArea.length, before + newLine + last)
                         val caret = before.length + newLine.lastIndexOf(" - ")
                         textArea.positionCaret(caret)
                         textArea.scrollTop = scroll
@@ -809,7 +838,7 @@ class AbaComicInfoController : Initializable {
                         val lastCaretPos = textArea.caretPosition
 
                         val txt = textArea.text ?: ""
-                        val lines = txt.split("\n").toMutableList()
+                        val linhas = txt.split("\n").toMutableList()
                         val scroll = textArea.scrollTopProperty().value
 
                         val before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
@@ -819,10 +848,8 @@ class AbaComicInfoController : Initializable {
                         if (!line.contains(Utils.SEPARADOR_IMPORTACAO))
                             return@setOnKeyPress true
 
-                        var caret = before.indexOf(line)
-
                         var index = -1
-                        for ((idx, item) in lines.withIndex()) {
+                        for ((idx, item) in linhas.withIndex()) {
                             if (item == line) {
                                 index = idx
                                 break
@@ -831,12 +858,12 @@ class AbaComicInfoController : Initializable {
 
                         if (key.code == KeyCode.UP) {
                             if (index > 0) {
-                                if (index >= lines.size)
-                                    index = lines.size - 2
+                                if (index >= linhas.size)
+                                    index = linhas.size - 2
 
                                 var spaco = -1
                                 for (i in (index - 1) downTo 2) {
-                                    if (!lines[i].contains(Utils.SEPARADOR_IMPORTACAO)) {
+                                    if (!linhas[i].contains(Utils.SEPARADOR_IMPORTACAO)) {
                                         spaco = i
                                         break
                                     }
@@ -847,37 +874,37 @@ class AbaComicInfoController : Initializable {
                                     inicio = spaco + 1
 
                                 for (i in inicio until index + 1) {
-                                    lines[i-1] = lines[i-1] + if (lines[i].contains(Utils.SEPARADOR_IMPORTACAO)) Utils.SEPARADOR_IMPORTACAO + lines[i].substringAfterLast(Utils.SEPARADOR_IMPORTACAO) else ""
-                                    lines[i] = lines[i].substringBeforeLast(Utils.SEPARADOR_IMPORTACAO)
+                                    linhas[i-1] = linhas[i-1] + if (linhas[i].contains(Utils.SEPARADOR_IMPORTACAO)) Utils.SEPARADOR_IMPORTACAO + linhas[i].substringAfter(Utils.SEPARADOR_IMPORTACAO) else ""
+                                    linhas[i] = linhas[i].substringBefore(Utils.SEPARADOR_IMPORTACAO)
                                 }
                             }
                         } else if (key.code == KeyCode.DOWN) {
-                            if (index < lines.size - 1) {
+                            if (index < linhas.size - 1) {
                                 var spaco = -1
-                                for (i in index + 1 until lines.size) {
-                                    if (!lines[i].contains(Utils.SEPARADOR_IMPORTACAO)) {
+                                for (i in index + 1 until linhas.size) {
+                                    if (!linhas[i].contains(Utils.SEPARADOR_IMPORTACAO)) {
                                         spaco = i
                                         break
                                     }
                                 }
 
-                                var inicio = lines.size - 2
-                                if (spaco > 0 && spaco < lines.size -1)
+                                var inicio = linhas.size - 2
+                                if (spaco > 0 && spaco < linhas.size -1)
                                     inicio = spaco - 1
 
                                 for (i in inicio downTo index) {
-                                    lines[i+1] = lines[i+1] + if (lines[i].contains(Utils.SEPARADOR_IMPORTACAO)) Utils.SEPARADOR_IMPORTACAO + lines[i].substringAfterLast(Utils.SEPARADOR_IMPORTACAO) else ""
-                                    lines[i] = lines[i].substringBeforeLast(Utils.SEPARADOR_IMPORTACAO)
+                                    linhas[i+1] = linhas[i+1] + if (linhas[i].contains(Utils.SEPARADOR_IMPORTACAO)) Utils.SEPARADOR_IMPORTACAO + linhas[i].substringAfter(Utils.SEPARADOR_IMPORTACAO) else ""
+                                    linhas[i] = linhas[i].substringBefore(Utils.SEPARADOR_IMPORTACAO)
                                 }
                             }
                         }
 
-                        textArea.text = lines.joinToString(separator = "\n")
+                        textArea.replaceText(0, textArea.length, linhas.joinToString(separator = "\n"))
 
-                        caret = if (key.code == KeyCode.UP)
-                            textArea.text.substring(0, caret).lastIndexOf(Utils.SEPARADOR_IMPORTACAO)
+                        val caret = if (key.code == KeyCode.UP)
+                            textArea.text.substring(0, lastCaretPos).lastIndexOf(Utils.SEPARADOR_IMPORTACAO)
                         else
-                            textArea.text.indexOf(Utils.SEPARADOR_IMPORTACAO, caret)
+                            textArea.text.indexOf(Utils.SEPARADOR_IMPORTACAO, lastCaretPos)
 
                         textArea.positionCaret(caret)
                         textArea.scrollTop = scroll

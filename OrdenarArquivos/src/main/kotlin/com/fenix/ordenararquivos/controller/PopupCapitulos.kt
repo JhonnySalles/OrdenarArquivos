@@ -7,6 +7,7 @@ import com.fenix.ordenararquivos.model.entities.capitulos.Capitulo
 import com.fenix.ordenararquivos.model.entities.capitulos.Volume
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.util.Utils
 import com.jfoenix.controls.*
 import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleStringProperty
@@ -264,10 +265,10 @@ class PopupCapitulos : Initializable {
                 val capitulos = mutableListOf<Capitulo>()
 
                 for (tag in processar.tags.split("\n")) {
-                    var capitulo = tag.substringAfter(SEPARADOR_IMAGEM).trim()
+                    var capitulo = tag.substringAfter(Utils.SEPARADOR_IMAGEM).trim()
 
-                    if (capitulo.endsWith(SEPARADOR_CAPITULO))
-                        capitulo = capitulo.substringBeforeLast(SEPARADOR_CAPITULO).trim()
+                    if (capitulo.endsWith(Utils.SEPARADOR_IMPORTACAO))
+                        capitulo = capitulo.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
 
                     if (capitulo.isEmpty())
                         continue
@@ -370,10 +371,11 @@ class PopupCapitulos : Initializable {
     private fun cleanEnglishTitle(rawTitle: String): String {
         // Removes prefixes like "CHAPTER X: ", "BONUS CHAPTER: ", "Final Chapter: "
         var title = rawTitle
-        title = title.replaceFirst("""^(?:CHAPTER\s*[\d.]*\s*:\s*|BONUS CHAPTER\s*:\s*|Special one-shot\s*:\s*|Final Chapter\s*:\s*|CHAPTER\s*[\d.]*\s*-\s*|CHAPTER\s*[\d.]*\s+)""".toRegex(RegexOption.IGNORE_CASE), "")
+        title = title.replaceFirst("""^(?:CHAPTER\s*[\d.]*\s*:\s*|BONUS CHAPTER\s*:\s*|Special one-shot\s*:\s*|Final Chapter\s*:\s*|CHAPTER\s*[\d.]*\s*-\s*|CHAPTER\s*[\d.]*\s+|CH\.[\d.]* )""".toRegex(RegexOption.IGNORE_CASE), "")
         // Specific case for "CHAPTER X: Title" without space after colon found in data
         title = title.replaceFirst("""^CHAPTER\s*\d+:""".toRegex(RegexOption.IGNORE_CASE), "")
         // For titles like "াCHAPTER 206: You've ended up this way."
+        title = title.replaceFirst("""^[^A-Za-z0-9]*CHAPTER\s*[\d.]*\s*:?\s*""".toRegex(RegexOption.IGNORE_CASE), "")
         title = title.replaceFirst("""^[^A-Za-z0-9]*CHAPTER\s*[\d.]*\s*:?\s*""".toRegex(RegexOption.IGNORE_CASE), "")
         return title.trim()
     }
@@ -648,22 +650,20 @@ class PopupCapitulos : Initializable {
         clVolume.cellValueFactory = PropertyValueFactory("volume")
         clTags.cellValueFactory = PropertyValueFactory("tags")
 
+        val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
         clCapitulos.setCellValueFactory { param ->
             val item = param.value
             var descricao = ""
             if (item.capitulos.isNotEmpty())
-                descricao = item.capitulos.joinToString(separator = "\n") { it.capitulo.toString() }
+                descricao = item.capitulos.joinToString(separator = "\n") { capitulo.format(it.capitulo) }
             SimpleStringProperty(descricao)
         }
         clDescricoes.setCellValueFactory { param ->
             val item = param.value
             var descricao = ""
-            if (item.capitulos.isNotEmpty()) {
-                descricao = if (cbLinguagem.value == Linguagem.JAPANESE)
-                    item.capitulos.joinToString(separator = "\n") { it.capitulo.toString() + ": " + it.japones }
-                else
-                    item.capitulos.joinToString(separator = "\n") { it.capitulo.toString() + ": " + it.ingles }
-            }
+            if (item.capitulos.isNotEmpty())
+                descricao = item.capitulos.joinToString(separator = "\n") { capitulo.format(it.capitulo) + ": " + if (cbLinguagem.value == Linguagem.JAPANESE) it.japones else it.ingles }
+
             SimpleStringProperty(descricao)
         }
 
@@ -687,8 +687,6 @@ class PopupCapitulos : Initializable {
     }
 
     companion object {
-        private val SEPARADOR_IMAGEM = ";"
-        private val SEPARADOR_CAPITULO = "#"
         private val LOGGER: Logger = LoggerFactory.getLogger(PopupAmazon::class.java)
         private val STYLE_SHEET: String = PopupCapitulos::class.java.getResource("/css/Dark_TelaInicial.css").toExternalForm()
         private lateinit var btnConfirmar: JFXButton

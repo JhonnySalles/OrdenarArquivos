@@ -13,7 +13,7 @@ class Utils {
     companion object {
         const val COMICINFO = "ComicInfo.xml"
         const val SEPARADOR_IMAGEM = ";"
-        const val SEPARADOR_IMPORTACAO = "#"
+        const val SEPARADOR_IMPORTACAO = "$#"
         const val SEPARADOR_PAGINA = "-"
         const val SEPARADOR_CAPITULO = "|"
 

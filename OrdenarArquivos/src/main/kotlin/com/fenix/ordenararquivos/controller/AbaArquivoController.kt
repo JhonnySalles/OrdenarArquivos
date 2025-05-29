@@ -780,7 +780,7 @@ class AbaArquivoController : Initializable {
             mSugestao.suggestions.add(textos)
             mSugestao.show(txtAreaImportar)
             mSugestao.setSelectionHandler {
-                txtAreaImportar.text = it.`object` ?: ""
+                txtAreaImportar.replaceText(0, txtAreaImportar.length, it.`object` ?: "")
             }
         }
     }
@@ -857,7 +857,7 @@ class AbaArquivoController : Initializable {
             txtVolume.text = it.volume
             txtNomePastaCapitulo.text = it.capitulo
             txtNomeArquivo.text = it.arquivo
-            txtAreaImportar.text = it.capitulos
+            txtAreaImportar.replaceText(0, txtAreaImportar.length, it.capitulos)
 
             val quantidade = mObsListaItens.size
             lblAlerta.text = if (it.quantidade != quantidade) "Difereça na quantidade de imagens." else ""
@@ -1871,7 +1871,7 @@ class AbaArquivoController : Initializable {
                 val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
                 for (i in inicio..fim)
                     texto += String.format(padding, i) + Utils.SEPARADOR_PAGINA + if (i < fim) "\r\n" else ""
-                txtAreaImportar.text = texto
+                txtAreaImportar.replaceText(0, txtAreaImportar.length, texto)
             } else txtGerarInicio.unFocusColor = Color.GRAY
         } else {
             if (txtGerarInicio.text.trim { it <= ' ' }.isEmpty()) txtGerarInicio.unFocusColor = Color.GRAY
@@ -2399,7 +2399,7 @@ class AbaArquivoController : Initializable {
                         val newText = before + newLine + last
                         val position = if (newLine.contains(separador)) newLine.lastIndexOf(separador) else newLine.length
 
-                        txtAreaImportar.text = newText
+                        txtAreaImportar.replaceText(0, txtAreaImportar.length, newText)
                         lastCaretPos = before.length + position
                         txtAreaImportar.positionCaret(lastCaretPos)
                         txtAreaImportar.scrollTop = scroll
@@ -2463,7 +2463,7 @@ class AbaArquivoController : Initializable {
                                 newText += line + "\n"
                         }
 
-                        txtAreaImportar.text = newText.substringBeforeLast("\n")
+                        txtAreaImportar.replaceText(0, txtAreaImportar.length, newText.substringBeforeLast("\n"))
                         txtAreaImportar.positionCaret(txtAreaImportar.text.indexOf(line))
                         txtAreaImportar.scrollTop = scroll
                     }
@@ -2488,7 +2488,6 @@ class AbaArquivoController : Initializable {
                             return@EventHandler
 
                         val separador = Utils.SEPARADOR_CAPITULO
-                        var caret = before.indexOf(line)
 
                         var index = -1
                         for ((idx, item) in lines.withIndex()) {
@@ -2541,12 +2540,12 @@ class AbaArquivoController : Initializable {
                             }
                         }
 
-                        txtAreaImportar.text = lines.joinToString(separator = "\n")
+                        txtAreaImportar.replaceText(0, txtAreaImportar.length, lines.joinToString(separator = "\n"))
 
-                        caret = if (e.code == KeyCode.UP)
-                            txtAreaImportar.text.substring(0, caret).lastIndexOf(separador)
+                        val caret = if (e.code == KeyCode.UP)
+                            txtAreaImportar.text.substring(0, lastCaretPos).lastIndexOf(separador)
                         else
-                            txtAreaImportar.text.indexOf(separador, caret)
+                            txtAreaImportar.text.indexOf(separador, lastCaretPos)
 
                         txtAreaImportar.positionCaret(caret)
                         txtAreaImportar.scrollTop = scroll
@@ -2585,7 +2584,7 @@ class AbaArquivoController : Initializable {
 
                     val caret = txtAreaImportar.caretPosition
                     val scroll = txtAreaImportar.scrollTopProperty().value
-                    txtAreaImportar.text = texto.substringBeforeLast("\n")
+                    txtAreaImportar.replaceText(0, txtAreaImportar.length, texto.substringBeforeLast("\n"))
                     txtAreaImportar.positionCaret(caret)
                     txtAreaImportar.scrollTop = scroll
                     lastCaretPos = txtAreaImportar.caretPosition
