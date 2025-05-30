@@ -21,7 +21,7 @@ class MangaServices {
     private val mINSERT_CAMINHO = "INSERT INTO Caminho (id_manga, capitulo, pagina, pasta) VALUES (?,?,?,?)"
     private val mSELECT_CAMINHO = "SELECT id, capitulo, pagina, pasta FROM Caminho WHERE id_manga = ?"
     private val mDELETE_CAMINHO = "DELETE FROM Caminho WHERE id_manga = ?"
-    private val mSELECT_ALL_MANGA = "SELECT nome FROM Manga WHERE nome LIKE ?"
+    private val mSELECT_ALL_MANGA = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome LIKE ?"
 
     private val mSELECT_ENVIO = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE atualizacao >= ?"
     private val mLIST_MANGA = "SELECT nome FROM Manga GROUP BY nome ORDER BY nome"
@@ -74,13 +74,14 @@ class MangaServices {
             st.setString(1, nome)
             rs = st.executeQuery()
             val mangas = mutableListOf<Manga>()
-            while (rs.next())
-                mangas.add(
-                    Manga(rs.getLong("id"), rs.getString("nome"), rs.getString("volume"),
-                        rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
-                        rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
-                    )
+            while (rs.next()) {
+                val manga = Manga(rs.getLong("id"), rs.getString("nome"), rs.getString("volume"),
+                    rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
+                    rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
                 )
+                manga.caminhos = select(manga)
+                mangas.add(manga)
+            }
             mangas
         } catch (e: SQLException) {
             mLOG.error("Erro ao buscar o manga.", e)

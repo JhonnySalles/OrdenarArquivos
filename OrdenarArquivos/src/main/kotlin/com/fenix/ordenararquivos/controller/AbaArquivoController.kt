@@ -2699,7 +2699,8 @@ class AbaArquivoController : Initializable {
 
                         txtMalNome.text = nome
                     }
-                    btnMalConsultar.fire()
+                    if (isAbaSelecionada)
+                        btnMalConsultar.fire()
                 } else
                     tbTabRoot.selectionModel.select(tbTabComicInfo)
             }
@@ -2811,6 +2812,7 @@ class AbaArquivoController : Initializable {
     companion object {
         private var LAST_PROCESS_FOLDERS: MutableList<File> = ArrayList()
         val fxmlLocate: URL get() = TelaInicialController::class.java.getResource("/view/AbaArquivo.fxml")
+        var isAbaSelecionada = false
 
         val imgAnimaCompartilha = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamento_48.png"))
         val imgAnimaCompartilhaEspera = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamentoEspera_48.png"))

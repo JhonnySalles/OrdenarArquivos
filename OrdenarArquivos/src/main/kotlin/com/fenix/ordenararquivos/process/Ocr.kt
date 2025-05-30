@@ -573,7 +573,14 @@ object Ocr {
             val body = response.body()!!.string()
             mLOG.info("Resposta Gemini: $body")
             val jsonObject = JSONObject(body)
-            jsonObject.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text")
+            val texto = jsonObject.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text")
+            if (texto.contains("\n") && texto.contains("-")) {
+                var sugetao = ""
+                for (linha in texto.split("\n"))
+                    sugetao += linha.substringBefore("-").replace("第", "").replace("話", "").trim().padStart(3, '0') + "-" + linha.substringAfter("-")
+                sugetao
+            } else
+                texto
         } catch (e: JSONException) {
             mLOG.error(e.message, e)
             ""

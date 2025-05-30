@@ -25,13 +25,12 @@ import javafx.concurrent.Task
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
+import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.control.cell.TextFieldTableCell
 import javafx.scene.image.ImageView
-import javafx.scene.input.KeyCode
-import javafx.scene.input.KeyEvent
-import javafx.scene.input.MouseEvent
+import javafx.scene.input.*
 import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
 import javafx.util.Callback
@@ -338,7 +337,7 @@ class AbaPastasController : Initializable {
                     try {
                         val lista = mutableListOf<Pasta>()
 
-                        val regexCapitulo = "(?i)(chapter|chap| ch\\.?)([ \\d.]+)".toRegex()
+                        val regexCapitulo = "(?i)(capitulo|capítulo|chapter|chap| ch\\.?| cap\\.?)([ \\d.]+)".toRegex()
                         val regexVolume = "(?i)(volume|vol\\.?)([ \\d.]+)".toRegex()
                         val apenasNumeros = "^[\\d.]+".toRegex()
 
@@ -489,6 +488,8 @@ class AbaPastasController : Initializable {
             caminhos.add(Caminhos(capitulo.format(item.capitulo), sequencia.toString(), "Capítulo " + capitulo.format(item.capitulo), ""))
             sequencia += file.listFiles()?.size ?: 0
         }
+
+        mServiceComicInfo.save(mComicInfo)
         mObsListaProcessar = FXCollections.observableArrayList(mutableListOf())
         tbViewProcessar.items = mObsListaProcessar
         Notificacoes.notificacao(Notificacao.SUCESSO, "Renomear Pastas", "Pastas renomeadas com sucesso.")
@@ -498,12 +499,37 @@ class AbaPastasController : Initializable {
         if (cbManga.editor.text.isNullOrEmpty())
             return
 
-        val formater = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
         val mangas = mServiceManga.findAll(cbManga.editor.text)
-        val volumes = mangas.associate { it.capitulo to it.volume }
+        val volumes = mutableMapOf<String, String>()
+        mangas.forEach { m -> volumes.putAll(m.caminhos.associate { c -> c.capitulo to m.volume }) }
+        val formater = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
+        val letras = Utils.NOT_NUMBER_PATTERN.toRegex()
         for (item in mObsListaProcessar)
-            item.volume = if (item.capitulo > 0) volumes[formater.format(item.capitulo)]?.toFloatOrNull() ?: 0f else 0f
+            item.volume = if (item.capitulo > 0) volumes[formater.format(item.capitulo)]?.replace(letras,"")?.toFloatOrNull() ?: 0f else 0f
         tbViewProcessar.refresh()
+    }
+
+    fun configurarAtalhos(scene: Scene) {
+        val kcComicInfo: KeyCombination = KeyCodeCombination(KeyCode.W, KeyCombination.CONTROL_DOWN)
+        val kcArquivos: KeyCombination = KeyCodeCombination(KeyCode.D, KeyCombination.CONTROL_DOWN)
+
+        scene.addEventFilter(KeyEvent.KEY_PRESSED) { ke: KeyEvent ->
+            if (kcComicInfo.match(ke)) {
+                if (tbTabRoot.selectionModel.selectedItem == tbTabComicInfo) {
+                    if (txtMalId.text.isEmpty() && txtMalNome.text.isEmpty())
+                        txtMalNome.text = cbManga.value
+
+                    if (isAbaSelecionada)
+                        btnMalConsultar.fire()
+                } else
+                    tbTabRoot.selectionModel.select(tbTabComicInfo)
+            }
+
+            if (kcArquivos.match(ke)) {
+                if (tbTabRoot.selectionModel.selectedItem != tbTabArquivo)
+                    tbTabRoot.selectionModel.select(tbTabArquivo)
+            }
+        }
     }
 
     private fun configuraTextEdit() {
@@ -582,6 +608,11 @@ class AbaPastasController : Initializable {
                 for (item in mObsListaProcessar)
                     item.nome = cbManga.value
                 tbViewProcessar.refresh()
+
+                mComicInfo = if (cbManga.value.isNullOrEmpty())
+                    ComicInfo(null, null, cbManga.value, cbManga.value)
+                else
+                    mServiceComicInfo.find(cbManga.value, cbLinguagem.value.sigla) ?: ComicInfo(null, null, cbManga.value, cbManga.value)
             }
 
             cbManga.unFocusColor = Color.web("#4059a9")
@@ -686,6 +717,7 @@ class AbaPastasController : Initializable {
 
     companion object {
         val fxmlLocate: URL get() = TelaInicialController::class.java.getResource("/view/AbaPastas.fxml")
+        var isAbaSelecionada = false
     }
 
 }

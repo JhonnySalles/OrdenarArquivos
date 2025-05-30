@@ -20,7 +20,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<AnchorPane fx:id="apRoot" minHeight="0.0" minWidth="0.0" prefHeight="800.0" prefWidth="900.0" styleClass="background-Black3" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.AbaPastasController">
+<AnchorPane fx:id="apRoot" minHeight="0.0" minWidth="0.0" prefHeight="800.0" prefWidth="900.0" styleClass="background-Black3" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.AbaPastasController">
    <children>
       <VBox prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
@@ -44,11 +44,7 @@
                   <HBox alignment="CENTER_LEFT" spacing="10.0">
                      <children>
                         <JFXButton fx:id="btnCarregar" minWidth="70.0" onAction="#onBtnCarregar" prefHeight="30.0" prefWidth="120.0" styleClass="background-Blue3" text="Carregar" textFill="WHITE" />
-                        <JFXButton fx:id="btnGerarCapas" minWidth="70.0" onAction="#onBtnGerarCapas" prefHeight="30.0" prefWidth="120.0" styleClass="background-Purple2" text="Gerar Capas" textFill="WHITE">
-                           <tooltip>
-                              <Tooltip text="Ctrl + Enter ou Ctrl + P" />
-                           </tooltip>
-                        </JFXButton>
+                        <JFXButton fx:id="btnGerarCapas" minWidth="70.0" onAction="#onBtnGerarCapas" prefHeight="30.0" prefWidth="120.0" styleClass="background-Purple2" text="Gerar Capas" textFill="WHITE" />
                         <JFXButton fx:id="btnAplicar" minWidth="70.0" onAction="#onBtnAplicar" prefHeight="30.0" prefWidth="120.0" styleClass="background-Green2" text="Aplicar" textFill="WHITE" />
                      </children>
                   </HBox>

@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import com.jfoenix.controls.JFXTabPane?>
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
 <?import java.net.URL?>
-<AnchorPane fx:id="apGlobal" minHeight="700.0" minWidth="700.0" prefHeight="700.0" prefWidth="800.0" styleClass="background-Black1" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.TelaInicialController">
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane fx:id="apGlobal" minHeight="700.0" minWidth="700.0" prefHeight="700.0" prefWidth="800.0" styleClass="background-Black1" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.TelaInicialController">
    <children>
       <StackPane fx:id="spGlobal" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
@@ -14,7 +19,7 @@
                <children>
                   <JFXTabPane fx:id="tpGlobal" VBox.vgrow="ALWAYS">
                      <tabs>
-                        <Tab text="Arquivo">
+                        <Tab fx:id="tbTabArquivo" onSelectionChanged="#onSelectChanged" text="Arquivo">
                            <content>
                               <AnchorPane fx:id="arquivo" prefHeight="200.0" prefWidth="200.0">
                                  <children>
@@ -23,7 +28,7 @@
                               </AnchorPane>
                            </content>
                         </Tab>
-                        <Tab text="Comic Info">
+                        <Tab fx:id="tbTabComicInfo" text="Comic Info">
                            <content>
                               <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                                  <children>
@@ -32,7 +37,7 @@
                               </AnchorPane>
                            </content>
                         </Tab>
-                        <Tab text="Pastas">
+                        <Tab fx:id="tbTabPasta" onSelectionChanged="#onSelectChanged" text="Pastas">
                            <content>
                               <AnchorPane prefHeight="200.0" prefWidth="200.0">
                                  <children>
