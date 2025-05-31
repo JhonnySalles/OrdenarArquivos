@@ -327,7 +327,7 @@
                                        <children>
                                           <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="200.0" prefWidth="200.0" styleClass="background-Black3" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                              <content>
-                                                <VBox alignment="CENTER" spacing="15.0" styleClass="background-Black3">
+                                                <VBox alignment="TOP_CENTER" spacing="15.0" styleClass="background-Black3">
                                                    <children>
                                                       <HBox spacing="5.0">
                                                          <children>

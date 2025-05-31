@@ -113,7 +113,7 @@ object Compactar {
                             capitulo = key
                             val tag = if (isGerarCapitulos) {
                                 val caminho = manga.caminhos.stream().filter { it.capitulo.equals(key, ignoreCase = true) }.findFirst()
-                                if (caminho.isPresent)
+                                if (caminho.isPresent && caminho.get().tag.isNotEmpty())
                                     " - " + caminho.get().tag
                                 else
                                     ""

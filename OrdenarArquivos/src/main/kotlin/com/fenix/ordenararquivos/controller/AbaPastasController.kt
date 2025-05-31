@@ -100,6 +100,9 @@ class AbaPastasController : Initializable {
     private lateinit var clCapitulo: TableColumn<Pasta, Number>
 
     @FXML
+    private lateinit var clTitulo: TableColumn<Pasta, String>
+
+    @FXML
     private lateinit var clFormatado: TableColumn<Pasta, String>
 
     //<--------------------------  COMIC INFO   -------------------------->
@@ -341,15 +344,15 @@ class AbaPastasController : Initializable {
                         val regexVolume = "(?i)(volume|vol\\.?)([ \\d.]+)".toRegex()
                         val apenasNumeros = "^[\\d.]+".toRegex()
 
-                        val max = pasta.listFiles()?.size ?: 0
-                        var i = 0
+                        val max = pasta.listFiles()?.size?.toLong() ?: 0L
+                        var i = 0L
 
                         for (file in pasta.listFiles()!!) {
                             i++
                             if (file.isFile)
                                 continue
 
-                            updateProgress(i.toLong(), max.toLong())
+                            updateProgress(i, max)
                             updateMessage("Carregando item $i de $max.")
 
                             var nome = if (file.name.contains(",")) file.name.replace(",", "") else file.name
@@ -440,59 +443,122 @@ class AbaPastasController : Initializable {
             return
         }
 
-        if (cbManga.value.isNotEmpty()) {
+        if (cbManga.value.isNullOrEmpty()) {
             cbManga.unFocusColor = Color.RED
             AlertasPopup.alertaModal("Alerta", "Não informado o nome do manga.")
             return
         }
 
-        val volume = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
-        val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
-        val compactar = mutableListOf<File>()
-        val comic = mutableMapOf<String, File>()
-        val destino = File(txtPasta.text)
-        val caminhos = mutableListOf<Caminhos>()
-        val nome = cbManga.value
-        val manga = Manga()
-        manga.nome = nome
-        mComicInfo.count = mObsListaProcessar.maxOf { it.volume }.toInt()
+        cbManga.isDisable = true
+        btnCarregar.isDisable = true
+        btnAplicar.isDisable = true
+        tbViewProcessar.isDisable = true
 
-        var sequencia = 1
-        var vol = 0f
-        for (item in mObsListaProcessar) {
-            if (item.volume > 0f && item.volume != vol) {
-                if (vol > 0f) {
-                    mComicInfo.volume = vol.toInt()
-                    mComicInfo.number = vol
-                    manga.volume = volume.format(item.volume)
-                    val arquivoZip = destino.path.trim { it <= ' ' } + "\\" + nome.trim { it <= ' ' } + " - Volume " + manga.volume + ".cbr"
-                    manga.caminhos = caminhos
-                    val callback = Callback<Triple<Long, Long, String>, Boolean> { param -> true }
-                    Compactar.compactar(destino, File(arquivoZip), manga, mComicInfo, compactar, comic, Linguagem.PORTUGUESE, isCompactar = true, isGerarCapitulos = true, isAtualizarComic = false, callback)
-                    compactar.clear()
-                    comic.clear()
-                    caminhos.clear()
-                    sequencia = 1
+        val processar: Task<Void> = object : Task<Void>() {
+            override fun call(): Void? {
+                try {
+                    val volume = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
+                    val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
+                    val compactar = mutableListOf<File>()
+                    val comic = mutableMapOf<String, File>()
+                    val destino = File(txtPasta.text)
+                    val caminhos = mutableListOf<Caminhos>()
+                    val nome = cbManga.value
+                    val manga = Manga()
+                    manga.nome = nome
+                    mComicInfo.count = mObsListaProcessar.maxOf { it.volume }.toInt()
+
+                    var i = 0L
+                    val max = mObsListaProcessar.size.toLong()
+
+                    var sequencia = 1
+                    var vol = 0f
+
+                    val processar = {
+                        if (vol > 0f) {
+                            updateMessage("Gerando comic info volume $vol.")
+                            mComicInfo.volume = vol.toInt()
+                            mComicInfo.number = vol
+                            manga.volume = volume.format(vol)
+                            manga.caminhos = caminhos
+                            var complemento = " (Sem capa)"
+                            comic.filter { it.key == "000" }.values.first { p ->
+                                if (p.exists() && p.listFiles()?.any { f -> f.name.contains("tudo", ignoreCase = true) } == true)
+                                    complemento = ""
+                                true
+                            }
+
+                            val arquivoZip = destino.path.trim { it <= ' ' } + "\\" + nome.trim { it <= ' ' } + " - Volume " + manga.volume + "$complemento.cbr"
+                            val callback = Callback<Triple<Long, Long, String>, Boolean> {  param ->
+                                if (param.first == -1L)
+                                    updateMessage(param.third)
+                                else {
+                                    updateProgress(param.first, param.second)
+                                    updateMessage(param.third)
+                                }
+                                true
+                            }
+                            Compactar.compactar(destino, File(arquivoZip), manga, mComicInfo, compactar, comic, Linguagem.PORTUGUESE, isCompactar = true, isGerarCapitulos = true, isAtualizarComic = false, callback)
+                            compactar.clear()
+                            comic.clear()
+                            caminhos.clear()
+                            sequencia = 1
+                        }
+                    }
+
+                    for ((index, item) in mObsListaProcessar.sortedBy { it.volume }.withIndex()) {
+                        if (item.volume > 0f && item.volume != vol) {
+                            processar()
+                            vol = item.volume
+                        }
+
+                        updateProgress(++i, max)
+                        updateMessage("Renomeando item $i de $max.")
+
+                        val pasta = "[${item.scan}] ${item.nome} - Volume ${volume.format(item.volume)} ${if (item.isCapa) "Capa" else "Capítulo " + capitulo.format(item.capitulo)}"
+                        val path = item.pasta.toPath()
+                        val file = Files.move(path, path.resolveSibling(pasta), StandardCopyOption.REPLACE_EXISTING).toFile()
+                        compactar.add(file)
+                        if (item.isCapa)
+                            comic["000"] = file
+                        else
+                            comic[capitulo.format(item.capitulo)] = file
+                        caminhos.add(Caminhos(capitulo.format(item.capitulo), sequencia.toString(), "Capítulo " + capitulo.format(item.capitulo), item.titulo))
+                        sequencia += file.listFiles()?.size ?: 0
+
+                        if (item.volume > 0f && index+1 >= max.toInt())
+                            processar()
+                    }
+
+                    mServiceComicInfo.save(mComicInfo)
+                    Platform.runLater {
+                        mObsListaProcessar = FXCollections.observableArrayList(mutableListOf())
+                        tbViewProcessar.items = mObsListaProcessar
+                        tbViewProcessar.refresh()
+                        Notificacoes.notificacao(Notificacao.SUCESSO, "Renomear Pastas", "Pastas renomeadas com sucesso.")
+                    }
+                } catch (e: Exception) {
+                    mLOG.info("Erro ao carregar pastas.", e)
+                    Platform.runLater {
+                        Notificacoes.notificacao(Notificacao.ERRO, "Renomear Pastas", "Erro ao renomear pastas. " + e.message)
+                    }
                 }
-                vol = item.volume
+                return null
             }
-
-            val pasta = "[${item.scan}] ${item.nome} - Volume ${volume.format(item.volume)} ${if (item.isCapa) "Capa" else "Capítulo " + capitulo.format(item.capitulo)}"
-            val path = item.pasta.toPath()
-            val file = Files.move(path, path.resolveSibling(pasta), StandardCopyOption.REPLACE_EXISTING).toFile()
-            compactar.add(file)
-            if (item.isCapa)
-                comic["000"] = file
-            else
-                comic[capitulo.format(item.capitulo)] = file
-            caminhos.add(Caminhos(capitulo.format(item.capitulo), sequencia.toString(), "Capítulo " + capitulo.format(item.capitulo), ""))
-            sequencia += file.listFiles()?.size ?: 0
+            override fun succeeded() {
+                updateMessage("Pastas carregadas com sucesso.")
+                controllerPai.rootProgress.progressProperty().unbind()
+                controllerPai.rootMessage.textProperty().unbind()
+                controllerPai.clearProgress()
+                cbManga.isDisable = false
+                btnCarregar.isDisable = false
+                btnAplicar.isDisable = false
+                tbViewProcessar.isDisable = false
+            }
         }
-
-        mServiceComicInfo.save(mComicInfo)
-        mObsListaProcessar = FXCollections.observableArrayList(mutableListOf())
-        tbViewProcessar.items = mObsListaProcessar
-        Notificacoes.notificacao(Notificacao.SUCESSO, "Renomear Pastas", "Pastas renomeadas com sucesso.")
+        controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
+        controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
+        Thread(processar).start()
     }
 
     private fun importarVolumes() {
@@ -635,6 +701,11 @@ class AbaPastasController : Initializable {
             e.tableView.items[e.tablePosition.row].capitulo = e.newValue.toFloat()
             tbViewProcessar.refresh()
         }
+        clTitulo.cellFactory = TextFieldTableCell.forTableColumn()
+        clTitulo.setOnEditCommit { e ->
+            e.tableView.items[e.tablePosition.row].titulo = e.newValue
+            tbViewProcessar.refresh()
+        }
     }
 
     private fun linkaCelulas() {
@@ -642,6 +713,7 @@ class AbaPastasController : Initializable {
         clScan.cellValueFactory = PropertyValueFactory("scan")
         clVolume.cellValueFactory = PropertyValueFactory("volume")
         clCapitulo.cellValueFactory = PropertyValueFactory("capitulo")
+        clTitulo.cellValueFactory = PropertyValueFactory("titulo")
 
         val volume = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
         val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))

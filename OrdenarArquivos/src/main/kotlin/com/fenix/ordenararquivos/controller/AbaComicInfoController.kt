@@ -718,7 +718,7 @@ class AbaComicInfoController : Initializable {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 controllerPai.setCursor(Cursor.WAIT)
                 val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem)
-                for (i in 0 until index +1)
+                for (i in 0 until index + 1)
                     gerarTagItem(mObsListaProcessar[i])
                 tbViewProcessar.refresh()
                 controllerPai.setCursor(null)
