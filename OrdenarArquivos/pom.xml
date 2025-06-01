@@ -484,9 +484,9 @@
                             <outputDirectory>../App/</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${project.basedir}/target/</directory>
+                                    <directory>${project.build.directory}</directory>
                                     <include>*.jar</include>
-                                    <filtering>true</filtering>
+                                    <filtering>false</filtering>
                                 </resource>
                             </resources>
                         </configuration>
