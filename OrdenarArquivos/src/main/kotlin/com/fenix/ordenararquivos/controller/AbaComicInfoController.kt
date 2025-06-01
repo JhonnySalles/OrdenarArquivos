@@ -635,6 +635,9 @@ class AbaComicInfoController : Initializable {
     }
 
     private fun editaColunas() {
+        clTitulo.cellFactory = TextAreaTableCell.forTableColumn()
+        clSerie.cellFactory = TextAreaTableCell.forTableColumn()
+
         clProcessado.setCellValueFactory { param ->
             val item = param.value
 
