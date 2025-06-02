@@ -158,7 +158,7 @@ class AbaComicInfoController : Initializable {
             tbViewProcessar.refresh()
             null
         }
-        PopupCapitulos.abreTelaCapitulos(controllerPai.rootStack, controllerPai.rootTab, callback, cbLinguagem.value, mObsListaProcessar, Utils.SEPARADOR_CAPITULO)
+        PopupCapitulos.abreTelaCapitulos(controllerPai.rootStack, controllerPai.rootTab, callback, cbLinguagem.value, mObsListaProcessar)
     }
 
     @FXML

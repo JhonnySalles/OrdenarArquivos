@@ -253,7 +253,6 @@ class PopupCapitulos : Initializable {
 
     //Regex case insentive, no qual pode começar com capítulo, numero ou formato japoneas.
     private val replace = "(?i)^(ch|chapter|第|[0-9])[0-9０-９ .]+(話|:)?".toRegex()
-    private fun formatar(linguagem : Linguagem, ingles : String, japones : String) : String = if (linguagem == Linguagem.JAPANESE && japones.isNotEmpty()) japones.replace(replace, "").trim() else ingles.replace(replace, "").trim()
 
     private fun preparar(lista: List<Volume>) {
         val linguagem = cbLinguagem.value
@@ -284,13 +283,13 @@ class PopupCapitulos : Initializable {
                     }
                 }
 
-                val tags = capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + SEPARADOR + formatar(linguagem, it.ingles, it.japones) }
+                val tags = capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + Utils.SEPARADOR_CAPITULO + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles }
                 volumes.add(Volume(arquivo = processar.arquivo, volume = processar.comicInfo?.volume?.toDouble() ?: 0.0, capitulos = capitulos, tags = tags))
             }
             volumes
         } else {
             for (item in lista) {
-                item.tags = item.capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + SEPARADOR + formatar(linguagem, it.ingles, it.japones) }
+                item.tags = item.capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + Utils.SEPARADOR_CAPITULO + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles }
                 item.arquivo = mArquivos.find { it.lowercase().contains("volume " + formatar(item.volume)) } ?: ""
             }
             lista
@@ -342,15 +341,8 @@ class PopupCapitulos : Initializable {
                             val ingles = cleanEnglishTitle(inglesTitulo)
                             val japones = cleanJapaneseTitle(japanesTitulo)
 
-                            if (ingles.isNotBlank() || japones.isNotBlank()) {
-                                currentVolume.capitulos.add(
-                                    Capitulo(
-                                        capitulo = chapterNumber,
-                                        ingles = ingles,
-                                        japones = japones
-                                    )
-                                )
-                            }
+                            if (ingles.isNotBlank() || japones.isNotBlank())
+                                currentVolume.capitulos.add(Capitulo(capitulo = chapterNumber, ingles = ingles.replace(replace, "").trim(), japones = japones.replace(replace, "").trim()))
                         }
                     }
                 }
@@ -410,9 +402,8 @@ class PopupCapitulos : Initializable {
                             volNum = potentialVolSpan.text().replace("Vol.", "", ignoreCase = true)
                                 .trim().toDoubleOrNull()
                             // Se há span de volume, o título é o próximo span, se existir
-                            if (spans.size > 2 && spans[2].hasClass("text-xs")) {
+                            if (spans.size > 2 && spans[2].hasClass("text-xs"))
                                 title = spans[2].text().trim()
-                            }
                         } else if (potentialVolSpan.hasClass("text-xs")) {
                             // Não há span de volume, este é o span do título
                             title = potentialVolSpan.text().trim()
@@ -423,10 +414,8 @@ class PopupCapitulos : Initializable {
                     // e o título estiver no terceiro span (após o span do número do capítulo e um span vazio/diferente).
                     // Neste HTML específico, o título está no span com classe "text-xs md:text-base".
                     val titleSpan = linkElement.selectFirst("span.text-xs.md:text-base")
-                    if (title.isBlank() && titleSpan != null) {
+                    if (title.isBlank() && titleSpan != null)
                         title = titleSpan.text().trim()
-                    }
-
 
                     rawChapterEntries.add(TempCapInfo(volNum, chapNum, title, index))
                 }
@@ -464,13 +453,7 @@ class PopupCapitulos : Initializable {
             // Apenas adiciona capítulos que puderam ser associados a um volume
             if (volNum != null) {
                 val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
-                volume.capitulos.add(
-                    Capitulo(
-                        capitulo = finalEntry.chap,
-                        ingles = finalEntry.title,
-                        ""
-                    )
-                )
+                volume.capitulos.add(Capitulo(capitulo = finalEntry.chap, ingles = finalEntry.title.replace(replace, "").trim(), ""))
             }
         }
 
@@ -519,7 +502,7 @@ class PopupCapitulos : Initializable {
                         if (fullText.matches("""^Chapter\s*[\d.]+$""".toRegex(RegexOption.IGNORE_CASE)))
                             englishTitle = ""
                     }
-                    volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = englishTitle, japones = ""))
+                    volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = englishTitle.replace(replace, "").trim(), japones = ""))
                 }
             }
         }
@@ -593,15 +576,14 @@ class PopupCapitulos : Initializable {
 
                         val finalChapNum = chapNumFromP ?: chapNumFromH3
 
-                        if (finalChapNum != null) {
+                        if (finalChapNum != null)
                             currentVolume.capitulos.add(
                                 Capitulo(
                                     capitulo = finalChapNum,
-                                    ingles = chapterTitle, // Armazenando o título em pt-BR no campo 'ingles'
+                                    ingles = chapterTitle.replace(replace, "").trim(), // Armazenando o título em pt-BR no campo 'ingles'
                                     japones = ""
                                 )
                             )
-                        }
                     }
                     if (currentVolume.capitulos.isNotEmpty()) {
                         // Ordena os capítulos dentro do volume antes de adicionar à lista de volumes
@@ -692,11 +674,9 @@ class PopupCapitulos : Initializable {
         private lateinit var btnConfirmar: JFXButton
         private lateinit var btnVoltar: JFXButton
         private lateinit var dialog: JFXDialog
-        private var SEPARADOR : String = "|"
 
-        fun abreTelaCapitulos(rootStackPane: StackPane, nodeBlur: Node, callback: Callback<ObservableList<Volume>, Boolean>, linguagem: Linguagem, processar: List<Processar>, separador : String) {
+        fun abreTelaCapitulos(rootStackPane: StackPane, nodeBlur: Node, callback: Callback<ObservableList<Volume>, Boolean>, linguagem: Linguagem, processar: List<Processar>) {
             try {
-                SEPARADOR = separador
                 val blur = BoxBlur(3.0, 3.0, 3)
                 val dialogLayout = JFXDialogLayout()
                 dialog = JFXDialog(rootStackPane, dialogLayout, JFXDialog.DialogTransition.CENTER)
