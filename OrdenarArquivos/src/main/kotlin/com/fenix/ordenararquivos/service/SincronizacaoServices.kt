@@ -159,6 +159,18 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
                 if (sinc.isNotEmpty()) {
                     val docRef = DB.collection(collectOrdenar).document(formaterData.format(LocalDate.now()))
                     val data: MutableMap<String, Any> = HashMap()
+                    val document = docRef.get().get()
+
+                    if (document.exists())
+                        for (key in document.data!!.keys) {
+                            val obj = document.data!![key] as HashMap<String, *>
+                            val manga = Manga.toManga(0, obj)
+                            data[key] = manga
+                            val caminhos = (document.data!![key] as HashMap<*, *>)["caminhos"] as List<*>
+                            for (caminho in caminhos)
+                                manga.addCaminhos(Caminhos.toCominhos(manga, (caminho as HashMap<String, *>) ))
+                        }
+
                     for (manga in sinc) {
                         manga.sincronizacao = envio
                         data[getIdCloud(manga)] = manga
