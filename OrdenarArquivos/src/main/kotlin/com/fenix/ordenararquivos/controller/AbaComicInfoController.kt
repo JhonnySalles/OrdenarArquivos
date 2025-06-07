@@ -902,11 +902,20 @@ class AbaComicInfoController : Initializable {
                             }
                         }
 
+                        for (i in linhas.size - 1 downTo 0) {
+                            val linha = linhas[i]
+                            if (linha.contains("-1${Utils.SEPARADOR_IMAGEM}", ignoreCase = true) && !linha.contains(Utils.SEPARADOR_IMPORTACAO, ignoreCase = true))
+                                linhas.removeAt(i)
+                        }
+
                         textArea.replaceText(0, textArea.length, linhas.joinToString(separator = "\n"))
 
-                        val caret = if (key.code == KeyCode.UP)
-                            textArea.text.substring(0, lastCaretPos).lastIndexOf(Utils.SEPARADOR_IMPORTACAO)
-                        else
+                        val caret = if (key.code == KeyCode.UP) {
+                            if (textArea.text.length > lastCaretPos)
+                                textArea.text.substring(0, lastCaretPos).lastIndexOf(Utils.SEPARADOR_IMPORTACAO)
+                            else
+                                textArea.text.lastIndexOf(Utils.SEPARADOR_IMPORTACAO)
+                        } else
                             textArea.text.indexOf(Utils.SEPARADOR_IMPORTACAO, lastCaretPos)
 
                         textArea.positionCaret(caret)

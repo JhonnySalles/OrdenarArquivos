@@ -252,7 +252,7 @@ class PopupCapitulos : Initializable {
     private fun formatar(valor : Double) : String = formater.format(valor)
 
     //Regex case insentive, no qual pode começar com capítulo, numero ou formato japoneas.
-    private val replace = "(?i)^(ch|chapter|第|[0-9])[0-9０-９ .]+(話|:)?".toRegex()
+    private val replace = "(?i)^(ch|chapter|episode|第|[0-9])[0-9０-９ .]+(話|:)?".toRegex()
 
     private fun preparar(lista: List<Volume>) {
         val linguagem = cbLinguagem.value
