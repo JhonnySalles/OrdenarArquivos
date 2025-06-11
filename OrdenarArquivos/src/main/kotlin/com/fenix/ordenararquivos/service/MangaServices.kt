@@ -46,8 +46,8 @@ class MangaServices {
 
     fun findEnvio(envio: LocalDateTime) : List<Manga> = select(envio)
 
-    fun save(manga: Manga, isSendCloud : Boolean = true) {
-        manga.atualizacao = LocalDateTime.now()
+    fun save(manga: Manga, isSendCloud : Boolean = true, atualizacao : LocalDateTime = LocalDateTime.now()) {
+        manga.atualizacao = atualizacao
         try {
             if (manga.id == 0L)
                 insert(manga)

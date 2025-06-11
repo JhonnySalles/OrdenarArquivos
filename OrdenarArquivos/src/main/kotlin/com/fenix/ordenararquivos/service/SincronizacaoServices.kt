@@ -162,14 +162,8 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
                     val document = docRef.get().get()
 
                     if (document.exists())
-                        for (key in document.data!!.keys) {
-                            val obj = document.data!![key] as HashMap<String, *>
-                            val manga = Manga.toManga(0, obj)
-                            data[key] = manga
-                            val caminhos = (document.data!![key] as HashMap<*, *>)["caminhos"] as List<*>
-                            for (caminho in caminhos)
-                                manga.addCaminhos(Caminhos.toCominhos(manga, (caminho as HashMap<String, *>) ))
-                        }
+                        for (key in document.data!!.keys)
+                            data[key] = document.data!![key] as HashMap<String, *>
 
                     for (manga in sinc) {
                         manga.sincronizacao = envio
@@ -249,6 +243,7 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
     private fun receber(): Boolean {
         var notificacao = ""
 
+        val atualizacao = sincronizacao!!.envio.minusSeconds(2)
         var processadoManga = false
         try {
             mLOG.info("Recebendo dados de Manga da cloud.... ")
@@ -286,7 +281,7 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
                 else
                     manga = sinc
 
-                serviceManga.save(manga, false)
+                serviceManga.save(manga, false, atualizacao)
             }
 
             if (registros > 0) {
@@ -335,7 +330,7 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
                 else
                     comic = sinc
 
-                serviceComicInfo.save(comic, isSendCloud = false, isReceiveCloud = true)
+                serviceComicInfo.save(comic, isSendCloud = false, isReceiveCloud = true, atualizacao)
             }
 
             if (registros > 0) {

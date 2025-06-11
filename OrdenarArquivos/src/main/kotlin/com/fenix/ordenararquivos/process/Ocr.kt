@@ -575,10 +575,10 @@ object Ocr {
             val jsonObject = JSONObject(body)
             val texto = jsonObject.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text")
             if (texto.contains("\n") && texto.contains("-")) {
-                var sugetao = ""
+                var sugestao = ""
                 for (linha in texto.split("\n"))
-                    sugetao += linha.substringBefore("-").replace("第", "").replace("話", "").trim().padStart(3, '0') + "-" + linha.substringAfter("-")
-                sugetao
+                    sugestao += linha.substringBefore("-").replace("第", "").replace("話", "").trim().padStart(3, '0') + "-" + linha.substringAfter("-") + "\n"
+                sugestao.substringBeforeLast("\n")
             } else
                 texto
         } catch (e: JSONException) {

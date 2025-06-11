@@ -44,16 +44,16 @@ class ComicInfoServices {
     private var conn: Connection = instancia
 
     fun findEnvio(envio: LocalDateTime) : List<ComicInfo> = select(envio)
-    fun save(comic: ComicInfo, isSendCloud : Boolean = true, isReceiveCloud: Boolean = false) {
+    fun save(comic: ComicInfo, isSendCloud : Boolean = true, isReceiveCloud: Boolean = false, sincronizacao : LocalDateTime = LocalDateTime.now()) {
         try {
             if (isReceiveCloud) {
                 delete(comic.id!!)
-                insert(comic)
+                insert(comic, sincronizacao)
             } else if (comic.id == null) {
                 comic.id = UUID.randomUUID()
-                insert(comic)
+                insert(comic, sincronizacao)
             } else
-                update(comic)
+                update(comic, sincronizacao)
 
             if (isSendCloud)
                 SincronizacaoServices.enviar(comic)
@@ -96,7 +96,7 @@ class ComicInfoServices {
     }
 
     @Throws(SQLException::class)
-    private fun update(comic: ComicInfo) {
+    private fun update(comic: ComicInfo, sincronizacao : LocalDateTime) {
         var st: PreparedStatement? = null
         try {
             st = conn.prepareStatement(mUPDATE_COMIC_INFO, Statement.RETURN_GENERATED_KEYS)
@@ -113,7 +113,7 @@ class ComicInfoServices {
             st.setString(++index, if (comic.ageRating != null) comic.ageRating.toString() else null)
             st.setString(++index, comic.alternateSeries)
             st.setString(++index, comic.languageISO)
-            st.setString(++index, Utils.fromDateTime(LocalDateTime.now()))
+            st.setString(++index, Utils.fromDateTime(sincronizacao))
             st.setString(++index, comic.id.toString())
             val rowsAffected = st.executeUpdate()
             if (rowsAffected < 1) {
@@ -129,7 +129,7 @@ class ComicInfoServices {
     }
 
     @Throws(Exception::class)
-    private fun insert(comic: ComicInfo): UUID? {
+    private fun insert(comic: ComicInfo, sincronizacao : LocalDateTime): UUID? {
         var st: PreparedStatement? = null
         try {
             st = conn.prepareStatement(mINSERT_COMIC_INFO, Statement.RETURN_GENERATED_KEYS)
@@ -147,8 +147,8 @@ class ComicInfoServices {
             st.setString(++index, if (comic.ageRating != null) comic.ageRating.toString() else null)
             st.setString(++index, comic.alternateSeries)
             st.setString(++index, comic.languageISO)
-            st.setString(++index, Utils.fromDateTime(LocalDateTime.now()))
-            st.setString(++index, Utils.fromDateTime(LocalDateTime.now()))
+            st.setString(++index, Utils.fromDateTime(sincronizacao))
+            st.setString(++index, Utils.fromDateTime(sincronizacao))
             val rowsAffected = st.executeUpdate()
             if (rowsAffected < 1) {
                 mLOG.info("Nenhum registro foi inserido.")
