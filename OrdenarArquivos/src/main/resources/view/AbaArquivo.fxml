@@ -163,12 +163,24 @@
                   </VBox>
                   <VBox alignment="CENTER_LEFT" spacing="5.0">
                      <children>
-                        <JFXCheckBox fx:id="cbVerificaPaginaDupla" checkedColor="#4059a9" selected="true" text="Verifica página dupla" textFill="WHITE" unCheckedColor="GREY" />
+                        <JFXCheckBox fx:id="cbVerificaPaginaDupla" checkedColor="#4059a9" selected="true" text="Verifica página dupla" textFill="WHITE" unCheckedColor="GREY">
+                           <tooltip>
+                              <Tooltip text="Este campo informa para que páginas duplas contem como 2 ao gerar a sequência de capítulos." />
+                           </tooltip></JFXCheckBox>
                         <JFXCheckBox fx:id="cbCompactarArquivo" checkedColor="#4059a9" selected="true" text="Compactar arquivo" textFill="WHITE" unCheckedColor="GREY" />
                         <JFXCheckBox fx:id="cbMesclarCapaTudo" checkedColor="#4059a9" selected="true" text="Mesclar capa tudo" textFill="WHITE" unCheckedColor="GREY" />
-                        <JFXCheckBox fx:id="cbAjustarMargemCapa" checkedColor="#4059a9" selected="true" text="Ajustar margem capa" textFill="WHITE" unCheckedColor="GREY" />
-                        <JFXCheckBox fx:id="cbOcrSumario" checkedColor="#4059a9" selected="true" text="OCR no sumário" textFill="WHITE" unCheckedColor="GREY" />
-                        <JFXCheckBox fx:id="cbGerarCapitulo" checkedColor="#4059a9" selected="true" text="Gerar tag Capítulo" textFill="WHITE" unCheckedColor="GREY" />
+                        <JFXCheckBox fx:id="cbAjustarMargemCapa" checkedColor="#4059a9" selected="true" text="Ajustar margem capa" textFill="WHITE" unCheckedColor="GREY">
+                           <tooltip>
+                              <Tooltip text="Esta propriedade irá apagar as bordas brancas das imagens de capas." />
+                           </tooltip></JFXCheckBox>
+                        <JFXCheckBox fx:id="cbOcrSumario" checkedColor="#4059a9" selected="true" text="OCR no sumário" textFill="WHITE" unCheckedColor="GREY">
+                           <tooltip>
+                              <Tooltip text="Caso marcado irá gerar a sugestão através do OCR.&#10;Para mostrar a sugestão basta utilizar o comando CTRL + S." />
+                           </tooltip></JFXCheckBox>
+                        <JFXCheckBox fx:id="cbGerarCapitulo" checkedColor="#4059a9" selected="true" text="Gerar tag Capítulo" textFill="WHITE" unCheckedColor="GREY">
+                           <tooltip>
+                              <Tooltip text="Caso marcado não será gerado a descrição do capítulo no arquivo cbr, porém continuará gerando o separador com número do capítulo formatado.&#10;Para limpar o capítulo use CTRL + T." />
+                           </tooltip></JFXCheckBox>
                      </children>
                   </VBox>
                </children>

@@ -2331,6 +2331,27 @@ class AbaArquivoController : Initializable {
                         if (mSugestao.suggestions.isNotEmpty())
                             mSugestao.show(txtAreaImportar)
                     }
+                    KeyCode.T -> {
+                        if (txtAreaImportar.text.isEmpty() || !txtAreaImportar.text.contains(Utils.SEPARADOR_CAPITULO))
+                            return@EventHandler
+
+                        val txt = txtAreaImportar.text
+                        val scroll = txtAreaImportar.scrollTopProperty().value
+
+                        val separador = Utils.SEPARADOR_CAPITULO
+                        val texto = mutableListOf<String>()
+                        for (linha in txt.split("\n"))
+                            texto.add(if (linha.contains(separador)) linha.substringBeforeLast(separador) else linha)
+
+                        val before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
+                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+                        var line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
+                        line = if (line.contains(separador)) line.substringBeforeLast(separador) else line
+
+                        txtAreaImportar.replaceText(0, txtAreaImportar.length, texto.joinToString("\n"))
+                        txtAreaImportar.positionCaret(txtAreaImportar.text.indexOf(line) + line.length)
+                        txtAreaImportar.scrollTop = scroll
+                    }
                     KeyCode.D,
                     KeyCode.E,
                     in (KeyCode.NUMPAD0 .. KeyCode.NUMPAD9),
