@@ -20,6 +20,7 @@ class Utils {
         const val IMAGE_PATTERN = "(.*/)*.+\\.(png|jpg|gif|bmp|jpeg|PNG|JPG|GIF|BMP|JPEG)$"
         const val NUMBER_PATTERN = "[\\d.]+"
         const val NOT_NUMBER_PATTERN = "[^\\d.]+"
+        const val JAPANESE_PATTERN = ".*[\u3041-\u9FAF].*"
         val NUMBER_REGEX = Regex("\\d*")
         val ONLY_NUMBER_REGEX = Regex("^\\d+")
 

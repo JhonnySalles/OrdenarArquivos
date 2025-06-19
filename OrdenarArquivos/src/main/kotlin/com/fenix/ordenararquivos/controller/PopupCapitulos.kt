@@ -34,6 +34,7 @@ import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import javafx.stage.FileChooser
 import javafx.util.Callback
+import org.intellij.lang.annotations.Language
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Comment
 import org.jsoup.nodes.Document
@@ -256,8 +257,8 @@ class PopupCapitulos : Initializable {
 
     private fun preparar(lista: List<Volume>) {
         val linguagem = cbLinguagem.value
-
         val processada = if (lista.size == 1 && lista[0].volume < 0) {
+            val japones = Utils.JAPANESE_PATTERN.toRegex()
             val list = lista[0].capitulos
             val volumes = mutableListOf<Volume>()
             for (processar in mProcessar) {
@@ -274,9 +275,12 @@ class PopupCapitulos : Initializable {
 
                     capitulo.lowercase().let { c ->
                         if (c.contains("第") || c.contains("chapter") || c.contains("capítulo")) {
-                            val numero = if (c.contains("第"))
-                                c.replace("第", "").replace("話", "").trim().toDoubleOrNull()
-                            else
+                            val numero = if (c.contains("第")) {
+                                if (c.matches(japones))
+                                    Utils.fromNumberJapanese(c.replace("第", "").replace("話", "").trim()).toDoubleOrNull()
+                                else
+                                    c.replace("第", "").replace("話", "").trim().toDoubleOrNull()
+                            } else
                                 c.replace("capítulo", "").replace("chapter", "").trim().toDoubleOrNull()
                             list.find { l -> l.capitulo == numero }?.run { capitulos.add(this) }
                         }
@@ -472,6 +476,7 @@ class PopupCapitulos : Initializable {
 
     //<--------------------------  Manga Fire  -------------------------->
     private fun extractMangaFire(pagina: Document) : List<Volume> {
+        val japones = Utils.JAPANESE_PATTERN.toRegex()
         val volume = Volume(volume = -1.0, capitulos = mutableListOf())
 
         // Seleciona a lista de capítulos
@@ -486,6 +491,8 @@ class PopupCapitulos : Initializable {
 
                 if (chapNum != null) {
                     var englishTitle = ""
+                    var japaneseTitle = ""
+                    var title = ""
                     val linkElement = itemElement.selectFirst("a")
                     if (linkElement != null) {
                         // O título/descrição está no primeiro span dentro do link
@@ -496,13 +503,17 @@ class PopupCapitulos : Initializable {
                         // Regex para capturar o texto após "Chapter XXX: " ou "Chapter XXX "
                         val titleRegex = """^Chapter\s*[\d.]+(?::\s*|\s+)(.*)""".toRegex(RegexOption.IGNORE_CASE)
                         val matchResult = titleRegex.find(fullText)
-                        englishTitle = matchResult?.groupValues?.get(1)?.trim() ?: ""
+                        title = matchResult?.groupValues?.get(1)?.trim() ?: ""
 
                         // Se não houver ":" e o regex não pegar, e o texto for apenas "Chapter XXX", o título é vazio
-                        if (fullText.matches("""^Chapter\s*[\d.]+$""".toRegex(RegexOption.IGNORE_CASE)))
-                            englishTitle = ""
+                        if (!fullText.matches("""^Chapter\s*[\d.]+$""".toRegex(RegexOption.IGNORE_CASE))) {
+                            if (title.matches(japones))
+                                japaneseTitle = title
+                            else
+                                englishTitle = title
+                        }
                     }
-                    volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = englishTitle.replace(replace, "").trim(), japones = ""))
+                    volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = englishTitle.replace(replace, "").trim(), japones = japaneseTitle))
                 }
             }
         }
