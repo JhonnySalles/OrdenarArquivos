@@ -162,7 +162,16 @@ object Compactar {
                 val caminho = manga.caminhos.stream().filter { it.capitulo.equals(key, ignoreCase = true) }.findFirst()
                 sumary += "Chapter $key" + (if (caminho.isPresent) ": " + caminho.get().tag else "") + "\n"
             }
-            comicInfo.summary = if (comicInfo.summary.isNullOrEmpty()) sumary else comicInfo.summary + "\n\n" + sumary
+            comicInfo.summary = if (comicInfo.summary.isNullOrEmpty())
+                sumary
+            else if (comicInfo.summary!!.contains("*Chapter Titles*")) {
+                val old = comicInfo.summary!!.substringBeforeLast("*Chapter Titles*").trim()
+                if (old.isEmpty())
+                    sumary
+                else
+                    old + "\n\n" + sumary
+            } else
+                comicInfo.summary + "\n\n" + sumary
         }
 
         comicInfo.let {
