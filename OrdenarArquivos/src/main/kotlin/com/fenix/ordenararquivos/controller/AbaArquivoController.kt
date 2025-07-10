@@ -8,10 +8,7 @@ import com.fenix.ordenararquivos.model.entities.Capa
 import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.comet.CoMet
 import com.fenix.ordenararquivos.model.entities.comicinfo.*
-import com.fenix.ordenararquivos.model.enums.Linguagem
-import com.fenix.ordenararquivos.model.enums.Notificacao
-import com.fenix.ordenararquivos.model.enums.Tipo
-import com.fenix.ordenararquivos.model.enums.TipoCapa
+import com.fenix.ordenararquivos.model.enums.*
 import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.process.Compactar
@@ -741,6 +738,13 @@ class AbaArquivoController : Initializable {
         val comic = ComicInfo(mComicInfo)
         mServiceComicInfo.updateMal(comic, mal, cbLinguagem.value ?: Linguagem.JAPANESE)
         mComicInfo = comic
+
+        val selecionado = when {
+            mComicInfo.idMal != null -> Selecionado.SELECIONADO
+            mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
+            else -> Selecionado.VAZIO
+        }
+        Selecionado.setTabColor(tbTabComicInfo, selecionado)
     }
 
     private fun ocrSumario(sumario : File) {
@@ -807,6 +811,13 @@ class AbaArquivoController : Initializable {
                                 Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
                             else if (id != null && lista.size == 1)
                                 carregaMal(lista.first())
+
+                            val selecionado = when {
+                                id != null && lista.size == 1 -> Selecionado.SELECIONADO
+                                lista.isNotEmpty() -> Selecionado.SELECIONAR
+                                else -> Selecionado.VAZIO
+                            }
+                            Selecionado.setTabColor(tbTabComicInfo, selecionado)
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)

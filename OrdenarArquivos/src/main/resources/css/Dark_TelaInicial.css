@@ -343,7 +343,19 @@
 /*---------- Tab ----------*/
 .jfx-tab-pane .tab {
     -fx-pref-height: 30
-} 
+}
+
+.jfx-tab-pane .tab.comic-info-selecionado .tab-label {
+    -fx-text-fill: #7cb342;
+}
+
+.jfx-tab-pane .tab.comic-info-selecionar .tab-label {
+    -fx-text-fill: #ef6950;
+}
+
+.jfx-tab-pane .tab.comic-info-vazio .tab-label {
+    -fx-text-fill: #ffffff;
+}
 
 .jfx-tab-pane .control-buttons-tab .jfx-rippler {
 	-jfx-rippler-fill: black;
