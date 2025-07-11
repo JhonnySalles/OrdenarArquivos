@@ -5,6 +5,7 @@ import com.fenix.ordenararquivos.exceptions.LibException
 import com.fenix.ordenararquivos.model.*
 import com.fenix.ordenararquivos.model.entities.Caminhos
 import com.fenix.ordenararquivos.model.entities.Capa
+import com.fenix.ordenararquivos.model.entities.Historico
 import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.comet.CoMet
 import com.fenix.ordenararquivos.model.entities.comicinfo.*
@@ -162,7 +163,7 @@ class AbaArquivoController : Initializable {
     private lateinit var cbGerarCapitulo: JFXCheckBox
 
     @FXML
-    private lateinit var lsVwListaImagens: JFXListView<String>
+    private lateinit var lsVwImagens: JFXListView<String>
 
     @FXML
     private lateinit var txtGerarInicio: JFXTextField
@@ -220,6 +221,18 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private lateinit var btnScrollDescer: JFXButton
+
+    @FXML
+    private lateinit var acdArquivos: Accordion
+
+    @FXML
+    private lateinit var ttpArquivos: TitledPane
+
+    @FXML
+    private lateinit var ttpHistorico: TitledPane
+
+    @FXML
+    private lateinit var lsVwHistorico: JFXListView<Historico>
 
     //<--------------------------  CAPA   -------------------------->
 
@@ -368,7 +381,7 @@ class AbaArquivoController : Initializable {
         txtSeparadorCapitulo.text = Utils.SEPARADOR_CAPITULO
         onBtnLimpar()
         mObsListaItens = FXCollections.observableArrayList("")
-        lsVwListaImagens.items = mObsListaItens
+        lsVwImagens.items = mObsListaItens
         mSelecionado = null
 
         mObsListaMal = FXCollections.observableArrayList()
@@ -391,14 +404,14 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private fun onBtnScrollSubir() {
-        if (!lsVwListaImagens.items.isNullOrEmpty())
-            lsVwListaImagens.scrollTo(0)
+        if (!lsVwImagens.items.isNullOrEmpty())
+            lsVwImagens.scrollTo(0)
     }
 
     @FXML
     private fun onBtnScrollBaixo() {
-        if (!lsVwListaImagens.items.isNullOrEmpty())
-            lsVwListaImagens.scrollTo(lsVwListaImagens.items.size - 1)
+        if (!lsVwImagens.items.isNullOrEmpty())
+            lsVwImagens.scrollTo(lsVwImagens.items.size - 1)
     }
 
     @FXML
@@ -621,6 +634,7 @@ class AbaArquivoController : Initializable {
         btnLimpar.isDisable = true
         btnImportar.isDisable = true
         tbViewTabela.isDisable = true
+        lsVwHistorico.isDisable = true
     }
 
     private fun habilita() {
@@ -638,6 +652,7 @@ class AbaArquivoController : Initializable {
         btnLimpar.isDisable = false
         btnImportar.isDisable = false
         tbViewTabela.isDisable = false
+        lsVwHistorico.isDisable = false
         btnProcessar.accessibleTextProperty().set("PROCESSA")
         btnProcessar.text = "Processar"
         controllerPai.setCursor(null)
@@ -668,8 +683,8 @@ class AbaArquivoController : Initializable {
         if (isCapa)
             return valida
 
-        if (lsVwListaImagens.selectionModel.selectedItem == null)
-            lsVwListaImagens.selectionModel.select(0)
+        if (lsVwImagens.selectionModel.selectedItem == null)
+            lsVwImagens.selectionModel.select(0)
 
         if (cbCompactarArquivo.isSelected && txtNomeArquivo.text.isEmpty()) {
             txtSimularPasta.text = "Não informado nome do arquivo."
@@ -1336,8 +1351,20 @@ class AbaArquivoController : Initializable {
             override fun call(): Boolean {
                 try {
                     salvaManga()
-                    if (lsVwListaImagens.selectionModel.selectedItem != null)
-                        mSelecionado = lsVwListaImagens.selectionModel.selectedItem
+
+                    val nome = txtNomePastaManga.text.trim { it <= ' ' } + " " + txtVolume.text.trim { it <= ' ' }
+                    val processar = Historico(
+                        nome, txtPastaOrigem.text, txtPastaDestino.text,
+                        txtNomePastaManga.text, txtVolume.text, txtNomeArquivo.text, txtNomePastaCapitulo.text, txtGerarInicio.text,
+                        txtGerarFim.text, txtAreaImportar.text, lsVwImagens.selectionModel.selectedItem, mManga?.apply { Manga.copy(this) },
+                        mComicInfo, mListaCaminhos.toList(), mObsListaItens.toList(), mObsListaImagesSelected.toList(), mObsListaMal.toList()
+                    )
+
+                    lsVwHistorico.items.removeIf { it.nome == nome }
+                    lsVwHistorico.items.add(processar)
+
+                    if (lsVwImagens.selectionModel.selectedItem != null)
+                        mSelecionado = lsVwImagens.selectionModel.selectedItem
 
                     mCANCELAR = false
                     var i = 0L
@@ -1429,12 +1456,12 @@ class AbaArquivoController : Initializable {
             }
 
             override fun succeeded() {
-                value
                 updateMessage("Arquivos movidos com sucesso.")
                 controllerPai.rootProgress.progressProperty().unbind()
                 controllerPai.rootMessage.textProperty().unbind()
                 controllerPai.clearProgress()
                 habilita()
+                lsVwHistorico.refresh()
             }
 
             override fun failed() {
@@ -1766,7 +1793,7 @@ class AbaArquivoController : Initializable {
             FXCollections.observableArrayList(mCaminhoOrigem!!.list(mFilterNomeArquivo)?.sorted())
         else
             FXCollections.observableArrayList("")
-        lsVwListaImagens.items = mObsListaItens
+        lsVwImagens.items = mObsListaItens
         limparCapas()
         mSelecionado = mObsListaItens[0]
     }
@@ -2009,7 +2036,7 @@ class AbaArquivoController : Initializable {
     private var mDelayDescer: Timer? = null
     private fun selecionaImagens() {
         mObsListaImagesSelected = FXCollections.observableArrayList()
-        lsVwListaImagens.addEventFilter(ScrollEvent.ANY) { e: ScrollEvent ->
+        lsVwImagens.addEventFilter(ScrollEvent.ANY) { e: ScrollEvent ->
             if (e.deltaY > 0) {
                 if (e.deltaY > 10) {
                     btnScrollSubir.isVisible = true
@@ -2042,12 +2069,12 @@ class AbaArquivoController : Initializable {
                 }
             }
         }
-        lsVwListaImagens.onMouseClicked = EventHandler { click: MouseEvent ->
+        lsVwImagens.onMouseClicked = EventHandler { click: MouseEvent ->
             if (click.clickCount > 1) {
                 if (click.isControlDown)
                     limparCapas()
                 else {
-                    val item = lsVwListaImagens.selectionModel.selectedItem
+                    val item = lsVwImagens.selectionModel.selectedItem
                     if (item != null) {
                         if (mObsListaImagesSelected.stream().anyMatch { e: Capa -> e.nome.equals(item, ignoreCase = true) })
                             remCapa(item)
@@ -2067,7 +2094,7 @@ class AbaArquivoController : Initializable {
         val capaSelected = PseudoClass.getPseudoClass("capaSelected")
         val capaCompletaSelected = PseudoClass.getPseudoClass("capaCompletaSelected")
         val sumarioSelected = PseudoClass.getPseudoClass("sumarioSelected")
-        lsVwListaImagens.setCellFactory {
+        lsVwImagens.setCellFactory {
             val cell: JFXListCell<String> = object : JFXListCell<String>() {
                 override fun updateItem(images: String?, empty: Boolean) {
                     super.updateItem(images, empty)
@@ -2141,6 +2168,51 @@ class AbaArquivoController : Initializable {
         tbViewMal.onMouseClicked = EventHandler { click: MouseEvent ->
             if (click.clickCount > 1 && tbViewMal.items.isNotEmpty())
                 carregaMal(tbViewMal.selectionModel.selectedItem)
+        }
+
+        lsVwHistorico.setCellFactory {
+            object : ListCell<Historico?>() {
+                override fun updateItem(historico: Historico?, empty: Boolean) {
+                    super.updateItem(historico, empty)
+                    text = if (empty || historico == null) null else historico.nome
+                }
+            }
+        }
+
+        lsVwHistorico.onMouseClicked = EventHandler { click: MouseEvent ->
+            if (click.clickCount > 1 && lsVwHistorico.items.isNotEmpty()) {
+                val item = lsVwHistorico.selectionModel.selectedItem
+                if (item != null) {
+                    txtPastaOrigem.text = item.pastaOrigem
+                    txtPastaDestino.text = item.pastaDestino
+                    txtNomePastaManga.text = item.nomeManga
+                    txtVolume.text = item.volume
+                    txtNomePastaCapitulo.text = item.pastaCapitulo
+                    txtGerarInicio.text = item.inicio
+                    txtGerarFim.text = item.fim
+                    txtNomeArquivo.text = item.nomeArquivo
+                    txtAreaImportar.text = item.importar
+                    mManga = item.manga?.apply { Manga.copy(this) }
+                    mComicInfo = ComicInfo(item.comicInfo)
+
+                    mListaCaminhos = ArrayList(item.caminhos)
+                    mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
+                    tbViewTabela.items = mObsListaCaminhos
+
+                    mObsListaItens = FXCollections.observableArrayList(item.itens)
+                    lsVwImagens.items = mObsListaItens
+                    mObsListaImagesSelected = FXCollections.observableArrayList(item.capas)
+
+                    mObsListaMal = FXCollections.observableArrayList(item.mal)
+                    tbViewMal.items = mObsListaMal
+
+                    lsVwImagens.refresh()
+                    tbViewTabela.refresh()
+                    tbViewMal.refresh()
+
+                    lsVwImagens.selectionModel.select(lsVwImagens.items.indexOf(item.selecionado))
+                }
+            }
         }
     }
 
@@ -2698,8 +2770,8 @@ class AbaArquivoController : Initializable {
         scene.addMnemonic(mnCompactar)
 
         scene.addEventFilter(KeyEvent.KEY_PRESSED) { ke: KeyEvent ->
-            if (ke.isControlDown && lsVwListaImagens.selectionModel.selectedItem != null)
-                mSelecionado = lsVwListaImagens.selectionModel.selectedItem
+            if (ke.isControlDown && lsVwImagens.selectionModel.selectedItem != null)
+                mSelecionado = lsVwImagens.selectionModel.selectedItem
 
             if (kcInicioFocus.match(ke))
                 txtGerarInicio.requestFocus()
@@ -2839,6 +2911,8 @@ class AbaArquivoController : Initializable {
             imgCompartilhamento.image = imgAnimaCompartilha
 
         mSugestao.cellLimit = 1
+        lsVwHistorico.items = FXCollections.observableArrayList()
+        acdArquivos.expandedPane = ttpArquivos
     }
 
     companion object {

@@ -11,12 +11,14 @@
 <?import java.lang.String?>
 <?import java.net.URL?>
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Accordion?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TitledPane?>
 <?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
@@ -196,29 +198,46 @@
                            <children>
                               <SplitPane dividerPositions="0.35" prefHeight="200.0" prefWidth="200.0" styleClass="background-Black3" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                  <items>
-                                    <AnchorPane>
-                                       <children>
-                                          <JFXListView fx:id="lsVwListaImagens" prefHeight="500.0" prefWidth="283.0" styleClass="background-Transparent" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" />
-                                          <JFXButton fx:id="btnScrollSubir" alignment="CENTER" buttonType="RAISED" contentDisplay="GRAPHIC_ONLY" disable="true" minHeight="30.0" minWidth="30.0" onAction="#onBtnScrollSubir" prefHeight="30.0" prefWidth="30.0" style="-fx-background-radius: 50;" styleClass="background-Green2" textFill="WHITE" visible="false" AnchorPane.rightAnchor="100.0" AnchorPane.topAnchor="10.0">
-                                             <graphic>
-                                                <ImageView fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true">
-                                                   <image>
-                                                      <Image url="@../images/icoSubir_48.png" />
-                                                   </image>
-                                                </ImageView>
-                                             </graphic>
-                                          </JFXButton>
-                                          <JFXButton fx:id="btnScrollDescer" buttonType="RAISED" contentDisplay="GRAPHIC_ONLY" disable="true" minHeight="30.0" minWidth="30.0" onAction="#onBtnScrollBaixo" prefHeight="30.0" prefWidth="30.0" style="-fx-background-radius: 50;" styleClass="background-Green2" textFill="WHITE" visible="false" AnchorPane.bottomAnchor="10.0" AnchorPane.rightAnchor="100.0">
-                                             <graphic>
-                                                <ImageView fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true">
-                                                   <image>
-                                                      <Image url="@../images/icoDescer_48.png" />
-                                                   </image>
-                                                </ImageView>
-                                             </graphic>
-                                          </JFXButton>
-                                       </children>
-                                    </AnchorPane>
+                                    <Accordion fx:id="acdArquivos">
+                                      <panes>
+                                        <TitledPane fx:id="ttpArquivos" text="Arquivos">
+                                             <content>
+                                                <AnchorPane>
+                                                   <children>
+                                                      <JFXListView fx:id="lsVwImagens" styleClass="background-Transparent" AnchorPane.bottomAnchor="-10.0" AnchorPane.leftAnchor="-10.0" AnchorPane.rightAnchor="-10.0" AnchorPane.topAnchor="-10.0" />
+                                                      <JFXButton fx:id="btnScrollSubir" alignment="CENTER" buttonType="RAISED" contentDisplay="GRAPHIC_ONLY" disable="true" minHeight="30.0" minWidth="30.0" onAction="#onBtnScrollSubir" prefHeight="30.0" prefWidth="30.0" style="-fx-background-radius: 50;" styleClass="background-Green2" textFill="WHITE" visible="false" AnchorPane.rightAnchor="100.0" AnchorPane.topAnchor="10.0">
+                                                         <graphic>
+                                                            <ImageView fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true">
+                                                               <image>
+                                                                  <Image url="@../images/icoSubir_48.png" />
+                                                               </image>
+                                                            </ImageView>
+                                                         </graphic>
+                                                      </JFXButton>
+                                                      <JFXButton fx:id="btnScrollDescer" buttonType="RAISED" contentDisplay="GRAPHIC_ONLY" disable="true" minHeight="30.0" minWidth="30.0" onAction="#onBtnScrollBaixo" prefHeight="30.0" prefWidth="30.0" style="-fx-background-radius: 50;" styleClass="background-Green2" textFill="WHITE" visible="false" AnchorPane.bottomAnchor="10.0" AnchorPane.rightAnchor="100.0">
+                                                         <graphic>
+                                                            <ImageView fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true">
+                                                               <image>
+                                                                  <Image url="@../images/icoDescer_48.png" />
+                                                               </image>
+                                                            </ImageView>
+                                                         </graphic>
+                                                      </JFXButton>
+                                                   </children>
+                                                </AnchorPane>
+                                             </content>
+                                        </TitledPane>
+                                        <TitledPane fx:id="ttpHistorico" expanded="false" text="Histórico">
+                                          <content>
+                                            <AnchorPane>
+                                                   <children>
+                                                      <JFXListView fx:id="lsVwHistorico" layoutX="-8.000000000000002" styleClass="background-Transparent" AnchorPane.bottomAnchor="-10.0" AnchorPane.leftAnchor="-10.0" AnchorPane.rightAnchor="-10.0" AnchorPane.topAnchor="-10.0" />
+                                                   </children>
+                                                </AnchorPane>
+                                          </content>
+                                        </TitledPane>
+                                      </panes>
+                                    </Accordion>
                                     <VBox prefHeight="450.0" prefWidth="304.0" spacing="5.0">
                                        <children>
                                           <VBox>

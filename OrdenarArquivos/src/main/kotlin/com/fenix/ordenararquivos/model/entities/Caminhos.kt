@@ -27,7 +27,7 @@ data class Caminhos(
 
     constructor(capitulo: String, numero: String, nomePasta: String, tag: String) : this(capitulo = capitulo, nomePasta = nomePasta, _numero = if (numero.isEmpty()) 0 else Integer.valueOf(numero), tag = tag) { }
 
-    constructor(id: Long, manga: Manga, capitulo: String, pagina: Int, pasta: String) : this(id, manga, capitulo, pagina, pagina.toString(), pasta) {}
+    constructor(manga: Manga, capitulo: String, pagina: Int, pasta: String, tag: String?) : this(0, manga, capitulo, pagina, pagina.toString(), pasta, tag = tag ?: "") {}
 
     override fun toString(): String {
         return "Caminhos [capitulo=$capitulo, numero=$numero, nomePasta=$nomePasta]"

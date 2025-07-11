@@ -419,3 +419,26 @@
     -fx-text-fill: white;
 }
 
+/*---------- Accordions ----------*/
+.titled-pane > .title > .text {
+    -fx-fill: white;
+    -fx-text-fill: white;
+}
+
+.titled-pane > .title {
+    -fx-background-color: #005a9e;
+    -fx-background-color: linear-gradient(to top right, #005a9e, #004578);
+}
+
+.titled-pane > .content {
+    -fx-background-color: #333333;
+    -fx-padding: 0;
+}
+
+.titled-pane {
+    -fx-border-width: 0;
+    -fx-background-color: transparent;
+}
+.accordion {
+    -fx-background-color: #333333;
+}

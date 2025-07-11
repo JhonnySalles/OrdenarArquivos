@@ -58,4 +58,20 @@ data class Manga(
         return result
     }
 
+    companion object {
+        fun copy(manga: Manga): Manga {
+            return Manga(
+                id = manga.id,
+                nome = manga.nome,
+                volume = manga.volume,
+                capitulo = manga.capitulo,
+                arquivo = manga.arquivo,
+                capitulos = manga.capitulos,
+                quantidade = manga.quantidade,
+                atualizacao = manga.atualizacao,
+                caminhos = manga.caminhos.toMutableList()
+            )
+        }
+    }
+
 }

@@ -267,7 +267,7 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
                         lista.add(manga)
                         val caminhos = (document.data[key] as HashMap<*, *>)["caminhos"] as List<*>
                         for (caminho in caminhos)
-                          manga.addCaminhos(Caminhos.toCominhos(manga, (caminho as HashMap<String, *>) ))
+                          manga.addCaminhos(com.fenix.ordenararquivos.model.firebase.Caminhos.toCominhos(manga, (caminho as HashMap<String, *>) ))
                     }
                 }
             }

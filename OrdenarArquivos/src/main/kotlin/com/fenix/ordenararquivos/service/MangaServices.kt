@@ -18,8 +18,8 @@ class MangaServices {
     private val mINSERT_MANGA = "INSERT INTO Manga (nome, volume, capitulo, arquivo, quantidade, capitulos, criacao, atualizacao) VALUES (?,?,?,?,?,?,?,?)"
     private val mSELECT_MANGA_ATUAL = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome LIKE ? AND volume LIKE ? AND capitulo LIKE ? LIMIT 1"
     private val mSELECT_MANGA_ANTERIOR = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome LIKE ? AND capitulo LIKE ? ORDER BY volume DESC LIMIT 1"
-    private val mINSERT_CAMINHO = "INSERT INTO Caminho (id_manga, capitulo, pagina, pasta) VALUES (?,?,?,?)"
-    private val mSELECT_CAMINHO = "SELECT id, capitulo, pagina, pasta FROM Caminho WHERE id_manga = ?"
+    private val mINSERT_CAMINHO = "INSERT INTO Caminho (id_manga, capitulo, pagina, pasta, tag) VALUES (?,?,?,?,?)"
+    private val mSELECT_CAMINHO = "SELECT id, capitulo, pagina, pasta, tag FROM Caminho WHERE id_manga = ?"
     private val mDELETE_CAMINHO = "DELETE FROM Caminho WHERE id_manga = ?"
     private val mSELECT_ALL_MANGA = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome LIKE ?"
 
@@ -222,7 +222,7 @@ class MangaServices {
                 list.add(
                     Caminhos(
                         rs.getLong("id"), manga, rs.getString("capitulo"), rs.getInt("pagina"),
-                        rs.getString("pasta")
+                        rs.getString("pagina"), rs.getString("pasta"), rs.getString("tag") ?: ""
                     )
                 )
             list
@@ -273,6 +273,7 @@ class MangaServices {
             st.setString(++index, caminho.capitulo)
             st.setInt(++index, caminho.numero)
             st.setString(++index, caminho.nomePasta)
+            st.setString(++index, caminho.tag)
             val rowsAffected = st.executeUpdate()
             if (rowsAffected < 1) {
                 mLOG.info("Nenhum caminho foi inserido.")
