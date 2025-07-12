@@ -317,8 +317,8 @@ class AbaPastasController : Initializable {
                                 carregaMal(lista.first())
 
                             val selecionado = when {
-                                id != null && lista.size == 1 -> Selecionado.SELECIONADO
-                                lista.isNotEmpty() -> Selecionado.SELECIONAR
+                                mComicInfo.idMal != null -> Selecionado.SELECIONADO
+                                mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
                                 else -> Selecionado.VAZIO
                             }
                             Selecionado.setTabColor(tbTabComicInfo, selecionado)
