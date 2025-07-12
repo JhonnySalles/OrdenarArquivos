@@ -749,7 +749,7 @@ class AbaComicInfoController : Initializable {
                     controllerPai.setCursor(Cursor.WAIT)
                     val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem)
                     if (index > 0) {
-                        mObsListaProcessar.remove(0, index-1)
+                        mObsListaProcessar.remove(0, index)
                         tbViewProcessar.refresh()
                     }
                     controllerPai.setCursor(null)
