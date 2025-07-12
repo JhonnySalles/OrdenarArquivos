@@ -1,6 +1,7 @@
 module com.fenix.ordenararquivos {
     exports com.fenix.ordenararquivos;
     exports com.fenix.ordenararquivos.controller;
+    exports com.fenix.ordenararquivos.model.firebase;
     exports com.fenix.ordenararquivos.model.entities;
     exports com.fenix.ordenararquivos.logback;
 
