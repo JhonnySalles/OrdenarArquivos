@@ -14,6 +14,7 @@ import javafx.stage.Stage
 import javafx.stage.StageStyle
 import kotlin.system.exitProcess
 
+
 class Run : Application() {
 
     override fun start(primaryStage: Stage) {

@@ -1438,7 +1438,7 @@ class AbaArquivoController : Initializable {
                             updateProgress(param.first, param.second)
                             updateMessage(param.third)
                         }
-                        true
+                        mCANCELAR
                     }
                     val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }
 
@@ -2252,16 +2252,25 @@ class AbaArquivoController : Initializable {
             txtPastaOrigem.unFocusColor = Color.GRAY
         }
         txtPastaOrigem.onKeyPressed = EventHandler { e: KeyEvent ->
-            if (e.code == KeyCode.ENTER)
-                txtVolume.requestFocus()
-            else if (e.code == KeyCode.TAB && !e.isControlDown && !e.isAltDown && !e.isShiftDown) {
-                txtPastaDestino.requestFocus()
-                e.consume()
+            when (e.code) {
+                KeyCode.ENTER -> txtVolume.requestFocus()
+                KeyCode.TAB -> {
+                    if (!e.isControlDown && !e.isAltDown && !e.isShiftDown) {
+                        txtPastaDestino.requestFocus()
+                        e.consume()
+                    }
+                }
+                KeyCode.R -> {
+                    if (e.isControlDown)
+                        carregaPastaOrigem()
+                }
+                else -> { }
             }
         }
 
         txtPastaDestino.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? ->
-            if (oldPropertyValue) carregaPastaDestino()
+            if (oldPropertyValue)
+                carregaPastaDestino()
             txtPastaDestino.unFocusColor = Color.GRAY
         }
         txtPastaDestino.onKeyPressed = EventHandler { e: KeyEvent ->
@@ -2289,6 +2298,20 @@ class AbaArquivoController : Initializable {
                 mNomePastaAnterior = txtNomePastaManga.text
         }
         txtNomePastaManga.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
+
+        txtNomePastaManga.addEventFilter(KeyEvent.KEY_PRESSED) { event ->
+            if ((event.isControlDown || event.isMetaDown) && event.code == KeyCode.V || event.isShiftDown && event.code == KeyCode.INSERT) {
+                val clipboard = Clipboard.getSystemClipboard()
+                if (clipboard.hasString()) {
+                    val matchs = Regex("""(\[JPN\][\s\S]+)(\- Volume)""", RegexOption.IGNORE_CASE).find(clipboard.string)
+                    if (matchs != null) {
+                        txtNomePastaManga.replaceText(0, txtNomePastaManga.length, matchs.groupValues[1] + " -")
+                        txtNomePastaManga.positionCaret(txtNomePastaManga.text.length)
+                        event.consume()
+                    }
+                }
+            }
+        }
 
         txtNomeArquivo.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? ->
             txtPastaDestino.unFocusColor = Color.GRAY
@@ -2756,6 +2779,7 @@ class AbaArquivoController : Initializable {
         val kcImportar: KeyCombination = KeyCodeCombination(KeyCode.ENTER, KeyCombination.CONTROL_DOWN)
         val kcComicInfo: KeyCombination = KeyCodeCombination(KeyCode.W, KeyCombination.CONTROL_DOWN)
         val kcArquivos: KeyCombination = KeyCodeCombination(KeyCode.D, KeyCombination.CONTROL_DOWN)
+        val kcHistorico: KeyCombination = KeyCodeCombination(KeyCode.H, KeyCombination.CONTROL_DOWN)
 
         val kcProcessar: KeyCombination = KeyCodeCombination(KeyCode.P, KeyCombination.CONTROL_DOWN)
         val mnProcessar = Mnemonic(btnProcessar, kcProcessar)
@@ -2764,10 +2788,6 @@ class AbaArquivoController : Initializable {
         val kcProcessarAlter: KeyCombination = KeyCodeCombination(KeyCode.SPACE, KeyCombination.CONTROL_DOWN)
         val mnProcessarAlter = Mnemonic(btnProcessar, kcProcessarAlter)
         scene.addMnemonic(mnProcessarAlter)
-
-        val kcCompactar: KeyCombination = KeyCodeCombination(KeyCode.R, KeyCombination.CONTROL_DOWN)
-        val mnCompactar = Mnemonic(btnCompactar, kcCompactar)
-        scene.addMnemonic(mnCompactar)
 
         scene.addEventFilter(KeyEvent.KEY_PRESSED) { ke: KeyEvent ->
             if (ke.isControlDown && lsVwImagens.selectionModel.selectedItem != null)
@@ -2787,9 +2807,6 @@ class AbaArquivoController : Initializable {
 
             if (kcProcessar.match(ke) || kcProcessarAlter.match(ke))
                 btnProcessar.fire()
-
-            if (kcCompactar.match(ke))
-                btnCompactar.fire()
 
             if (kcComicInfo.match(ke)) {
                 if (tbTabRoot.selectionModel.selectedItem == tbTabComicInfo) {
@@ -2812,6 +2829,13 @@ class AbaArquivoController : Initializable {
             if (kcArquivos.match(ke)) {
                 if (tbTabRoot.selectionModel.selectedItem != tbTabArquivo)
                     tbTabRoot.selectionModel.select(tbTabArquivo)
+                else if (acdArquivos.expandedPane != ttpArquivos)
+                    acdArquivos.expandedPane = ttpArquivos
+            }
+
+            if (kcHistorico.match(ke)) {
+                if (acdArquivos.expandedPane != ttpHistorico)
+                    acdArquivos.expandedPane = ttpHistorico
             }
         }
     }

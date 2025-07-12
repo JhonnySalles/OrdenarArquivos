@@ -293,7 +293,7 @@
                                                       <String fx:value="texto-stilo-2" />
                                                    </styleClass>
                                                    <tooltip>
-                                                      <Tooltip text="Ctrl + M" />
+                                                      <Tooltip text="Ctrl + M: Foco na área de importar.&#10;Ctrl + S: Sugestão.&#10;Ctrl + E: Alterna extra.&#10;Ctrl + D: Duplicar linha.&#10;Ctrl + T: Apagar tags.&#10;Ctrl + 1-9: Sub capitulo. (.5)&#10;Ctrl + Shift/Alt + Up/Down: Subir/Descer a linha selecionada.&#10;Alt + Shift + Up/Down: Subir/Descer apenas a tag." wrapText="true" />
                                                    </tooltip>
                                                 </JFXTextArea>
                                              </children>
@@ -347,6 +347,9 @@
                            </children>
                         </AnchorPane>
                      </content>
+                     <tooltip>
+                        <Tooltip text="Ctrl + D" />
+                     </tooltip>
                   </Tab>
                   <Tab fx:id="tbTabComicInfo" onSelectionChanged="#onSelectCapaChanged" text="ComicInfo">
                      <content>
@@ -441,7 +444,10 @@
                                                          <children>
                                                             <JFXButton fx:id="btnAmazonConsultar" onAction="#onBtnAmazonConsultar" prefHeight="30.0" prefWidth="100.0" styleClass="background-White1" text="Amazon" />
                                                             <JFXButton fx:id="btnMalAplicar" onAction="#onBtnMalAplicar" prefHeight="30.0" prefWidth="100.0" styleClass="background-Green2" text="Aplicar" textFill="WHITE" />
-                                                            <JFXButton fx:id="btnMalConsultar" onAction="#onBtnMalConsultar" prefHeight="25.0" prefWidth="100.0" styleClass="background-Blue3" text="Consultar" textFill="WHITE" />
+                                                            <JFXButton fx:id="btnMalConsultar" onAction="#onBtnMalConsultar" prefHeight="25.0" prefWidth="100.0" styleClass="background-Blue3" text="Consultar" textFill="WHITE">
+                                                               <tooltip>
+                                                                  <Tooltip text="Ctrl + W" />
+                                                               </tooltip></JFXButton>
                                                             <JFXButton fx:id="btnGravarComicInfo" onAction="#onBtnGravarComicInfo" prefHeight="25.0" prefWidth="140.0" styleClass="background-Purple2" text="Gravar ComicInfo" textFill="WHITE">
                                                                <tooltip>
                                                                   <Tooltip text="Ctrl + Enter ou Ctrl + P" />
@@ -474,6 +480,9 @@
                            </children>
                         </AnchorPane>
                      </content>
+                     <tooltip>
+                        <Tooltip text="Ctrl + W" />
+                     </tooltip>
                   </Tab>
                   <Tab fx:id="tbTabCapa" onSelectionChanged="#onSelectCapaChanged" text="Capas">
                      <content>

@@ -130,8 +130,7 @@
     -fx-background-color: #757575;
 }
 
-.scroll-bar:horizontal .thumb:pressed, .scroll-bar:vertical .thumb:pressed
-{
+.scroll-bar:horizontal .thumb:pressed, .scroll-bar:vertical .thumb:pressed {
     -fx-background-color: #666666;
     -fx-background-insets: 3.0;
     -fx-effect: dropshadow(one-pass-box, #1e90ff, 4, 4, 0, 0);
@@ -188,17 +187,17 @@
     -fx-background-color: #212121;
 }
 
-.table-view .table-cell{
+.table-view .table-cell {
     -fx-text-fill: white;
 }
 
-.table-row-cell{
+.table-row-cell {
     -fx-background-color: -fx-table-cell-border-color, #333333;
     -fx-table-border-color: #000000;
     -fx-table-cell-border-color:#000000;
 }
 
-.table-row-cell:odd{
+.table-row-cell:odd {
     -fx-background-color: -fx-table-cell-border-color, #212121;
 }
 
@@ -254,12 +253,12 @@
 /*---------- List View ----------*/
 
 .list-view .list-cell {
--fx-background-color: #333333;
--fx-text-fill: white;
+    -fx-background-color: #333333;
+    -fx-text-fill: white;
 }
 .list-view .list-cell:odd {
--fx-background-color: #212121;
--fx-text-fill: white;
+    -fx-background-color: #212121;
+    -fx-text-fill: white;
 }
 
 .list-view .list-cell:selected {
@@ -426,8 +425,8 @@
 }
 
 .titled-pane > .title {
-    -fx-background-color: #005a9e;
-    -fx-background-color: linear-gradient(to top right, #005a9e, #004578);
+    -fx-background-color: #106ebe;
+    -fx-background-color: linear-gradient(to top right, #106ebe, #005a9e);
 }
 
 .titled-pane > .content {
@@ -439,6 +438,39 @@
     -fx-border-width: 0;
     -fx-background-color: transparent;
 }
+
 .accordion {
     -fx-background-color: #333333;
+}
+
+.accordion .titled-pane > .title > .arrow-button {
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-shape: null;
+}
+
+.accordion .titled-pane > .title > .arrow-button > .arrow {
+    -fx-background-color: transparent;
+    -fx-shape: null;
+}
+
+.accordion .titled-pane:expanded > .title {
+    -fx-graphic: "Glyph:MaterialDesignM:MENU_UP";
+    -fx-graphic-text-gap: 5px;
+    -fx-text-fill: #000000;
+}
+
+.accordion .titled-pane:not(:expanded) > .title {
+    -fx-graphic: "Glyph:MaterialDesignM:MENU_DOWN";
+    -fx-graphic-text-gap: 5px;
+    -fx-text-fill: #000000;
+}
+
+.accordion .titled-pane > .title {
+    -fx-icon-color: #000000;
+    -fx-icon-size: 20px;
+}
+
+.accordion .titled-pane > .title:hover {
+    -fx-icon-color: #333333;
 }

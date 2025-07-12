@@ -66,8 +66,10 @@ object Compactar {
         }
     }
 
-    fun compactar(destino : File, zip : File, manga : Manga, comicInfo: ComicInfo, pastas: MutableList<File>, comic : MutableMap<String, File>, linguagem: Linguagem, isCompactar : Boolean, isGerarCapitulos: Boolean, isAtualizarComic: Boolean = true, callback: Callback<Triple<Long, Long, String>, Boolean>) : Boolean {
-        callback.call(Triple(0 ,0, "Gerando o comic info.."))
+    fun compactar(destino : File, zip : File, manga : Manga, comicInfo: ComicInfo, pastas: MutableList<File>, comic : MutableMap<String, File>, linguagem: Linguagem,
+                  isCompactar : Boolean, isGerarCapitulos: Boolean, isAtualizarComic: Boolean = true, callback: Callback<Triple<Long, Long, String>, Boolean>) : Boolean {
+        if (callback.call(Triple(0 ,0, "Gerando o comic info..")))
+            return false
 
         val imagens = ".*\\.(jpg|jpeg|bmp|gif|png|webp)$".toRegex()
 
@@ -91,7 +93,8 @@ object Compactar {
 
                     mLOG.info("Gerando pagina do ComicInfo: " + capa.name)
                     i++
-                    callback.call(Triple(i ,max, "Processando item " + i + " de " + max + ". Gerando ComicInfo - Capítulo $key | " + capa.name))
+                    if (callback.call(Triple(i ,max, "Processando item " + i + " de " + max + ". Gerando ComicInfo - Capítulo $key | " + capa.name)))
+                        return false
 
                     val page = Pages()
                     val imagem: String = capa.name.lowercase(Locale.getDefault())
@@ -149,7 +152,8 @@ object Compactar {
 
         max = 3
         i = 1
-        callback.call(Triple(i ,max, "Salvando xml do ComicInfo..."))
+        if (callback.call(Triple(i ,max, "Salvando xml do ComicInfo...")))
+            return false
         comicInfo.pages = pages
         comicInfo.pageCount = pages.size
 
@@ -213,7 +217,9 @@ object Compactar {
         }
 
         i++
-        callback.call(Triple(i ,max, "Salvando xml do CoMet..."))
+        if (callback.call(Triple(i ,max, "Salvando xml do CoMet...")))
+            return false
+
         val arquivoComet = File(destino.path.trim { it <= ' ' }, "CoMet.xml")
         if (arquivoComet.exists())
             arquivoComet.delete()

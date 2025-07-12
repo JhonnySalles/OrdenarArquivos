@@ -38,6 +38,7 @@
         <jakarta.xml.version>4.0.1</jakarta.xml.version>
         <jaxb.version>4.0.0</jaxb.version>
         <jsoup.version>1.15.3</jsoup.version>
+        <ikonli.version>12.4.0</ikonli.version>
     </properties>
 
     <repositories>
@@ -309,6 +310,19 @@
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
             <version>${jsoup.version}</version>
+        </dependency>
+
+        <!-- Fontes -->
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-javafx</artifactId>
+            <version>${ikonli.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-materialdesign2-pack</artifactId>
+            <version>${ikonli.version}</version>
         </dependency>
 
         <!-- OUTROS -->
