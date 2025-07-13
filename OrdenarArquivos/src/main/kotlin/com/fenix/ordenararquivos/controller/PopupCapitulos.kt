@@ -708,19 +708,23 @@ class PopupCapitulos : Initializable {
         // Regex para extrair números de um texto (ex: "Volume 2" -> "2", "Ch. 15.1" -> "15.1").
         val numberRegex = Regex("""[\d.]+""")
 
+        // Regex para extrair números de um texto (ex: "Volume 2" -> "2", "Ch. 15.1" -> "15.1").
+        val volumeRegex = Regex("""volume [\d.]+""")
+
         // Seleciona as divisões principais que contêm um cabeçalho de volume e uma lista de capítulos.
-        val volumeBlocks = pagina.select("div.flex.flex-col.mb-6")
+        val volumeBlocks = pagina.select("div.grid.grid-cols-12.mb-2.cursor-pointer")
 
         for (block in volumeBlocks) {
             // Extrai o número do volume do cabeçalho.
-            val volumeHeaderText = block.selectFirst("div.grid")?.text() ?: ""
-            val volumeNumber = numberRegex.find(volumeHeaderText)?.value?.toDoubleOrNull() ?: -1.0
+            val volumeDiv = block.parents().first() ?: continue
+
+            val volumeNumber = numberRegex.find(block.text())?.value?.toDoubleOrNull() ?: -1.0
 
             // Garante que o objeto do volume exista no mapa.
             val currentVolume = volumesMap.getOrPut(volumeNumber) { Volume(volume = volumeNumber) }
 
             // Encontra todos os contêineres de capítulos dentro deste bloco de volume.
-            val chapterContainers = block.select("div[data-v-5ea3fe4a].bg-accent")
+            val chapterContainers = volumeDiv.select("div[data-v-5ea3fe4a].bg-accent")
 
             for (container in chapterContainers) {
                 val header = container.selectFirst(".chapter-header")
