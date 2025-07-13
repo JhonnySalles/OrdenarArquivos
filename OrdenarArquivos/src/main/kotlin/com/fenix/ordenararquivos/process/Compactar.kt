@@ -1,10 +1,10 @@
 package com.fenix.ordenararquivos.process
 
+import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.comet.CoMet
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicPageType
 import com.fenix.ordenararquivos.model.entities.comicinfo.Pages
-import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.util.Utils

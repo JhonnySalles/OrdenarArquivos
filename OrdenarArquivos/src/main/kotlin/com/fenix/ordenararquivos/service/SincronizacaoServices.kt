@@ -6,7 +6,6 @@ import com.fenix.ordenararquivos.database.DataBase.instancia
 import com.fenix.ordenararquivos.model.entities.Sincronizacao
 import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.model.enums.Tipo
-import com.fenix.ordenararquivos.model.firebase.Caminhos
 import com.fenix.ordenararquivos.model.firebase.ComicInfo
 import com.fenix.ordenararquivos.model.firebase.Manga
 import com.fenix.ordenararquivos.notification.Notificacoes
