@@ -26,10 +26,7 @@ import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.geometry.Pos
 import javafx.scene.Cursor
-import javafx.scene.control.ContextMenu
-import javafx.scene.control.MenuItem
-import javafx.scene.control.TableColumn
-import javafx.scene.control.TableView
+import javafx.scene.control.*
 import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.input.KeyCode
 import javafx.scene.layout.AnchorPane
@@ -74,6 +71,9 @@ class AbaComicInfoController : Initializable {
 
     @FXML
     private lateinit var btnTagsNormaliza: JFXButton
+
+    @FXML
+    private lateinit var btnTagsAplicar: JFXButton
 
     @FXML
     private lateinit var btnCapitulos: JFXButton
@@ -122,11 +122,11 @@ class AbaComicInfoController : Initializable {
         }
 
     private var mObsListaProcessar: ObservableList<Processar> = FXCollections.observableArrayList()
+    private val mDecimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
 
     @FXML
     private fun onBtnCapitulos() {
         val callback: Callback<ObservableList<Volume>, Boolean> = Callback<ObservableList<Volume>, Boolean> { param ->
-            val decimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
             val linguagem = cbLinguagem.value
             val separador = Utils.SEPARADOR_CAPITULO
             for (volume in param)
@@ -142,7 +142,7 @@ class AbaComicInfoController : Initializable {
                                 val numero = Utils.getNumber(if (it.lowercase().contains("第")) Utils.fromNumberJapanese(it) else it)
                                 capitulos.find { c -> c.capitulo == numero }?.run {
                                     capitulos.remove(this)
-                                    capitulo += " ${Utils.SEPARADOR_IMPORTACAO} " + decimal.format(this.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && this.japones.isNotEmpty()) this.japones else this.ingles
+                                    capitulo += " ${Utils.SEPARADOR_IMPORTACAO} " + mDecimal.format(this.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && this.japones.isNotEmpty()) this.japones else this.ingles
                                 }
                             }
                         }
@@ -151,7 +151,7 @@ class AbaComicInfoController : Initializable {
 
                     if (capitulos.isNotEmpty())
                         for (capitulo in capitulos)
-                            tags.add("-1${Utils.SEPARADOR_IMAGEM} Capítulo novo ${Utils.SEPARADOR_IMPORTACAO} ${decimal.format(capitulo.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && capitulo.japones.isNotEmpty()) capitulo.japones else capitulo.ingles}")
+                            tags.add("-1${Utils.SEPARADOR_IMAGEM} Capítulo novo ${Utils.SEPARADOR_IMPORTACAO} ${mDecimal.format(capitulo.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && capitulo.japones.isNotEmpty()) capitulo.japones else capitulo.ingles}")
 
                     item.tags = tags.joinToString("\n")
                 }
@@ -183,9 +183,12 @@ class AbaComicInfoController : Initializable {
     @FXML
     private fun onBtnTagsProcessar() {
         if (mObsListaProcessar.isNotEmpty()) {
+            controllerPai.setCursor(Cursor.WAIT)
+            val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
             for (item in mObsListaProcessar)
-                gerarTagItem(item)
+                gerarTagItem(item, language)
             tbViewProcessar.refresh()
+            controllerPai.setCursor(null)
         }
     }
 
@@ -193,39 +196,32 @@ class AbaComicInfoController : Initializable {
     @FXML
     private fun onBtnTagsNormaliza() {
         if (mObsListaProcessar.isNotEmpty()) {
-            val decimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
+            controllerPai.setCursor(Cursor.WAIT)
             val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+            for (item in mObsListaProcessar)
+                normalizarTagItem(item, language)
+            tbViewProcessar.refresh()
+            controllerPai.setCursor(null)
+        }
+    }
+
+    @FXML
+    private fun onBtnTagsAplicar() {
+        if (mObsListaProcessar.isNotEmpty()) {
+            controllerPai.setCursor(Cursor.WAIT)
             for (item in mObsListaProcessar) {
-                val linhas = item.tags.split("\n")
-                val tags = mutableListOf<String>()
-                for (linha in linhas) {
-                    if (linha.contains("Capítulo Novo", ignoreCase = true)) {
-                        if (linha.contains(Utils.SEPARADOR_CAPITULO))
-                            tags.add(linha.substringBefore(Utils.SEPARADOR_CAPITULO) + Utils.SEPARADOR_CAPITULO + Utils.normaliza(linha.substringAfter(Utils.SEPARADOR_CAPITULO)))
-                        else
-                            tags.add(linha)
-                    } else if (linha.contains("第") || linha.lowercase().contains("capítulo")  || linha.lowercase().contains("capitulo") || linha.lowercase().contains("chapter")) {
-                        val imagem = linha.substringBefore(Utils.SEPARADOR_IMAGEM)
-                        var capitulo = linha.substringAfter(Utils.SEPARADOR_IMAGEM).substringBefore("-").trim()
-                        val numero = Utils.getNumber(if (capitulo.contains("第")) Utils.fromNumberJapanese(capitulo) else capitulo) ?: 0.0
-                        capitulo = when (language) {
-                            Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(decimal.format(numero))}話"
-                            Linguagem.PORTUGUESE -> "Capítulo ${decimal.format(numero)}"
-                            else -> "Chapter ${decimal.format(numero)}"
-                        }
-                        val titulo = if (linhas.contains(Utils.SEPARADOR_IMPORTACAO))
-                          " ${Utils.SEPARADOR_IMPORTACAO} " + linha.substringAfter(Utils.SEPARADOR_IMPORTACAO).substringBefore(Utils.SEPARADOR_CAPITULO).trim() + Utils.SEPARADOR_CAPITULO + Utils.normaliza(linha.substringAfterLast(Utils.SEPARADOR_CAPITULO).trim())
-                        else if (linha.contains("-"))
-                            " - " + Utils.normaliza(linha.substringAfter("-").trim())
-                        else
-                            ""
-                        tags.add(imagem + Utils.SEPARADOR_IMAGEM + capitulo + titulo)
-                    } else
-                        tags.add(linha)
-                }
-                item.tags = tags.joinToString(separator = "\n")
+                if (item.tags.isEmpty() || !item.tags.contains("\n") || !item.tags.contains(Utils.SEPARADOR_IMPORTACAO))
+                    continue
+
+                val linhas = mutableListOf<String>()
+                val separador = Utils.SEPARADOR_CAPITULO
+                for (linha in item.tags.split("\n"))
+                    linhas.add(if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) linha.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim() + " - " + linha.substringAfterLast(separador) else linha)
+
+                item.tags = linhas.joinToString(separator = "\n")
             }
             tbViewProcessar.refresh()
+            controllerPai.setCursor(null)
         }
     }
 
@@ -608,20 +604,49 @@ class AbaComicInfoController : Initializable {
         tbViewProcessar.refresh()
     }
 
-    private fun gerarTagItem(item: Processar, isAjustar : Boolean = false) {
-        val decimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
-        val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+    private fun gerarTagItem(item: Processar, language: Linguagem, isAjustar : Boolean = false) {
         val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { p ->
             p.image.toString() + Utils.SEPARADOR_IMAGEM + p.bookmark!!.substringBefore("-", p.bookmark!!).trim()
                 .let { b -> if (b.contains("第") || b.lowercase().contains("capítulo") || b.lowercase().contains("chapter")) {
                     val capitulo = Utils.getNumber(if (b.lowercase().contains("第")) Utils.fromNumberJapanese(b) else b) ?: 0.0
                     when (language) {
-                        Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(decimal.format(capitulo))}話"
-                        Linguagem.PORTUGUESE -> "Capítulo ${decimal.format(capitulo)}"
-                        else -> "Chapter ${decimal.format(capitulo)}"
+                        Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(mDecimal.format(capitulo))}話"
+                        Linguagem.PORTUGUESE -> "Capítulo ${mDecimal.format(capitulo)}"
+                        else -> "Chapter ${mDecimal.format(capitulo)}"
                     } + if (isAjustar) " - " + p.bookmark!!.substringAfterLast("-").trim() else ""
                 } else b }
         }?.toList() ?: emptyList()
+        item.tags = tags.joinToString(separator = "\n")
+    }
+
+    private fun normalizarTagItem(item: Processar, language: Linguagem) {
+        val linhas = item.tags.split("\n")
+        val tags = mutableListOf<String>()
+        for (linha in linhas) {
+            if (linha.contains("Capítulo Novo", ignoreCase = true)) {
+                if (linha.contains(Utils.SEPARADOR_CAPITULO))
+                    tags.add(linha.substringBefore(Utils.SEPARADOR_CAPITULO) + Utils.SEPARADOR_CAPITULO + Utils.normaliza(linha.substringAfter(Utils.SEPARADOR_CAPITULO)))
+                else
+                    tags.add(linha)
+            } else if (linha.contains("第") || linha.lowercase().contains("capítulo")  || linha.lowercase().contains("capitulo") || linha.lowercase().contains("chapter")) {
+                val imagem = linha.substringBefore(Utils.SEPARADOR_IMAGEM)
+                var capitulo = linha.substringAfter(Utils.SEPARADOR_IMAGEM).substringBefore("-").trim()
+                val numero = Utils.getNumber(if (capitulo.contains("第")) Utils.fromNumberJapanese(capitulo) else capitulo) ?: 0.0
+                capitulo = when (language) {
+                    Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(mDecimal.format(numero))}話"
+                    Linguagem.PORTUGUESE -> "Capítulo ${mDecimal.format(numero)}"
+                    else -> "Chapter ${mDecimal.format(numero)}"
+                }
+                val titulo = if (linhas.contains(Utils.SEPARADOR_IMPORTACAO))
+                    " ${Utils.SEPARADOR_IMPORTACAO} " + linha.substringAfter(Utils.SEPARADOR_IMPORTACAO).substringBefore(Utils.SEPARADOR_CAPITULO).trim() + Utils.SEPARADOR_CAPITULO + Utils.normaliza(linha.substringAfterLast(Utils.SEPARADOR_CAPITULO).trim())
+                else if (linha.contains("-"))
+                    " - " + Utils.normaliza(linha.substringAfter("-").trim())
+                else
+                    ""
+                tags.add(imagem + Utils.SEPARADOR_IMAGEM + capitulo + titulo)
+            } else
+                tags.add(linha)
+        }
         item.tags = tags.joinToString(separator = "\n")
     }
 
@@ -654,7 +679,9 @@ class AbaComicInfoController : Initializable {
             cell
         }
 
-        clTags.cellFactory = TextAreaTableCell.forTableColumn()
+        clTags.cellFactory = TextAreaTableCell.forTableColumn(Tooltip("Com o shift e alt pressionados poderá ser executado algumas funções no texto apresentado, são eles:\n" +
+                "Shift + Alt + Enter: Aplicação da tag gerada aos capítulos.\nShift + Alt + Delete: Apaga a linha selecionada.\nShift + Alt + Left: Aplicar as tags da linha selecionada.\n" +
+                "Shift + Alt + Acima/Baixo: Move a tag da linha selecionada para cima ou baixo, movimentando outras tags subjacentes."))
         clTags.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
             e.tableView.items[e.tablePosition.row].tags = e.newValue
         }
@@ -712,7 +739,8 @@ class AbaComicInfoController : Initializable {
         val tags = MenuItem("Gerar Tags")
         tags.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
-                gerarTagItem(tbViewProcessar.selectionModel.selectedItem)
+                val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+                gerarTagItem(tbViewProcessar.selectionModel.selectedItem, language)
                 tbViewProcessar.refresh()
             }
         }
@@ -720,9 +748,10 @@ class AbaComicInfoController : Initializable {
         tagsAnteriores.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 controllerPai.setCursor(Cursor.WAIT)
+                val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
                 val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem)
                 for (i in 0 until index + 1)
-                    gerarTagItem(mObsListaProcessar[i])
+                    gerarTagItem(mObsListaProcessar[i], language)
                 tbViewProcessar.refresh()
                 controllerPai.setCursor(null)
             }
@@ -730,7 +759,16 @@ class AbaComicInfoController : Initializable {
         val tagsAjustar = MenuItem("Ajustar Tags")
         tagsAjustar.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
-                gerarTagItem(tbViewProcessar.selectionModel.selectedItem, isAjustar = true)
+                val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+                gerarTagItem(tbViewProcessar.selectionModel.selectedItem, language, isAjustar = true)
+                tbViewProcessar.refresh()
+            }
+        }
+        val tagsNormalizar = MenuItem("Normalizar Tags")
+        tagsNormalizar.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null) {
+                val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+                normalizarTagItem(tbViewProcessar.selectionModel.selectedItem, language)
                 tbViewProcessar.refresh()
             }
         }
@@ -761,6 +799,7 @@ class AbaComicInfoController : Initializable {
         menu.items.add(tags)
         menu.items.add(tagsAnteriores)
         menu.items.add(tagsAjustar)
+        menu.items.add(tagsNormalizar)
         menu.items.add(remover)
         menu.items.add(removerAnteriores)
 

@@ -66,6 +66,18 @@ class PopupCapitulos : Initializable {
     private lateinit var hplMangaFire : Hyperlink
 
     @FXML
+    private lateinit var hplMangaForest : Hyperlink
+
+    @FXML
+    private lateinit var hplMangaRead : Hyperlink
+
+    @FXML
+    private lateinit var hplMangaDex : Hyperlink
+
+    @FXML
+    private lateinit var hplZBato : Hyperlink
+
+    @FXML
     private lateinit var cbLinguagem: JFXComboBox<Linguagem>
 
     @FXML
@@ -237,6 +249,14 @@ class PopupCapitulos : Initializable {
                     extractMangaFire(pagina)
                 else if (it.contains("taiyo.moe"))
                     extractTayo(pagina)
+                else if (it.contains("mangaforest.me"))
+                    extractMangaForest(pagina)
+                else if (it.contains("mangaread.org"))
+                    extractMangaRead(pagina)
+                else if (it.contains("mangadex.org"))
+                    extractMangaDex(pagina)
+                else if (it.contains("zbato.org"))
+                    extractZBato(pagina)
                 else
                     mLista.toList()
 
@@ -248,11 +268,11 @@ class PopupCapitulos : Initializable {
         }
     }
 
-    private val formater = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
-    private fun formatar(valor : Double) : String = formater.format(valor)
+    private val mFormater = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
+    private fun formatar(valor : Double) : String = mFormater.format(valor)
 
     //Regex case insentive, no qual pode começar com capítulo, numero ou formato japoneas.
-    private val replace = "(?i)^(ch|chapter|episode|第|[0-9])[0-9０-９ .]+(話|:)?".toRegex()
+    private val mReplace = "(?i)^(ch|chapter|episode|第|[0-9])[0-9０-９ .]+(話|:)?".toRegex()
 
     private fun preparar(lista: List<Volume>) {
         val linguagem = cbLinguagem.value
@@ -345,7 +365,7 @@ class PopupCapitulos : Initializable {
                             val japones = cleanJapaneseTitle(japanesTitulo)
 
                             if (ingles.isNotBlank() || japones.isNotBlank())
-                                currentVolume.capitulos.add(Capitulo(capitulo = chapterNumber, ingles = ingles.replace(replace, "").trim(), japones = japones.replace(replace, "").trim()))
+                                currentVolume.capitulos.add(Capitulo(capitulo = chapterNumber, ingles = ingles.replace(mReplace, "").trim(), japones = japones.replace(mReplace, "").trim()))
                         }
                     }
                 }
@@ -456,7 +476,7 @@ class PopupCapitulos : Initializable {
             // Apenas adiciona capítulos que puderam ser associados a um volume
             if (volNum != null) {
                 val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
-                volume.capitulos.add(Capitulo(capitulo = finalEntry.chap, ingles = finalEntry.title.replace(replace, "").trim(), ""))
+                volume.capitulos.add(Capitulo(capitulo = finalEntry.chap, ingles = finalEntry.title.replace(mReplace, "").trim(), ""))
             }
         }
 
@@ -512,7 +532,7 @@ class PopupCapitulos : Initializable {
                                 englishTitle = title
                         }
                     }
-                    volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = englishTitle.replace(replace, "").trim(), japones = japaneseTitle))
+                    volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = englishTitle.replace(mReplace, "").trim(), japones = japaneseTitle))
                 }
             }
         }
@@ -590,7 +610,7 @@ class PopupCapitulos : Initializable {
                             currentVolume.capitulos.add(
                                 Capitulo(
                                     capitulo = finalChapNum,
-                                    ingles = chapterTitle.replace(replace, "").trim(), // Armazenando o título em pt-BR no campo 'ingles'
+                                    ingles = chapterTitle.replace(mReplace, "").trim(), // Armazenando o título em pt-BR no campo 'ingles'
                                     japones = ""
                                 )
                             )
@@ -607,6 +627,205 @@ class PopupCapitulos : Initializable {
         // Ordena a lista de volumes
         volumesList.sortBy { it.volume }
         return volumesList
+    }
+
+    //<--------------------------  MangaForest -------------------------->
+    private fun extractMangaForest(pagina: Document) : List<Volume> {
+        val volumesMap = mutableMapOf<Double, Volume>()
+        val chapterList = pagina.getElementById("chapter-list-inner")
+        val chapters = chapterList?.getElementsByTag("li")
+
+        // Regex para capturar o número do volume (opcional), número do capítulo e descrição
+        val regex = Regex("(?:Vol(?:ume)?\\s?(\\d+(?:\\.\\d+)?))?\\s?(?:Chapter|Chap|Extra)\\s?([\\d.]+|Extra(?: V\\d+)?)\\s?:?\\s?(.*)", RegexOption.IGNORE_CASE)
+
+        chapters?.forEach { li ->
+            val title = li.getElementsByTag("strong").first()?.text()
+            if (title != null) {
+                val matchResult = regex.find(title)
+                if (matchResult != null) {
+                    val (volumeStr, chapterStr, description) = matchResult.destructured
+
+                    val volumeNumber = volumeStr.toDoubleOrNull() ?: -1.0
+
+                    // Tratamento especial para casos como "Extra V2"
+                    val chapterNumberCleaned = chapterStr.replace(Regex("[^\\d.]"), "")
+                    val chapterNumber = chapterNumberCleaned.toDoubleOrNull() ?: 0.0
+
+                    val volume = volumesMap.getOrPut(volumeNumber) {
+                        Volume(volume = volumeNumber)
+                    }
+
+                    val capitulo = Capitulo(capitulo = chapterNumber, ingles = description.trim(), japones = "")
+                    volume.capitulos.add(capitulo)
+                }
+            }
+        }
+
+        return volumesMap.values.sortedBy { it.volume }
+    }
+
+    //<--------------------------  MangaRead -------------------------->
+    private fun extractMangaRead(pagina: Document) : List<Volume> {
+        // Mapa para armazenar os volumes. Como não há volumes explícitos, usaremos 0.0 como padrão.
+        val volumesMap = mutableMapOf<Double, Volume>()
+
+        // Encontra a div que contém as opções dos capítulos.
+        val chapterSelector = pagina.selectFirst("div.c-selectpicker.selectpicker_chapter")
+        val chapterOptions = chapterSelector?.select("option") ?: emptyList()
+
+        // Regex para capturar o número do capítulo (com ou sem decimais) e a descrição opcional.
+        val regex = Regex("(?:Chapter|ch\\.|Chap)\\s*([\\d.]+)\\s*:?\\s*(.*)", RegexOption.IGNORE_CASE)
+
+        // Garante que o volume -1.0 exista para adicionar os capítulos.
+        val volume = volumesMap.getOrPut(-1.0) { Volume(volume = -1.0) }
+
+        for (option in chapterOptions) {
+            val text = option.text().trim()
+            val matchResult = regex.find(text)
+
+            if (matchResult != null) {
+                val (chapterStr, description) = matchResult.destructured
+
+                // Converte o número do capítulo para Double e cria o objeto Capitulo.
+                chapterStr.toDoubleOrNull()?.let { chapterNumber ->
+                    val capitulo = Capitulo(capitulo = chapterNumber, ingles = description.trim(), japones = "")
+                    volume.capitulos.add(capitulo)
+                }
+            }
+        }
+
+        // Ordena os capítulos por número para um resultado consistente.
+        volume.capitulos.sortBy { it.capitulo }
+
+        return volumesMap.values.toList()
+    }
+
+    //<--------------------------  MangaDex -------------------------->
+    private fun extractMangaDex(pagina: Document) : List<Volume> {
+        // Mapa para agrupar os capítulos por volume dinamicamente.
+        val volumesMap = mutableMapOf<Double, Volume>()
+
+        // Regex para extrair números de um texto (ex: "Volume 2" -> "2", "Ch. 15.1" -> "15.1").
+        val numberRegex = Regex("""[\d.]+""")
+
+        // Seleciona as divisões principais que contêm um cabeçalho de volume e uma lista de capítulos.
+        val volumeBlocks = pagina.select("div.flex.flex-col.mb-6")
+
+        for (block in volumeBlocks) {
+            // Extrai o número do volume do cabeçalho.
+            val volumeHeaderText = block.selectFirst("div.grid")?.text() ?: ""
+            val volumeNumber = numberRegex.find(volumeHeaderText)?.value?.toDoubleOrNull() ?: -1.0
+
+            // Garante que o objeto do volume exista no mapa.
+            val currentVolume = volumesMap.getOrPut(volumeNumber) { Volume(volume = volumeNumber) }
+
+            // Encontra todos os contêineres de capítulos dentro deste bloco de volume.
+            val chapterContainers = block.select("div[data-v-5ea3fe4a].bg-accent")
+
+            for (container in chapterContainers) {
+                val header = container.selectFirst(".chapter-header")
+
+                if (header != null) {
+                    // Caso 1: Capítulos agrupados por número (ex: Chapter 17 com várias línguas).
+                    val chapterNumberText = header.text()
+                    val chapterNumber = numberRegex.find(chapterNumberText)?.value?.toDoubleOrNull() ?: continue
+
+                    var englishTitle = ""
+                    var japaneseTitle = ""
+
+                    // Procura as diferentes versões de língua para este capítulo.
+                    val languageVersions = container.select(".chapter.relative.read")
+                    for (version in languageVersions) {
+                        val langImg = version.selectFirst("img.inline-block")
+                        val title = langImg?.attr("title") ?: ""
+                        val description = version.selectFirst(".line-clamp-1")?.text() ?: ""
+
+                        when (title.lowercase()) {
+                            "english" -> englishTitle = description
+                            "japones" -> japaneseTitle = description
+                        }
+                    }
+                    currentVolume.capitulos.add(Capitulo(chapterNumber, englishTitle, japaneseTitle))
+
+                } else {
+                    // Caso 2: Capítulo único, não agrupado por um header.
+                    val singleChapterLink = container.selectFirst("a[title*='Ch.']")
+                    if (singleChapterLink != null) {
+                        val titleAttr = singleChapterLink.attr("title")
+                        val chapterMatch = numberRegex.find(titleAttr)
+                        val chapterNumber = chapterMatch?.value?.toDoubleOrNull() ?: continue
+
+                        // Extrai a descrição a partir do texto do link.
+                        val description = titleAttr.substringAfter(chapterMatch.value).removePrefix(" - ").trim()
+
+                        // Como é um registro único, não há outra língua a ser procurada.
+                        currentVolume.capitulos.add(Capitulo(chapterNumber, description, ""))
+                    }
+                }
+            }
+        }
+
+        // Ordena os capítulos dentro de cada volume e depois os próprios volumes.
+        volumesMap.values.forEach { it.capitulos.sortByDescending { cap -> cap.capitulo } }
+        return volumesMap.values.sortedByDescending { it.volume }
+    }
+
+    //<--------------------------  Zbato -------------------------->
+    private fun extractZBato(pagina: Document) : List<Volume> {
+        // Mapa para agrupar capítulos por volume. Usaremos 0.0 como padrão.
+        val volumesMap = mutableMapOf<Double, Volume>()
+        // Conjunto para rastrear capítulos já processados e evitar duplicatas (v2).
+        val processedChapters = mutableSetOf<Double>()
+
+        // Seleciona o container principal da lista de capítulos.
+        val chapterListContainer = pagina.selectFirst("div[name=chapter-list]")
+
+        // Seleciona todas as linhas que representam um capítulo.
+        val chapterRows = chapterListContainer?.select("div.px-2.py-2") ?: emptyList()
+
+        // Regex para extrair o número do capítulo de textos como "Chapter 14" ou "ch.13 (v2)".
+        val chapterRegex = Regex("(?:Chapter|ch\\.|Chap)\\s*([\\d\\.]+)", RegexOption.IGNORE_CASE)
+
+        for (row in chapterRows) {
+            val linkElement = row.selectFirst("a")
+            if (linkElement != null) {
+                val linkText = linkElement.text() // Ex: "ch.13 (v2)"
+
+                val matchResult = chapterRegex.find(linkText)
+                if (matchResult != null) {
+                    // Extrai o número do capítulo e converte para Double.
+                    val chapterNumberStr = matchResult.groupValues[1]
+                    val chapterNumber = chapterNumberStr.toDoubleOrNull()
+
+                    if (chapterNumber != null) {
+                        // Se o capítulo já foi processado (ex: versão v2), ignora.
+                        if (processedChapters.contains(chapterNumber)) {
+                            continue
+                        }
+                        processedChapters.add(chapterNumber)
+
+                        // O número do volume é -1.0, conforme solicitado.
+                        val volume = volumesMap.getOrPut(-1.0) { Volume(volume = -1.0) }
+
+                        // Extrai a descrição, removendo o ":" inicial e espaços.
+                        val description = row.selectFirst("span.opacity-80")
+                            ?.text()
+                            ?.replaceFirst(":", "")
+                            ?.trim() ?: ""
+
+                        // Cria e adiciona o objeto Capitulo.
+                        volume.capitulos.add(Capitulo(capitulo = chapterNumber, ingles = description, japones = ""))
+                    }
+                }
+            }
+        }
+
+        // Ordena os capítulos por número dentro de cada volume.
+        volumesMap.values.forEach { volume ->
+            volume.capitulos.sortBy { it.capitulo }
+        }
+
+        return volumesMap.values.toList()
     }
 
     private fun listeners() {
@@ -672,10 +891,8 @@ class PopupCapitulos : Initializable {
         listeners()
         tbViewTabela.items = mLista
 
-        hplMangaPlanet.setOnAction { openSite(hplMangaPlanet.text)  }
-        hplTaiyo.setOnAction { openSite(hplTaiyo.text)  }
-        hplComick.setOnAction { openSite(hplComick.text)  }
-        hplMangaFire.setOnAction { openSite(hplMangaFire.text)  }
+        for (button in arrayOf(hplMangaPlanet, hplTaiyo, hplComick, hplMangaFire, hplMangaForest, hplMangaRead, hplMangaDex, hplZBato))
+            button.setOnAction { openSite(button.text) }
     }
 
     companion object {

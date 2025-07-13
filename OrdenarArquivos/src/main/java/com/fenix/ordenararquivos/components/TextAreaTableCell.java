@@ -3,10 +3,7 @@ package com.fenix.ordenararquivos.components;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.scene.control.Cell;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TextArea;
+import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.util.Callback;
@@ -19,11 +16,15 @@ public class TextAreaTableCell<S, T> extends TableCell<S, T> {
     private static Callback<Pair<TextArea, KeyEvent>, Boolean> keyPressHandler;
 
     public static <S> Callback<TableColumn<S, String>, TableCell<S, String>> forTableColumn() {
-        return forTableColumn(new DefaultStringConverter());
+        return forTableColumn(new DefaultStringConverter(), null);
     }
 
-    public static <S, T> Callback<TableColumn<S, T>, TableCell<S, T>> forTableColumn(final StringConverter<T> converter) {
-        return list -> new TextAreaTableCell<>(converter);
+    public static <S> Callback<TableColumn<S, String>, TableCell<S, String>> forTableColumn(final Tooltip tooltip) {
+        return forTableColumn(new DefaultStringConverter(), tooltip);
+    }
+
+    public static <S, T> Callback<TableColumn<S, T>, TableCell<S, T>> forTableColumn(final StringConverter<T> converter, final Tooltip tooltip) {
+        return list -> new TextAreaTableCell<>(converter, tooltip);
     }
 
     private static <T> String getItemText(Cell<T> cell, StringConverter<T> converter) {
@@ -94,13 +95,23 @@ public class TextAreaTableCell<S, T> extends TableCell<S, T> {
 
     private TextArea textArea;
     private ObjectProperty<StringConverter<T>> converter = new SimpleObjectProperty<>(this, "converter");
+    private Tooltip tooltip;
 
     public TextAreaTableCell() {
-        this(null);
+        this(null, null);
+    }
+
+    public TextAreaTableCell(Tooltip tooltip) {
+        this(null, tooltip);
     }
 
     public TextAreaTableCell(StringConverter<T> converter) {
+        this(converter, null);
+    }
+
+    public TextAreaTableCell(StringConverter<T> converter, Tooltip tooltip) {
         this.getStyleClass().add("text-area-table-cell");
+        this.tooltip = tooltip;
         setConverter(converter);
     }
 
@@ -127,6 +138,8 @@ public class TextAreaTableCell<S, T> extends TableCell<S, T> {
         if (isEditing()) {
             if (textArea == null) {
                 textArea = createTextArea(this, getConverter());
+                if (tooltip != null)
+                    textArea.tooltipProperty().set(tooltip);
             }
 
             startEdit(this, getConverter());
