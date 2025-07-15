@@ -1,19 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import com.jfoenix.controls.*?>
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.layout.*?>
+<?import com.jfoenix.controls.JFXButton?>
+<?import com.jfoenix.controls.JFXComboBox?>
+<?import com.jfoenix.controls.JFXDatePicker?>
+<?import com.jfoenix.controls.JFXTextArea?>
+<?import com.jfoenix.controls.JFXTextField?>
 <?import java.lang.String?>
 <?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
 <AnchorPane prefHeight="150.0" prefWidth="500.0" styleClass="background-Black2" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.PopupAmazon">
    <children>
       <VBox alignment="CENTER" prefHeight="200.0" spacing="30.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
-            <VBox>
+            <HBox alignment="CENTER" VBox.vgrow="ALWAYS">
                <children>
                   <JFXComboBox fx:id="cbLinguagem" focusColor="#71afe5" labelFloat="true" prefWidth="200.0" promptText="Linguagem" styleClass="combo-box" unFocusColor="#106ebe" />
+                  <HBox alignment="CENTER_RIGHT" HBox.hgrow="ALWAYS">
+                     <children>
+                        <JFXButton fx:id="btnAplicar" onAction="#onBtnAplicar" prefWidth="100.0" styleClass="background-Yellow1" text="Aplicar" textFill="WHITE" />
+                     </children>
+                  </HBox>
                </children>
-            </VBox>
+            </HBox>
             <JFXTextField fx:id="txtSiteAmazon" focusColor="#71afe5" labelFloat="true" prefHeight="25.0" prefWidth="228.0" promptText="Endereço Amazon" styleClass="texto-stilo-1" unFocusColor="#106ebe" />
             <JFXTextField fx:id="txtSerie" focusColor="#71afe5" labelFloat="true" prefHeight="25.0" prefWidth="228.0" promptText="Série" styleClass="texto-stilo-1" unFocusColor="#106ebe" VBox.vgrow="ALWAYS" />
             <JFXTextField fx:id="txtTitulo" focusColor="#71afe5" labelFloat="true" prefHeight="25.0" prefWidth="228.0" promptText="Titulo" styleClass="texto-stilo-1" unFocusColor="#106ebe" />

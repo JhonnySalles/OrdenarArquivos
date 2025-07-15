@@ -405,7 +405,7 @@
 .jfx-date-picker .text-field{
     -jfx-unfocus-color: #106ebe;
     -fx-prompt-text-fill: white;
-    -fx-text-fill: #71afe5;
+    -fx-text-fill: white;
 }
 
 /*---------- Dialog ----------*/

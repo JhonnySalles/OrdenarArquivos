@@ -59,6 +59,9 @@ class PopupAmazon : Initializable {
     @FXML
     lateinit var cbLinguagem: JFXComboBox<Linguagem>
 
+    @FXML
+    lateinit var btnAplicar: JFXButton
+
     private val robot: Robot = Robot()
     private lateinit var consulta: ComicInfo
 
@@ -73,6 +76,20 @@ class PopupAmazon : Initializable {
         }
 
     fun setLinguagem(linguagem : Linguagem) = cbLinguagem.selectionModel.select(linguagem)
+
+    @FXML
+    private fun onBtnAplicar() {
+        if (txtEditoraSite.text.isNotEmpty())
+            txtEditora.text = txtEditoraSite.text
+
+        try {
+            dpPublicacao.style = "-jfx-unfocus-color: #106ebe; -fx-prompt-text-fill: white; -fx-text-fill: white;";
+            if (txtPublicacaoSite.text.isNotEmpty())
+                dpPublicacao.value = LocalDate.parse(obtemData(txtPublicacaoSite.text, cbLinguagem.selectionModel.selectedItem).trim())
+        } catch (e: Exception) {
+            dpPublicacao.style = "-jfx-unfocus-color: red; -fx-prompt-text-fill: white; -fx-text-fill: white;";
+        }
+    }
 
     private fun carregaCampos() {
         cbLinguagem.setOnKeyPressed { ke -> if (ke.code.equals(KeyCode.ENTER)) robot.keyPress(KeyCode.TAB) }
@@ -164,6 +181,8 @@ class PopupAmazon : Initializable {
                 Linguagem.ENGLISH
             else
                 cbLinguagem.value
+
+            cbLinguagem.selectionModel.select(linguagem)
 
             var titulo = ""
             var publicacao = ""
@@ -351,6 +370,11 @@ class PopupAmazon : Initializable {
         txtPublicacaoSite.focusedProperty().addListener { _, oldVal, _ ->
             if (oldVal && !txtPublicacaoSite.text.isNullOrEmpty())
                 dpPublicacao.value = LocalDate.parse(txtPublicacaoSite.text)
+        }
+
+        dpPublicacao.focusedProperty().addListener { _, oldVal, _ ->
+            if (oldVal)
+                dpPublicacao.style = "-jfx-unfocus-color: #106ebe; -fx-prompt-text-fill: white; -fx-text-fill: white;";
         }
 
         txtSiteAmazon.setOnKeyPressed { ke -> if (ke.code.equals(KeyCode.ENTER)) robot.keyPress(KeyCode.TAB) }
