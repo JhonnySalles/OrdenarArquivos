@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import com.jfoenix.controls.*?>
+<?import com.jfoenix.controls.JFXButton?>
+<?import com.jfoenix.controls.JFXComboBox?>
+<?import com.jfoenix.controls.JFXTextField?>
+<?import java.net.URL?>
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.*?>
-<?import java.net.URL?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
 <AnchorPane fx:id="apRoot" minHeight="0.0" minWidth="0.0" prefHeight="500.0" prefWidth="900.0" styleClass="background-Black3" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.AbaComicInfoController">
    <children>
       <VBox prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
@@ -30,8 +36,8 @@
                   </HBox>
                   <HBox alignment="CENTER_LEFT" spacing="10.0">
                      <children>
-                        <JFXButton fx:id="btnCarregar" minWidth="70.0" onAction="#onBtnCarregar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Blue3" text="Carregar" textFill="WHITE" />
-                        <JFXButton fx:id="btnCapitulos" minWidth="70.0" onAction="#onBtnCapitulos" prefHeight="30.0" prefWidth="150.0" styleClass="background-White1" text="Capítulos" />
+                        <JFXButton fx:id="btnCarregar" buttonType="RAISED" minWidth="70.0" onAction="#onBtnCarregar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Blue3" text="Carregar" textFill="WHITE" />
+                        <JFXButton fx:id="btnCapitulos" buttonType="RAISED" minWidth="70.0" onAction="#onBtnCapitulos" prefHeight="30.0" prefWidth="150.0" styleClass="background-White1" text="Capítulos" />
                      </children>
                   </HBox>
                </children>
@@ -41,10 +47,11 @@
             </HBox>
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                <children>
-                  <JFXButton fx:id="btnOcrProcessar" accessibleText="PROCESSA" minWidth="120.0" onAction="#onBtnOcrProcessar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Green2" text="OCR proximos 10" textFill="WHITE" />
-                  <JFXButton fx:id="btnTagsProcessar" minWidth="90.0" onAction="#onBtnTagsProcessar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Purple2" text="Gerar tags" textFill="WHITE" />
-                  <JFXButton fx:id="btnTagsNormaliza" minWidth="90.0" onAction="#onBtnTagsNormaliza" prefHeight="30.0" prefWidth="150.0" styleClass="background-Orange1" text="Normaliza tag" textFill="WHITE" />
-                  <JFXButton fx:id="btnTagsAplicar" minWidth="90.0" onAction="#onBtnTagsAplicar" prefHeight="30.0" prefWidth="150.0" styleClass="background-White1" text="Aplicar tags" />
+                  <JFXButton fx:id="btnOcrProcessar" accessibleText="PROCESSA" buttonType="RAISED" minWidth="120.0" onAction="#onBtnOcrProcessar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Blue4" text="OCR proximos 10" textFill="WHITE" />
+                  <JFXButton fx:id="btnTagsProcessar" buttonType="RAISED" minWidth="90.0" onAction="#onBtnTagsProcessar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Purple2" text="Gerar tags" textFill="WHITE" />
+                  <JFXButton fx:id="btnTagsNormaliza" buttonType="RAISED" minWidth="90.0" onAction="#onBtnTagsNormaliza" prefHeight="30.0" prefWidth="150.0" styleClass="background-Orange1" text="Normaliza tag" textFill="WHITE" />
+                  <JFXButton fx:id="btnTagsAplicar" buttonType="RAISED" minWidth="90.0" onAction="#onBtnTagsAplicar" prefHeight="30.0" prefWidth="150.0" styleClass="background-White1" text="Aplicar tags" />
+                  <JFXButton fx:id="btnSalvarTodos" buttonType="RAISED" minWidth="90.0" onAction="#onBtnSalvarTodos" prefHeight="30.0" prefWidth="150.0" styleClass="background-Green3" text="Salvar todos" textFill="WHITE" />
                </children>
                <VBox.margin>
                   <Insets bottom="10.0" left="10.0" right="10.0" top="5.0" />
