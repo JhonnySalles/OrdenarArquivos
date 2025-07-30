@@ -4,3 +4,4 @@
 --add-exports javafx.graphics/com.sun.javafx.stage=com.jfoenix
 --add-exports javafx.base/com.sun.javafx.event=com.jfoenix
 --add-opens java.base/java.lang.reflect=com.jfoenix
+--add-reads kotlin.stdlib=kotlinx.coroutines.core

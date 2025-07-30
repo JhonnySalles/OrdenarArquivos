@@ -25,6 +25,7 @@ class MangaServices {
 
     private val mSELECT_ENVIO = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE atualizacao >= ?"
     private val mLIST_MANGA = "SELECT nome FROM Manga GROUP BY nome ORDER BY nome"
+    private val mSUGESTAO = "SELECT nome FROM Manga WHERE lower(nome) LIKE ? GROUP BY nome ORDER BY nome"
 
     private var conn: Connection = instancia
 
@@ -334,6 +335,27 @@ class MangaServices {
             list
         } catch (e: SQLException) {
             mLOG.error("Erro ao listar os mangas.", e)
+            throw e
+        } finally {
+            closeStatement(st)
+            closeResultSet(rs)
+        }
+    }
+
+    @Throws(SQLException::class)
+    fun sugestao(manga: String): List<String> {
+        var st: PreparedStatement? = null
+        var rs: ResultSet? = null
+        return try {
+            st = conn.prepareStatement(mSUGESTAO)
+            st.setString(1, "%" + manga.lowercase() + "%")
+            rs = st.executeQuery()
+            val list = ArrayList<String>()
+            while (rs.next())
+                list.add(rs.getString("nome"))
+            list
+        } catch (e: SQLException) {
+            mLOG.error("Erro ao obter a lista de sugestão.", e)
             throw e
         } finally {
             closeStatement(st)

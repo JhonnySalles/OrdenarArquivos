@@ -51,6 +51,8 @@ import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
 import javafx.util.Callback
 import javafx.util.Duration
+import kotlinx.coroutines.*
+import kotlinx.coroutines.javafx.JavaFx
 import net.kurobako.gesturefx.GesturePane
 import org.slf4j.LoggerFactory
 import java.awt.image.BufferedImage
@@ -60,6 +62,7 @@ import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
+import java.sql.SQLException
 import java.text.DecimalFormat
 import java.time.LocalDateTime
 import java.util.*
@@ -334,6 +337,7 @@ class AbaArquivoController : Initializable {
         }
 
     private val mSugestao: JFXAutoCompletePopup<String> = JFXAutoCompletePopup<String>()
+    private var mAutoComplete: JFXAutoCompletePopup<String> = JFXAutoCompletePopup<String>()
 
     private var mListaCaminhos: MutableList<Caminhos> = arrayListOf()
     private var mObsListaCaminhos: ObservableList<Caminhos> = FXCollections.observableArrayList(mListaCaminhos)
@@ -2234,6 +2238,8 @@ class AbaArquivoController : Initializable {
         return numero.toInt().toString()
     }
 
+    private val mCoroutine = CoroutineScope(Dispatchers.JavaFx + SupervisorJob())
+    private var mCarregaSugestao: Job? = null
     private var mPastaAnterior = ""
     private var mNomePastaAnterior = ""
     private fun configuraTextEdit() {
@@ -2297,7 +2303,51 @@ class AbaArquivoController : Initializable {
             if (newPropertyValue)
                 mNomePastaAnterior = txtNomePastaManga.text
         }
-        txtNomePastaManga.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
+
+        txtNomePastaManga.onKeyPressed = EventHandler { e: KeyEvent ->
+            if (e.code == KeyCode.ENTER)
+                Utils.clickTab()
+            else {
+                mCarregaSugestao?.cancel()
+                mCarregaSugestao = mCoroutine.launch {
+                    mAutoComplete.suggestions.clear()
+                    if (mAutoComplete.isShowing)
+                        mAutoComplete.hide()
+
+                    delay(1000)
+
+                    if (txtNomePastaManga.text == null || txtNomePastaManga.text.isEmpty())
+                        return@launch
+
+                    try {
+                        var nome = txtNomePastaManga.text
+                        if (nome.contains("]"))
+                            nome = nome.substring(nome.indexOf("]")).replace("]", "").trim { it <= ' ' }
+
+                        if (nome.substring(nome.length - 1).equals("-", ignoreCase = true))
+                            nome = nome.substring(0, nome.length - 1).trim { it <= ' ' }
+
+                        if (nome.isNotEmpty()) {
+                            mAutoComplete.suggestions.addAll(mServiceManga.sugestao(nome))
+                            if (mAutoComplete.suggestions.isNotEmpty())
+                                mAutoComplete.show(txtNomePastaManga)
+                        }
+                    } catch (e: SQLException) {
+                        mLOG.error(e.message, e)
+                        println("Erro ao consultar as sugestões de mangas.")
+                    }
+                }
+            }
+        }
+
+        mAutoComplete.setSelectionHandler { event ->
+            var nome = event.getObject() + " -"
+
+            if (txtNomePastaManga.text != null && txtNomePastaManga.text.contains("]"))
+                nome = txtNomePastaManga.text.substringBefore("]") + "] " + nome
+
+            txtNomePastaManga.text = nome
+        }
 
         txtNomePastaManga.addEventFilter(KeyEvent.KEY_PRESSED) { event ->
             if ((event.isControlDown || event.isMetaDown) && event.code == KeyCode.V || event.isShiftDown && event.code == KeyCode.INSERT) {
