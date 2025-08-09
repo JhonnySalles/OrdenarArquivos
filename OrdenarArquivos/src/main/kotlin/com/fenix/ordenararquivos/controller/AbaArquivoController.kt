@@ -1356,19 +1356,19 @@ class AbaArquivoController : Initializable {
                 try {
                     salvaManga()
 
+                    if (lsVwImagens.selectionModel.selectedItem != null)
+                        mSelecionado = lsVwImagens.selectionModel.selectedItem
+
                     val nome = txtNomePastaManga.text.trim { it <= ' ' } + " " + txtVolume.text.trim { it <= ' ' }
                     val processar = Historico(
                         nome, txtPastaOrigem.text, txtPastaDestino.text,
                         txtNomePastaManga.text, txtVolume.text, txtNomeArquivo.text, txtNomePastaCapitulo.text, txtGerarInicio.text,
-                        txtGerarFim.text, txtAreaImportar.text, lsVwImagens.selectionModel.selectedItem, mManga?.apply { Manga.copy(this) },
+                        txtGerarFim.text, txtAreaImportar.text, mSelecionado ?: "", mManga?.apply { Manga.copy(this) },
                         mComicInfo, mListaCaminhos.toList(), mObsListaItens.toList(), mObsListaImagesSelected.toList(), mObsListaMal.toList()
                     )
 
                     lsVwHistorico.items.removeIf { it.nome == nome }
                     lsVwHistorico.items.add(processar)
-
-                    if (lsVwImagens.selectionModel.selectedItem != null)
-                        mSelecionado = lsVwImagens.selectionModel.selectedItem
 
                     mCANCELAR = false
                     var i = 0L
@@ -2214,7 +2214,10 @@ class AbaArquivoController : Initializable {
                     tbViewTabela.refresh()
                     tbViewMal.refresh()
 
-                    lsVwImagens.selectionModel.select(lsVwImagens.items.indexOf(item.selecionado))
+                    if (item.selecionado.isNotEmpty())
+                        lsVwImagens.selectionModel.select(lsVwImagens.items.indexOf(item.selecionado))
+                    else
+                        lsVwImagens.selectionModel.selectFirst()
                 }
             }
         }
