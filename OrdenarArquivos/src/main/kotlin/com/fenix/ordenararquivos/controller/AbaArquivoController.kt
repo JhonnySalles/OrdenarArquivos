@@ -2218,6 +2218,8 @@ class AbaArquivoController : Initializable {
                         lsVwImagens.selectionModel.select(lsVwImagens.items.indexOf(item.selecionado))
                     else
                         lsVwImagens.selectionModel.selectFirst()
+
+                    acdArquivos.expandedPane = ttpArquivos
                 }
             }
         }
