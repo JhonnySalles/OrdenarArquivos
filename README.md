@@ -25,8 +25,7 @@ Projetado para listar os arquivos de uma pasta informada e mover esses arquivos 
 
 ## Ambiente de Desenvolvimento
 
-Necessário realizar préviamente a instalação do [java na versão 15](https://www.java.com/pt-BR/).
-Necessário a utilização do banco de dados [MySQL](https://www.mysql.com/). 
+Necessário realizar préviamente a instalação do [java na versão 20](https://www.java.com/pt-BR/).
 Pode-se utilizar qualquer IDE de desenvolvimento de sua escolha, recomenda-se a versão 2020-12 do [eclipse](https://www.eclipse.org/downloads/).
 Utilizado no projeto o mavem para controle e gerenciamento das dependências.
 
@@ -34,13 +33,47 @@ Utilizado no projeto o mavem para controle e gerenciamento das dependências.
 
 * 0.0.1
     * Desenvolvido e compilado a primeira versão
+* 0.0.3
+    * Nova funcionalidade de ordenação
+* 1.0.0
+    * Migração do projeto para Intellij
+    * Primeira versão estável
+* 1.0.1
+    * Migração do projeto para kotlin
+* 1.0.2
+    * Integração com o firebase par compartilhamento do banco de dados de arquivos processados
+    * Adicionado método de incremento de capítulos
+    * Adicionado de proximos capítulos conforme média do volume anterior
+* 1.0.3
+    * Miniaturas das capas como preview
+    * Método de copia de dados de epub opf
+* 1.0.4
+    * Integração de consulta com o MyAnimeList
+    * Implementação de leitura via OCR para o sumário com tesseract e opencv
+    * Adição de sugestão para os capitulos de dados do OCR
+    * Refatorado código e pom
+* 1.0.5
+    * Implementação de geração do layout xml ComicInfo
+    * Implementação de rotina de teste
+    * Implementação de aba para processamento do ComicInfo
+* 1.0.6
+    * Implementação de geração do layout xml CoMet
+    * Implmentação de sugestões do sumário via Gemini
+    * Implementação de aba para renomear pastas de capítulos e volume
 
 ### Features
 
-- [X] Listar os arquivos da pasta de origem
-- [X] Mostra a estrutura do caminho de destino
-- [X] Importação de uma lista contendo o número da página e o número do capítulo
-- [X] Movimentação dos arquivos no sistema para as pastas criadas
+- [X] Compartilhamento do banco de dados via Firebase
+- [X] Apresentação de prévia das capas
+- [X] Geração de capítulos de forma inteligênte
+- [X] Integração com o MyAnimeList
+- [X] Gerar xml com dados no formato ComicInfo
+- [X] Gerar xml com dados no formato CoMet
+- [X] Implementação de rotinas de teste
+- [X] Impementação de OCR no sumário
+- [X] Sugestão de capítulos a partir da seleção do sumário
+- [X] Integração com o Gemini para sugestão dos capítulos
+- [X] Ajustes em pastas de capítulos conforme dados de volume interno no banco de dados
 
 ## Meta
 
