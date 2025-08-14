@@ -2,7 +2,7 @@
 > Programa para realizar a ordenação de arquivos no sistema, movendo-os em uma sequencia de pastas previamente informada.
 
 <h4 align="center"> 
-	🛰  Versão 0.0.1
+	🛰  Versão 1.0.6
 </h4>
 
 [![Build Status][travis-image]][travis-url]
