@@ -1364,11 +1364,11 @@ class AbaArquivoController : Initializable {
                         nome, txtPastaOrigem.text, txtPastaDestino.text,
                         txtNomePastaManga.text, txtVolume.text, txtNomeArquivo.text, txtNomePastaCapitulo.text, txtGerarInicio.text,
                         txtGerarFim.text, txtAreaImportar.text, mSelecionado ?: "", mManga?.apply { Manga.copy(this) },
-                        mComicInfo, mListaCaminhos.toList(), mObsListaItens.toList(), mObsListaImagesSelected.toList(), mObsListaMal.toList()
+                        mComicInfo, mListaCaminhos.map { it.copy() }, mObsListaItens.toList(), mObsListaImagesSelected.map { it.copy() }, mObsListaMal.toList()
                     )
 
                     lsVwHistorico.items.removeIf { it.nome == nome }
-                    lsVwHistorico.items.add(processar)
+                    lsVwHistorico.items.add(0, processar)
 
                     mCANCELAR = false
                     var i = 0L
@@ -2199,13 +2199,14 @@ class AbaArquivoController : Initializable {
                     mManga = item.manga?.apply { Manga.copy(this) }
                     mComicInfo = ComicInfo(item.comicInfo)
 
-                    mListaCaminhos = ArrayList(item.caminhos)
+                    mListaCaminhos = ArrayList(item.caminhos.map { it.copy() })
                     mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
                     tbViewTabela.items = mObsListaCaminhos
 
+                    limparCapas()
                     mObsListaItens = FXCollections.observableArrayList(item.itens)
                     lsVwImagens.items = mObsListaItens
-                    mObsListaImagesSelected = FXCollections.observableArrayList(item.capas)
+                    mObsListaImagesSelected.addAll(item.capas.map { it.copy() })
 
                     mObsListaMal = FXCollections.observableArrayList(item.mal)
                     tbViewMal.items = mObsListaMal
