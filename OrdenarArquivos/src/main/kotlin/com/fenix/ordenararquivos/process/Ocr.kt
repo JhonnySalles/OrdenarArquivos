@@ -547,7 +547,7 @@ object Ocr {
     }
 
     private const val URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
-    private const val TEXTO_PADRAO = "Esta é uma imagem de um sumário, extraia o texto nela e formate a saída separando os capitulos por linha, no formato 'Número do capítulo %s Número da Página %s Descrição do capítulo'. Por exemplo: '000%s5%sIntrodução', '001%s12%sO Início', '000%s150%sApêndice A'. Não inclua cabeçalhos ou texto extra, apenas a lista formatada."
+    private const val TEXTO_PADRAO = "Esta é uma imagem de um sumário, extraia o texto nela e formate a saída separando os capitulos por linha, no formato 'Número do capítulo %s Número da Página %s Descrição do capítulo'. Por exemplo: '000%s5%sIntrodução', '001%s12%sO Início', '000%s150%sApêndice A'. Não inclua cabeçalhos ou texto extra, apenas a lista formatada. Se não houver número da página ou não puder identificar os números, use XXX."
 
     private fun processGemini(imagem : File, texto : String = "") : String {
         mLOG.info("Preparando consulta ao Gemini.")
