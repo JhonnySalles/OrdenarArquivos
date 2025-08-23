@@ -273,7 +273,7 @@
                                                       <String fx:value="texto-stilo-2" />
                                                    </styleClass>
                                                    <tooltip>
-                                                      <Tooltip text="Ctrl + M: Foco na área de importar.&#10;Ctrl + S: Sugestão.&#10;Ctrl + E: Alterna extra.&#10;Ctrl + D: Duplicar linha.&#10;Ctrl + T: Apagar tags.&#10;Ctrl + 1-9: Sub capitulo. (.5)&#10;Ctrl + Shift/Alt + Up/Down: Subir/Descer a linha selecionada.&#10;Alt + Shift + Up/Down: Subir/Descer apenas a tag." wrapText="true" />
+                                                      <Tooltip text="Ctrl + M: Foco na área de importar.&#10;Ctrl + S: Sugestão.&#10;Ctrl + E: Alterna extra.&#10;Ctrl + D: Duplicar linha.&#10;Ctrl + T: Apagar tags.&#10;Ctrl + 1-9: Sub capitulo. (.5)&#10;Ctrl + Shift/Alt + Up/Down: Subir/Descer a linha selecionada.&#10;Alt + Shift + Up/Down: Subir/Descer apenas a tag.&#10;Ctrl + Shift/Alt + Left/Right: Inverter página e capítulo.&#10;Ctrl + Shift + Alt + Left/Right: Inverter todas as páginas e capítulo." wrapText="true" />
                                                    </tooltip>
                                                 </JFXTextArea>
                                              </children>

@@ -1633,9 +1633,18 @@ class AbaArquivoController : Initializable {
         return false
     }
 
+    private fun isProximoAoBranco(rgb: Int, tolerance: Int): Boolean {
+        val r = (rgb shr 16) and 0xFF
+        val g = (rgb shr 8) and 0xFF
+        val b = rgb and 0xFF
+        val threshold = 255 - tolerance
+        return r >= threshold && g >= threshold && b >= threshold
+    }
+
     private fun limpaMargemImagens(arquivo: File?, clearTopBottom: Boolean): File? {
         if (arquivo == null || !cbAjustarMargemCapa.isSelected)
             return arquivo
+
         val image: BufferedImage
         try {
             image = ImageIO.read(arquivo)
@@ -1648,7 +1657,7 @@ class AbaArquivoController : Initializable {
             var endX = width - 1
             loop@ for (x in 0 until width) {
                 for (y in 0 until height) {
-                    if (image.getRGB(x, y) != branco) {
+                    if (!isProximoAoBranco(image.getRGB(x, y), COR_TOLERANCIA)) {
                         startX = x
                         break@loop
                     }
@@ -1657,7 +1666,7 @@ class AbaArquivoController : Initializable {
 
             loop@ for (x in endX downTo 0) {
                 for (y in 0 until height) {
-                    if (image.getRGB(x, y) != branco) {
+                    if (!isProximoAoBranco(image.getRGB(x, y), COR_TOLERANCIA)) {
                         endX = x
                         break@loop
                     }
@@ -1671,7 +1680,7 @@ class AbaArquivoController : Initializable {
             if (clearTopBottom) {
                 loop@ for (y in 0 until height) {
                     for (x in 0 until width) {
-                        if (image.getRGB(x, y) != branco) {
+                        if (!isProximoAoBranco(image.getRGB(x, y), COR_TOLERANCIA)) {
                             startY = y
                             break@loop
                         }
@@ -1680,7 +1689,7 @@ class AbaArquivoController : Initializable {
 
                 loop@ for (y in endY downTo 0) {
                     for (x in 0 until width) {
-                        if (image.getRGB(x, y) != branco) {
+                        if (!isProximoAoBranco(image.getRGB(x, y), COR_TOLERANCIA)) {
                             endY = y
                             break@loop
                         }
@@ -1688,6 +1697,22 @@ class AbaArquivoController : Initializable {
                 }
 
                 mLOG.info("Corte Y: $startY - $endY")
+            }
+
+            val newWidth = endX - startX + 1
+            val newHeight = endY - startY + 1
+
+            if (newWidth <= 1 || newHeight <= 1) {
+                mLOG.info("Corte inválido resultou em dimensão mínima. Abortando.")
+                return arquivo
+            }
+
+            val originalArea = width.toDouble() * height.toDouble()
+            val newArea = newWidth.toDouble() * newHeight.toDouble()
+
+            if (newArea / originalArea < MARGEM_MINIMO_RECORTE) {
+                mLOG.info("O corte resultaria em uma imagem muito pequena. Abortando.")
+                return arquivo
             }
 
             val frente = BufferedImage(endX - startX, endY - startY, BufferedImage.TYPE_INT_ARGB)
@@ -2650,6 +2675,61 @@ class AbaArquivoController : Initializable {
                         txtAreaImportar.positionCaret(txtAreaImportar.text.indexOf(line))
                         txtAreaImportar.scrollTop = scroll
                     }
+                    KeyCode.RIGHT,
+                    KeyCode.LEFT -> {
+                        if (txtAreaImportar.text.isEmpty())
+                            return@EventHandler
+
+                        val txt = txtAreaImportar.text
+                        val scroll = txtAreaImportar.scrollTopProperty().value
+
+                        val pipe = Utils.SEPARADOR_PAGINA
+                        val separador = Utils.SEPARADOR_CAPITULO
+                        val fim = Utils.getNumber(txtGerarFim.text)?.toInt() ?: 0
+                        val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
+
+                        var moveCapitulo: (String) -> String = { linha ->
+                            var tag = ""
+                            val texto = if (linha.contains(separador)) {
+                                tag = separador + linha.substringAfter(separador)
+                                linha.substringBefore(separador)
+                            } else
+                                linha
+
+                            val itens = texto.split(pipe)
+                            if (itens.size == 2) {
+                                if (itens[1].trim().isNotEmpty() && Utils.ONLY_NUMBER_REGEX.containsMatchIn(itens[1]))
+                                    String.format(padding, itens[1].toInt()) + pipe + itens[0] + tag
+                                else
+                                    itens[1] + pipe + itens[0] + tag
+                            } else linha
+                        }
+
+                        val position: Int
+                        val newText: String
+
+                        if (e.isShiftDown && e.isAltDown) {
+                            val texto = mutableListOf<String>()
+                            for (linha in txt.split("\n"))
+                                texto.add(moveCapitulo(linha))
+                            newText = texto.joinToString("\n")
+                            position = newText.length
+                        } else {
+                            var before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
+                            val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+                            val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
+                            before = before.substringBeforeLast(line)
+
+                            val newLine = moveCapitulo(line)
+                            newText = before + newLine + last
+                            position = before.length + if (newLine.contains(separador)) newLine.lastIndexOf(separador) else newLine.length
+                        }
+
+                        txtAreaImportar.replaceText(0, txtAreaImportar.length, newText)
+                        lastCaretPos = position
+                        txtAreaImportar.positionCaret(lastCaretPos)
+                        txtAreaImportar.scrollTop = scroll
+                    }
                     else -> {}
                 }
             } else if (e.isShiftDown && e.isAltDown) {
@@ -2996,6 +3076,20 @@ class AbaArquivoController : Initializable {
     }
 
     companion object {
+        /**
+         * Define a tolerância para o que é considerado "branco".
+         * Um valor de 15 significa que qualquer cor onde R, G e B são todos >= 240 (255-15) será tratada como branco.
+         * Aumente este valor se as margens ainda não estiverem sendo detectadas corretamente.
+         */
+        private const val COR_TOLERANCIA = 15
+
+        /**
+         * Define a proporção mínima da área da imagem que deve restar após o corte.
+         * Um valor de 0.25 significa que se o corte remover mais de 75% da imagem original,
+         * a operação será cancelada para evitar cortes incorretos em imagens com muito branco.
+         */
+        private const val MARGEM_MINIMO_RECORTE = 0.25
+
         private var LAST_PROCESS_FOLDERS: MutableList<File> = ArrayList()
         val fxmlLocate: URL get() = TelaInicialController::class.java.getResource("/view/AbaArquivo.fxml")
         var isAbaSelecionada = false
