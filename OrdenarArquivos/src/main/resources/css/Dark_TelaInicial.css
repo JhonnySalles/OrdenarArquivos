@@ -402,7 +402,7 @@
 }
 
 /*---------- DatePicker ----------*/
-.jfx-date-picker .text-field{
+.jfx-date-picker .text-field {
     -jfx-unfocus-color: #106ebe;
     -fx-prompt-text-fill: white;
     -fx-text-fill: white;

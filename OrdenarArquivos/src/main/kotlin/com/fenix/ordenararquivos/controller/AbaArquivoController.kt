@@ -764,6 +764,7 @@ class AbaArquivoController : Initializable {
             else -> Selecionado.VAZIO
         }
         Selecionado.setTabColor(tbTabComicInfo, selecionado)
+        tbTabComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + mComicInfo.comic + ")" else "")
     }
 
     private fun ocrSumario(sumario : File) {
@@ -837,6 +838,7 @@ class AbaArquivoController : Initializable {
                                 else -> Selecionado.VAZIO
                             }
                             Selecionado.setTabColor(tbTabComicInfo, selecionado)
+                            tbTabComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + lista[0].nome + ")" else "")
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
