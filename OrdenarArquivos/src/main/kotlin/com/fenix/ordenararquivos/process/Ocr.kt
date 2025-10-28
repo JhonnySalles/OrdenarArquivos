@@ -31,6 +31,8 @@ object Ocr {
 
     private val mLOG = LoggerFactory.getLogger(Ocr::class.java)
     private const val mGerarImagens = true
+    private var mGeminiKey : String
+    private var mIsFirstKey : Boolean = true
     var mLibs = false
         private set
 
@@ -50,7 +52,9 @@ object Ocr {
             false
         }
 
-        mGemini = Configuracao.geminiKey.isNotEmpty()
+        mGemini = Configuracao.geminiKey1.isNotEmpty() || Configuracao.geminiKey2.isNotEmpty()
+        mGeminiKey = Configuracao.geminiKey1
+        mIsFirstKey = true
     }
 
     /**
@@ -558,13 +562,19 @@ object Ocr {
         val body = RequestBody.create(mediaType, "{\"contents\":[{\"parts\":[{\"text\":\"$texto\"},{\"inline_data\":{\"mime_type\":\"$mime\",\"data\":\"$base64\"}}]}]}")
 
         val request = Request.Builder()
-            .url(URL_GEMINI + Configuracao.geminiKey)
+            .url(URL_GEMINI + mGeminiKey)
             .method("POST", body)
             .addHeader("Content-Type", "application/json")
             .build()
         mLOG.info("Consultando Gemini.")
         val response = client.newCall(request).execute()
         mLOG.info("Resposta Gemini: ${response.code()} - ${response.message()}")
+
+        if (response.code() == 429 && mIsFirstKey) {
+            mGeminiKey = Configuracao.geminiKey2
+            mIsFirstKey = false
+            return processGemini(imagem, texto)
+        }
 
         if (response.code() > 299 || response.body() == null)
             return ""
