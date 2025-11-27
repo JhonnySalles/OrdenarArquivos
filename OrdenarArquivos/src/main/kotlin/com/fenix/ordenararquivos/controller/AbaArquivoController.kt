@@ -1777,6 +1777,7 @@ class AbaArquivoController : Initializable {
     private fun onBtnProcessa() {
         if (validaCampos()) {
             if (btnProcessar.accessibleTextProperty().value.equals("PROCESSA", ignoreCase = true)) {
+                mListaCaminhos = ArrayList(tbViewTabela.items)
                 btnProcessar.accessibleTextProperty().set("CANCELA")
                 btnProcessar.text = "Cancelar"
                 controllerPai.setCursor(Cursor.WAIT)
