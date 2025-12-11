@@ -99,6 +99,7 @@ object Configuracao {
     }
 
     val myAnimeListClient: String get() = secrets.getProperty("my_anime_list_client_id", "")
+    val geminiModel: String get() = secrets.getProperty("gemini_model", "gemini-2.0-flash")
     val geminiKey1: String get() = secrets.getProperty("gemini_api_key_1", "")
     val geminiKey2: String get() = secrets.getProperty("gemini_api_key_2", "")
 }

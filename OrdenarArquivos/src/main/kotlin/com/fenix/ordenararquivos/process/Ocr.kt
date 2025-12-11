@@ -23,6 +23,7 @@ import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
+import java.util.concurrent.TimeUnit
 import javax.imageio.ImageIO
 
 
@@ -30,6 +31,12 @@ object Ocr {
     private val OCR_CHAPTER_REGEX = Regex("第?([\\d]+)話?[\\D]*([\\d]+)")
 
     private val mLOG = LoggerFactory.getLogger(Ocr::class.java)
+    private val mClient = OkHttpClient().apply {
+        setConnectTimeout(60, TimeUnit.SECONDS)
+        setReadTimeout(60, TimeUnit.SECONDS)
+        setWriteTimeout(60, TimeUnit.SECONDS)
+    }
+
     private const val mGerarImagens = true
     private var mGeminiKey : String
     private var mIsFirstKey : Boolean = true
@@ -38,7 +45,6 @@ object Ocr {
 
     var mGemini = false
         private set
-
 
     init {
         mLibs = try {
@@ -550,34 +556,38 @@ object Ocr {
         return mimeType ?: "image/jpg"
     }
 
-    private const val URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
+    private const val URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/"
     private const val TEXTO_PADRAO = "Esta é uma imagem de um sumário, extraia o texto nela e formate a saída separando os capitulos por linha, no formato 'Número do capítulo %s Número da Página %s Descrição do capítulo'. Por exemplo: '000%s5%sIntrodução', '001%s12%sO Início', '000%s150%sApêndice A'. Não inclua cabeçalhos ou texto extra, apenas a lista formatada. Se não houver número da página ou não puder identificar os números, use XXX."
 
     private fun processGemini(imagem : File, texto : String = "") : String {
         mLOG.info("Preparando consulta ao Gemini.")
-        val client = OkHttpClient()
         val mediaType = MediaType.parse("application/json")
         val base64 = converteToBase64(imagem)
         val mime = mimeType(imagem)
         val body = RequestBody.create(mediaType, "{\"contents\":[{\"parts\":[{\"text\":\"$texto\"},{\"inline_data\":{\"mime_type\":\"$mime\",\"data\":\"$base64\"}}]}]}")
 
+        val url = "$URL_GEMINI${Configuracao.geminiModel}:generateContent?key=$mGeminiKey"
+
         val request = Request.Builder()
-            .url(URL_GEMINI + mGeminiKey)
-            .method("POST", body)
+            .url(url)
+            .post(body)
             .addHeader("Content-Type", "application/json")
             .build()
         mLOG.info("Consultando Gemini.")
-        val response = client.newCall(request).execute()
+        val response = mClient.newCall(request).execute()
         mLOG.info("Resposta Gemini: ${response.code()} - ${response.message()}")
 
-        if (response.code() == 429 && mIsFirstKey) {
+        if (response.code() == 429 && mIsFirstKey && Configuracao.geminiKey2.isNotEmpty()) {
+            response.body().close()
             mGeminiKey = Configuracao.geminiKey2
             mIsFirstKey = false
             return processGemini(imagem, texto)
         }
 
-        if (response.code() > 299 || response.body() == null)
-            return ""
+        if (response.code() > 299 || response.body() == null) {
+            response.body().close()
+            throw Exception("Erro ao consultar o Gemini: ${response.code()} - ${response.message()}")
+        }
 
         return try {
             val body = response.body()!!.string()
@@ -593,7 +603,7 @@ object Ocr {
                 texto
         } catch (e: JSONException) {
             mLOG.error(e.message, e)
-            ""
+            throw e
         }
     }
 

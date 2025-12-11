@@ -785,6 +785,9 @@ class AbaArquivoController : Initializable {
                         }
                 } catch (e: Exception) {
                     mLOG.info("Erro ao realizar o OCR do arquivo de sumário.", e)
+                    Platform.runLater {
+                        Notificacoes.notificacao(Notificacao.ERRO, "OCR", "Erro ao realizar o OCR do arquivo de sumário. " + e.message)
+                    }
                 } finally {
                     Ocr.clear()
                 }
