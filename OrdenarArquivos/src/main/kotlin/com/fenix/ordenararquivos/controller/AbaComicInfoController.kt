@@ -297,7 +297,7 @@ class AbaComicInfoController : Initializable {
                             continue
                         }
 
-                        val capitulos = Ocr.processaGemini(sumario, separador).split("\n")
+                        val capitulos = Ocr.process(sumario, Utils.SEPARADOR_PAGINA, separador).split("\n")
                         val newTag = mutableSetOf<String>()
                         val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
 
@@ -633,7 +633,7 @@ class AbaComicInfoController : Initializable {
 
     private fun processarOcrItem(item: Processar) {
         val sumario = extraiSumario(item.file!!) ?: return
-        val capitulos = Ocr.processaGemini(sumario, Utils.SEPARADOR_CAPITULO).split("\n")
+        val capitulos = Ocr.process(sumario, Utils.SEPARADOR_PAGINA, Utils.SEPARADOR_CAPITULO).split("\n")
         val newTag = mutableSetOf<String>()
         val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
 

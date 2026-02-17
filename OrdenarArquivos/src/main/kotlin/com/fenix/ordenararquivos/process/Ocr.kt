@@ -166,7 +166,7 @@ object Ocr {
 
     fun process(image : File, separadorPagina : String, separadorCapitulo: String) : String {
         return if (mGemini)
-            processGemini(image, String.format(TEXTO_PADRAO, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo, separadorPagina, separadorCapitulo,))
+            processGemini(image, geraPromptGemini(separadorPagina, separadorCapitulo))
         else
             ocrToCapitulo(processTesseract(image), separadorPagina, separadorCapitulo)
     }
@@ -557,7 +557,6 @@ object Ocr {
     }
 
     private const val URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/"
-    private const val TEXTO_PADRAO = "Esta é uma imagem de um sumário, extraia o texto nela e formate a saída separando os capitulos por linha, no formato 'Número do capítulo %s Número da Página %s Descrição do capítulo'. Por exemplo: '000%s5%sIntrodução', '001%s12%sO Início', '000%s150%sApêndice A'. Não inclua cabeçalhos ou texto extra, apenas a lista formatada. Não inclua aspas simples no inicio ou final da frase. Se não houver número da página ou não puder identificar os números, use XXX."
 
     private fun processGemini(imagem : File, texto : String = "") : String {
         mLOG.info("Preparando consulta ao Gemini.")
@@ -601,7 +600,7 @@ object Ocr {
             if (texto.contains("\n") && texto.contains("-")) {
                 var sugestao = ""
                 for (linha in texto.split("\n"))
-                    sugestao += linha.substringBefore("-").replace("第", "").replace("話", "").trim().padStart(3, '0') + "-" + linha.substringAfter("-") + "\n"
+                    sugestao += linha.substringBefore("-").replace("第", "").replace("話", "").trim().padStart(3, '0') + "-" + linha.substringAfter("-").trim() + "\n"
                 sugestao.substringBeforeLast("\n")
             } else
                 texto
@@ -611,9 +610,35 @@ object Ocr {
         }
     }
 
-    fun processaGemini(imagem: File, separadorCapitulo: String = "|"): String {
-        val texto = "Esta é uma imagem de um sumário, extraia o texto nela e formate a saída separando os capitulos por linha, no formato 'Número do capítulo %s Descrição do capítulo'. Por exemplo: '000%sIntrodução', '001%sO Início', '000%sApêndice A'. Não inclua cabeçalhos ou texto extra, apenas a lista formatada."
-        return processGemini(imagem, String.format(texto, separadorCapitulo, separadorCapitulo, separadorCapitulo, separadorCapitulo))
-    }
+    private val TEXTO_PADRAO = """Esta é uma imagem de um sumário. Realize duas tarefas: extração e ordenação.
+                1. Extraia os capítulos e páginas.
+                2. Gere a saída ESTRITAMENTE ordenada da seguinte forma:
+                   - Primeiro: Itens que começam com números, em ordem crescente (ex: 001, 002, 10).
+                   - Depois: Itens que começam com letras ou texto, em ordem alfabética (ex: A, B, Apêndice, Glossário).
+                   
+                Use o formato: 'Número do capítulo %s Número da Página %s Descrição do capítulo'.
+                Se não houver número da página, use XXX.
+                
+                Exemplos de saída ordenada:
+                '001%s05%sIntrodução'
+                '002%s12%sDesenvolvimento'
+                '010%s50%sConclusão'
+                'A%s90%sApêndice A'
+                
+                Não inclua cabeçalhos, Markdown ou explicações, apenas a lista formatada e ordenada.""".trimIndent()
+
+    private fun geraPromptGemini(separadorPagina: String, separadorCapitulo: String) : String = String.format(
+        TEXTO_PADRAO,
+        separadorPagina,
+        separadorCapitulo,
+        separadorPagina,
+        separadorCapitulo,
+        separadorPagina,
+        separadorCapitulo,
+        separadorPagina,
+        separadorCapitulo,
+        separadorPagina,
+        separadorCapitulo
+    )
 
 }

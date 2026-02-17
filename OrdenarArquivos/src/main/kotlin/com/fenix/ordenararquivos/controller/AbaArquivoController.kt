@@ -2545,6 +2545,22 @@ class AbaArquivoController : Initializable {
                         txtAreaImportar.positionCaret(txtAreaImportar.text.indexOf(line) + line.length)
                         txtAreaImportar.scrollTop = scroll
                     }
+                    KeyCode.O -> {
+                        if (txtAreaImportar.text.isEmpty())
+                            return@EventHandler
+
+                        val scroll = txtAreaImportar.scrollTop
+                        val caretPos = txtAreaImportar.caretPosition
+
+                        val txt = txtAreaImportar.text.split("\n")
+                            .filter { it.isNotBlank() }
+                            .sorted()
+                            .joinToString("\n")
+
+                        txtAreaImportar.replaceText(0, txtAreaImportar.length, txt)
+                        txtAreaImportar.positionCaret(caretPos.coerceAtMost(txtAreaImportar.length))
+                        txtAreaImportar.scrollTop = scroll
+                    }
                     KeyCode.D,
                     KeyCode.E,
                     in (KeyCode.NUMPAD0 .. KeyCode.NUMPAD9),
