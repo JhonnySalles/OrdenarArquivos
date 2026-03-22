@@ -10,7 +10,6 @@ import net.sourceforge.tess4j.ITesseract
 import net.sourceforge.tess4j.Tesseract
 import net.sourceforge.tess4j.TesseractException
 import net.sourceforge.tess4j.util.LoadLibs
-import org.apache.commons.lang3.SystemUtils
 import org.json.JSONException
 import org.json.JSONObject
 import org.opencv.core.*
@@ -68,8 +67,9 @@ object Ocr {
      */
     private fun loadLibraries() {
         val path = File(Paths.get("").toAbsolutePath().toString() + "/natives/").path
-        if (SystemUtils.IS_OS_WINDOWS) {
-            val bit = System.getProperty("sun.arch.data.model").toInt()
+        val osName = System.getProperty("os.name").lowercase()
+        val bit = System.getProperty("sun.arch.data.model")?.toIntOrNull() ?: 32
+        if (osName.contains("win")) {
             when (bit) {
                 32 -> {
                     System.load(Paths.get(path, "opencv_320_32.dll").toString())
@@ -95,10 +95,9 @@ object Ocr {
                     mLOG.info("Loaded OpenH264 for Windows 32 bit")
                 }
             }
-        } else if (SystemUtils.IS_OS_MAC) {
+        } else if (osName.contains("mac")) {
             mLOG.info("This version os the application cannot run on MAC OS yet.")
-        } else if (SystemUtils.IS_OS_LINUX) {
-            val bit = System.getProperty("sun.arch.data.model").toInt()
+        } else if (osName.contains("nix") || osName.contains("nux") || osName.contains("aix")) {
             when (bit) {
                 32 -> {
                     //todo add support

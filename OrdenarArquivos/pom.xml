@@ -6,7 +6,7 @@
 
     <groupId>com.fenix</groupId>
     <artifactId>ordenarArquivos</artifactId>
-    <version>1.0.7-SNAPSHOT</version>
+    <version>1.0.8-SNAPSHOT</version>
     <name>OrdenarArquivos</name>
 
     <properties>
@@ -28,7 +28,8 @@
         <sqlite.version>3.41.2.2</sqlite.version>
         <bd.jdbi3.version>3.1.0</bd.jdbi3.version>
         <flyway.version>8.5.0</flyway.version>
-        <logger.slf4j.version>1.7.32</logger.slf4j.version>
+        <logger.slf4j.version>2.0.12</logger.slf4j.version>
+        <logback.classic.version>1.5.13</logback.classic.version>
         <ocr.tess4j.version>5.15.0</ocr.tess4j.version>
         <ocr.opencv.version>3.2.0-1</ocr.opencv.version>
         <ocr.libsvm.version>3.35</ocr.libsvm.version>
@@ -224,7 +225,7 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.2.0</version>
+            <version>${logback.classic.version}</version>
         </dependency>
 
         <!-- DB-->
@@ -335,13 +336,6 @@
             <groupId>org.kordamp.ikonli</groupId>
             <artifactId>ikonli-materialdesign2-pack</artifactId>
             <version>${ikonli.version}</version>
-        </dependency>
-
-        <!-- OUTROS -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.17.0</version>
         </dependency>
     </dependencies>
 

@@ -12,12 +12,10 @@ module com.fenix.ordenararquivos {
     requires transitive com.jfoenix;
     requires java.desktop;
     requires org.flywaydb.core;
-    requires java.sql;
     requires org.xerial.sqlitejdbc;
-    requires java.logging;
     requires org.slf4j;
-    requires logback.classic;
-    requires logback.core;
+    requires ch.qos.logback.classic;
+    requires ch.qos.logback.core;
     requires kotlin.stdlib;
     requires net.kurobako.gesturefx;
     requires firebase.admin;
@@ -29,7 +27,6 @@ module com.fenix.ordenararquivos {
     requires tess4j;
     requires libsvm;
     requires colt;
-    requires org.apache.commons.lang3;
     requires opencv;
     requires io.grpc.internal;
     requires io.grpc;
