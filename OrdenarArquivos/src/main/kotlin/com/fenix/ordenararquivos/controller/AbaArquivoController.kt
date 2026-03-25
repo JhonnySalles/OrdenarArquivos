@@ -19,6 +19,7 @@ import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.SincronizacaoServices
 import com.fenix.ordenararquivos.util.Utils
 import com.jfoenix.controls.*
+import io.sentry.Sentry
 import jakarta.xml.bind.JAXBContext
 import jakarta.xml.bind.Marshaller
 import jakarta.xml.bind.Unmarshaller
@@ -128,6 +129,9 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private lateinit var btnPesquisarPastaDestino: JFXButton
+
+    @FXML
+    private lateinit var btnProximaPastaDestino: JFXButton
 
     @FXML
     private lateinit var txtNomePastaManga: JFXTextField
@@ -405,6 +409,37 @@ class AbaArquivoController : Initializable {
             }
             false
         }
+
+    private fun List<File>.sortedNaturally(): List<File> {
+        val regex = "(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)".toRegex()
+
+        return this.sortedWith { f1, f2 ->
+            val chunks1 = f1.name.split(regex)
+            val chunks2 = f2.name.split(regex)
+
+            var result = 0
+            for (i in 0 until minOf(chunks1.size, chunks2.size)) {
+                val c1 = chunks1[i]
+                val c2 = chunks2[i]
+
+                if (c1 != c2) {
+                    val n1 = c1.toLongOrNull()
+                    val n2 = c2.toLongOrNull()
+
+                    result = if (n1 != null && n2 != null)
+                        n1.compareTo(n2)
+                    else
+                        c1.compareTo(c2, ignoreCase = true)
+                    if (result != 0)
+                        break
+                }
+            }
+            if (result == 0)
+                chunks1.size.compareTo(chunks2.size)
+            else
+                result
+        }
+    }
 
     @FXML
     private fun onBtnScrollSubir() {
@@ -1818,6 +1853,27 @@ class AbaArquivoController : Initializable {
         simulaNome()
     }
 
+    @FXML
+    private fun onBtnProximaPastaDestino() {
+        if (txtPastaDestino.text.isNullOrBlank())
+            return
+
+        val pastaAtual = File(txtPastaDestino.text)
+        val pastaPai = pastaAtual.parentFile
+
+        if (pastaPai != null && pastaPai.exists() && pastaPai.isDirectory) {
+            val pastas = pastaPai.listFiles { file -> file.isDirectory }?.toList()?.sortedNaturally() ?: emptyList()
+            val indexAtual = pastas.indexOfFirst { it.absolutePath == pastaAtual.absolutePath }
+            if (indexAtual in 0 until pastas.lastIndex) {
+                val proximaPasta = pastas[indexAtual + 1]
+                mCaminhoDestino = proximaPasta
+                txtPastaDestino.text = proximaPasta.absolutePath
+                simulaNome()
+            } else
+                Notificacoes.notificacao(Notificacao.ALERTA, "Última pasta", "Esta já é a última pasta do diretório.")
+        }
+    }
+
     private fun carregaPastaDestino() {
         mCaminhoDestino = File(txtPastaDestino.text)
         simulaNome()
@@ -2515,9 +2571,14 @@ class AbaArquivoController : Initializable {
             }
         }
 
+        var insetCapitulo = false
         var lastCaretPos = 0
         txtAreaImportar.onKeyPressed = EventHandler { e: KeyEvent ->
+            if (!e.isControlDown && !e.isShiftDown && !e.isAltDown)
+                insetCapitulo = false
+
             if (e.isControlDown && !e.isShiftDown && !e.isAltDown) {
+                insetCapitulo = false
                 when (e.code) {
                     KeyCode.ENTER -> onBtnImporta()
                     KeyCode.S -> {
@@ -2640,6 +2701,7 @@ class AbaArquivoController : Initializable {
                 when (e.code) {
                     KeyCode.UP,
                     KeyCode.DOWN -> {
+                        insetCapitulo = false
                         if (txtAreaImportar.text.isEmpty() || !txtAreaImportar.text.contains("\n"))
                             return@EventHandler
 
@@ -2699,6 +2761,7 @@ class AbaArquivoController : Initializable {
                     }
                     KeyCode.RIGHT,
                     KeyCode.LEFT -> {
+                        insetCapitulo = false
                         if (txtAreaImportar.text.isEmpty())
                             return@EventHandler
 
@@ -2710,7 +2773,7 @@ class AbaArquivoController : Initializable {
                         val fim = Utils.getNumber(txtGerarFim.text)?.toInt() ?: 0
                         val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
 
-                        var moveCapitulo: (String) -> String = { linha ->
+                        val moveCapitulo: (String) -> String = { linha ->
                             var tag = ""
                             val texto = if (linha.contains(separador)) {
                                 tag = separador + linha.substringAfter(separador)
@@ -2752,9 +2815,50 @@ class AbaArquivoController : Initializable {
                         txtAreaImportar.positionCaret(lastCaretPos)
                         txtAreaImportar.scrollTop = scroll
                     }
+                    in (KeyCode.NUMPAD0 .. KeyCode.NUMPAD9),
+                    in (KeyCode.DIGIT0 .. KeyCode.DIGIT9) -> {
+                        if (txtAreaImportar.text.isEmpty())
+                            return@EventHandler
+
+                        val txt = txtAreaImportar.text
+                        val scroll = txtAreaImportar.scrollTop
+                        val caretPos = txtAreaImportar.caretPosition
+
+                        val startIndex = txt.lastIndexOf('\n', caretPos - 1).let { if (it == -1) 0 else it + 1 }
+                        val endIndex = txt.indexOf('\n', caretPos).let { if (it == -1) txt.length else it }
+                        val linhaAtual = txt.substring(startIndex, endIndex)
+                        val digito = e.text.toInt()
+
+                        val separadorCapitulo = Utils.SEPARADOR_CAPITULO
+                        val separadorPagina = Utils.SEPARADOR_PAGINA
+
+                        val tag = if (linhaAtual.contains(separadorCapitulo)) separadorCapitulo + linhaAtual.substringAfter(separadorCapitulo) else ""
+                        val antesDaTag = linhaAtual.substringBefore(separadorCapitulo)
+
+                        val pagina = if (antesDaTag.contains(separadorPagina)) separadorPagina + antesDaTag.substringAfter(separadorPagina) else ""
+                        val capituloCompleto = antesDaTag.substringBefore(separadorPagina)
+
+                        val subCapitulo = if (capituloCompleto.contains(".")) "." + capituloCompleto.substringAfter(".") else ""
+                        var capitulo = capituloCompleto.substringBefore(".")
+
+                        if (!insetCapitulo) {
+                            capitulo = digito.toString()
+                            insetCapitulo = true
+                        } else
+                            capitulo += digito
+
+                        val novaLinha = "$capitulo$subCapitulo$pagina$tag"
+                        val novoTexto = txt.substring(0, startIndex) + novaLinha + txt.substring(endIndex)
+
+                        txtAreaImportar.replaceText(0, txtAreaImportar.length, novoTexto)
+                        txtAreaImportar.positionCaret(startIndex + capitulo.length)
+                        txtAreaImportar.scrollTop = scroll
+                        e.consume()
+                    }
                     else -> {}
                 }
             } else if (e.isShiftDown && e.isAltDown) {
+                insetCapitulo = false
                 when (e.code) {
                     KeyCode.UP,
                     KeyCode.DOWN -> {

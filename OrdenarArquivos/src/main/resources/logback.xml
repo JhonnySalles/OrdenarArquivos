@@ -36,8 +36,16 @@
 		</rollingPolicy>
 	</appender>
 
+	<appender name="SENTRY" class="io.sentry.logback.SentryAppender">
+		<options>
+			<minimumEventLevel>WARN</minimumEventLevel>
+			<minimumBreadcrumbLevel>DEBUG</minimumBreadcrumbLevel>
+		</options>
+	</appender>
+
 	<root level="TRACE">
 		<appender-ref ref="STDOUT" />
 		<appender-ref ref="FILE" />
+		<appender-ref ref="SENTRY" />
 	</root>
 </configuration>

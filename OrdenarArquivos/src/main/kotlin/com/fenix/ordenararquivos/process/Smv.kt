@@ -17,7 +17,7 @@ import java.util.*
 
 object Smv {
 
-    private val LOG = LoggerFactory.getLogger(Smv::class.java)
+    private val mLog = LoggerFactory.getLogger(Smv::class.java)
 
     private val prob = svm_problem()
     private val param = svm_parameter()
@@ -28,7 +28,7 @@ object Smv {
         try {
             model = svm.svm_load_model(Paths.get("").toAbsolutePath().toString() + "/models/10000.model")
         } catch (e: IOException) {
-            LOG.error("Erro ao carregar o modelo SVM", e)
+            mLog.error("Erro ao carregar o modelo SVM", e)
         }
     }
 

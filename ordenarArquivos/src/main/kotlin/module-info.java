@@ -44,6 +44,7 @@ module com.fenix.ordenararquivos {
     requires org.kordamp.ikonli.materialdesign2;
     requires kotlinx.coroutines.core;
     requires kotlinx.coroutines.javafx;
+    requires sentry;
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;
     opens com.fenix.ordenararquivos.model.firebase to javafx.base, google.cloud.firestore, com.google.gson;

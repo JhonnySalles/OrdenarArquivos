@@ -81,6 +81,8 @@ object Configuracao {
                     secrets.setProperty("my_anime_list_client_id", "")
                     secrets.setProperty("gemini_api_key_1", "")
                     secrets.setProperty("gemini_api_key_2", "")
+                    secrets.setProperty("sentry_dns", "")
+                    secrets.setProperty("sentry_environment", "")
                     secrets.store(os, "")
                 }
             } catch (e: IOException) {

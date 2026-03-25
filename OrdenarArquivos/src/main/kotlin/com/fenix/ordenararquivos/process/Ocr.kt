@@ -29,7 +29,7 @@ import javax.imageio.ImageIO
 object Ocr {
     private val OCR_CHAPTER_REGEX = Regex("第?([\\d]+)話?[\\D]*([\\d]+)")
 
-    private val mLOG = LoggerFactory.getLogger(Ocr::class.java)
+    private val mLog = LoggerFactory.getLogger(Ocr::class.java)
     private val mClient = OkHttpClient().apply {
         setConnectTimeout(60, TimeUnit.SECONDS)
         setReadTimeout(60, TimeUnit.SECONDS)
@@ -50,10 +50,10 @@ object Ocr {
             loadLibraries()
             true
         } catch (e: Exception) {
-            mLOG.error("Erro ao carregar as libs do Opencv", e)
+            mLog.error("Erro ao carregar as libs do Opencv", e)
             false
         } catch (e: Error) {
-            mLOG.error("Erro ao carregar as libs do Opencv", e)
+            mLog.error("Erro ao carregar as libs do Opencv", e)
             false
         }
 
@@ -73,45 +73,45 @@ object Ocr {
             when (bit) {
                 32 -> {
                     System.load(Paths.get(path, "opencv_320_32.dll").toString())
-                    mLOG.info("Loaded OpenCV for Windows 32 bit")
+                    mLog.info("Loaded OpenCV for Windows 32 bit")
                     System.load(Paths.get(path, "opencv_ffmpeg320_32.dll").toString())
-                    mLOG.info("Loaded FFMPEG for Windows 32 bit")
+                    mLog.info("Loaded FFMPEG for Windows 32 bit")
                     System.load(Paths.get(path, "openh264-1.6.0-win32msvc.dll").toString())
-                    mLOG.info("Loaded OpenH264 for Windows 32 bit")
+                    mLog.info("Loaded OpenH264 for Windows 32 bit")
                 }
                 64 -> {
                     System.load(Paths.get(path, "opencv_java320_64.dll").toString())
-                    mLOG.info("Loaded OpenCV for Windows 64 bit")
+                    mLog.info("Loaded OpenCV for Windows 64 bit")
                     System.load(Paths.get(path, "opencv_ffmpeg320_64.dll").toString())
-                    mLOG.info("Loaded FFMPEG for Windows 64 bit")
+                    mLog.info("Loaded FFMPEG for Windows 64 bit")
                     System.load(Paths.get(path, "openh264-1.6.0-win64msvc.dll").toString())
-                    mLOG.info("Loaded OpenH264 for Windows 64 bit")
+                    mLog.info("Loaded OpenH264 for Windows 64 bit")
                 }
                 else -> {
-                    mLOG.info("Unknown Windows bit - trying with 32")
+                    mLog.info("Unknown Windows bit - trying with 32")
                     System.load(Paths.get(path, "opencv_java320_32.dll").toString())
-                    mLOG.info("Loaded OpenCV for Windows 32 bit")
+                    mLog.info("Loaded OpenCV for Windows 32 bit")
                     System.load(Paths.get(path, "openh264-1.6.0-win32msvc.dll").toString())
-                    mLOG.info("Loaded OpenH264 for Windows 32 bit")
+                    mLog.info("Loaded OpenH264 for Windows 32 bit")
                 }
             }
         } else if (osName.contains("mac")) {
-            mLOG.info("This version os the application cannot run on MAC OS yet.")
+            mLog.info("This version os the application cannot run on MAC OS yet.")
         } else if (osName.contains("nix") || osName.contains("nux") || osName.contains("aix")) {
             when (bit) {
                 32 -> {
                     //todo add support
-                    mLOG.info("32-bit Linux not supported yet")
+                    mLog.info("32-bit Linux not supported yet")
                 }
                 64 -> {
                     System.load(Paths.get(path, "libopencv_320_64.so").toString())
-                    mLOG.info("Loaded OpenCV for Linux 64 bit")
+                    mLog.info("Loaded OpenCV for Linux 64 bit")
                     System.load(Paths.get(path, "libopenh264-1.6.0-linux64.3.so").toString())
-                    mLOG.info("Loaded OpenH264 for Linux 64 bit")
+                    mLog.info("Loaded OpenH264 for Linux 64 bit")
                 }
                 else -> {
-                    mLOG.info("Unknown Linux bit - trying with 32")
-                    mLOG.info("OS not supported yet")
+                    mLog.info("Unknown Linux bit - trying with 32")
+                    mLog.info("OS not supported yet")
                 }
             }
         }
@@ -125,7 +125,7 @@ object Ocr {
         try {
             TESSERACT = File(Paths.get("").toAbsolutePath().toString() + "/tessdata/")
         } catch (e: IOException) {
-            mLOG.error("Erro ao carregar os dados do tesseract", e)
+            mLog.error("Erro ao carregar os dados do tesseract", e)
         }
     }
 
@@ -236,7 +236,7 @@ object Ocr {
 
             val kernel: Size = getStructuringElement(input.height() * input.width())
             val structuringElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, kernel)
-            mLOG.info("[Structuring Element: ${kernel.height} x ${kernel.width}]")
+            mLog.info("[Structuring Element: ${kernel.height} x ${kernel.width}]")
 
             /*
             Apply the morphological operation Dilation
@@ -290,10 +290,10 @@ object Ocr {
             val textBlock = Mat(input, region)
             return instance.doOCR(preprocessTextBlock(textBlock))
         } catch (e: Error) {
-            mLOG.error("Erro ao processar o OCR.", e)
+            mLog.error("Erro ao processar o OCR.", e)
             throw OcrException(e.message ?: "Erro ao processar o OCR.")
         } catch (e: Exception) {
-            mLOG.error("Erro ao processar o OCR.", e)
+            mLog.error("Erro ao processar o OCR.", e)
             throw OcrException(e.message ?: "Erro ao processar o OCR.")
         }
     }
@@ -558,7 +558,7 @@ object Ocr {
     private const val URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/"
 
     private fun processGemini(imagem : File, texto : String = "") : String {
-        mLOG.info("Preparando consulta ao Gemini.")
+        mLog.info("Preparando consulta ao Gemini.")
         val mediaType = MediaType.parse("application/json")
         val base64 = converteToBase64(imagem)
         val mime = mimeType(imagem)
@@ -571,9 +571,9 @@ object Ocr {
             .post(body)
             .addHeader("Content-Type", "application/json")
             .build()
-        mLOG.info("Consultando Gemini.")
+        mLog.info("Consultando Gemini.")
         val response = mClient.newCall(request).execute()
-        mLOG.info("Resposta Gemini: ${response.code()} - ${response.message()}")
+        mLog.info("Resposta Gemini: ${response.code()} - ${response.message()}")
 
         if (response.code() == 429 && mIsFirstKey && Configuracao.geminiKey2.isNotEmpty()) {
             response.body().close()
@@ -589,7 +589,7 @@ object Ocr {
 
         return try {
             val body = response.body()!!.string()
-            mLOG.info("Resposta Gemini: $body")
+            mLog.info("Resposta Gemini: $body")
             val jsonObject = JSONObject(body)
             var texto = jsonObject.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text")
 
@@ -604,7 +604,7 @@ object Ocr {
             } else
                 texto
         } catch (e: JSONException) {
-            mLOG.error(e.message, e)
+            mLog.error(e.message, e)
             throw e
         }
     }
