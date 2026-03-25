@@ -667,6 +667,7 @@ class AbaArquivoController : Initializable {
         btnPesquisarPastaOrigem.isDisable = true
         txtPastaDestino.isDisable = true
         btnPesquisarPastaDestino.isDisable = true
+        btnProximaPastaDestino.isDisable = true
         txtNomePastaManga.isDisable = true
         txtVolume.isDisable = true
         btnImportar.isDisable = true
@@ -685,6 +686,7 @@ class AbaArquivoController : Initializable {
         btnPesquisarPastaOrigem.isDisable = false
         txtPastaDestino.isDisable = false
         btnPesquisarPastaDestino.isDisable = false
+        btnProximaPastaDestino.isDisable = false
         txtNomePastaManga.isDisable = false
         txtVolume.isDisable = false
         btnImportar.isDisable = false
