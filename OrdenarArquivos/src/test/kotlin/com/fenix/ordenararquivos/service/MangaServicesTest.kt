@@ -1,5 +1,6 @@
 package com.fenix.ordenararquivos.service
 
+import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.mock.Mock
 import com.fenix.ordenararquivos.mock.MockManga
@@ -10,28 +11,15 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.junit.jupiter.MockitoExtension
 import org.slf4j.LoggerFactory
-import java.io.File
 import java.time.LocalDateTime
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(MockitoExtension::class)
-internal class MangaServicesTest {
+internal class MangaServicesTest : BaseTest() {
 
     private val mLOG = LoggerFactory.getLogger(MangaServicesTest::class.java)
 
-    private var mService : MangaServices
-
-    init {
-        mLOG.info("Preparando a base de teste...")
-
-        DataBase.isTeste = true
-        val db = File(System.getProperty("user.dir"), DataBase.mDATABASE_TEST)
-        if (db.exists())
-            db.delete()
-
-        mService = MangaServices()
-    }
+    private lateinit var mService : MangaServices
 
     lateinit var input: Mock<Long?, Manga>
     var lastId: Long? = 0
@@ -39,7 +27,8 @@ internal class MangaServicesTest {
 
     @BeforeEach
     @Throws(Exception::class)
-    fun setUpMocks() {
+    fun setUp() {
+        mService = MangaServices()
         input = MockManga()
     }
 
@@ -89,11 +78,6 @@ internal class MangaServicesTest {
         val entities = mService.findEnvio(LocalDateTime.MIN)
         assertNotNull(entities)
         assertTrue(entities.isNotEmpty())
-    }
-
-    @AfterAll
-    fun close() {
-        DataBase.closeConnection()
     }
 
 }

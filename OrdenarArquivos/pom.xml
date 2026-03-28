@@ -19,6 +19,7 @@
         <test.junit.version>5.10.2</test.junit.version>
         <test.testfx.version>4.0.18</test.testfx.version>
         <test.mockito.version>5.9.0</test.mockito.version>
+        <test.mockito-kotlin.version>5.2.1</test.mockito-kotlin.version>
 
         <javafx.version>18-ea+2</javafx.version>
         <jfoenix.version>9.0.10</jfoenix.version>
@@ -136,6 +137,13 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
             <version>${test.mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.mockito.kotlin</groupId>
+            <artifactId>mockito-kotlin</artifactId>
+            <version>${test.mockito-kotlin.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -350,6 +358,11 @@
     <build>
         <testSourceDirectory>src/test/kotlin</testSourceDirectory>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
 
             <!-- Sources -->
             <plugin>
