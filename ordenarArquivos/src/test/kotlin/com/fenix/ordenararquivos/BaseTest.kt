@@ -19,11 +19,20 @@ abstract class BaseTest {
         mLOG.info("Configurando ambiente de teste (:memory:)...")
         DataBase.isTeste = true
         DataBase.closeConnection()
-        
-        // Mantém pelo menos uma conexão aberta para que o SQLite não delete o banco em memória compartilhado
+
         mKeepAlive = DriverManager.getConnection("jdbc:sqlite:file:testdb?mode=memory&cache=shared")
+        DataBase.instancia
         
-        // Agora, a primeira chamada a DataBase.instancia rodará o Flyway no mesmo banco em memória
+        try {
+            val rs = DataBase.instancia.metaData.getTables(null, null, "Manga", null)
+            if (rs.next()) {
+                mLOG.info("Tabela Manga validada no banco em memoria.")
+            } else {
+                mLOG.error("TABELA 'Manga' NÃO ENCONTRADA após migração!")
+            }
+        } catch (e: Exception) {
+            mLOG.error("Erro ao verificar tabelas: ${e.message}")
+        }
     }
 
     @AfterAll

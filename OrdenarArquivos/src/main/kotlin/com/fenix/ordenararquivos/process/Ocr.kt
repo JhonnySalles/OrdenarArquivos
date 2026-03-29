@@ -27,7 +27,7 @@ import javax.imageio.ImageIO
 
 
 object Ocr {
-    private val OCR_CHAPTER_REGEX = Regex("第?([\\d]+)話?[\\D]*([\\d]+)")
+    internal val OCR_CHAPTER_REGEX = Regex("第?([\\d]+)話?[\\D]*([\\d]+)")
 
     private val mLog = LoggerFactory.getLogger(Ocr::class.java)
     private val mClient = OkHttpClient().apply {
@@ -298,7 +298,7 @@ object Ocr {
         }
     }
 
-    private fun ocrToCapitulo(textos: String, separadorPagina : String = "-", separadorCapitulo: String = "|"): String {
+    internal fun ocrToCapitulo(textos: String, separadorPagina : String = "-", separadorCapitulo: String = "|"): String {
         if (textos.isEmpty())
             return ""
 
@@ -324,7 +324,7 @@ object Ocr {
                 sugestao += it.toString() + separadorPagina + capitulos[it] + "\n"
             }
         }
-        return sugestao.substringBefore("\n", missingDelimiterValue = sugestao)
+        return sugestao.trim()
     }
 
     /**

@@ -151,7 +151,7 @@ object Smv {
         return subregions
     }
 
-    private fun normalizeArray(array: DoubleArray) {
+    internal fun normalizeArray(array: DoubleArray) {
         var max = array[0]
         var min = array[0]
         for (i in 1 until array.size) {
@@ -178,7 +178,7 @@ object Smv {
      * described in the following [paper/a>.
      * @param image The Mat image
      * @return A 59-length feature vector - the value set of the histogram
-    ](https://www.cs.tut.fi/~mehta/rlbp) */
+     *](https://www.cs.tut.fi/~mehta/rlbp) */
     private fun get_URLBP_Features(image: Mat): IntArray? {
         // Using: R(Radius) = 1, P(Pixel Neighbours) = 8
         val histogram: OpenIntIntHashMap = histogramTemplate.clone() as OpenIntIntHashMap
@@ -245,7 +245,7 @@ object Smv {
         return valueList.elements() // returning the 59 freq-values of the histogram
     }
 
-    private fun isBinaryUniform(binary: IntArray): Boolean {
+    internal fun isBinaryUniform(binary: IntArray): Boolean {
         var transitions = 0
         for (i in 0 until binary.size - 1) {
             if (binary[i] != binary[i + 1]) {
@@ -255,7 +255,7 @@ object Smv {
         return transitions <= 2
     }
 
-    private fun convertToBinary(number: Int): IntArray {
+    internal fun convertToBinary(number: Int): IntArray {
         val binary = IntArray(8)
         var i = 7
         var num = number

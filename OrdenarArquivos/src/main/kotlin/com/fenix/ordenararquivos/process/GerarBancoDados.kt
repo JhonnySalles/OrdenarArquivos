@@ -48,74 +48,64 @@ object GerarBancoDados {
 
         for (pasta in origem.listFiles()!!) {
             val processar = pasta.name
-            var matcher = Pattern.compile(CAPA, Pattern.CASE_INSENSITIVE).matcher(processar)
-            if (pasta.isFile || matcher.find()) continue
+            val matcherCapa = Pattern.compile(CAPA, Pattern.CASE_INSENSITIVE).matcher(processar)
+            if (pasta.isFile || matcherCapa.find()) continue
+            
             LOG.info("Processando pasta: $processar")
-            matcher = Pattern.compile(VOLUME, Pattern.CASE_INSENSITIVE).matcher(processar)
-            volume = if (matcher.find()) matcher.group() else processar.split(
-                processar.replace(VOLUME.toRegex(), "").toRegex()
-            ).dropLastWhile { it.isEmpty() }
-                .toTypedArray()[1]
+            
+            val regex = Regex("""^(.*?)\s+Volume\s+(\d+)\s+Capítulo\s+([\d.]+)""", RegexOption.IGNORE_CASE)
+            val match = regex.find(processar)
 
-            matcher = Pattern.compile(EXTRA, Pattern.CASE_INSENSITIVE).matcher(processar)
-            if (matcher.find()) capitulo = matcher.group() else {
-                matcher = Pattern.compile(CAPITULO, Pattern.CASE_INSENSITIVE).matcher(processar)
-                capitulo = if (matcher.find()) matcher.group() else processar.split(
-                    processar.replace(CAPITULO.toRegex(), "").toRegex()
-                ).dropLastWhile { it.isEmpty() }
-                    .toTypedArray()[1]
+            val volumeMatcher = Pattern.compile(VOLUME, Pattern.CASE_INSENSITIVE).matcher(processar)
+            val pastaVolume = if (match != null) "Volume " + (match.groups[2]?.value ?: "")
+                             else if (volumeMatcher.find()) volumeMatcher.group()
+                             else ""
+
+            val capituloMatcher = Pattern.compile(CAPITULO, Pattern.CASE_INSENSITIVE).matcher(processar)
+            val pastaCapitulo = if (match != null) match.groups[3]?.value ?: ""
+                              else if (capituloMatcher.find()) capituloMatcher.group().replace("(?i)capítulo\\s+".toRegex(), "")
+                              else ""
+            
+            var pastaNome = if (match != null) match.groups[1]?.value?.trim() ?: processar
+                           else processar.replace(pastaVolume, "").replace("(?i)capítulo\\s+$pastaCapitulo".toRegex(), "").trim { it <= ' ' }
+
+            if (pastaNome.endsWith("-")) pastaNome = pastaNome.substring(0, pastaNome.length - 1).trim { it <= ' ' }
+            
+            // Verifica se mudou o manga (agrupamento por Nome e Volume)
+            if (!pastaNome.equals(manga.nome, ignoreCase = true) || !pastaVolume.equals(manga.volume, ignoreCase = true)) {
+                if (!manga.nome.isEmpty()) {
+                    finalizarManga(manga)
+                }
+                manga = Manga(id = 0, nome = pastaNome, volume = pastaVolume, capitulo = pastaCapitulo, arquivo = "", quantidade = 0, capitulos = "", atualizacao = LocalDateTime.now())
             }
 
-            nome =
-                if (processar.contains("]")) processar.substring(processar.indexOf("]")).replace("]", "") else processar
-            nome = nome.replace(volume, "").replace(capitulo, "").trim { it <= ' ' }
-
-            if (nome.endsWith("-")) nome = nome.substring(0, nome.length - 1).trim { it <= ' ' }
+            val numArquivos = pasta.listFiles()?.size ?: 0
             manga.addCaminhos(
                 Caminhos(
-                    0,
                     manga,
-                    capitulo.replace("[\\D]".toRegex(), "").trim { it <= ' ' },
-                    quantidade,
-                    capitulo
+                    pastaCapitulo.replace("[\\D]".toRegex(), "").trim { it <= ' ' },
+                    numArquivos,
+                    pasta.name,
+                    ""
                 )
             )
-            quantidade = quantidade!! + pasta.listFiles().size
-            if (!nome.equals(manga.nome, ignoreCase = true) || !volume.equals(manga.volume, ignoreCase = true)) {
-                capitulos = ""
-                for (caminho in manga.caminhos) capitulos += if (caminho.numero.compareTo(1) == 0) """
-     ${caminho.capitulo}-
-     
-     """.trimIndent() else """
-     ${caminho.capitulo}-${caminho.numero}
-     
-     """.trimIndent()
-                if (!capitulos.isEmpty()) capitulos += capitulos.substring(0, capitulos.length - 1)
-                manga.capitulos = capitulos
-                manga.arquivo = manga.nome + " " + manga.volume + ARQUIVO_SUFIX + ".cbr"
-                LOG.info("Salvando manga: " + manga.nome + " - " + manga.volume)
-                if (!manga.nome.isEmpty()) SERVICE!!.save(manga)
-                manga = Manga(0, nome, volume, capitulo, arquivo, quantidade, "", LocalDateTime.now())
-                arquivo = ""
-                quantidade = 1
-            }
+            manga.quantidade += numArquivos
         }
+
         if (!manga.nome.isEmpty()) {
-            capitulos = ""
-            for (caminho in manga.caminhos) capitulos += if (caminho.numero.compareTo(1) == 0) """
-     ${caminho.capitulo}-
-     
-     """.trimIndent() else """
-     ${caminho.capitulo}-${caminho.numero}
-     
-     """.trimIndent()
-            if (!capitulos.isEmpty()) capitulos += capitulos.substring(0, capitulos.length - 1)
-            manga.capitulos = capitulos
-            manga.arquivo = manga.nome + " " + manga.volume + ARQUIVO_SUFIX + ".cbr"
-            LOG.info("Salvando manga: " + manga.nome + " - " + manga.volume)
-            if (!manga.nome.isEmpty()) SERVICE!!.save(manga)
+            finalizarManga(manga)
         }
         LOG.info("Fim do processamento.")
-        DataBase.closeConnection()
+    }
+
+    private fun finalizarManga(manga: Manga) {
+        var capitulosStr = ""
+        for (caminho in manga.caminhos) {
+            capitulosStr += if (caminho.numero <= 1) "${caminho.capitulo}- " else "${caminho.capitulo}-${caminho.numero} "
+        }
+        manga.capitulos = capitulosStr.trim()
+        manga.arquivo = manga.nome + " " + manga.volume + ARQUIVO_SUFIX + ".cbr"
+        LOG.info("Salvando manga: ${manga.nome} - ${manga.volume} (${manga.caminhos.size} caminhos)")
+        SERVICE!!.save(manga)
     }
 }

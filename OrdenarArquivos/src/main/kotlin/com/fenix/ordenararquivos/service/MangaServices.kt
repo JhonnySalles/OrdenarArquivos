@@ -27,7 +27,7 @@ class MangaServices {
     private val mLIST_MANGA = "SELECT nome FROM Manga GROUP BY nome ORDER BY nome"
     private val mSUGESTAO = "SELECT nome FROM Manga WHERE lower(nome) LIKE ? GROUP BY nome ORDER BY nome"
 
-    private var conn: Connection = instancia
+    private val conn: Connection get() = instancia
 
     fun find(manga: Manga, anterior : Boolean = false): Manga? {
         return find(manga.nome, manga.volume, manga.capitulo, anterior)
@@ -50,10 +50,13 @@ class MangaServices {
     fun save(manga: Manga, isSendCloud : Boolean = true, atualizacao : LocalDateTime = LocalDateTime.now()) {
         manga.atualizacao = atualizacao
         try {
-            if (manga.id == 0L)
+            if (manga.id == 0L) {
+                mLOG.info("Inserindo novo manga: ${manga.nome}")
                 insert(manga)
-            else
+            } else {
+                mLOG.info("Atualizando manga existente: ${manga.nome} (ID: ${manga.id})")
                 update(manga)
+            }
 
             delete(manga.id)
             for (caminho in manga.caminhos)

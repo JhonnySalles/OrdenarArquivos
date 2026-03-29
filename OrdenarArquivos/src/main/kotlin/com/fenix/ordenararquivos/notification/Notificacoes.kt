@@ -30,7 +30,7 @@ object Notificacoes {
     private val IMG_SUCESSO: ImageView = ImageView(Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/btnConfirma_48.png")))
 
     private lateinit var CONTROLLER: PopupNotificacaoController
-    private lateinit var NOTIFICACAO: AnchorPane
+    internal lateinit var NOTIFICACAO: AnchorPane
     private lateinit var ROOT_ANCHOR_PANE: AnchorPane
     private lateinit var TM_LINE_CLOSE: Timeline
     private lateinit var TT_AP_NOTIFICACOES: TranslateTransition
@@ -130,6 +130,9 @@ object Notificacoes {
     fun notificacao(tipo: Notificacao, titulo: String, texto: String) {
         if (!Notificacoes::NOTIFICACAO.isInitialized || !Notificacoes::CONTROLLER.isInitialized)
             create()
+
+        if (!ROOT_ANCHOR_PANE.children.contains(NOTIFICACAO))
+            ROOT_ANCHOR_PANE.children.add(NOTIFICACAO)
 
         TM_LINE_CLOSE.stop()
         if (!APARECENDO) {
