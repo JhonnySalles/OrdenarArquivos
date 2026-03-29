@@ -67,7 +67,7 @@ object Configuracao {
 
     var registrosConsultaMal: Int = 50
         set(value) {
-            properties["mal.registros_consulta"] = value
+            properties["mal.registros_consulta"] = value.toString()
             field = value
         }
         get() = properties.getProperty("mal.registros_consulta", "50").toInt()

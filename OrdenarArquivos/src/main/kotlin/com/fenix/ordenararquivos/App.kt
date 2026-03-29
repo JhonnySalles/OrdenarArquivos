@@ -2,12 +2,11 @@ package com.fenix.ordenararquivos
 
 import com.fenix.ordenararquivos.model.enums.Argumentos
 import com.fenix.ordenararquivos.process.CopiarOpfEpub
-import com.fenix.ordenararquivos.process.GerarBancoDados
 import io.sentry.Sentry
-import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.FileInputStream
 import java.util.*
+import org.slf4j.LoggerFactory
 
 object App {
 
@@ -28,15 +27,15 @@ object App {
             if (!dsn.isNullOrBlank()) {
                 Sentry.init { options ->
                     options.dsn = dsn
-                    options.environment = if (!environment.isNullOrBlank()) environment else "development"
+                    options.environment =
+                            if (!environment.isNullOrBlank()) environment else "development"
                     options.tracesSampleRate = 1.0
                 }
                 Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
                     mLog.error("Erro fatal não capturado na thread ${thread.name}", throwable)
                 }
                 mLog.info("Sentry inicializado com sucesso!")
-            } else
-                mLog.warn("Aviso: Chave do Sentry não encontrada no secrets.properties.")
+            } else mLog.warn("Aviso: Chave do Sentry não encontrada no secrets.properties.")
         } catch (e: Exception) {
             mLog.error("Falha ao inicializar o Sentry: ${e.message}")
         }
@@ -48,24 +47,19 @@ object App {
         var origem = ""
         var destino = ""
         var tipo: Argumentos? = null
-        for (a in args)
-            when (a) {
-                Argumentos.BANCO.description -> tipo = Argumentos.BANCO
-                Argumentos.OPF.description -> tipo = Argumentos.OPF
-                else -> {
-                    if (a.contains("origem"))
-                        origem = a.substring(a.indexOf("=") + 1).replace("\"", "")
-                    else if (a.contains("destino"))
+        for (a in args) when (a) {
+            Argumentos.OPF.description -> tipo = Argumentos.OPF
+            else -> {
+                if (a.contains("origem")) origem = a.substring(a.indexOf("=") + 1).replace("\"", "")
+                else if (a.contains("destino"))
                         destino = a.substring(a.indexOf("=") + 1).replace("\"", "")
-                }
             }
+        }
 
-        if (tipo == null)
-            Run().start(args)
+        if (tipo == null) Run().start(args)
         else
-            when (tipo) {
-                Argumentos.BANCO -> GerarBancoDados.processar(origem)
-                Argumentos.OPF -> CopiarOpfEpub.processar(origem, destino)
-            }
+                when (tipo) {
+                    Argumentos.OPF -> CopiarOpfEpub.processar(origem, destino)
+                }
     }
 }
