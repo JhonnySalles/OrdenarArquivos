@@ -9,7 +9,7 @@ import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.notification.Notificacoes
-import com.fenix.ordenararquivos.process.Ocr
+import com.fenix.ordenararquivos.service.WinrarServices
 import com.fenix.ordenararquivos.util.Utils
 import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXComboBox
@@ -40,7 +40,6 @@ import java.net.URL
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.*
-
 
 class AbaComicInfoController : Initializable {
 
@@ -116,6 +115,8 @@ class AbaComicInfoController : Initializable {
 
     @FXML
     private lateinit var clSalvarComicInfo: TableColumn<Processar, JFXButton?>
+
+    internal var mRarService = WinrarServices()
 
     private lateinit var controller: TelaInicialController
     var controllerPai: TelaInicialController
@@ -291,13 +292,13 @@ class AbaComicInfoController : Initializable {
                         updateProgress(i.toLong(), max)
                         updateMessage("Processando item " + i + " de " + max + ". Processando OCR - " + item.arquivo)
 
-                        val sumario = extraiSumario(item.file!!)
+                        val sumario = mRarService.extraiSumario(item.file!!, mPASTA_TEMPORARIA)
                         if (sumario == null) {
                             i--
                             continue
                         }
 
-                        val capitulos = Ocr.process(sumario, Utils.SEPARADOR_PAGINA, separador).split("\n")
+                        val capitulos = mRarService.processOcr(sumario, Utils.SEPARADOR_PAGINA, separador).split("\n")
                         val newTag = mutableSetOf<String>()
                         val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
 
@@ -356,68 +357,6 @@ class AbaComicInfoController : Initializable {
         t.start()
     }
 
-    private fun extraiComicInfo(arquivo: File): File? {
-        var comicInfo : File? = null
-        var proc: Process? = null
-        val comando = "rar e -ma4 -y " + '"' + arquivo.path + '"' + " " + '"' + Utils.getCaminho(arquivo.path) + '"' + " " + '"' + Utils.COMICINFO + '"'
-        try {
-            val rt: Runtime = Runtime.getRuntime()
-            proc = rt.exec(comando)
-            var resultado = ""
-            val stdInput = BufferedReader(InputStreamReader(proc.inputStream))
-            var s: String?
-            while (stdInput.readLine().also { s = it } != null)
-                resultado += "$s"
-
-            s = null
-            var error = ""
-            val stdError = BufferedReader(InputStreamReader(proc.errorStream))
-            while (stdError.readLine().also { s = it } != null)
-                error += "$s"
-            if (resultado.isEmpty() && error.isNotEmpty())
-                mLOG.info("Error comand: $resultado Não foi possível extrair o arquivo ${Utils.COMICINFO}.")
-            else
-                comicInfo = File(Utils.getCaminho(arquivo.path) + '\\' + Utils.COMICINFO)
-        } catch (e: Exception) {
-            mLOG.error(e.message, e)
-        } finally {
-            proc?.destroy()
-        }
-        return comicInfo
-    }
-
-    private fun insereComicInfo(arquivo: File, info: File) {
-        val comando = "rar a -ma4 -ep1 " + '"' + arquivo.path + '"' + " " + '"' + info.path + '"'
-        var proc: Process? = null
-        try {
-            val rt: Runtime = Runtime.getRuntime()
-            proc = rt.exec(comando)
-            var resultado = ""
-            val stdInput = BufferedReader(InputStreamReader(proc.inputStream))
-            var s: String? = null
-            while (stdInput.readLine().also { s = it } != null)
-                resultado += "$s"
-
-            if (resultado.isNotEmpty())
-                mLOG.info("Output comand:\n$resultado")
-            s = null
-            var error = ""
-            val stdError = BufferedReader(InputStreamReader(proc.errorStream))
-            while (stdError.readLine().also { s = it } != null)
-                error += "$s"
-
-            if (resultado.isEmpty() && error.isNotEmpty()) {
-                info.renameTo(File(arquivo.path + Utils.getNome(arquivo.name) + Utils.getExtenssao(info.name)))
-                mLOG.info("Error comand:\n$resultado\nNecessário adicionar o rar no path e reiniciar a aplicação.")
-            } else
-                info.delete()
-        } catch (e: Exception) {
-            mLOG.error(e.message, e)
-        } finally {
-            proc?.destroy()
-        }
-    }
-
     private fun carregarItens() {
         val pasta = File(txtPastaProcessar.text)
         if (txtPastaProcessar.text.isNotEmpty() && pasta.exists()) {
@@ -441,7 +380,7 @@ class AbaComicInfoController : Initializable {
                             if (!Utils.isRar(arquivo.name))
                                 continue
 
-                            val info: File = extraiComicInfo(arquivo) ?: continue
+                            val info: File = mRarService.extraiComicInfo(arquivo) ?: continue
                             val comic: ComicInfo = try {
                                 val unmarshaller = jaxb.createUnmarshaller()
                                 unmarshaller.unmarshal(info) as ComicInfo
@@ -545,7 +484,7 @@ class AbaComicInfoController : Initializable {
             val out = FileOutputStream(info)
             marshaller.marshal(item.comicInfo, out)
             out.close()
-            insereComicInfo(item.file!!, info)
+            mRarService.insereComicInfo(item.file!!, info)
             mObsListaProcessar.remove(item)
         } catch (e: Exception) {
             mLOG.error(e.message, e)
@@ -632,8 +571,8 @@ class AbaComicInfoController : Initializable {
     }
 
     private fun processarOcrItem(item: Processar) {
-        val sumario = extraiSumario(item.file!!) ?: return
-        val capitulos = Ocr.process(sumario, Utils.SEPARADOR_PAGINA, Utils.SEPARADOR_CAPITULO).split("\n")
+        val sumario = mRarService.extraiSumario(item.file!!, mPASTA_TEMPORARIA) ?: return
+        val capitulos = mRarService.processOcr(sumario, Utils.SEPARADOR_PAGINA, Utils.SEPARADOR_CAPITULO).split("\n")
         val newTag = mutableSetOf<String>()
         val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
 

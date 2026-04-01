@@ -72,7 +72,6 @@ import java.util.regex.Pattern
 import javax.imageio.ImageIO
 import kotlin.properties.Delegates
 
-
 class AbaArquivoController : Initializable {
 
     private val mLOG = LoggerFactory.getLogger(AbaArquivoController::class.java)
@@ -353,8 +352,8 @@ class AbaArquivoController : Initializable {
     private var mCaminhoDestino: File? = null
     private var mSelecionado: String? = null
     private var mComicInfo by Delegates.observable(ComicInfo()) { _, _, newValue -> carregaComicInfo(newValue) }
-    private val mServiceManga = MangaServices()
-    private val mServiceComicInfo = ComicInfoServices()
+    internal var mServiceManga = MangaServices()
+    internal var mServiceComicInfo = ComicInfoServices()
 
     private lateinit var mImagemFrente: ImageView
     private lateinit var mGestureFrente: GesturePane
@@ -364,7 +363,7 @@ class AbaArquivoController : Initializable {
     private lateinit var mGestureTudo: GesturePane
 
     private val mAnimacao = Animacao()
-    private val mSincronizacao = SincronizacaoServices(this)
+    internal var mSincronizacao = SincronizacaoServices(this)
 
     @FXML
     private fun onBtnCompartilhamento() = compartilhamento()
