@@ -2,7 +2,8 @@ package com.fenix.ordenararquivos.mock.comicinfo
 
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
 import dev.katsute.mal4j.manga.Manga
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.mockito.kotlin.mock
 
 class MockMal {

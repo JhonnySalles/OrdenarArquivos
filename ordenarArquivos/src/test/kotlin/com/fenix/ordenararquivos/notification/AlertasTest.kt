@@ -4,7 +4,7 @@ import com.fenix.ordenararquivos.BaseJfxTest
 import com.fenix.ordenararquivos.controller.PopupAlertaController
 import javafx.application.Platform
 import javafx.fxml.FXMLLoader
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CountDownLatch
 

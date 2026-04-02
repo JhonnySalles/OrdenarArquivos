@@ -17,15 +17,14 @@ import org.slf4j.LoggerFactory
 import java.io.*
 import java.util.*
 
+object Winrar {
 
-object Compactar {
-
-    private val mLOG = LoggerFactory.getLogger(Compactar::class.java)
+    private val mLOG = LoggerFactory.getLogger(Winrar::class.java)
 
     private val mServiceComicInfo = ComicInfoServices()
 
     private var mProcess: Process? = null
-    private fun compactaArquivo(rar: File, arquivos: List<File>): Boolean {
+    fun compactarArquivo(rar: File, arquivos: List<File>): Boolean {
         var success = true
         var compactar = ""
         for (arquivo in arquivos)
@@ -64,6 +63,36 @@ object Compactar {
             if (mProcess != null)
                 mProcess!!.destroy()
         }
+    }
+
+    fun extrairArquivo(rar: File, arquivo: String): File? {
+        var comicInfo: File? = null
+        var proc: Process? = null
+        val comando = "rar e -ma4 -y " + '"' + rar.path + '"' + " " + '"' + Utils.getCaminho(rar.path) + '"' + " " + '"' + arquivo + '"'
+        try {
+            val rt: Runtime = Runtime.getRuntime()
+            proc = rt.exec(comando)
+            var resultado = ""
+            val stdInput = BufferedReader(InputStreamReader(proc.inputStream))
+            var s: String?
+            while (stdInput.readLine().also { s = it } != null)
+                resultado += "$s"
+
+            s = null
+            var error = ""
+            val stdError = BufferedReader(InputStreamReader(proc.errorStream))
+            while (stdError.readLine().also { s = it } != null)
+                error += "$s"
+            if (resultado.isEmpty() && error.isNotEmpty())
+                mLOG.info("Error comand: $resultado Não foi possível extrair o arquivo ${arquivo}.")
+            else
+                comicInfo = File(Utils.getCaminho(rar.path) + '\\' + arquivo)
+        } catch (e: Exception) {
+            mLOG.error(e.message, e)
+        } finally {
+            proc?.destroy()
+        }
+        return comicInfo
     }
 
     fun compactar(destino : File, zip : File, manga : Manga, comicInfo: ComicInfo, pastas: MutableList<File>, comic : MutableMap<String, File>, linguagem: Linguagem,
@@ -253,12 +282,11 @@ object Compactar {
             if (zip.exists())
                 zip.delete()
 
-            if (!compactaArquivo(zip, pastas))
+            if (!compactarArquivo(zip, pastas))
                 callback.call(Triple(-1,-1, "Erro ao gerar o arquivo, necessário compacta-lo manualmente."))
             true
         } else
             false
-
     }
 
 }

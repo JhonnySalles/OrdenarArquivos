@@ -3,7 +3,8 @@ package com.fenix.ordenararquivos.mock
 import com.fenix.ordenararquivos.mock.comicinfo.MockComicInfo
 import com.fenix.ordenararquivos.mock.comicinfo.MockMal
 import com.fenix.ordenararquivos.model.entities.Historico
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 
 class MockHistorico {
 

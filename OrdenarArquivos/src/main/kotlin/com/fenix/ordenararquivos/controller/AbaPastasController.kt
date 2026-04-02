@@ -12,7 +12,7 @@ import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.model.enums.Selecionado
 import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.notification.Notificacoes
-import com.fenix.ordenararquivos.process.Compactar
+import com.fenix.ordenararquivos.process.Winrar
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.util.Utils
@@ -189,8 +189,8 @@ class AbaPastasController : Initializable {
     private var mObsListaProcessar: ObservableList<Pasta> = FXCollections.observableArrayList()
     private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
 
-    private val mServiceManga = MangaServices()
-    private val mServiceComicInfo = ComicInfoServices()
+    internal val mServiceManga = MangaServices()
+    internal val mServiceComicInfo = ComicInfoServices()
 
     @FXML
     private fun onBtnCarregar() {
@@ -513,7 +513,7 @@ class AbaPastasController : Initializable {
                                 }
                                 true
                             }
-                            Compactar.compactar(destino, File(arquivoZip), manga, mComicInfo, compactar, comic, Linguagem.PORTUGUESE, isCompactar = true, isGerarCapitulos = true, isAtualizarComic = false, callback)
+                            Winrar.compactar(destino, File(arquivoZip), manga, mComicInfo, compactar, comic, Linguagem.PORTUGUESE, isCompactar = true, isGerarCapitulos = true, isAtualizarComic = false, callback)
                             compactar.clear()
                             comic.clear()
                             caminhos.clear()

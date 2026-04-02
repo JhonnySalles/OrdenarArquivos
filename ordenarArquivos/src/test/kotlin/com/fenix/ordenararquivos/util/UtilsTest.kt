@@ -3,7 +3,6 @@ package com.fenix.ordenararquivos.util
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
-import java.util.*
 
 class UtilsTest {
 

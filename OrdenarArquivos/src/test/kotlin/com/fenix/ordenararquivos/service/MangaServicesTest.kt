@@ -1,12 +1,10 @@
 package com.fenix.ordenararquivos.service
 
 import com.fenix.ordenararquivos.BaseTest
-import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.mock.Mock
 import com.fenix.ordenararquivos.mock.MockManga
 import com.fenix.ordenararquivos.model.entities.Manga
 import org.junit.jupiter.api.*
-
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.junit.jupiter.MockitoExtension

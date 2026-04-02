@@ -2,7 +2,8 @@ package com.fenix.ordenararquivos.mock.comicinfo
 
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicPageType
 import com.fenix.ordenararquivos.model.entities.comicinfo.Pages
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 
 class MockPages {
 

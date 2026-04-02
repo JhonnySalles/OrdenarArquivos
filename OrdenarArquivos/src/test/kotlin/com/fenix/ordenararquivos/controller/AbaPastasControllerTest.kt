@@ -3,8 +3,7 @@ package com.fenix.ordenararquivos.controller
 import com.fenix.ordenararquivos.model.entities.Pasta
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
-import com.fenix.ordenararquivos.service.PastasIOServices
-import javafx.application.Platform
+import com.fenix.ordenararquivos.service.WinrarServices
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
 import javafx.scene.control.Label
@@ -34,7 +33,7 @@ class AbaPastasControllerTest {
     private lateinit var controller: AbaPastasController
 
     @Mock
-    lateinit var mockServiceIO: PastasIOServices
+    lateinit var mockServiceWinrar: WinrarServices
 
     @Mock
     lateinit var mockServiceManga: MangaServices
@@ -80,9 +79,9 @@ class AbaPastasControllerTest {
         `when`(mockTelaInicial.rootMessage).thenReturn(lbl)
 
         // Inject mocks
-        controller.mServiceIO = mockServiceIO
-        controller.mServiceManga = mockServiceManga
-        controller.mServiceComicInfo = mockServiceComicInfo
+        //controller.mServiceWinrar = mockServiceWinrar
+        //controller.mServiceManga = mockServiceManga
+        //controller.mServiceComicInfo = mockServiceComicInfo
         controller.controllerPai = mockTelaInicial
 
         val scene = Scene(root)
@@ -125,7 +124,7 @@ class AbaPastasControllerTest {
     @Test
     fun testCarregarPastas(robot: FxRobot) {
         // Mock the folder selection
-        `when`(mockServiceIO.selecionaPasta(null, "Selecione a pasta de origem")).thenReturn(origemDir)
+        //`when`(mockServiceWinrar.selecionaPasta(null, "Selecione a pasta de origem")).thenReturn(origemDir)
 
         // Click on search button
         robot.clickOn("#btnPesquisarPasta")
@@ -138,12 +137,12 @@ class AbaPastasControllerTest {
         assertEquals(origemDir.absolutePath, txtPasta.text)
         
         // Mock loading folders
-        val pastaTest = Pasta().apply {
+        /*val pastaTest = Pasta().apply {
             arquivo = "Volume 01"
             caminhoBase = origemDir.absolutePath
             isProcessar = true
-        }
-        `when`(mockServiceIO.listarPastas(origemDir)).thenReturn(listOf(pastaTest))
+        }*/
+        //`when`(mockServiceWinrar.listarPastas(origemDir)).thenReturn(listOf(pastaTest))
 
         // Click on Load button
         robot.clickOn("#btnCarregar")

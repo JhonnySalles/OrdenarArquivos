@@ -3,10 +3,10 @@ package com.fenix.ordenararquivos
 import com.fenix.ordenararquivos.model.enums.Argumentos
 import com.fenix.ordenararquivos.process.CopiarOpfEpub
 import io.sentry.Sentry
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.FileInputStream
 import java.util.*
-import org.slf4j.LoggerFactory
 
 object App {
 

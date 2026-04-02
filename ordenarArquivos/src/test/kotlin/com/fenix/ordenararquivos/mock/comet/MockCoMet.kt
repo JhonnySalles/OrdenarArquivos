@@ -1,7 +1,8 @@
 package com.fenix.ordenararquivos.mock.comet
 
 import com.fenix.ordenararquivos.model.entities.comet.CoMet
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 
 class MockCoMet {
 

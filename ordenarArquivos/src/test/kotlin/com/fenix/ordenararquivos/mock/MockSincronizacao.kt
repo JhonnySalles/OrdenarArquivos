@@ -1,7 +1,8 @@
 package com.fenix.ordenararquivos.mock
 
 import com.fenix.ordenararquivos.model.entities.Sincronizacao
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import java.time.LocalDateTime
 
 class MockSincronizacao {

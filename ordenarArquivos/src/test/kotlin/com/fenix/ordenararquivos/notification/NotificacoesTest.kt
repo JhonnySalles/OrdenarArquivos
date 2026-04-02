@@ -5,7 +5,7 @@ import com.fenix.ordenararquivos.model.enums.Notificacao
 import javafx.application.Platform
 import javafx.collections.ListChangeListener
 import javafx.scene.layout.AnchorPane
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit

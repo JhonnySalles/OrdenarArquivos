@@ -2,24 +2,25 @@ package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.animation.Animacao
 import com.fenix.ordenararquivos.exceptions.LibException
-import com.fenix.ordenararquivos.model.*
 import com.fenix.ordenararquivos.model.entities.Caminhos
 import com.fenix.ordenararquivos.model.entities.Capa
 import com.fenix.ordenararquivos.model.entities.Historico
 import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.comet.CoMet
-import com.fenix.ordenararquivos.model.entities.comicinfo.*
+import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
+import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
+import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
 import com.fenix.ordenararquivos.model.enums.*
 import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.notification.Notificacoes
-import com.fenix.ordenararquivos.process.Compactar
 import com.fenix.ordenararquivos.process.Ocr
+import com.fenix.ordenararquivos.process.Winrar
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.SincronizacaoServices
+import com.fenix.ordenararquivos.service.WinrarServices
 import com.fenix.ordenararquivos.util.Utils
 import com.jfoenix.controls.*
-import io.sentry.Sentry
 import jakarta.xml.bind.JAXBContext
 import jakarta.xml.bind.Marshaller
 import jakarta.xml.bind.Unmarshaller
@@ -57,7 +58,10 @@ import kotlinx.coroutines.javafx.JavaFx
 import net.kurobako.gesturefx.GesturePane
 import org.slf4j.LoggerFactory
 import java.awt.image.BufferedImage
-import java.io.*
+import java.io.File
+import java.io.FileOutputStream
+import java.io.FilenameFilter
+import java.io.IOException
 import java.math.RoundingMode
 import java.net.URL
 import java.nio.file.Files
@@ -332,6 +336,7 @@ class AbaArquivoController : Initializable {
     @FXML
     private lateinit var clMalImagem: TableColumn<Mal, ImageView?>
 
+    internal var mRarService = WinrarServices()
     private lateinit var controller: TelaInicialController
     var controllerPai: TelaInicialController
         get() = controller
@@ -460,7 +465,7 @@ class AbaArquivoController : Initializable {
     @FXML
     private fun onBtnCompactar() {
         if (mCaminhoDestino!!.exists() && txtNomeArquivo.text.isNotEmpty() && LAST_PROCESS_FOLDERS.isNotEmpty())
-            compactaArquivo(File(mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }), LAST_PROCESS_FOLDERS)
+            mRarService.insereArquivo(File(mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }), LAST_PROCESS_FOLDERS)
     }
 
     @FXML
@@ -608,7 +613,7 @@ class AbaArquivoController : Initializable {
             out.close()
 
             val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }
-            if (compactaArquivo(File(arquivoZip), comicInfo))
+            if (mRarService.insereArquivo(File(arquivoZip), comicInfo))
                 Notificacoes.notificacao(Notificacao.SUCESSO, "ComicInfo", "ComicInfo gerado e compactado.")
             else {
                 txtSimularPasta.text = "Erro ao compactar o ComicInfo, necessário compacta-lo manualmente."
@@ -642,7 +647,7 @@ class AbaArquivoController : Initializable {
             out.close()
 
             val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }
-            compactaArquivo(File(arquivoZip), file)
+            mRarService.insereArquivo(File(arquivoZip), file)
         } catch (e: Exception) {
             mLOG.error("Erro ao gerar o xml do CoMet.", e)
         }
@@ -1491,7 +1496,7 @@ class AbaArquivoController : Initializable {
                     manga.merge(mManga!!)
                     manga.caminhos = mListaCaminhos
 
-                    if (Compactar.compactar(mCaminhoDestino!!, File(arquivoZip), manga, mComicInfo, pastasCompactar, pastasComic, linguagem, cbCompactarArquivo.isSelected, cbGerarCapitulo.isSelected, callback = callback))
+                    if (Winrar.compactar(mCaminhoDestino!!, File(arquivoZip), manga, mComicInfo, pastasCompactar, pastasComic, linguagem, cbCompactarArquivo.isSelected, cbGerarCapitulo.isSelected, callback = callback))
                         LAST_PROCESS_FOLDERS = pastasCompactar
                 } catch (e: Exception) {
                     mLOG.error("Erro ao processar.", e)
@@ -1521,87 +1526,6 @@ class AbaArquivoController : Initializable {
         val t = Thread(movimentaArquivos)
         t.isDaemon = true
         t.start()
-    }
-
-    private var mProcess: Process? = null
-    private fun compactaArquivo(rar: File, arquivos: File): Boolean {
-        var success = true
-        val comando = ("rar a -ma4 -ep1 " + '"' + rar.path + '"' + " " + '"' + arquivos.path + '"')
-        mLOG.info(comando)
-        mProcess = null
-        return try {
-            val rt = Runtime.getRuntime()
-            mProcess = rt.exec(comando)
-            Platform.runLater {
-                try {
-                    mLOG.info("Resultado: " + mProcess!!.waitFor())
-                } catch (e: InterruptedException) {
-                    mLOG.error("Erro ao executar o comando cmd.", e)
-                }
-            }
-            var resultado = ""
-            val stdInput = BufferedReader(InputStreamReader(mProcess!!.inputStream))
-            var s: String?
-            while (stdInput.readLine().also { s = it } != null) resultado += "$s"
-            if (resultado.isNotEmpty())
-                mLOG.info("Output comand:\n$resultado")
-            s = null
-            resultado = ""
-            val stdError = BufferedReader(InputStreamReader(mProcess!!.errorStream))
-            while (stdError.readLine().also { s = it } != null) resultado += "$s"
-            if (resultado.isNotEmpty()) {
-                success = false
-                mLOG.info("Error comand: $resultado Necessário adicionar o rar no path e reiniciar a aplicação.")
-            }
-            success
-        } catch (e: Exception) {
-            mLOG.error("Erro ao compactar o arquivo.", e)
-            false
-        } finally {
-            if (mProcess != null)
-                mProcess!!.destroy()
-        }
-    }
-
-    private fun compactaArquivo(rar: File, arquivos: List<File>): Boolean {
-        var success = true
-        var compactar = ""
-        for (arquivo in arquivos)
-            compactar += '"'.toString() + arquivo.path + '"' + ' '
-        val comando = "rar a -ma4 -ep1 " + '"' + rar.path + '"' + " " + compactar
-        mLOG.info(comando)
-        return try {
-            val rt = Runtime.getRuntime()
-            mProcess = rt.exec(comando)
-            Platform.runLater {
-                try {
-                    mLOG.info("Resultado: " + mProcess!!.waitFor())
-                } catch (e: InterruptedException) {
-                    mLOG.error("Erro ao executar o comando.", e)
-                }
-            }
-            var resultado = ""
-            val stdInput = BufferedReader(InputStreamReader(mProcess!!.inputStream))
-            var s: String?
-            while (stdInput.readLine().also { s = it } != null) resultado += "$s"
-            if (resultado.isNotEmpty())
-                mLOG.info("Output comand:\n$resultado")
-            s = null
-            resultado = ""
-            val stdError = BufferedReader(InputStreamReader(mProcess!!.errorStream))
-            while (stdError.readLine().also { s = it } != null) resultado += "$s"
-            if (resultado.isNotEmpty()) {
-                success = false
-                mLOG.info("Error comand: $resultado Necessário adicionar o rar no path e reiniciar a aplicação. ".trimIndent())
-            }
-            success
-        } catch (e: Exception) {
-            mLOG.error("Erro ao compactar o arquivo.", e)
-            false
-        } finally {
-            if (mProcess != null)
-                mProcess!!.destroy()
-        }
     }
 
     private fun mesclarImagens(arquivoDestino: File?, frente: File?, tras: File?): Boolean {

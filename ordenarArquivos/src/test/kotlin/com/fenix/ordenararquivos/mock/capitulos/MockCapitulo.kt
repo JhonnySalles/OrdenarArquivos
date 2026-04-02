@@ -1,7 +1,8 @@
 package com.fenix.ordenararquivos.mock.capitulos
 
 import com.fenix.ordenararquivos.model.entities.capitulos.Capitulo
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 
 class MockCapitulo {
 

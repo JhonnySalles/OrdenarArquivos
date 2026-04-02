@@ -3,8 +3,7 @@ package com.fenix.ordenararquivos.controller
 import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.model.enums.Linguagem
-import com.fenix.ordenararquivos.service.ComicInfoIOServices
+import com.fenix.ordenararquivos.service.WinrarServices
 import com.jfoenix.controls.JFXTextField
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
@@ -12,7 +11,6 @@ import javafx.scene.control.TableView
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
 import org.junit.jupiter.api.*
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito.*
@@ -33,7 +31,7 @@ class AbaComicInfoControllerTest {
     private lateinit var mainController: TelaInicialController
     private lateinit var comicInfoController: AbaComicInfoController
     
-    private val ioService: ComicInfoIOServices = mock()
+    private val rarService: WinrarServices = mock()
 
     private val TEMP_DIR = File(System.getProperty("user.dir"), "temp")
     private val ORIGEM_DIR = File(TEMP_DIR, "origem")
@@ -54,7 +52,7 @@ class AbaComicInfoControllerTest {
         comicInfoController = field.get(mainController) as AbaComicInfoController
 
         // Injeta mock
-        comicInfoController.mServiceIO = ioService
+        comicInfoController.mRarService = rarService
 
         val scene = Scene(root)
         mainController.configurarAtalhos(scene)
@@ -86,7 +84,7 @@ class AbaComicInfoControllerTest {
             title = "Titulo Teste"
         }
         
-        whenever(ioService.extraiComicInfo(any())).thenReturn(File(TEMP_DIR, "ComicInfo.xml"))
+        whenever(rarService.extraiComicInfo(any())).thenReturn(File(TEMP_DIR, "ComicInfo.xml"))
         // Simula que o arquivo extraído existe (precisamos criar o arquivo real para o unmarshaller não falhar se for chamado)
         val dummyXml = File(TEMP_DIR, "ComicInfo.xml")
         FileOutputStream(dummyXml).use { out ->
