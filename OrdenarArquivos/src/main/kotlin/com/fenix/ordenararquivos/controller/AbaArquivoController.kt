@@ -661,7 +661,7 @@ class AbaArquivoController : Initializable {
         }
         PopupAmazon.abreTelaAmazon(controllerPai.rootStack, controllerPai.rootTab, callback, mComicInfo, cbLinguagem.value)
     }
-    
+
     private fun desabilita() {
         btnGerarCapa.isDisable = true
         btnLimparTudo.isDisable = true
@@ -1397,52 +1397,63 @@ class AbaArquivoController : Initializable {
     }
 
     private fun processar() {
+        if (lsVwImagens.selectionModel.selectedItem != null)
+            mSelecionado = lsVwImagens.selectionModel.selectedItem
+
+        val nomePastaMangaCapture = txtNomePastaManga.text.trim { it <= ' ' }
+        val volumeCapture = txtVolume.text.trim { it <= ' ' }
+        val nomeArquivoCapture = txtNomeArquivo.text
+        val selectedItemCapture = mSelecionado ?: ""
+        val mangaCapture = mManga?.let { m -> Manga().apply { merge(m) } }
+        val comicInfoCapture = ComicInfo(mComicInfo)
+        val listaCaminhosCapture = mListaCaminhos.map { it.copy() }.toMutableList()
+
+        val mesclarCapaTudoCapture = cbMesclarCapaTudo.isSelected
+        val verificaPaginaDuplaCapture = cbVerificaPaginaDupla.isSelected
+        val compactarArquivoCapture = cbCompactarArquivo.isSelected
+        val gerarCapituloCapture = cbGerarCapitulo.isSelected
+
+        val nome = "$nomePastaMangaCapture $volumeCapture"
+        val processarItem = Historico(
+            nome, txtPastaOrigem.text, txtPastaDestino.text,
+            txtNomePastaManga.text, txtVolume.text, txtNomeArquivo.text, txtNomePastaCapitulo.text, txtGerarInicio.text,
+            txtGerarFim.text, txtAreaImportar.text, mSelecionado ?: "", mManga?.apply { Manga.copy(this) },
+            mComicInfo, mListaCaminhos.map { it.copy() }, mObsListaItens.toList(), mObsListaImagesSelected.map { it.copy() }, mObsListaMal.toList()
+        )
+
+        lsVwHistorico.items.removeIf { it.nome == nome }
+        lsVwHistorico.items.add(0, processarItem)
+
         val movimentaArquivos: Task<Boolean> = object : Task<Boolean>() {
             override fun call(): Boolean {
                 try {
-                    salvaManga()
-
-                    if (lsVwImagens.selectionModel.selectedItem != null)
-                        mSelecionado = lsVwImagens.selectionModel.selectedItem
-
-                    val nome = txtNomePastaManga.text.trim { it <= ' ' } + " " + txtVolume.text.trim { it <= ' ' }
-                    val processar = Historico(
-                        nome, txtPastaOrigem.text, txtPastaDestino.text,
-                        txtNomePastaManga.text, txtVolume.text, txtNomeArquivo.text, txtNomePastaCapitulo.text, txtGerarInicio.text,
-                        txtGerarFim.text, txtAreaImportar.text, mSelecionado ?: "", mManga?.apply { Manga.copy(this) },
-                        mComicInfo, mListaCaminhos.map { it.copy() }, mObsListaItens.toList(), mObsListaImagesSelected.map { it.copy() }, mObsListaMal.toList()
-                    )
-
-                    lsVwHistorico.items.removeIf { it.nome == nome }
-                    lsVwHistorico.items.add(0, processar)
+                    Platform.runLater { salvaManga() }
 
                     mCANCELAR = false
                     var i = 0L
-                    var max = mCaminhoOrigem!!.listFiles(mFilterNomeArquivo)?.size?.toLong() ?: 0L
+                    val max = mCaminhoOrigem!!.listFiles(mFilterNomeArquivo)?.size?.toLong() ?: 0L
                     val pastasCompactar: MutableList<File> = ArrayList()
                     LAST_PROCESS_FOLDERS.clear()
-                    val mesclarCapaTudo = cbMesclarCapaTudo.isSelected
-                    val verificaPagDupla = cbVerificaPaginaDupla.isSelected
                     val pastasComic = mutableMapOf<String, File>()
                     updateProgress(i, max)
 
                     updateMessage("Criando diretórios...")
-                    val nomePasta = (mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomePastaManga.text.trim { it <= ' ' } + " " + txtVolume.text.trim { it <= ' ' })
+                    val nomePasta = (mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + nomePastaMangaCapture + " " + volumeCapture)
                     updateMessage("Criando diretórios - $nomePasta Capa\\")
-                    pastasCompactar.add(gerarCapa(nomePasta, mesclarCapaTudo))
+                    pastasCompactar.add(gerarCapa(nomePasta, mesclarCapaTudoCapture))
                     pastasComic["000"] = pastasCompactar[0]
 
                     var pagina = 0
                     var proxCapitulo = 0
                     var contar = false
-                    var destino = criaPasta(nomePasta + " " + mListaCaminhos[pagina].nomePasta + "\\")
+                    var destino = criaPasta(nomePasta + " " + listaCaminhosCapture[pagina].nomePasta + "\\")
                     pastasCompactar.add(destino)
-                    pastasComic[mListaCaminhos[pagina].capitulo] = destino
+                    pastasComic[listaCaminhosCapture[pagina].capitulo] = destino
 
-                    var contadorCapitulo = Integer.valueOf(mListaCaminhos[pagina].numeroPagina)
+                    var contadorCapitulo = Integer.valueOf(listaCaminhosCapture[pagina].numeroPagina)
                     pagina++
-                    if (mListaCaminhos.size > 1)
-                        proxCapitulo = mListaCaminhos[pagina].numero
+                    if (listaCaminhosCapture.size > 1)
+                        proxCapitulo = listaCaminhosCapture[pagina].numero
 
                     for (arquivos in mCaminhoOrigem!!.listFiles(mFilterNomeArquivo).sorted()) {
                         if (mCANCELAR)
@@ -1450,22 +1461,22 @@ class AbaArquivoController : Initializable {
 
                         mLOG.info("Contar: " + contar + " - Contador: " + contadorCapitulo + " - Prox cap: " + proxCapitulo + " - Nome Imagem: " + arquivos.name)
 
-                        if (arquivos.name.equals(mSelecionado, ignoreCase = true))
+                        if (arquivos.name.equals(selectedItemCapture, ignoreCase = true))
                             contar = true
 
-                        if (contar && verificaPagDupla) {
+                        if (contar && verificaPaginaDuplaCapture) {
                             if (verificaPaginaDupla(arquivos))
                                 contadorCapitulo++
                         }
 
-                        if (contadorCapitulo >= proxCapitulo && pagina < mListaCaminhos.size) {
-                            updateMessage("Criando diretório - " + nomePasta + " " + mListaCaminhos[pagina].nomePasta + "\\")
-                            destino = criaPasta(nomePasta + " " + mListaCaminhos[pagina].nomePasta + "\\")
+                        if (contadorCapitulo >= proxCapitulo && pagina < listaCaminhosCapture.size) {
+                            updateMessage("Criando diretório - " + nomePasta + " " + listaCaminhosCapture[pagina].nomePasta + "\\")
+                            destino = criaPasta(nomePasta + " " + listaCaminhosCapture[pagina].nomePasta + "\\")
                             pastasCompactar.add(destino)
-                            pastasComic[mListaCaminhos[pagina].capitulo] = destino
+                            pastasComic[listaCaminhosCapture[pagina].capitulo] = destino
                             pagina++
-                            if (pagina < mListaCaminhos.size)
-                                proxCapitulo = Integer.valueOf(mListaCaminhos[pagina].numeroPagina)
+                            if (pagina < listaCaminhosCapture.size)
+                                proxCapitulo = Integer.valueOf(listaCaminhosCapture[pagina].numeroPagina)
                         }
                         i++
                         updateProgress(i, max)
@@ -1475,7 +1486,7 @@ class AbaArquivoController : Initializable {
                         if (contar)
                             contadorCapitulo++
 
-                        if (!btnProcessar.accessibleTextProperty().value.equals("CANCELA", ignoreCase = true))
+                        if (mCANCELAR)
                             break
                     }
 
@@ -1490,13 +1501,13 @@ class AbaArquivoController : Initializable {
                         }
                         mCANCELAR
                     }
-                    val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }
+                    val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + nomeArquivoCapture
 
                     val manga = Manga()
-                    manga.merge(mManga!!)
-                    manga.caminhos = mListaCaminhos
+                    mangaCapture?.let { manga.merge(it) }
+                    manga.caminhos = listaCaminhosCapture
 
-                    if (Winrar.compactar(mCaminhoDestino!!, File(arquivoZip), manga, mComicInfo, pastasCompactar, pastasComic, linguagem, cbCompactarArquivo.isSelected, cbGerarCapitulo.isSelected, callback = callback))
+                    if (Winrar.compactar(mCaminhoDestino!!, File(arquivoZip), manga, comicInfoCapture, pastasCompactar, pastasComic, linguagem, compactarArquivoCapture, gerarCapituloCapture, callback = callback))
                         LAST_PROCESS_FOLDERS = pastasCompactar
                 } catch (e: Exception) {
                     mLOG.error("Erro ao processar.", e)

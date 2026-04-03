@@ -27,15 +27,15 @@ object App {
             if (!dsn.isNullOrBlank()) {
                 Sentry.init { options ->
                     options.dsn = dsn
-                    options.environment =
-                            if (!environment.isNullOrBlank()) environment else "development"
+                    options.environment = if (!environment.isNullOrBlank()) environment else "development"
                     options.tracesSampleRate = 1.0
                 }
                 Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-                    mLog.error("Erro fatal não capturado na thread ${thread.name}", throwable)
+                    mLog.error("Erro fatal não capturado na thread ${thread.name} -- ${throwable.message}", throwable)
                 }
                 mLog.info("Sentry inicializado com sucesso!")
-            } else mLog.warn("Aviso: Chave do Sentry não encontrada no secrets.properties.")
+            } else
+                mLog.warn("Aviso: Chave do Sentry não encontrada no secrets.properties.")
         } catch (e: Exception) {
             mLog.error("Falha ao inicializar o Sentry: ${e.message}")
         }
