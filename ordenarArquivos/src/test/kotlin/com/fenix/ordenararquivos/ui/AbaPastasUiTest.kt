@@ -99,6 +99,16 @@ class AbaPastasUiTest : BaseTest() {
         Thread.sleep(1000) // Delay solicitado para estabilização
         WaitForAsyncUtils.waitForFxEvents()
 
+        // Garante que a janela está ativa e no topo para receber foco
+        robot.interact {
+            val stage = robot.listWindows().filterIsInstance<Stage>().firstOrNull()
+            if (stage != null && !stage.isFocused) {
+                stage.toFront()
+                stage.requestFocus()
+            }
+        }
+        WaitForAsyncUtils.waitForFxEvents()
+
         val cbManga = robot.lookup("#cbManga").queryAs(JFXComboBox::class.java)
         val txtPasta = robot.lookup("#txtPasta").queryAs(JFXTextField::class.java)
         val btnCarregar = robot.lookup("#btnCarregar").queryAs(JFXButton::class.java)

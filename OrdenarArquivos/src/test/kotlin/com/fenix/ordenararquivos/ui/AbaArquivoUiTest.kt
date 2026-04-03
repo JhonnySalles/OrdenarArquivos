@@ -318,6 +318,17 @@ class AbaArquivoUiTest : BaseTest() {
     fun testShortcutFocusArea(robot: FxRobot) {
         Thread.sleep(1000) // Delay solicitado para estabilização
         WaitForAsyncUtils.waitForFxEvents()
+
+        // Garante que a janela está ativa e no topo para receber foco
+        robot.interact {
+            val stage = robot.listWindows().filterIsInstance<Stage>().firstOrNull()
+            if (stage != null && !stage.isFocused) {
+                stage.toFront()
+                stage.requestFocus()
+            }
+        }
+        WaitForAsyncUtils.waitForFxEvents()
+        
         robot.clickOn("#txtVolume") // Move focus away
         
         robot.press(KeyCode.CONTROL).type(KeyCode.M).release(KeyCode.CONTROL)
@@ -510,7 +521,6 @@ class AbaArquivoUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
         val txtAreaImportar = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         robot.interact { 
-            txtAreaImportar.replaceText(0, txtAreaImportar.length, "001-05|T1\n002-10|T2") 
             txtAreaImportar.replaceText(0, txtAreaImportar.length, "001-05\n002-01|Description 2") 
             txtAreaImportar.requestFocus()
             // Select second line
