@@ -137,6 +137,7 @@ object Ocr {
     private lateinit var output : Mat
     private lateinit var aux : Mat
 
+    @JvmStatic
     fun prepare(isJapanese : Boolean) {
         if (TESSERACT == null && mGemini)
             return
@@ -154,6 +155,7 @@ object Ocr {
             instance.setLanguage("eng")
     }
 
+    @JvmStatic
     fun clear() {
         if (ocrFile.exists())
             ocrFile.delete()
@@ -163,6 +165,7 @@ object Ocr {
             block.delete()
     }
 
+    @JvmStatic
     fun process(image : File, separadorPagina : String, separadorCapitulo: String) : String {
         return if (mGemini)
             processGemini(image, geraPromptGemini(separadorPagina, separadorCapitulo))
