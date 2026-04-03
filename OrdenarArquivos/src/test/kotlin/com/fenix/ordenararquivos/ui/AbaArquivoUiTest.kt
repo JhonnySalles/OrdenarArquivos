@@ -7,7 +7,8 @@ import com.fenix.ordenararquivos.process.Ocr
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
 import javafx.scene.control.TextField
-import javafx.scene.layout.AnchorPane
+import javafx.scene.Node
+import com.jfoenix.controls.JFXTextField
 import javafx.stage.Stage
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
@@ -38,15 +39,24 @@ class AbaArquivoUiTest {
         val root = loader.load<AnchorPane>()
         mainController = loader.getController()
         
-        // Access private controller
+        // Access private controller via reflection for testing
         val field = mainController.javaClass.getDeclaredField("arquivoController")
         field.isAccessible = true
         arquivoController = field.get(mainController) as AbaArquivoController
 
-        val scene = Scene(root)
+        val scene = Scene(root, 1024.0, 768.0)
+        
+        // Workaround for JFoenix NPE: disable labelFloat during initialization
+        for (node in root.lookupAll(".jfx-text-field")) {
+            if (node is JFXTextField) {
+                node.isLabelFloat = false
+            }
+        }
+
         mainController.configurarAtalhos(scene)
         stage.scene = scene
         stage.show()
+        stage.toFront()
     }
 
     @BeforeEach

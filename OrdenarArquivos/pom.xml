@@ -23,7 +23,7 @@
 
         <excludedGroups>UI</excludedGroups>
 
-        <javafx.version>17.0.2</javafx.version>
+        <javafx.version>17.0.13</javafx.version>
         <jfoenix.version>9.0.10</jfoenix.version>
         <animatefx.version>1.2.3</animatefx.version>
         <constrolsfx.version>11.1.1</constrolsfx.version>
@@ -382,8 +382,13 @@
                         --add-opens javafx.graphics/com.sun.javafx.tk=org.testfx
                         --add-exports javafx.graphics/com.sun.javafx.application=ALL-UNNAMED
                         --add-opens javafx.graphics/com.sun.javafx.application=ALL-UNNAMED
+                        --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.controller=ALL-UNNAMED
+                        --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.ui=ALL-UNNAMED
+                        --add-opens javafx.controls/javafx.scene.control.skin=com.jfoenix
+                        --add-opens javafx.graphics/com.sun.javafx.scene=com.jfoenix
 
                         -Djavafx.verbose=true
+                        -Dcom.jfoenix.disableAnimations=true
                     </argLine>
                     <excludedGroups>${excludedGroups}</excludedGroups>
                 </configuration>

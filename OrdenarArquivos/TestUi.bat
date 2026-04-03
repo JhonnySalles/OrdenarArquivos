@@ -1,3 +1,3 @@
 @echo off
-mvn test -Dgroups="UI"
+mvn test -Dgroups="UI" -DexcludedGroups=""
 pause
