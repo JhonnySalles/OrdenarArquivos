@@ -499,7 +499,7 @@ class AbaArquivoUiTest : BaseTest() {
         }
         
         // Ctrl + Alt + 2 to change chapter to 2
-        robot.press(KeyCode.CONTROL, KeyCode.ALT).type(KeyCode.DIGIT2).release(KeyCode.ALT, KeyCode.CONTROL)
+        robot.press(KeyCode.CONTROL, KeyCode.ALT).type(KeyCode.NUMPAD2).release(KeyCode.ALT, KeyCode.CONTROL)
         WaitForAsyncUtils.waitForFxEvents()
         
         assertEquals("2-01|TAG", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
@@ -511,6 +511,7 @@ class AbaArquivoUiTest : BaseTest() {
         val txtAreaImportar = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         robot.interact { 
             txtAreaImportar.replaceText(0, txtAreaImportar.length, "001-05|T1\n002-10|T2") 
+            txtAreaImportar.replaceText(0, txtAreaImportar.length, "001-05\n002-01|Description 2") 
             txtAreaImportar.requestFocus()
             // Select second line
             txtAreaImportar.positionCaret(txtAreaImportar.length)
@@ -521,7 +522,14 @@ class AbaArquivoUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
         
         // As per AbaArquivoController:2886-2887, moves tag to previous line
-        assertEquals("001-05|T2\n002-10|T1", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+        assertEquals("001-05|Description 2\n002-01", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        // Ctrl + Alt + DOWN to move T2 tag down
+        robot.press(KeyCode.ALT, KeyCode.SHIFT).type(KeyCode.DOWN).release(KeyCode.SHIFT, KeyCode.ALT)
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        // As per AbaArquivoController:2886-2887, moves tag to next line
+        assertEquals("001-05\n002-01|Description 2", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
     }
 
     @Test
