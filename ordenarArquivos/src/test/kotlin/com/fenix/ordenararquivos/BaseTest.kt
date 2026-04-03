@@ -16,6 +16,12 @@ abstract class BaseTest {
 
     @BeforeAll
     fun baseSetUp() {
+        // Silenciando logs verbosos do JavaFX/JFoenix
+        System.setProperty("glass.accessible.force", "false")
+        System.setProperty("com.sun.javafx.binding.Logging.level", "OFF")
+        java.util.logging.Logger.getLogger("javafx.fxml").level = java.util.logging.Level.OFF
+        java.util.logging.Logger.getLogger("com.sun.javafx.binding").level = java.util.logging.Level.OFF
+
         mLOG.info("Configurando ambiente de teste (:memory:)...")
         DataBase.isTeste = true
         DataBase.closeConnection()

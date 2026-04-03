@@ -115,6 +115,13 @@
         </dependency>
 
         <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <version>1.10.2</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.testfx</groupId>
             <artifactId>testfx-junit5</artifactId>
             <version>${test.testfx.version}</version>
@@ -387,11 +394,24 @@
                         --add-opens javafx.controls/javafx.scene.control.skin=com.jfoenix
                         --add-opens javafx.graphics/com.sun.javafx.scene=com.jfoenix
 
-                        -Djavafx.verbose=true
                         -Dcom.jfoenix.disableAnimations=true
                     </argLine>
                     <excludedGroups>${excludedGroups}</excludedGroups>
+                    <useFile>false</useFile>
+                    <redirectTestOutputToFile>false</redirectTestOutputToFile>
+                    <properties>
+                        <configurationParameters>
+                            junit.jupiter.extensions.autodetection.enabled = true
+                        </configurationParameters>
+                    </properties>
                 </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.junit.platform</groupId>
+                        <artifactId>junit-platform-launcher</artifactId>
+                        <version>1.10.2</version>
+                    </dependency>
+                </dependencies>
             </plugin>
 
             <!-- Sources -->

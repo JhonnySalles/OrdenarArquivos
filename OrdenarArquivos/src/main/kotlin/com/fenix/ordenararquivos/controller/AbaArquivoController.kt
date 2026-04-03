@@ -87,16 +87,16 @@ class AbaArquivoController : Initializable {
     private lateinit var apRoot: AnchorPane
 
     @FXML
-    private lateinit var tbTabRoot: JFXTabPane
-
+    private lateinit var tbTabRootArquivo: JFXTabPane
+ 
     @FXML
-    private lateinit var tbTabArquivo: Tab
-
+    private lateinit var tbTabArquivo_Arquivos: Tab
+ 
     @FXML
-    private lateinit var tbTabCapa: Tab
-
+    private lateinit var tbTabArquivo_Capa: Tab
+ 
     @FXML
-    private lateinit var tbTabComicInfo: Tab
+    private lateinit var tbTabArquivo_ComicInfo: Tab
 
     @FXML
     private lateinit var btnCompartilhamento: JFXButton
@@ -605,8 +605,8 @@ class AbaArquivoController : Initializable {
                     mComicInfo = comicInfoCapture
 
                     val selecionado = if (mComicInfo.idMal != null) Selecionado.SELECIONADO else Selecionado.SELECIONAR
-                    Selecionado.setTabColor(tbTabComicInfo, selecionado)
-                    tbTabComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + mComicInfo.comic + ")" else "")
+                    Selecionado.setTabColor(tbTabArquivo_ComicInfo, selecionado)
+                    tbTabArquivo_ComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + mComicInfo.comic + ")" else "")
 
                     btnMalAplicar.isDisable = false
                     controllerPai.setCursor(null)
@@ -624,7 +624,7 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private fun onBtnMalConsultar() {
-        tbTabRoot.selectionModel.select(tbTabComicInfo)
+        tbTabRootArquivo.selectionModel.select(tbTabArquivo_ComicInfo)
         consultarMal()
     }
 
@@ -836,8 +836,8 @@ class AbaArquivoController : Initializable {
             mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
             else -> Selecionado.VAZIO
         }
-        Selecionado.setTabColor(tbTabComicInfo, selecionado)
-        tbTabComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + mComicInfo.comic + ")" else "")
+        Selecionado.setTabColor(tbTabArquivo_ComicInfo, selecionado)
+        tbTabArquivo_ComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + mComicInfo.comic + ")" else "")
     }
 
     private fun ocrSumario(sumario : File) {
@@ -932,8 +932,8 @@ class AbaArquivoController : Initializable {
                         listaResults.isNotEmpty() -> Selecionado.SELECIONAR
                         else -> Selecionado.VAZIO
                     }
-                    Selecionado.setTabColor(tbTabComicInfo, selecionado)
-                    tbTabComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + mComicInfo.comic + ")" else "")
+                    Selecionado.setTabColor(tbTabArquivo_ComicInfo, selecionado)
+                    tbTabArquivo_ComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + mComicInfo.comic + ")" else "")
 
                     btnMalConsultar.isDisable = false
                 }
@@ -1819,7 +1819,7 @@ class AbaArquivoController : Initializable {
         mCaminhoOrigem = File(txtPastaOrigem.text)
         limparCapas()
         listaItens()
-        tbTabRoot.selectionModel.select(0)
+        tbTabRootArquivo.selectionModel.select(0)
     }
 
     @FXML
@@ -1989,7 +1989,7 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private fun onSelectCapaChanged(event: Event) {
-        if (tbTabCapa.isSelected) {
+        if (tbTabArquivo_Capa.isSelected) {
             mImagemTudo.image = null
             mImagemFrente.image = null
             mImagemTras.image = null
@@ -3050,7 +3050,7 @@ class AbaArquivoController : Initializable {
                 btnProcessar.fire()
 
             if (kcComicInfo.match(ke)) {
-                if (tbTabRoot.selectionModel.selectedItem == tbTabComicInfo) {
+                if (tbTabRootArquivo.selectionModel.selectedItem == tbTabArquivo_ComicInfo) {
                     if (txtMalId.text.isEmpty() && txtMalNome.text.isEmpty()) {
                         var nome = txtNomePastaManga.text
                         if (nome.contains("]"))
@@ -3064,12 +3064,12 @@ class AbaArquivoController : Initializable {
                     if (isAbaSelecionada)
                         btnMalConsultar.fire()
                 } else
-                    tbTabRoot.selectionModel.select(tbTabComicInfo)
+                    tbTabRootArquivo.selectionModel.select(tbTabArquivo_ComicInfo)
             }
 
             if (kcArquivos.match(ke)) {
-                if (tbTabRoot.selectionModel.selectedItem != tbTabArquivo)
-                    tbTabRoot.selectionModel.select(tbTabArquivo)
+                if (tbTabRootArquivo.selectionModel.selectedItem != tbTabArquivo_Arquivos)
+                    tbTabRootArquivo.selectionModel.select(tbTabArquivo_Arquivos)
                 else if (acdArquivos.expandedPane != ttpArquivos)
                     acdArquivos.expandedPane = ttpArquivos
             }

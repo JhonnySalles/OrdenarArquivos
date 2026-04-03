@@ -58,13 +58,13 @@ class AbaPastasController : Initializable {
     private lateinit var apRoot: AnchorPane
 
     @FXML
-    private lateinit var tbTabRoot: JFXTabPane
+    private lateinit var tbTabRootPastas: JFXTabPane
 
     @FXML
-    private lateinit var tbTabArquivo: Tab
+    private lateinit var tbTabPastas_Arquivos: Tab
 
     @FXML
-    private lateinit var tbTabComicInfo: Tab
+    private lateinit var tbTabPastas_ComicInfo: Tab
 
     @FXML
     private lateinit var cbManga: JFXComboBox<String>
@@ -264,7 +264,7 @@ class AbaPastasController : Initializable {
 
     @FXML
     private fun onBtnMalConsultar() {
-        tbTabRoot.selectionModel.select(tbTabComicInfo)
+        tbTabRootPastas.selectionModel.select(tbTabPastas_ComicInfo)
         consultarMal()
     }
 
@@ -319,7 +319,7 @@ class AbaPastasController : Initializable {
                 mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
                 else -> Selecionado.VAZIO
             }
-            Selecionado.setTabColor(tbTabComicInfo, selecionado)
+            Selecionado.setTabColor(tbTabPastas_ComicInfo, selecionado)
         }
     }
 
@@ -348,7 +348,7 @@ class AbaPastasController : Initializable {
                                 mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
                                 else -> Selecionado.VAZIO
                             }
-                            Selecionado.setTabColor(tbTabComicInfo, selecionado)
+                            Selecionado.setTabColor(tbTabPastas_ComicInfo, selecionado)
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
@@ -631,19 +631,19 @@ class AbaPastasController : Initializable {
 
         scene.addEventFilter(KeyEvent.KEY_PRESSED) { ke: KeyEvent ->
             if (kcComicInfo.match(ke)) {
-                if (tbTabRoot.selectionModel.selectedItem == tbTabComicInfo) {
+                if (tbTabRootPastas.selectionModel.selectedItem == tbTabPastas_ComicInfo) {
                     if (txtMalId.text.isEmpty() && txtMalNome.text.isEmpty())
                         txtMalNome.text = cbManga.value
 
                     if (isAbaSelecionada)
                         btnMalConsultar.fire()
                 } else
-                    tbTabRoot.selectionModel.select(tbTabComicInfo)
+                    tbTabRootPastas.selectionModel.select(tbTabPastas_ComicInfo)
             }
 
             if (kcArquivos.match(ke)) {
-                if (tbTabRoot.selectionModel.selectedItem != tbTabArquivo)
-                    tbTabRoot.selectionModel.select(tbTabArquivo)
+                if (tbTabRootPastas.selectionModel.selectedItem != tbTabPastas_Arquivos)
+                    tbTabRootPastas.selectionModel.select(tbTabPastas_Arquivos)
             }
         }
     }

@@ -199,9 +199,9 @@
                   <Insets left="5.0" right="5.0" />
                </padding>
             </HBox>
-            <JFXTabPane fx:id="tbTabRoot" VBox.vgrow="ALWAYS">
+            <JFXTabPane fx:id="tbTabRootArquivo" VBox.vgrow="ALWAYS">
                <tabs>
-                  <Tab fx:id="tbTabArquivo" text="Arquivos">
+                  <Tab fx:id="tbTabArquivo_Arquivos" text="Arquivos">
                      <content>
                         <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                            <children>
@@ -360,7 +360,7 @@
                         <Tooltip text="Ctrl + D" />
                      </tooltip>
                   </Tab>
-                  <Tab fx:id="tbTabComicInfo" onSelectionChanged="#onSelectCapaChanged" text="ComicInfo">
+                  <Tab fx:id="tbTabArquivo_ComicInfo" onSelectionChanged="#onSelectCapaChanged" text="ComicInfo">
                      <content>
                         <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" styleClass="background-Black3">
                            <children>
@@ -493,7 +493,7 @@
                         <Tooltip text="Ctrl + W" />
                      </tooltip>
                   </Tab>
-                  <Tab fx:id="tbTabCapa" onSelectionChanged="#onSelectCapaChanged" text="Capas">
+                  <Tab fx:id="tbTabArquivo_Capa" onSelectionChanged="#onSelectCapaChanged" text="Capas">
                      <content>
                         <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                            <children>

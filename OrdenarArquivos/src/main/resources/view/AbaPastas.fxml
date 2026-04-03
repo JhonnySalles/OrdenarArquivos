@@ -41,9 +41,9 @@
                   <Insets bottom="10.0" left="10.0" right="10.0" top="15.0" />
                </VBox.margin>
             </HBox>
-            <JFXTabPane fx:id="tbTabRoot" styleClass="background-Black3" VBox.vgrow="ALWAYS">
+            <JFXTabPane fx:id="tbTabRootPastas" styleClass="background-Black3" VBox.vgrow="ALWAYS">
                <tabs>
-                  <Tab fx:id="tbTabArquivo" text="Arquivos">
+                  <Tab fx:id="tbTabPastas_Arquivos" text="Arquivos">
                      <content>
                         <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" styleClass="background-Black3">
                            <children>
@@ -61,7 +61,7 @@
                         </AnchorPane>
                      </content>
                   </Tab>
-                  <Tab fx:id="tbTabComicInfo" text="ComicInfo">
+                  <Tab fx:id="tbTabPastas_ComicInfo" text="ComicInfo">
                      <content>
                         <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" styleClass="background-Black3">
                            <children>
