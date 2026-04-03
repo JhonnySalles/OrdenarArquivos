@@ -74,6 +74,7 @@ import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.regex.Pattern
 import javax.imageio.ImageIO
+import kotlin.math.max
 import kotlin.properties.Delegates
 
 class AbaArquivoController : Initializable {
@@ -528,7 +529,7 @@ class AbaArquivoController : Initializable {
                 var number = Integer.valueOf(volume)
                 texto = texto.substring(0, texto.lastIndexOf(volume))
                 number -= 1
-                volume = texto + String.format("%0" + padding + "d", number)
+                volume = texto + String.format("%0" + padding + "d", max(number, 0))
                 txtVolume.text = volume
                 simulaNome()
                 if (!carregaManga())
@@ -538,13 +539,13 @@ class AbaArquivoController : Initializable {
                     var number = java.lang.Double.valueOf(volume)
                     texto = texto.substring(0, texto.lastIndexOf(volume))
                     number -= 1
-                    volume = texto + String.format("%0$padding.1f", number).replace("\\.".toRegex(), "").replace("\\,".toRegex(), ".")
+                    volume = texto + String.format("%0$padding.1f", max(number, 0.0)).replace("\\.".toRegex(), "").replace("\\,".toRegex(), ".")
                     txtVolume.text = volume
                     simulaNome()
                     if (!carregaManga())
                         incrementaCapitulos(txtVolume.text, oldVolume)
                 } catch (e1: NumberFormatException) {
-                    mLOG.info("Erro ao incrementar valor.", e)
+                    mLOG.info("Erro ao decrementar valor.", e)
                 }
             }
         }
@@ -586,8 +587,39 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private fun onBtnMalAplicar() {
-        if (tbViewMal.items.isNotEmpty())
-            carregaMal(tbViewMal.selectionModel.selectedItem)
+        if (tbViewMal.selectionModel.selectedItem != null) {
+            val mal = tbViewMal.selectionModel.selectedItem
+            val linguagemCapture = cbLinguagem.value ?: Linguagem.JAPANESE
+            val comicInfoCapture = ComicInfo(mComicInfo)
+
+            btnMalAplicar.isDisable = true
+            controllerPai.setCursor(Cursor.WAIT)
+
+            val task = object : Task<Void>() {
+                override fun call(): Void? {
+                    mServiceComicInfo.updateMal(comicInfoCapture, mal, linguagemCapture)
+                    return null
+                }
+
+                override fun succeeded() {
+                    mComicInfo = comicInfoCapture
+
+                    val selecionado = if (mComicInfo.idMal != null) Selecionado.SELECIONADO else Selecionado.SELECIONAR
+                    Selecionado.setTabColor(tbTabComicInfo, selecionado)
+                    tbTabComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + mComicInfo.comic + ")" else "")
+
+                    btnMalAplicar.isDisable = false
+                    controllerPai.setCursor(null)
+                }
+
+                override fun failed() {
+                    btnMalAplicar.isDisable = false
+                    controllerPai.setCursor(null)
+                    AlertasPopup.erroModal("Erro", "Erro ao carregar dados do MyAnimeList: " + (exception?.message ?: "Erro desconhecido"))
+                }
+            }
+            Thread(task).start()
+        }
     }
 
     @FXML
@@ -860,29 +892,22 @@ class AbaArquivoController : Initializable {
 
     private fun consultarMal() {
         if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
-            val id : Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
-            val nome = txtMalNome.text
+            val idCapture : Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
+            val nomeCapture = txtMalNome.text
+            val linguagemCapture = cbLinguagem.value ?: Linguagem.JAPANESE
+            val comicInfoCapture = ComicInfo(mComicInfo)
 
             btnMalConsultar.isDisable = true
             val consulta: Task<Void> = object : Task<Void>() {
+                private var listaResults = listOf<Mal>()
+                private var atualizado = false
+
                 override fun call(): Void? {
                     try {
-                        val lista = mServiceComicInfo.getMal(id, nome)
-                        mObsListaMal = FXCollections.observableArrayList(lista)
-                        Platform.runLater {
-                            tbViewMal.items = mObsListaMal
-                            if (lista.isEmpty())
-                                Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
-                            else if (id != null && lista.size == 1)
-                                carregaMal(lista.first())
-
-                            val selecionado = when {
-                                id != null && lista.size == 1 -> Selecionado.SELECIONADO
-                                lista.isNotEmpty() -> Selecionado.SELECIONAR
-                                else -> Selecionado.VAZIO
-                            }
-                            Selecionado.setTabColor(tbTabComicInfo, selecionado)
-                            tbTabComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + lista[0].nome + ")" else "")
+                        listaResults = mServiceComicInfo.getMal(idCapture, nomeCapture)
+                        if (idCapture != null && listaResults.size == 1) {
+                            mServiceComicInfo.updateMal(comicInfoCapture, listaResults.first(), linguagemCapture)
+                            atualizado = true
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
@@ -892,13 +917,31 @@ class AbaArquivoController : Initializable {
                     }
                     return null
                 }
+
                 override fun succeeded() {
-                    Platform.runLater {
-                        btnMalConsultar.isDisable = false
+                    mObsListaMal = FXCollections.observableArrayList(listaResults)
+                    tbViewMal.items = mObsListaMal
+
+                    if (listaResults.isEmpty())
+                        Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
+                    else if (atualizado)
+                        mComicInfo = comicInfoCapture
+
+                    val selecionado = when {
+                        atualizado || (mComicInfo.idMal != null && listaResults.isNotEmpty()) -> Selecionado.SELECIONADO
+                        listaResults.isNotEmpty() -> Selecionado.SELECIONAR
+                        else -> Selecionado.VAZIO
                     }
+                    Selecionado.setTabColor(tbTabComicInfo, selecionado)
+                    tbTabComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + mComicInfo.comic + ")" else "")
+
+                    btnMalConsultar.isDisable = false
+                }
+
+                override fun failed() {
+                    btnMalConsultar.isDisable = false
                 }
             }
-
             Thread(consulta).start()
         } else {
             AlertasPopup.alertaModal("Alerta", "Necessário informar um id ou nome.")

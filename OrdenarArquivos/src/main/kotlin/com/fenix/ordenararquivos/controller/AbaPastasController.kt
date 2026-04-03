@@ -26,6 +26,7 @@ import javafx.concurrent.Task
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
+import javafx.scene.Cursor
 import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.control.cell.PropertyValueFactory
@@ -235,8 +236,30 @@ class AbaPastasController : Initializable {
 
     @FXML
     private fun onBtnMalAplicar() {
-        if (tbViewMal.items.isNotEmpty())
-            carregaMal(tbViewMal.selectionModel.selectedItem)
+        if (tbViewMal.selectionModel.selectedItem != null) {
+            val mal = tbViewMal.selectionModel.selectedItem
+            controllerPai.setCursor(Cursor.WAIT)
+            btnMalAplicar.isDisable = true
+
+            val task = object : Task<Void>() {
+                override fun call(): Void? {
+                    carregaMal(mal)
+                    return null
+                }
+
+                override fun succeeded() {
+                    controllerPai.setCursor(null)
+                    btnMalAplicar.isDisable = false
+                }
+
+                override fun failed() {
+                    controllerPai.setCursor(null)
+                    btnMalAplicar.isDisable = false
+                    mLOG.error("Erro ao aplicar MAL", exception)
+                }
+            }
+            Thread(task).start()
+        }
     }
 
     @FXML
@@ -288,14 +311,16 @@ class AbaPastasController : Initializable {
     private fun carregaMal(mal: Mal) {
         val comic = ComicInfo(mComicInfo)
         mServiceComicInfo.updateMal(comic, mal, cbLinguagem.value ?: Linguagem.JAPANESE)
-        mComicInfo = comic
 
-        val selecionado = when {
-            mComicInfo.idMal != null -> Selecionado.SELECIONADO
-            mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
-            else -> Selecionado.VAZIO
+        Platform.runLater {
+            mComicInfo = comic
+            val selecionado = when {
+                mComicInfo.idMal != null -> Selecionado.SELECIONADO
+                mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
+                else -> Selecionado.VAZIO
+            }
+            Selecionado.setTabColor(tbTabComicInfo, selecionado)
         }
-        Selecionado.setTabColor(tbTabComicInfo, selecionado)
     }
 
     private fun consultarMal() {
@@ -309,12 +334,14 @@ class AbaPastasController : Initializable {
                     try {
                         val lista = mServiceComicInfo.getMal(id, nome)
                         mObsListaMal = FXCollections.observableArrayList(lista)
+                        if (id != null && lista.size == 1) {
+                            carregaMal(lista.first())
+                        }
+
                         Platform.runLater {
                             tbViewMal.items = mObsListaMal
                             if (lista.isEmpty())
                                 Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
-                            else if (id != null && lista.size == 1)
-                                carregaMal(lista.first())
 
                             val selecionado = when {
                                 mComicInfo.idMal != null -> Selecionado.SELECIONADO
@@ -424,8 +451,11 @@ class AbaPastasController : Initializable {
                             lista.add(Pasta(pasta = file, arquivo = file.name, nome = cbManga.editor.text, volume = volume.toFloatOrNull() ?: 0f, capitulo = capitulos.toFloatOrNull() ?: 0f, scan = scan, titulo = titulo, isCapa = isCapa))
                         }
 
-                        mObsListaProcessar = FXCollections.observableArrayList(lista)
-                        Platform.runLater { tbViewProcessar.items = mObsListaProcessar }
+
+                        Platform.runLater {
+                            mObsListaProcessar = FXCollections.observableArrayList(lista)
+                            tbViewProcessar.items = mObsListaProcessar
+                        }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao carregar pastas.", e)
                         Platform.runLater {
@@ -452,15 +482,23 @@ class AbaPastasController : Initializable {
     }
 
     private fun aplicar() {
-        if (txtPasta.text.isNullOrEmpty()) {
+        val pastaTexto = txtPasta.text
+        if (pastaTexto.isNullOrEmpty()) {
             txtPasta.unFocusColor = Color.RED
             AlertasPopup.alertaModal("Alerta", "Não informado a pasta para processamento.")
             return
         }
 
-        if (cbManga.value.isNullOrEmpty()) {
+        val mangaValor = cbManga.value
+        if (mangaValor.isNullOrEmpty()) {
             cbManga.unFocusColor = Color.RED
             AlertasPopup.alertaModal("Alerta", "Não informado o nome do manga.")
+            return
+        }
+
+        val listaOriginal = mObsListaProcessar.toList()
+        if (listaOriginal.isEmpty()) {
+            AlertasPopup.alertaModal("Alerta", "Não existem itens para processar.")
             return
         }
 
@@ -476,20 +514,20 @@ class AbaPastasController : Initializable {
                     val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
                     val compactar = mutableListOf<File>()
                     val comic = mutableMapOf<String, File>()
-                    val destino = File(txtPasta.text)
+                    val destino = File(pastaTexto)
                     val caminhos = mutableListOf<Caminhos>()
-                    val nome = cbManga.value
+                    val nome = mangaValor
                     val manga = Manga()
                     manga.nome = nome
-                    mComicInfo.count = mObsListaProcessar.maxOf { it.volume }.toInt()
+                    mComicInfo.count = listaOriginal.maxOf { it.volume }.toInt()
 
                     var i = 0L
-                    val max = mObsListaProcessar.size.toLong()
+                    val max = listaOriginal.size.toLong()
 
                     var sequencia = 1
                     var vol = 0f
 
-                    val processar = {
+                    val processarVolume = {
                         if (vol > 0f) {
                             updateMessage("Gerando comic info volume $vol.")
                             mComicInfo.volume = vol.toInt()
@@ -497,10 +535,9 @@ class AbaPastasController : Initializable {
                             manga.volume = volume.format(vol)
                             manga.caminhos = caminhos
                             var complemento = " (Sem capa)"
-                            comic.filter { it.key == "000" }.values.first { p ->
+                            comic.filter { it.key == "000" }.values.forEach { p ->
                                 if (p.exists() && p.listFiles()?.any { f -> f.name.contains("tudo", ignoreCase = true) } == true)
                                     complemento = ""
-                                true
                             }
 
                             val arquivoZip = destino.path.trim { it <= ' ' } + "\\" + nome.trim { it <= ' ' } + " - Volume " + manga.volume + "$complemento.cbr"
@@ -521,9 +558,9 @@ class AbaPastasController : Initializable {
                         }
                     }
 
-                    for ((index, item) in mObsListaProcessar.sortedBy { it.volume }.withIndex()) {
+                    for ((index, item) in listaOriginal.sortedBy { it.volume }.withIndex()) {
                         if (item.volume > 0f && item.volume != vol) {
-                            processar()
+                            processarVolume()
                             vol = item.volume
                         }
 
@@ -542,18 +579,17 @@ class AbaPastasController : Initializable {
                         sequencia += file.listFiles()?.size ?: 0
 
                         if (item.volume > 0f && index+1 >= max.toInt())
-                            processar()
+                            processarVolume()
                     }
 
                     mServiceComicInfo.save(mComicInfo)
                     Platform.runLater {
-                        mObsListaProcessar = FXCollections.observableArrayList(mutableListOf())
-                        tbViewProcessar.items = mObsListaProcessar
+                        mObsListaProcessar.clear()
                         tbViewProcessar.refresh()
                         Notificacoes.notificacao(Notificacao.SUCESSO, "Renomear Pastas", "Pastas renomeadas com sucesso.")
                     }
                 } catch (e: Exception) {
-                    mLOG.info("Erro ao carregar pastas.", e)
+                    mLOG.info("Erro ao processar pastas.", e)
                     Platform.runLater {
                         Notificacoes.notificacao(Notificacao.ERRO, "Renomear Pastas", "Erro ao renomear pastas. " + e.message)
                     }
@@ -561,7 +597,6 @@ class AbaPastasController : Initializable {
                 return null
             }
             override fun succeeded() {
-                updateMessage("Pastas carregadas com sucesso.")
                 controllerPai.rootProgress.progressProperty().unbind()
                 controllerPai.rootMessage.textProperty().unbind()
                 controllerPai.clearProgress()

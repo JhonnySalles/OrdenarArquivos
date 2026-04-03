@@ -275,6 +275,7 @@ class AbaComicInfoController : Initializable {
     private var mCANCELAR = false
     private fun processaOCR() {
         val separador = Utils.SEPARADOR_CAPITULO
+        val listaProcessar = mObsListaProcessar.toList()
         val processaOCR: Task<Boolean> = object : Task<Boolean>() {
             override fun call(): Boolean {
                 try {
@@ -283,7 +284,7 @@ class AbaComicInfoController : Initializable {
                     var i = 0
                     updateMessage("Processando o OCR...")
 
-                    for (item in mObsListaProcessar) {
+                    for (item in listaProcessar) {
                         if (item.isProcessado)
                             continue
                         i++
@@ -301,7 +302,7 @@ class AbaComicInfoController : Initializable {
 
                         val capitulos = mOcrService.processOcr(sumario, Utils.SEPARADOR_PAGINA, separador).split("\n")
                         val newTag = mutableSetOf<String>()
-                        val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
+                        val tags = item.comicInfo?.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
 
                         var index = -1
                         for (tag in tags) {
@@ -314,12 +315,15 @@ class AbaComicInfoController : Initializable {
                         }
 
                         if (index < capitulos.size) {
-                            for (i in index + 1 until capitulos.size)
-                                newTag.add("0${Utils.SEPARADOR_IMAGEM} Capítulo novo ${Utils.SEPARADOR_IMPORTACAO} ${capitulos[i]}")
+                            for (idx in index + 1 until capitulos.size)
+                                newTag.add("0${Utils.SEPARADOR_IMAGEM} Capítulo novo ${Utils.SEPARADOR_IMPORTACAO} ${capitulos[idx]}")
                         }
 
-                        item.tags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
-                        item.isProcessado = true
+                        val finalTags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
+                        Platform.runLater {
+                            item.tags = finalTags
+                            item.isProcessado = true
+                        }
                     }
 
                     if (!mCANCELAR) {
@@ -346,7 +350,7 @@ class AbaComicInfoController : Initializable {
             override fun failed() {
                 super.failed()
                 updateMessage("Erro ao processar o OCR.")
-                AlertasPopup.erroModal("Erro ao processar o OCR", super.getMessage())
+                AlertasPopup.erroModal("Erro ao processar o OCR", super.getMessage() ?: "Erro desconhecido")
                 habilita()
                 tbViewProcessar.refresh()
             }
@@ -407,8 +411,10 @@ class AbaComicInfoController : Initializable {
                             lista.add(item)
                         }
 
-                        mObsListaProcessar = FXCollections.observableArrayList(lista)
-                        Platform.runLater { tbViewProcessar.items = mObsListaProcessar }
+                        Platform.runLater {
+                            mObsListaProcessar = FXCollections.observableArrayList(lista)
+                            tbViewProcessar.items = mObsListaProcessar
+                        }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao carregar itens para processamento de mangas.", e)
                         Platform.runLater {
@@ -496,11 +502,11 @@ class AbaComicInfoController : Initializable {
     private fun salvarItens(startIndex: Int = 0, endIndex : Int = 0) {
         controllerPai.setCursor(Cursor.WAIT)
         desabilita()
+        val list = mObsListaProcessar.toList()
         val processar: Task<Void> = object : Task<Void>() {
             override fun call(): Void? {
                 try {
                     updateMessage("Salvando ComicInfo...")
-                    val list = mObsListaProcessar.toList()
                     for (i in startIndex until endIndex) {
                         updateProgress(i.toLong(), endIndex.toLong())
                         updateMessage("Salvando ComicInfo $i de $endIndex.")
