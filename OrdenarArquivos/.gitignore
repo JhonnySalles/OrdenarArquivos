@@ -37,3 +37,7 @@ temp/*
 
 ### Mac OS ###
 .DS_Store
+
+### Arquivos de Log ###
+*.log
+*.log.zip

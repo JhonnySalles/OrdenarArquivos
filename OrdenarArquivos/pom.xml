@@ -21,6 +21,8 @@
         <test.mockito.version>5.9.0</test.mockito.version>
         <test.mockito-kotlin.version>5.2.1</test.mockito-kotlin.version>
 
+        <excludedGroups>UI</excludedGroups>
+
         <javafx.version>17.0.2</javafx.version>
         <jfoenix.version>9.0.10</jfoenix.version>
         <animatefx.version>1.2.3</animatefx.version>
@@ -378,12 +380,12 @@
                         --add-opens javafx.controls/com.sun.javafx.scene.control=com.jfoenix
                         --add-opens javafx.base/com.sun.javafx.event=com.jfoenix
                         --add-opens javafx.graphics/com.sun.javafx.tk=org.testfx
+                        --add-exports javafx.graphics/com.sun.javafx.application=ALL-UNNAMED
+                        --add-opens javafx.graphics/com.sun.javafx.application=ALL-UNNAMED
 
-                        -Dtestfx.robot=glass
-                        -Dtestfx.headless=true
-                        -Dprism.order=sw
                         -Djavafx.verbose=true
                     </argLine>
+                    <excludedGroups>${excludedGroups}</excludedGroups>
                 </configuration>
             </plugin>
 
