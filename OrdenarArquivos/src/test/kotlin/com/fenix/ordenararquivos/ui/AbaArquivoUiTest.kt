@@ -381,6 +381,16 @@ class AbaArquivoUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
         
         assertEquals("001-01\n002-01", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Z).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("002-01\n001-01", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Y).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-01\n002-01", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
     }
 
     @Test
@@ -413,6 +423,16 @@ class AbaArquivoUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
         
         assertEquals("001-01", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Z).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-01|Capítulo 01", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Y).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-01", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
     }
 
     @Test
@@ -430,6 +450,16 @@ class AbaArquivoUiTest : BaseTest() {
         
         // Ctrl + 5 on 001-01 should result in 001.5-01 based on logic in line 2663
         assertEquals("001.5-01", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Z).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-01", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Y).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001.5-01", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
     }
 
     @Test
@@ -446,6 +476,16 @@ class AbaArquivoUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
         
         assertTrue(txtAreaImportar.text.contains("Extra", ignoreCase = true), "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Z).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-01", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Y).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertTrue(txtAreaImportar.text.contains("Extra", ignoreCase = true), "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
     }
 
     @Test
@@ -453,7 +493,7 @@ class AbaArquivoUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
         val txtAreaImportar = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         robot.interact { 
-            txtAreaImportar.replaceText(0, txtAreaImportar.length, "L1\nL2") 
+            txtAreaImportar.replaceText(0, txtAreaImportar.length, "001-3|Linha 01\n002-15|Linha 02\n003-20|Linha 03\n004-25|Linha 04\n005-30|Linha 05") 
             txtAreaImportar.requestFocus()
             // Select L2 (end of text)
             txtAreaImportar.positionCaret(txtAreaImportar.length)
@@ -463,7 +503,17 @@ class AbaArquivoUiTest : BaseTest() {
         robot.press(KeyCode.CONTROL, KeyCode.SHIFT).type(KeyCode.UP).release(KeyCode.SHIFT, KeyCode.CONTROL)
         WaitForAsyncUtils.waitForFxEvents()
         
-        assertEquals("L2\nL1", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+        assertEquals("001-3|Linha 01\n002-15|Linha 02\n003-20|Linha 03\n005-30|Linha 05\n004-25|Linha 04", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Z).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-3|Linha 01\n002-15|Linha 02\n003-20|Linha 03\n004-25|Linha 04\n005-30|Linha 05", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Y).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-3|Linha 01\n002-15|Linha 02\n003-20|Linha 03\n005-30|Linha 05\n004-25|Linha 04", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
     }
 
     @Test
@@ -480,6 +530,16 @@ class AbaArquivoUiTest : BaseTest() {
         robot.press(KeyCode.CONTROL, KeyCode.SHIFT).type(KeyCode.LEFT).release(KeyCode.SHIFT, KeyCode.CONTROL)
         WaitForAsyncUtils.waitForFxEvents()
         
+        assertEquals("003-001\n002-001", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Z).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-003\n002-001", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Y).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
         assertEquals("003-001\n002-001", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
     }
 
@@ -498,6 +558,16 @@ class AbaArquivoUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
         
         assertEquals("001-002\n003-004\n005-006", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Z).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("002-001\n004-003\n006-005", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Y).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-002\n003-004\n005-006", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
     }
 
     @Test
@@ -514,6 +584,16 @@ class AbaArquivoUiTest : BaseTest() {
         robot.press(KeyCode.CONTROL, KeyCode.ALT).type(KeyCode.NUMPAD2).release(KeyCode.ALT, KeyCode.CONTROL)
         WaitForAsyncUtils.waitForFxEvents()
         
+        assertEquals("2-01|TAG", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Z).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-01|TAG", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Y).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
         assertEquals("2-01|TAG", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
     }
 
@@ -541,6 +621,16 @@ class AbaArquivoUiTest : BaseTest() {
         
         // As per AbaArquivoController:2886-2887, moves tag to next line
         assertEquals("001-05\n002-01|Description 2", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Z).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-05|Description 2\n002-01", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Y).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-05\n002-01|Description 2", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
     }
 
     @Test
@@ -548,7 +638,7 @@ class AbaArquivoUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
         val txtAreaImportar = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         robot.interact { 
-            txtAreaImportar.replaceText(0, txtAreaImportar.length, "L1\nL2") 
+            txtAreaImportar.replaceText(0, txtAreaImportar.length, "001-3|Linha 01\n002-15|Linha 02\n003-20|Linha 03\n004-25|Linha 04\n005-30|Linha 05") 
             txtAreaImportar.requestFocus()
             txtAreaImportar.positionCaret(txtAreaImportar.length)
         }
@@ -557,6 +647,16 @@ class AbaArquivoUiTest : BaseTest() {
         robot.press(KeyCode.CONTROL, KeyCode.ALT).type(KeyCode.UP).release(KeyCode.ALT, KeyCode.CONTROL)
         WaitForAsyncUtils.waitForFxEvents()
         
-        assertEquals("L2\nL1", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+        assertEquals("001-3|Linha 01\n002-15|Linha 02\n003-20|Linha 03\n005-30|Linha 05\n004-25|Linha 04", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Z).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-3|Linha 01\n002-15|Linha 02\n003-20|Linha 03\n004-25|Linha 04\n005-30|Linha 05", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
+
+        robot.press(KeyCode.CONTROL).type(KeyCode.Y).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        assertEquals("001-3|Linha 01\n002-15|Linha 02\n003-20|Linha 03\n005-30|Linha 05\n004-25|Linha 04", txtAreaImportar.text, "AreaImportar com valor inesperado. Valor atual: ${txtAreaImportar.text}")
     }
 }
