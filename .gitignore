@@ -95,3 +95,5 @@ App/ordenar.log
 OrdenarArquivos/ordenatest.db
 OrdenarArquivos/rar.exe
 OrdenarArquivos/secrets.properties
+.agent/*
+OrdenarArquivos/.agent/*
