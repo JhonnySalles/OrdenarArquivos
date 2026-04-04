@@ -4,24 +4,35 @@ import com.fenix.ordenararquivos.database.DataBase
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.DriverManager
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(TestStatusListener::class)
 abstract class BaseTest {
 
     private val mLOG = LoggerFactory.getLogger(BaseTest::class.java)
     private var mKeepAlive : Connection? = null
 
+    companion object {
+        init {
+            // Silenciando logs verbosos do JavaFX/JFoenix antes do primeiro teste
+            System.setProperty("glass.accessible.force", "false")
+            System.setProperty("com.sun.javafx.binding.Logging.level", "OFF")
+            try {
+                // Tenta silenciar o FXMLLoader especificamente
+                java.util.logging.Logger.getLogger("javafx.fxml").level = java.util.logging.Level.OFF
+                java.util.logging.Logger.getLogger("com.sun.javafx.binding").level = java.util.logging.Level.OFF
+            } catch (e: Exception) {
+                // Ignora se falhar ao configurar o logger JUL
+            }
+        }
+    }
+
     @BeforeAll
     fun baseSetUp() {
-        // Silenciando logs verbosos do JavaFX/JFoenix
-        System.setProperty("glass.accessible.force", "false")
-        System.setProperty("com.sun.javafx.binding.Logging.level", "OFF")
-        java.util.logging.Logger.getLogger("javafx.fxml").level = java.util.logging.Level.OFF
-        java.util.logging.Logger.getLogger("com.sun.javafx.binding").level = java.util.logging.Level.OFF
-
         mLOG.info("Configurando ambiente de teste (:memory:)...")
         DataBase.isTeste = true
         DataBase.closeConnection()

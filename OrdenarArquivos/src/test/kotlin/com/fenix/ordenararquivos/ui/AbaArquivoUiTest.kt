@@ -34,6 +34,7 @@ import java.sql.DriverManager
 import java.util.zip.ZipFile
 import com.jfoenix.controls.JFXCheckBox
 import com.jfoenix.controls.JFXTabPane
+import com.fenix.ordenararquivos.TestStatusListener
 import kotlin.test.assertNotNull
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
