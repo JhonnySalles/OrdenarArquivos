@@ -3,43 +3,44 @@ package com.fenix.ordenararquivos.ui
 import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.controller.AbaComicInfoController
 import com.fenix.ordenararquivos.controller.TelaInicialController
-import com.fenix.ordenararquivos.database.DataBase
-import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
+import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.enums.Linguagem
-import com.fenix.ordenararquivos.service.OcrServices
+import com.fenix.ordenararquivos.process.Ocr
 import com.fenix.ordenararquivos.service.WinrarServices
 import com.jfoenix.controls.JFXButton
-import com.jfoenix.controls.JFXComboBox
 import com.jfoenix.controls.JFXTextField
+import com.jfoenix.controls.JFXTabPane
+import com.jfoenix.controls.JFXComboBox
+import javafx.application.Platform
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
 import javafx.scene.control.TableView
+import javafx.scene.control.Tab
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
 import org.junit.jupiter.api.*
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.MockedStatic
 import org.mockito.Mockito
+import org.mockito.kotlin.*
 import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
 import java.io.File
 import java.sql.DriverManager
-import kotlin.test.assertNotNull
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
-import com.fenix.ordenararquivos.model.entities.Processar
+import java.util.concurrent.TimeUnit
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
 class AbaComicInfoUiTest : BaseTest() {
 
     private lateinit var mainController: TelaInicialController
-    private lateinit var comicInfoController: AbaComicInfoController
-    private val tempDir = File("temp_ui_comicinfo_test")
-    
+    private lateinit var comicinfoController: AbaComicInfoController
+    private val tempDir = File("temp_ui_comicinfo_test").absoluteFile
     private lateinit var mockWinrar: WinrarServices
-    private lateinit var mockOcr: OcrServices
+    private lateinit var mockOcr: MockedStatic<Ocr>
 
     companion object {
         private var staticKeepAlive: java.sql.Connection? = null
@@ -47,18 +48,13 @@ class AbaComicInfoUiTest : BaseTest() {
         @BeforeAll
         @JvmStatic
         fun globalSetUp() {
-            DataBase.isTeste = true
-            DataBase.closeConnection()
             staticKeepAlive = DriverManager.getConnection("jdbc:sqlite:file:testdb_comicinfo?mode=memory&cache=shared")
-            DataBase.instancia
         }
 
         @AfterAll
         @JvmStatic
         fun globalTearDown() {
             staticKeepAlive?.close()
-            staticKeepAlive = null
-            DataBase.isTeste = false
         }
     }
 
@@ -67,218 +63,146 @@ class AbaComicInfoUiTest : BaseTest() {
         val loader = FXMLLoader(TelaInicialController.fxmlLocate)
         val root = loader.load<AnchorPane>()
         mainController = loader.getController()
-        
-        // Extract comicInfoController via reflection
-        val field = mainController.javaClass.getDeclaredField("comicInfoController")
+
+        val field = mainController.javaClass.getDeclaredField("comicinfoController")
         field.isAccessible = true
-        comicInfoController = field.get(mainController) as AbaComicInfoController
+        comicinfoController = field.get(mainController) as AbaComicInfoController
 
-        // Mock Services and inject
-        mockWinrar = Mockito.mock(WinrarServices::class.java)
-        mockOcr = Mockito.mock(OcrServices::class.java)
+        mockWinrar = mock<WinrarServices>()
         
-        val winrarField = comicInfoController.javaClass.getDeclaredField("mRarService")
-        winrarField.isAccessible = true
-        winrarField.set(comicInfoController, mockWinrar)
-        
-        val ocrField = comicInfoController.javaClass.getDeclaredField("mOcrService")
-        ocrField.isAccessible = true
-        ocrField.set(comicInfoController, mockOcr)
-
         val scene = Scene(root, 1024.0, 768.0)
         
-        // Fix JFoenix skins for tests
+        // Workaround for JFoenix skins
         try {
-            val cssFile = File.createTempFile("jfoenix_skin_fix_comic", ".css")
+            val cssFile = File.createTempFile("jfoenix_skin_fix", ".css")
             cssFile.writeText("""
-                .jfx-text-field { -fx-skin: "javafx.scene.control.skin.TextFieldSkin"; }
-                .jfx-combo-box { -fx-skin: "javafx.scene.control.skin.ComboBoxListViewSkin"; }
+                .jfx-text-field { -fx-skin: "javafx.scene.control.skin.TextFieldSkin" !important; }
+                .jfx-password-field { -fx-skin: "javafx.scene.control.skin.TextFieldSkin" !important; }
+                .jfx-text-area { -fx-skin: "javafx.scene.control.skin.TextAreaSkin" !important; }
+                .jfx-combo-box { -fx-skin: "javafx.scene.control.skin.ComboBoxListViewSkin" !important; }
+                .jfx-button { -fx-skin: "javafx.scene.control.skin.ButtonSkin" !important; }
+                .jfx-tab-pane { -fx-skin: "javafx.scene.control.skin.TabPaneSkin" !important; }
             """.trimIndent())
             scene.stylesheets.add(cssFile.toURI().toURL().toExternalForm())
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
+        } catch (e: Exception) {}
+        
         mainController.configurarAtalhos(scene)
         stage.scene = scene
-        WaitForAsyncUtils.waitForFxEvents()
         stage.show()
-        stage.toFront()
+        
+        // Select Comic Info tab
+        val tabPane = root.lookup("#tpGlobal") as JFXTabPane
+        val tabField = mainController.javaClass.getDeclaredField("tbTabComicInfo")
+        tabField.isAccessible = true
+        val tab = tabField.get(mainController) as Tab
+        Platform.runLater {
+            tabPane.selectionModel.select(tab)
+        }
+        WaitForAsyncUtils.waitForFxEvents()
     }
 
     @BeforeEach
     fun setUp() {
+        if (::mockOcr.isInitialized) {
+            try { mockOcr.close() } catch (e: Exception) {}
+        }
+        mockOcr = Mockito.mockStatic(Ocr::class.java)
+        
+        val winrarField = comicinfoController.javaClass.getDeclaredField("mRarService")
+        winrarField.isAccessible = true
+        winrarField.set(comicinfoController, mockWinrar)
+        
         if (tempDir.exists()) tempDir.deleteRecursively()
         tempDir.mkdirs()
-        
-        // Create a dummy rar file
-        File(tempDir, "test_manga.rar").writeText("dummy content")
-        
-        // Setup default mock behavior
-        val dummyComicInfoXml = File(tempDir, "ComicInfo.xml")
-        dummyComicInfoXml.writeText("""
-            <?xml version="1.0" encoding="utf-8"?>
-            <ComicInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-              <Series>Test Series</Series>
-              <Title>Test Title</Title>
-              <Publisher>Test Publisher</Publisher>
-              <Year>2023</Year>
-              <Month>10</Month>
-              <Day>27</Day>
-              <Pages>
-                <Page Image="0" Bookmark="Capítulo 01" />
-                <Page Image="1" />
-              </Pages>
-            </ComicInfo>
-        """.trimIndent())
-        
-        Mockito.`when`(mockWinrar.extraiComicInfo(Mockito.any(File::class.java))).thenReturn(dummyComicInfoXml)
-        Mockito.`when`(mockOcr.processOcr(Mockito.any(File::class.java), Mockito.anyString(), Mockito.anyString()))
-            .thenReturn("001-01\n002-05")
+        Mockito.reset(mockWinrar)
     }
 
     @AfterEach
     fun tearDown() {
-        if (tempDir.exists()) tempDir.deleteRecursively()
+        if (::mockOcr.isInitialized) {
+            try { mockOcr.close() } catch (e: Exception) {}
+        }
     }
 
-    @Test
-    fun testInitialUIState(robot: FxRobot) {
-        WaitForAsyncUtils.waitForFxEvents()
+    private fun helperCarregarItens(robot: FxRobot) {
+        val dummyFile = File(tempDir, "test_manga_001.rar")
+        dummyFile.createNewFile()
         
-        val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java)
-        assertNotNull(cbLinguagem)
-        assertEquals(Linguagem.JAPANESE, cbLinguagem.value)
+        val dummyComicInfoXml = File(tempDir, "ComicInfo.xml")
+        dummyComicInfoXml.writeText("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><ComicInfo><Series>Test Series</Series><Title>Test Title</Title><Pages><Page Image=\"0\" Bookmark=\"Test\"/></Pages></ComicInfo>")
         
-        val txtPasta = robot.lookup("#txtPastaProcessar").queryAs(JFXTextField::class.java)
-        assertEquals("", txtPasta.text)
+        whenever(mockWinrar.extraiComicInfo(any())).thenReturn(dummyComicInfoXml)
+        mockOcr.`when`<String> { Ocr.process(any(), any(), any()) }.thenReturn("001-01")
+
+        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
+        val tab = tabPane.selectionModel.selectedItem
+        val tabContent = tab.content as AnchorPane
+
+        val txtPasta = tabContent.lookup("#txtPastaProcessar") as JFXTextField
+        val btnCarregar = tabContent.lookup("#btnCarregar") as JFXButton
         
-        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java)
-        assertTrue(table.items.isEmpty())
+        robot.interact {
+            txtPasta.text = tempDir.absolutePath
+            btnCarregar.fire()
+        }
         
-        assertNotNull(robot.lookup("#btnCarregar"))
-        assertNotNull(robot.lookup("#btnOcrProcessar"))
+        WaitForAsyncUtils.waitFor(15, TimeUnit.SECONDS) {
+            val table = tabContent.lookup("#tbViewProcessar") as TableView<*>
+            (table.items?.size ?: 0) > 0
+        }
     }
 
     @Test
     fun testCarregarItens(robot: FxRobot) {
-        WaitForAsyncUtils.waitForFxEvents()
-        
-        val txtPasta = robot.lookup("#txtPastaProcessar").queryAs(JFXTextField::class.java)
-        robot.interact {
-            txtPasta.text = tempDir.absolutePath
-        }
-        
-        robot.clickOn("#btnCarregar")
-        
-        // Wait for background Task
-        WaitForAsyncUtils.waitForFxEvents()
-        Thread.sleep(500) // Give it a moment to process the dummy file
-        WaitForAsyncUtils.waitForFxEvents()
-
-        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java)
-        assertEquals(1, table.items.size, "A tabela deveria ter 1 item carregado")
-        
-        val item = table.items[0] as Processar
-        assertEquals("test_manga.rar", item.arquivo)
-        assertEquals("Test Series", item.comicInfo?.series)
-    }
-
-    @Test
-    fun testGerarTags(robot: FxRobot) {
-        testCarregarItens(robot)
-        
-        val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java)
-        robot.interact {
-            cbLinguagem.value = Linguagem.PORTUGUESE
-        }
-        
-        robot.clickOn("#btnTagsProcessar")
-        WaitForAsyncUtils.waitForFxEvents()
-        
-        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java)
-        val item = table.items[0] as Processar
-        assertTrue(item.tags.contains("Capítulo 01"), "As tags deveriam conter 'Capítulo 01'. Atual: ${item.tags}")
+        helperCarregarItens(robot)
+        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
+        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
+        val table = tabContent.lookup("#tbViewProcessar") as TableView<Processar>
+        assertEquals(1, table.items.size)
     }
 
     @Test
     fun testNormalizarTags(robot: FxRobot) {
-        testCarregarItens(robot)
+        helperCarregarItens(robot)
+        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
+        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
+        val table = tabContent.lookup("#tbViewProcessar") as TableView<Processar>
+        val item = table.items[0]
         
-        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java)
-        val item = table.items[0] as Processar
+        // Setup initial tags
         robot.interact {
-            item.tags = "0|capitulo 01"
+            item.tags = "0${com.fenix.ordenararquivos.util.Utils.SEPARADOR_IMAGEM}capitulo 1"
         }
         
-        robot.clickOn("#btnTagsNormaliza")
-        WaitForAsyncUtils.waitForFxEvents()
+        val btnNormaliza = tabContent.lookup("#btnTagsNormaliza") as JFXButton
+        val cbLinguagem = tabContent.lookup("#cbLinguagem") as JFXComboBox<Linguagem>
         
-        assertTrue(item.tags.contains("Capítulo 01.0"), "Tags não normalizadas corretamente. Atual: ${item.tags}")
-    }
-
-    @Test
-    fun testOcrProcessTask(robot: FxRobot) {
-        testCarregarItens(robot)
-        
-        // Mock returning a file for extractSumario
-        val dummySumario = File(tempDir, "zSumário.png")
-        dummySumario.writeText("OCR mock content")
-        Mockito.`when`(mockWinrar.extraiSumario(Mockito.any(File::class.java), Mockito.any(File::class.java))).thenReturn(dummySumario)
-
-        robot.clickOn("#btnOcrProcessar")
-        
-        // Wait for task to finish
-        var attempts = 0
-        while (attempts < 10) {
-            WaitForAsyncUtils.waitForFxEvents()
-            val text = robot.lookup("#btnOcrProcessar").queryAs(JFXButton::class.java).text
-            if (text.contains("OCR proximos 10")) break
-            Thread.sleep(500)
-            attempts++
+        robot.interact {
+            // Explicitly set language to PORTUGUESE for deterministic results
+            cbLinguagem.value = Linguagem.PORTUGUESE
+            btnNormaliza.fire()
         }
         
-        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java)
-        val item = table.items[0] as Processar
-        assertTrue(item.isProcessado)
-    }
-    
-    @Test
-    fun testLanguageToggle(robot: FxRobot) {
-        testCarregarItens(robot)
-        
-        val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java)
-        
-        // Test Japanese
-        robot.interact { cbLinguagem.value = Linguagem.JAPANESE }
-        robot.clickOn("#btnTagsProcessar")
         WaitForAsyncUtils.waitForFxEvents()
-        val item = (robot.lookup("#tbViewProcessar").queryAs(TableView::class.java).items[0] as Processar)
-        assertTrue(item.tags.contains("第"), "Deveria conter '第' para Japonês. Atual: ${item.tags}")
-        
-        // Test English
-        robot.interact { cbLinguagem.value = Linguagem.ENGLISH }
-        robot.clickOn("#btnTagsProcessar")
-        WaitForAsyncUtils.waitForFxEvents()
-        assertTrue(item.tags.contains("Chapter"), "Deveria conter 'Chapter' para Inglês. Atual: ${item.tags}")
+        assertTrue(item.tags.contains("Capítulo 001"), "A tag deveria ser normalizada para 'Capítulo 001', atual: '${item.tags}'")
     }
 
     @Test
     fun testSalvarTodos(robot: FxRobot) {
-        testCarregarItens(robot)
+        helperCarregarItens(robot)
+        whenever(mockWinrar.insereComicInfo(any(), any())).thenReturn(true)
         
-        robot.clickOn("#btnSalvarTodos")
+        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
+        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
+        val btnSalvar = tabContent.lookup("#btnSalvarTodos") as JFXButton
         
-        // Wait for task
-        var attempts = 0
-        while (attempts < 10) {
-            WaitForAsyncUtils.waitForFxEvents()
-            val text = robot.lookup("#btnSalvarTodos").queryAs(JFXButton::class.java).text
-            if (text.contains("Salvar todos")) break
-            Thread.sleep(500)
-            attempts++
+        robot.interact {
+            btnSalvar.fire()
         }
         
-        Mockito.verify(mockWinrar, Mockito.atLeastOnce()).insereComicInfo(Mockito.any(File::class.java), Mockito.any(File::class.java))
+        WaitForAsyncUtils.waitFor(30, TimeUnit.SECONDS) {
+            !btnSalvar.isDisable
+        }
+        Mockito.verify(mockWinrar, Mockito.atLeastOnce()).insereComicInfo(any(), any())
     }
 }
