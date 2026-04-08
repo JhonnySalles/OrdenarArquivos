@@ -95,6 +95,7 @@ object Winrar {
         return comicInfo
     }
 
+    @JvmStatic
     fun compactar(destino : File, zip : File, manga : Manga, comicInfo: ComicInfo, pastas: MutableList<File>, comic : MutableMap<String, File>, linguagem: Linguagem,
                   isCompactar : Boolean, isGerarCapitulos: Boolean, isAtualizarComic: Boolean = true, callback: Callback<Triple<Long, Long, String>, Boolean>) : Boolean {
         if (callback.call(Triple(0 ,0, "Gerando o comic info..")))
