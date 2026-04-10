@@ -391,6 +391,22 @@
                         --add-opens javafx.graphics/com.sun.javafx.application=ALL-UNNAMED
                         --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.controller=ALL-UNNAMED
                         --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.ui=ALL-UNNAMED
+                        --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.database=ALL-UNNAMED
+                        --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.service=ALL-UNNAMED
+                        --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.process=ALL-UNNAMED
+                        --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.util=ALL-UNNAMED
+                        --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.model.enums=ALL-UNNAMED
+                        --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.model.entities.comicinfo=ALL-UNNAMED
+                        
+                        --add-exports com.fenix.ordenararquivos/com.fenix.ordenararquivos.database=ALL-UNNAMED
+                        --add-exports com.fenix.ordenararquivos/com.fenix.ordenararquivos.service=ALL-UNNAMED
+                        --add-exports com.fenix.ordenararquivos/com.fenix.ordenararquivos.process=ALL-UNNAMED
+                        --add-exports com.fenix.ordenararquivos/com.fenix.ordenararquivos.util=ALL-UNNAMED
+                        --add-exports com.fenix.ordenararquivos/com.fenix.ordenararquivos.model.enums=ALL-UNNAMED
+                        --add-exports com.fenix.ordenararquivos/com.fenix.ordenararquivos.model.entities.comicinfo=ALL-UNNAMED
+
+                        --add-opens java.base/java.lang.reflect=com.jfoenix
+                        --add-opens java.base/java.lang=com.jfoenix
                         --add-opens javafx.controls/javafx.scene.control.skin=com.jfoenix
                         --add-opens javafx.graphics/com.sun.javafx.scene=com.jfoenix
 

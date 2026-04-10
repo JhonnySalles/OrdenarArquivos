@@ -1865,7 +1865,8 @@ class AbaArquivoController : Initializable {
             FXCollections.observableArrayList("")
         lsVwImagens.items = mObsListaItens
         limparCapas()
-        mSelecionado = mObsListaItens[0]
+        if (mObsListaItens.isNotEmpty())
+            mSelecionado = mObsListaItens[0]
     }
 
     private fun simulaNome() {
