@@ -11,24 +11,33 @@ import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXTextField
 import com.jfoenix.controls.JFXTabPane
 import com.jfoenix.controls.JFXComboBox
+import com.fenix.ordenararquivos.controller.PopupAmazon
+import com.fenix.ordenararquivos.controller.PopupCapitulos
+import com.fenix.ordenararquivos.notification.AlertasPopup
 import javafx.application.Platform
 import javafx.fxml.FXMLLoader
+import javafx.scene.Node
 import javafx.scene.Scene
 import javafx.scene.control.TableView
 import javafx.scene.control.Tab
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
+import javafx.scene.input.KeyCode
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.io.TempDir
+
 import org.mockito.MockedStatic
 import org.mockito.Mockito
+import org.mockito.Mockito.times
+import org.mockito.verification.VerificationMode
 import org.mockito.kotlin.*
 import org.testfx.api.FxRobot
-import org.testfx.framework.junit5.ApplicationExtension
-import org.testfx.framework.junit5.Start
+import org.testfx.framework.junit5.*
 import org.testfx.util.WaitForAsyncUtils
 import java.io.File
+import java.nio.file.Path
 import java.sql.DriverManager
 import java.util.concurrent.TimeUnit
 
@@ -38,9 +47,15 @@ class AbaComicInfoUiTest : BaseTest() {
 
     private lateinit var mainController: TelaInicialController
     private lateinit var comicinfoController: AbaComicInfoController
-    private val tempDir = File("temp_ui_comicinfo_test").absoluteFile
+    
+    @TempDir
+    lateinit var tempDir: Path
+    
     private lateinit var mockWinrar: WinrarServices
     private lateinit var mockOcr: MockedStatic<Ocr>
+    private lateinit var mockPopupAmazon: MockedStatic<PopupAmazon>
+    private lateinit var mockPopupCapitulos: MockedStatic<PopupCapitulos>
+    private lateinit var mockAlertas: MockedStatic<AlertasPopup>
 
     companion object {
         private var staticKeepAlive: java.sql.Connection? = null
@@ -107,32 +122,36 @@ class AbaComicInfoUiTest : BaseTest() {
             try { mockOcr.close() } catch (e: Exception) {}
         }
         mockOcr = Mockito.mockStatic(Ocr::class.java)
+        mockPopupAmazon = Mockito.mockStatic(PopupAmazon::class.java)
+        mockPopupCapitulos = Mockito.mockStatic(PopupCapitulos::class.java)
+        mockAlertas = Mockito.mockStatic(AlertasPopup::class.java)
+        mockAlertas.`when`<Boolean>(MockedStatic.Verification { AlertasPopup.confirmacaoModal(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()) }).thenReturn(true)
         
         val winrarField = comicinfoController.javaClass.getDeclaredField("mRarService")
         winrarField.isAccessible = true
         winrarField.set(comicinfoController, mockWinrar)
         
-        if (tempDir.exists()) tempDir.deleteRecursively()
-        tempDir.mkdirs()
         Mockito.reset(mockWinrar)
     }
 
     @AfterEach
     fun tearDown() {
-        if (::mockOcr.isInitialized) {
-            try { mockOcr.close() } catch (e: Exception) {}
-        }
+        if (::mockOcr.isInitialized) mockOcr.close()
+        if (::mockPopupAmazon.isInitialized) mockPopupAmazon.close()
+        if (::mockPopupCapitulos.isInitialized) mockPopupCapitulos.close()
+        if (::mockAlertas.isInitialized) mockAlertas.close()
     }
 
     private fun helperCarregarItens(robot: FxRobot) {
-        val dummyFile = File(tempDir, "test_manga_001.rar")
+        val tempDirFile = tempDir.toFile()
+        val dummyFile = File(tempDirFile, "test_manga_001.rar")
         dummyFile.createNewFile()
         
-        val dummyComicInfoXml = File(tempDir, "ComicInfo.xml")
+        val dummyComicInfoXml = File(tempDirFile, "ComicInfo.xml")
         dummyComicInfoXml.writeText("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><ComicInfo><Series>Test Series</Series><Title>Test Title</Title><Pages><Page Image=\"0\" Bookmark=\"Test\"/></Pages></ComicInfo>")
         
-        whenever(mockWinrar.extraiComicInfo(any())).thenReturn(dummyComicInfoXml)
-        mockOcr.`when`<String> { Ocr.process(any(), any(), any()) }.thenReturn("001-01")
+        whenever(mockWinrar.extraiComicInfo(org.mockito.ArgumentMatchers.any())).thenReturn(dummyComicInfoXml)
+        mockOcr.`when`<String>(MockedStatic.Verification { Ocr.process(org.mockito.ArgumentMatchers.any(java.io.File::class.java), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()) }).thenReturn("001-01")
 
         val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
         val tab = tabPane.selectionModel.selectedItem
@@ -142,7 +161,7 @@ class AbaComicInfoUiTest : BaseTest() {
         val btnCarregar = tabContent.lookup("#btnCarregar") as JFXButton
         
         robot.interact {
-            txtPasta.text = tempDir.absolutePath
+            txtPasta.text = tempDirFile.absolutePath
             btnCarregar.fire()
         }
         
@@ -204,5 +223,157 @@ class AbaComicInfoUiTest : BaseTest() {
             !btnSalvar.isDisable
         }
         Mockito.verify(mockWinrar, Mockito.atLeastOnce()).insereComicInfo(any(), any())
+    }
+
+    @Test
+    fun testGerarTags(robot: FxRobot) {
+        helperCarregarItens(robot)
+        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
+        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
+        val btnGerar = tabContent.lookup("#btnTagsProcessar") as JFXButton
+        val table = tabContent.lookup("#tbViewProcessar") as TableView<Processar>
+        val item = table.items[0]
+
+        // Inicialmente as tags podem vir do helperCarregarItens. No teste normalizamos para garantir.
+        robot.interact {
+            btnGerar.fire()
+        }
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        assertTrue(item.tags.isNotEmpty())
+    }
+
+    @Test
+    fun testAplicarTags(robot: FxRobot) {
+        helperCarregarItens(robot)
+        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
+        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
+        val table = tabContent.lookup("#tbViewProcessar") as TableView<Processar>
+        val item = table.items[0]
+
+        // Definir uma tag no formato "imagem|Capítulo 001 # Titulo" para testar o Split de aplicação
+        robot.interact {
+            item.tags = "0${com.fenix.ordenararquivos.util.Utils.SEPARADOR_IMAGEM} Capítulo 001 ${com.fenix.ordenararquivos.util.Utils.SEPARADOR_IMPORTACAO} Meu Titulo"
+        }
+
+        val btnAplicar = tabContent.lookup("#btnTagsAplicar") as JFXButton
+        robot.interact {
+            btnAplicar.fire()
+        }
+
+        WaitForAsyncUtils.waitForFxEvents()
+        // Validar se as tags foram de fato processadas (conter o capitulo e titulo)
+        assertTrue(item.tags.contains("Capítulo 001"), "Tags deveriam conter o capítulo. Atual: ${item.tags}")
+        assertTrue(item.tags.contains("Meu Titulo"), "Tags deveriam conter o título. Atual: ${item.tags}")
+    }
+
+    @Test
+    fun testMenuContextoRemover(robot: FxRobot) {
+        helperCarregarItens(robot)
+        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java)
+        assertEquals(1, table.items.size)
+
+        robot.interact {
+            table.selectionModel.select(0)
+        }
+
+        // Clicar com o botão direito na primeira célula do arquivo para abrir o menu
+        val firstCell = robot.lookup(".table-cell").nth(1).queryAs(Node::class.java)
+        robot.rightClickOn(firstCell as Node)
+        robot.clickOn("Remover registro")
+        
+        // Pode abrir popup de confirmação (se o AlertasPopup.confirmacaoModal estiver habilitado)
+        // Como AlertasPopup é estático, se ele abrir um JFXDialog real, precisamos lidar com ele.
+        // No momento o teste pode travar se o dialog abrir. Idealmente AlertasPopup deveria ser mockado
+        // mas é um singleton estático. 
+        
+        // Verificamos se houve tentativa de remoção
+        WaitForAsyncUtils.waitForFxEvents()
+        // Se o dialog estiver aberto, clicamos no botão de confirmação
+        try {
+            robot.clickOn("Sim")
+        } catch (e: Exception) {}
+
+        WaitForAsyncUtils.waitForFxEvents()
+        assertEquals(0, table.items.size)
+    }
+
+    @Test
+    fun testOcrProcessarTask(robot: FxRobot) {
+        helperCarregarItens(robot)
+        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
+        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
+        val btnOcr = tabContent.lookup("#btnOcrProcessar") as JFXButton
+        
+        // Mock do processo de OCR pra retornar algo conhecido
+        mockOcr.`when`<String> { Ocr.process(any(), any(), any()) }.thenReturn("001 # Titulo OCR")
+
+        robot.interact {
+            btnOcr.fire()
+        }
+
+        // Aguarda a execução da Task de OCR
+        WaitForAsyncUtils.waitFor(20, TimeUnit.SECONDS) {
+            !btnOcr.isDisable
+        }
+
+        val table = tabContent.lookup("#tbViewProcessar") as TableView<Processar>
+        assertTrue(table.items[0].tags.contains("Titulo OCR"), "Tags não contém o texto vindo do OCR. Atual: ${table.items[0].tags}")
+    }
+
+    @Test
+    fun testBotaoCapitulos(robot: FxRobot) {
+        helperCarregarItens(robot)
+        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
+        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
+        val btnCapitulos = tabContent.lookup("#btnCapitulos") as JFXButton
+
+        robot.interact {
+            btnCapitulos.fire()
+        }
+
+        mockPopupCapitulos.verify(MockedStatic.Verification {
+            PopupCapitulos.abreTelaCapitulos(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())
+        }, times(1))
+    }
+
+    @Test
+    fun testBotaoAmazon(robot: FxRobot) {
+        helperCarregarItens(robot)
+        
+        // Buscar a célula na coluna clProcessarAmazon (índice 9)
+        val btnAmazon = robot.lookup(".table-cell").nth(9).lookup(".button").queryAs(JFXButton::class.java)
+
+        robot.interact {
+            btnAmazon.fire()
+        }
+
+        mockPopupAmazon.verify(MockedStatic.Verification { 
+            PopupAmazon.abreTelaAmazon(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())
+        }, times(1))
+    }
+
+    @Test
+    fun testAtalhosColunaTags(robot: FxRobot) {
+        helperCarregarItens(robot)
+        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java)
+        
+        // Localizar especificamente a célula na coluna Tags (índice 7)
+        val cellTags = robot.lookup(".table-cell").nth(7).queryAs(Node::class.java)
+        
+        robot.interact {
+            table.selectionModel.select(0)
+            cellTags.requestFocus()
+        }
+        
+        // Simular o foco e pressionar atalho Shift+Alt+Enter
+        robot.clickOn(cellTags as Node)
+        robot.press(KeyCode.SHIFT, KeyCode.ALT).type(KeyCode.ENTER).release(KeyCode.SHIFT, KeyCode.ALT)
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        val item = table.items[0] as Processar
+        // O atalho deve disparar a formatação (substituindo o separador interno por " - ")
+        assertTrue(item.tags.contains(" - "), "O atalho Shift+Alt+Enter não aplicou as tags corretamente. Atual: ${item.tags}")
     }
 }

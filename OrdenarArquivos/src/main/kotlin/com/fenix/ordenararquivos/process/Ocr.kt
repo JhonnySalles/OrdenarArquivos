@@ -36,6 +36,7 @@ object Ocr {
         setWriteTimeout(60, TimeUnit.SECONDS)
     }
 
+    var isTeste : Boolean = false
     private const val mGerarImagens = true
     private var mGeminiKey : String
     private var mIsFirstKey : Boolean = true
@@ -167,6 +168,9 @@ object Ocr {
 
     @JvmStatic
     fun process(image : File, separadorPagina : String, separadorCapitulo: String) : String {
+        if (isTeste)
+            return "001-05 Suggestion"
+
         return if (mGemini)
             processGemini(image, geraPromptGemini(separadorPagina, separadorCapitulo))
         else

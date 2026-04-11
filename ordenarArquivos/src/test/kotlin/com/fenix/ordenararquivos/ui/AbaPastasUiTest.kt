@@ -4,35 +4,29 @@ import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.controller.AbaPastasController
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.database.DataBase
-import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.Pasta
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
-import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
-import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXComboBox
 import com.jfoenix.controls.JFXTabPane
 import com.jfoenix.controls.JFXTextField
 import javafx.fxml.FXMLLoader
-import javafx.scene.Node
 import javafx.scene.Scene
-import javafx.scene.control.*
+import javafx.scene.control.TableView
 import javafx.scene.input.KeyCode
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
 import org.junit.jupiter.api.*
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
-import org.mockito.Mockito.*
-import org.mockito.kotlin.any
-import org.mockito.kotlin.anyOrNull
-import org.mockito.kotlin.eq
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
+import org.mockito.Mockito.atLeastOnce
+import org.mockito.Mockito.verify
+import org.mockito.kotlin.*
 import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
@@ -40,7 +34,6 @@ import org.testfx.util.WaitForAsyncUtils
 import java.io.File
 import java.nio.file.Path
 import java.sql.DriverManager
-import kotlin.test.assertNotNull
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)

@@ -21,7 +21,7 @@
         <test.mockito.version>5.9.0</test.mockito.version>
         <test.mockito-kotlin.version>5.2.1</test.mockito-kotlin.version>
 
-        <excludedGroups>UI</excludedGroups>
+        <exclude.groups>UI</exclude.groups>
 
         <javafx.version>17.0.13</javafx.version>
         <jfoenix.version>9.0.10</jfoenix.version>
@@ -412,7 +412,7 @@
 
                         -Dcom.jfoenix.disableAnimations=true
                     </argLine>
-                    <excludedGroups>${excludedGroups}</excludedGroups>
+                    <excludedGroups>${exclude.groups}</excludedGroups>
                     <useFile>false</useFile>
                     <redirectTestOutputToFile>false</redirectTestOutputToFile>
                     <properties>
