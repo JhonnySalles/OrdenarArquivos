@@ -177,7 +177,7 @@ class AbaArquivoControllerTest {
             quantidade = 2
         )
         
-        whenever(mangaService.find(any<String>(), any<String>(), any<String>(), any<Boolean>())).thenReturn(mockManga)
+        whenever(mangaService.find(any<Manga>())).thenReturn(mockManga)
         
         robot.interact {
             robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = "[JPN] Manga Mock -"
@@ -192,5 +192,62 @@ class AbaArquivoControllerTest {
         val txtArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         // Dependendo da lógica interna, pode demorar um pouco (coroutine)
         assertEquals(mockManga.capitulos, txtArea.text)
+    }
+
+    @Test
+    @Order(6)
+    @DisplayName("Deve limpar todos os campos")
+    fun testLimparTudo(robot: FxRobot) {
+        robot.interact {
+            robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = "Sujeira"
+            robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text = "Dados"
+        }
+        
+        robot.clickOn("#btnLimparTudo")
+        
+        assertEquals("[JPN] Manga -", robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text)
+        assertEquals("", robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text)
+    }
+
+    @Test
+    @Order(7)
+    @DisplayName("Deve importar capítulos para a tabela")
+    fun testImportarCapitulos(robot: FxRobot) {
+        robot.interact {
+            robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text = "001-001\n002-002"
+        }
+        
+        robot.clickOn("#btnImportar")
+        
+        val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(javafx.scene.control.TableView::class.java)
+        assertEquals(2, tbViewTabela.items.size)
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("Deve sinalizar erro ao validar sem pasta de origem")
+    fun testValidacaoSemOrigem(robot: FxRobot) {
+        robot.interact {
+            val fOrigem = arquivoController.javaClass.getDeclaredField("mCaminhoOrigem")
+            fOrigem.isAccessible = true
+            fOrigem.set(arquivoController, null)
+        }
+        
+        robot.clickOn("#btnProcessar")
+        
+        val txtPastaOrigem = robot.lookup("#txtPastaOrigem").queryAs(JFXTextField::class.java)
+        assertEquals(javafx.scene.paint.Color.RED, txtPastaOrigem.unFocusColor)
+    }
+
+    @Test
+    @Order(9)
+    @DisplayName("Deve disparar processamento via atalho Ctrl+Espaço")
+    fun testShortcutCtrlEspaco(robot: FxRobot) {
+        robot.clickOn("#txtNomePastaManga")
+        robot.press(javafx.scene.input.KeyCode.CONTROL).type(javafx.scene.input.KeyCode.SPACE).release(javafx.scene.input.KeyCode.CONTROL)
+        
+        // Se disparar a validação (que falha por falta de pasta), o campo origem fica vermelho
+        val txtPastaOrigem = robot.lookup("#txtPastaOrigem").queryAs(JFXTextField::class.java)
+        assertEquals(javafx.scene.paint.Color.RED, txtPastaOrigem.unFocusColor)
     }
 }

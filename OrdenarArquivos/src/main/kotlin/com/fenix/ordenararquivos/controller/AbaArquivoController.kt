@@ -390,8 +390,10 @@ class AbaArquivoController : Initializable {
         txtNomePastaManga.text = "[JPN] Manga -"
         txtVolume.text = "Volume 01"
         txtNomePastaCapitulo.text = "Capítulo"
+        txtNomeArquivo.text = "Manga - Volume 01 (Jap) Sem capa.cbr"
         txtSeparadorPagina.text = Utils.SEPARADOR_PAGINA
         txtSeparadorCapitulo.text = Utils.SEPARADOR_CAPITULO
+        txtAreaImportar.replaceText(0, txtAreaImportar.length, "")
         onBtnLimpar()
         mObsListaItens = FXCollections.observableArrayList("")
         lsVwImagens.items = mObsListaItens
@@ -511,7 +513,7 @@ class AbaArquivoController : Initializable {
                 if (ajustado)
                     carregaPastaOrigem()
 
-                lblAviso.text = if (ajustado) "Nomes ajustado com sucesso com sucesso." else "Nenhum arquivo com problemas encontrado."
+                lblAviso.text = if (ajustado) "Nomes ajustados com sucesso." else "Nenhum arquivo com problemas encontrado."
             }
         }
     }
@@ -955,7 +957,7 @@ class AbaArquivoController : Initializable {
         if (nome.contains("]"))
             nome = nome.substring(nome.indexOf("]")).replace("]", "").trim { it <= ' ' }
 
-        if (nome.substring(nome.length - 1).equals("-", ignoreCase = true))
+        if (nome.isNotEmpty() && nome.substring(nome.length - 1).equals("-", ignoreCase = true))
             nome = nome.substring(0, nome.length - 1).trim { it <= ' ' }
 
         val quantidade = mObsListaItens.size

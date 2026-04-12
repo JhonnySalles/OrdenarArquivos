@@ -48,6 +48,7 @@ import java.util.concurrent.TimeUnit
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
+@TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class AbaComicInfoUiTest : BaseTest() {
 
     private lateinit var mainController: TelaInicialController
@@ -205,6 +206,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(1)
     fun testCarregarItens(robot: FxRobot) {
         helperCarregarItens(robot)
         val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
@@ -214,6 +216,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(2)
     fun testNormalizarTags(robot: FxRobot) {
         helperCarregarItens(robot)
         val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
@@ -240,6 +243,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(3)
     fun testSalvarTodos(robot: FxRobot) {
         helperCarregarItens(robot)
         whenever(mockWinrar.insereComicInfo(any(), any())).thenReturn(true)
@@ -259,6 +263,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(4)
     fun testGerarTags(robot: FxRobot) {
         helperCarregarItens(robot)
         val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
@@ -277,6 +282,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(5)
     fun testAplicarTags(robot: FxRobot) {
         helperCarregarItens(robot)
         val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
@@ -301,6 +307,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(6)
     fun testMenuContextoRemover(robot: FxRobot) {
         // Carregar 3 itens para o teste
         helperCarregarItens(robot, 3)
@@ -326,6 +333,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(7)
     fun testOcrProcessarTask(robot: FxRobot) {
         helperCarregarItens(robot)
         val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
@@ -351,6 +359,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(8)
     fun testBotaoCapitulos(robot: FxRobot) {
         helperCarregarItens(robot)
         val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
@@ -373,6 +382,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(9)
     fun testBotaoAmazon(robot: FxRobot) {
         helperCarregarItens(robot)
         
@@ -400,6 +410,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(10)
     fun testCarregarPastaValidation(robot: FxRobot) {
         val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
         val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
@@ -421,6 +432,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(11)
     fun testAjustarTagsContextMenu(robot: FxRobot) {
         helperCarregarItens(robot)
         val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
@@ -444,6 +456,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(12)
     fun testSalvarIndividual(robot: FxRobot) {
         helperCarregarItens(robot)
         whenever(mockWinrar.insereComicInfo(any(), any())).thenReturn(true)
@@ -460,6 +473,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(13)
     fun testColunaTagsAplicarTag(robot: FxRobot) {
         helperCarregarItens(robot)
         val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
@@ -487,6 +501,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(14)
     fun testColunaTagsDeletarLinha(robot: FxRobot) {
         helperCarregarItens(robot)
         val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
@@ -526,6 +541,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(15)
     fun testMenuContextoRemoverAnteriores(robot: FxRobot) {
         // Carregar 3 itens usando o helper refatorado
         helperCarregarItens(robot, 3)
@@ -552,6 +568,7 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     @Test
+    @Order(16)
     fun testCheckBoxProcessado(robot: FxRobot) {
         helperCarregarItens(robot)
         

@@ -43,6 +43,7 @@ import java.sql.DriverManager
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
+@TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class AbaPastasUiTest : BaseTest() {
 
     private lateinit var mainController: TelaInicialController
@@ -138,6 +139,7 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
+    @Order(1)
     fun testCamposDefault(robot: FxRobot) {
         WaitForAsyncUtils.waitForFxEvents()
         val txtPasta = robot.lookup("#txtPasta").queryAs(JFXTextField::class.java)
@@ -145,6 +147,7 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
+    @Order(2)
     fun testEdicaoColunasGrid(robot: FxRobot) {
         val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         
@@ -198,6 +201,7 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
+    @Order(3)
     fun testCicloCompletoPastas(robot: FxRobot) {
         // Criar estrutura de pastas temporárias com scan no início para correta extração
         val sub1 = tempDir.resolve("[Scan A] Manga Vol 01 Cap 01").toFile().apply { mkdirs() }
@@ -251,6 +255,7 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
+    @Order(4)
     fun testCarregamentoComicInfo(robot: FxRobot) {
         // Mock do ComicInfo que deve ser retornado pelo banco
         val comicInfoFake = ComicInfo(
@@ -286,6 +291,7 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
+    @Order(5)
     fun testMockMangaDatabaseSuggestion(robot: FxRobot) {
         // Garantir que os itens estão populados (simulando a carga do listar() que ocorre no init)
         val cbManga = robot.lookup("#cbManga").queryAs(JFXComboBox::class.java) as JFXComboBox<String>
@@ -301,6 +307,7 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
+    @Order(6)
     fun testMockMalRequest(robot: FxRobot) {
         // Navegar para a aba ComicInfo (selecionando programaticamente para evitar ambiguidade de cliques)
         val tabRoot = robot.lookup("#tbTabRootPastas").queryAs(JFXTabPane::class.java)
@@ -362,6 +369,7 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
+    @Order(7)
     fun testValidacoesEntrada(robot: FxRobot) {
         val txtPasta = robot.lookup("#txtPasta").queryAs(JFXTextField::class.java)
         val btnCarregar = robot.lookup("#btnCarregar").queryAs(JFXButton::class.java)
@@ -400,6 +408,7 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
+    @Order(8)
     fun testGerarCapasFlow(robot: FxRobot) {
         val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         
@@ -422,6 +431,7 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
+    @Order(9)
     fun testContextMenuScanPropagation(robot: FxRobot) {
         val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         robot.interact {
@@ -448,6 +458,7 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
+    @Order(10)
     fun testZerarVolumes(robot: FxRobot) {
         val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         robot.interact {
@@ -466,6 +477,7 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
+    @Order(11)
     fun testAtalhoTrocaAba(robot: FxRobot) {
         val tabRoot = robot.lookup("#tbTabRootPastas").queryAs(JFXTabPane::class.java)
         
