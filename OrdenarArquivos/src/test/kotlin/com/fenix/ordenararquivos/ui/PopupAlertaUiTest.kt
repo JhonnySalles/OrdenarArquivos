@@ -73,6 +73,17 @@ class PopupAlertaUiTest : BaseTest() {
     }
 
     @Test
+    fun testInitialState(robot: FxRobot) {
+        val lblTitulo = robot.lookup("#lblTitulo").queryAs(Label::class.java)
+        val imgIcone = robot.lookup("#imgIcone").queryAs(ImageView::class.java)
+        val txtTexto = robot.lookup("#txtTexto").queryAs(JFXTextArea::class.java)
+
+        assertEquals("Alerta", lblTitulo.text)
+        assertNotNull(imgIcone.image)
+        assertEquals("Alerta", txtTexto.text)
+    }
+
+    @Test
     fun testSetTexto(robot: FxRobot) {
         robot.interact {
             controller.setTexto("Teste Titulo", "Teste Texto de Alerta")

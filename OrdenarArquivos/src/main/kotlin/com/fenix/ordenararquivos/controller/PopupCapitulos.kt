@@ -906,6 +906,7 @@ class PopupCapitulos : Initializable {
         private lateinit var btnVoltar: JFXButton
         private lateinit var dialog: JFXDialog
 
+        @JvmStatic
         fun abreTelaCapitulos(rootStackPane: StackPane, nodeBlur: Node, callback: Callback<ObservableList<Volume>, Boolean>, linguagem: Linguagem, processar: List<Processar>) {
             try {
                 val blur = BoxBlur(3.0, 3.0, 3)

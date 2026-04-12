@@ -12,5 +12,5 @@ echo.
 :: -DexcludedGroups="" : Exclui testes marcados com a tag @Tag("UI")
 :: -Dtest=AbaArquivoUiTest : Executa apenas os testes da classe AbaArquivoUiTest
 :: mvn test -Dgroups="UI" -DexcludedGroups="" -Dtest=AbaArquivoUiTest
-mvn test -Dgroups="UI" -DexcludedGroups="" -Dtest=AbaComicInfoUiTest
+mvn test -Dgroups="UI" -Dexclude.groups="" -Dtest=AbaComicInfoUiTest
 pause

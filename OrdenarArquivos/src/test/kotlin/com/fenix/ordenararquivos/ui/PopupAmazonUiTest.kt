@@ -13,6 +13,7 @@ import com.jfoenix.controls.JFXDatePicker
 import com.jfoenix.controls.JFXTextField
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
+import javafx.scene.input.KeyCode
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
 import org.jsoup.Connection
@@ -21,10 +22,12 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.MockedStatic
 import org.mockito.Mockito
+import org.mockito.kotlin.eq
 import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
@@ -207,5 +210,57 @@ class PopupAmazonUiTest : BaseTest() {
         val btnConfirmar = robot.lookup("Confirmar").queryAs(JFXButton::class.java)
         assertNotNull(btnConfirmar)
         robot.clickOn(btnConfirmar)
+    }
+
+    @Test
+    fun testErrorHandlingJsoup(robot: FxRobot) {
+        mockedJsoup.`when`<Connection> { Jsoup.connect(anyString()) }.thenThrow(RuntimeException("Network error"))
+        
+        val txtSiteAmazon = robot.lookup("#txtSiteAmazon").queryAs(JFXTextField::class.java)
+        robot.interact {
+            txtSiteAmazon.text = "https://www.amazon.com/error"
+        }
+        
+        // Trigger focus out
+        robot.clickOn("#txtSerie")
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        mockedAlertas.verify { AlertasPopup.erroModal(eq("Erro ao carregar o site"), org.mockito.kotlin.any()) }
+    }
+
+    @Test
+    fun testObtemDataJapanese(robot: FxRobot) {
+        val txtPublicacaoSite = robot.lookup("#txtPublicacaoSite").queryAs(JFXTextField::class.java)
+        val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java) as JFXComboBox<Linguagem>
+        val dpPublicacao = robot.lookup("#dpPublicacao").queryAs(JFXDatePicker::class.java)
+
+        robot.interact {
+            cbLinguagem.selectionModel.select(Linguagem.JAPANESE)
+            txtPublicacaoSite.text = "2021/9/3"
+        }
+        robot.clickOn("#btnAplicar")
+        assertEquals(LocalDate.of(2021, 9, 3), dpPublicacao.value)
+    }
+
+    @Test
+    fun testObtemDataEnglish(robot: FxRobot) {
+        val txtPublicacaoSite = robot.lookup("#txtPublicacaoSite").queryAs(JFXTextField::class.java)
+        val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java) as JFXComboBox<Linguagem>
+        val dpPublicacao = robot.lookup("#dpPublicacao").queryAs(JFXDatePicker::class.java)
+
+        robot.interact {
+            cbLinguagem.selectionModel.select(Linguagem.ENGLISH)
+            txtPublicacaoSite.text = "January 1, 2023"
+        }
+        robot.clickOn("#btnAplicar")
+        assertEquals(LocalDate.of(2023, 1, 1), dpPublicacao.value)
+    }
+
+    @Test
+    fun testShortcutsEnterToTab(robot: FxRobot) {
+        robot.clickOn("#txtSiteAmazon")
+        robot.type(KeyCode.ENTER)
+        // Focus should move to cbLinguagem or next field
+        assertTrue(robot.lookup("#cbLinguagem").query<JFXComboBox<Linguagem>>().isFocused)
     }
 }

@@ -408,6 +408,7 @@ class PopupAmazon : Initializable {
         private lateinit var btnVoltar: JFXButton
         private lateinit var dialog: JFXDialog
 
+        @JvmStatic
         fun abreTelaAmazon(rootStackPane: StackPane, nodeBlur: Node, callback: Callback<ComicInfo, Boolean>, item: ComicInfo?, linguagem: Linguagem) {
             try {
                 val blur = BoxBlur(3.0, 3.0, 3)

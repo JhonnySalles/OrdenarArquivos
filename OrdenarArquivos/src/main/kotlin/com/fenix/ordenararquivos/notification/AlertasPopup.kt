@@ -56,6 +56,7 @@ object AlertasPopup {
      * não informe por padrão irá adicionar um botão ok.
      * @param Campo     **String** que irá conter a mensagem a ser exibida.
      */
+    @JvmStatic
     fun avisoModal(rootStackPane: StackPane, nodeBlur: Node?, botoes: MutableList<JFXButton>, titulo: String, texto: String) = dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, ImageView(AVISO))
 
     /**
@@ -66,6 +67,7 @@ object AlertasPopup {
      *
      *
      */
+    @JvmStatic
     fun avisoModal(titulo: String, texto: String) = dialogModern(ROOT_STACK_PANE, NODE_BLUR, mutableListOf(), titulo, texto, ImageView(AVISO))
 
     /**
@@ -82,6 +84,7 @@ object AlertasPopup {
      * não informe por padrão irá adicionar um botão ok.
      * @param Campo     **String** que irá conter a mensagem a ser exibida.
      */
+    @JvmStatic
     fun alertaModal(rootStackPane: StackPane, nodeBlur: Node?, botoes: MutableList<JFXButton>, titulo: String, texto: String) = dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, ImageView(ALERTA))
 
     /**
@@ -92,6 +95,7 @@ object AlertasPopup {
      *
      *
      */
+    @JvmStatic
     fun alertaModal(titulo: String, texto: String) = dialogModern(ROOT_STACK_PANE, NODE_BLUR, mutableListOf(), titulo, texto, ImageView(ALERTA))
 
     /**
@@ -108,6 +112,7 @@ object AlertasPopup {
      * não informe por padrão irá adicionar um botão ok.
      * @param Campo     **String** que irá conter a mensagem a ser exibida.
      */
+    @JvmStatic
     fun erroModal(rootStackPane: StackPane, nodeBlur: Node?, botoes: MutableList<JFXButton>, titulo: String, texto: String) {
         dialogModern(rootStackPane, nodeBlur, botoes, titulo, texto, ImageView(ERRO))
     }
@@ -120,6 +125,7 @@ object AlertasPopup {
      *
      *
      */
+    @JvmStatic
     fun erroModal(titulo: String, texto: String) = dialogModern(ROOT_STACK_PANE, NODE_BLUR, mutableListOf(), titulo, texto, ImageView(ERRO))
 
     /**
@@ -137,6 +143,7 @@ object AlertasPopup {
      * @param Campo     **String** que irá conter a mensagem a ser exibida.
      * @return Resulta o valor referente ao botão cancelar ou confirmar.
      */
+    @JvmStatic
     fun confirmacaoModal(rootStackPane: StackPane, nodeBlur: Node, titulo: String, texto: String): Boolean = alertModern(rootStackPane, nodeBlur, titulo, texto, ImageView(CONFIRMA))
 
     /**
@@ -147,6 +154,7 @@ object AlertasPopup {
      *
      *
      */
+    @JvmStatic
     fun confirmacaoModal(titulo: String, texto: String): Boolean {
         return alertModern(ROOT_STACK_PANE, NODE_BLUR, titulo, texto, ImageView(CONFIRMA))
     }

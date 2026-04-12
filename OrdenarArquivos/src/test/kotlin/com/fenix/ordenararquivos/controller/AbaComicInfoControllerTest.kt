@@ -47,7 +47,7 @@ class AbaComicInfoControllerTest {
         mainController = loader.getController<TelaInicialController>()
 
         // Obtém o controller da aba via reflexão
-        val field = mainController.javaClass.getDeclaredField("comicInfoController")
+        val field = mainController.javaClass.getDeclaredField("comicinfoController")
         field.isAccessible = true
         comicInfoController = field.get(mainController) as AbaComicInfoController
 

@@ -5,6 +5,8 @@ import com.fenix.ordenararquivos.controller.PopupNotificacaoController
 import com.fenix.ordenararquivos.database.DataBase
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
+import javafx.scene.image.Image
+import javafx.scene.image.ImageView
 import javafx.scene.control.Label
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
@@ -104,5 +106,18 @@ class PopupNotificacaoUiTest : BaseTest() {
         
         val lblTitulo = robot.lookup("#lblTitulo").queryAs(Label::class.java)
         assertEquals(titulo, lblTitulo.text)
+    }
+
+    @Test
+    fun testSetImagem(robot: FxRobot) {
+        val newImgView = ImageView()
+        val mockImage = Image(PopupNotificacaoController::class.java.getResourceAsStream("/images/icoAbrir_48.png"))
+        newImgView.image = mockImage
+        
+        robot.interact {
+            controller.setImagem(newImgView)
+        }
+        
+        assertEquals(mockImage, controller.imagem)
     }
 }

@@ -488,19 +488,112 @@ class AbaArquivoUiTest : BaseTest() {
         assertEquals(2, tabPane.selectionModel.selectedIndex)
     }
 
+
     @Test
-    fun testComicInfoFieldValidation(robot: FxRobot) {
+    fun testAjustarNomesFlow(robot: FxRobot) {
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "test_ajuste_" + java.util.UUID.randomUUID())
+        tempDir.mkdirs()
+        try {
+            val file1 = File(tempDir, "1.jpg").apply { writeText("dummy") }
+            val file10 = File(tempDir, "10.jpg").apply { writeText("dummy") }
+
+            robot.interact {
+                val f = controller.javaClass.getDeclaredField("mCaminhoOrigem")
+                f.isAccessible = true
+                f.set(controller, tempDir)
+            }
+
+            robot.clickOn("#btnAjustarNomes")
+            
+            // Aguarda o processamento async
+            WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS) {
+                tempDir.listFiles()?.any { it.name == "01.jpg" } == true
+            }
+
+            assertTrue(File(tempDir, "01.jpg").exists())
+            assertTrue(File(tempDir, "10.jpg").exists())
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun testShortcutsAdvanced(robot: FxRobot) {
+        val textArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
+        
+        // Teste Ctrl+O (Ordenar)
+        robot.interact { 
+            textArea.text = "002-002\n001-001" 
+            val event = KeyEvent(KeyEvent.KEY_PRESSED, "O", "O", KeyCode.O, false, true, false, false)
+            textArea.onKeyPressed.handle(event)
+        }
+        WaitForAsyncUtils.waitForFxEvents()
+        assertEquals("001-001\n002-002", textArea.text.trim())
+
+        // Teste Ctrl+T (Limpar Tags)
+        robot.interact { 
+            textArea.text = "001-001 [Tag]" 
+            val event = KeyEvent(KeyEvent.KEY_PRESSED, "T", "T", KeyCode.T, false, true, false, false)
+            textArea.onKeyPressed.handle(event)
+        }
+        WaitForAsyncUtils.waitForFxEvents()
+        assertEquals("001-001", textArea.text.trim())
+    }
+
+    @Test
+    fun testValidationAlerts(robot: FxRobot) {
+        // Garantir campos vazios
         robot.interact {
-            val tabRoot = robot.lookup("#tbTabRootArquivo").queryAs(JFXTabPane::class.java)
-            tabRoot.selectionModel.select(1)
+            val fOrigem = controller.javaClass.getDeclaredField("mCaminhoOrigem")
+            fOrigem.isAccessible = true
+            fOrigem.set(controller, null)
+            
+            val fDestino = controller.javaClass.getDeclaredField("mCaminhoDestino")
+            fDestino.isAccessible = true
+            fDestino.set(controller, null)
+        }
+
+        robot.clickOn("#btnProcessar")
+        
+        // O controller define a cor de unFocus para RED em caso de erro
+        val txtPastaOrigem = robot.lookup("#txtPastaOrigem").queryAs(JFXTextField::class.java)
+        assertEquals(javafx.scene.paint.Color.RED, txtPastaOrigem.unFocusColor)
+    }
+
+    @Test
+    fun testHistoricoPersistence(robot: FxRobot) {
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "test_hist")
+        tempDir.mkdirs()
+        
+        robot.interact {
+            val fOrigem = controller.javaClass.getDeclaredField("mCaminhoOrigem")
+            fOrigem.isAccessible = true
+            fOrigem.set(controller, tempDir)
+            
+            val fDestino = controller.javaClass.getDeclaredField("mCaminhoDestino")
+            fDestino.isAccessible = true
+            fDestino.set(controller, tempDir)
+            
+            robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = "Hist Manga"
+            robot.lookup("#txtVolume").queryAs(JFXTextField::class.java).text = "01"
+            robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text = "001-001"
+            
+            // Adicionar linguage para passar na validação
+            val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java) as JFXComboBox<com.fenix.ordenararquivos.model.enums.Linguagem>
+            cbLinguagem.selectionModel.select(com.fenix.ordenararquivos.model.enums.Linguagem.PORTUGUESE)
         }
         
-        val txtMalNome = robot.lookup("#txtMalNome").queryAs(JFXTextField::class.java)
-        robot.interact {
-            txtMalNome.text = "Unit Test Title"
-        }
+        robot.clickOn("#btnImportar")
+        robot.clickOn("#btnProcessar")
         
-        assertEquals("Unit Test Title", txtMalNome.text)
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        val lsVwHistorico = robot.lookup("#lsVwHistorico").queryAs(JFXListView::class.java)
+        assertTrue(lsVwHistorico.items.isNotEmpty())
+        val hist = lsVwHistorico.items[0] as com.fenix.ordenararquivos.model.entities.Historico
+        assertTrue(hist.nome.contains("Hist Manga"))
+        
+        tempDir.deleteRecursively()
     }
 
 }

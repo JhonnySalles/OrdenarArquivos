@@ -294,7 +294,87 @@ class PopupCapitulosUiTest : BaseTest() {
         val btnConfirmar = robot.lookup("Confirmar").queryAs(JFXButton::class.java)
         assertNotNull(btnConfirmar)
         robot.clickOn(btnConfirmar)
-        // Dialog should close, but testing JFXDialog close state is tricky.
-        // At least we verify it exists and is clickable.
+    }
+
+    @Test
+    fun testExtractionMangaPlanet(robot: FxRobot) {
+        val html = """
+            <div id="accordion_1">
+                <div class="card mt-4 select-options">
+                    <div class="card-body">
+                        <h3 id="vol_title_1">Volume 1</h3>
+                        <ul id="epi10">
+                            <li class="list-group-item">
+                                <h3>Episode 10: The Beginning</h3>
+                                <p><span class="jp_fonts">第10話 開始</span></p>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        """.trimIndent()
+        val file = File(tempDir, "mangaplanet.html")
+        file.writeText(html)
+        
+        val txtEndereco = robot.lookup("#txtEndereco").queryAs(JFXTextField::class.java)
+        robot.interact {
+            txtEndereco.text = file.absolutePath
+        }
+        
+        robot.clickOn("#btnExecutar")
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        val table = robot.lookup("#tbViewTabela").queryAs(TableView::class.java)
+        assertEquals(1, table.items.size)
+        val vol = table.items[0] as com.fenix.ordenararquivos.model.entities.capitulos.Volume
+        assertEquals(1.0, vol.volume)
+        assertEquals(1, vol.capitulos.size)
+        assertEquals(10.0, vol.capitulos[0].capitulo)
+        assertEquals("The Beginning", vol.capitulos[0].ingles)
+        assertEquals("開始", vol.capitulos[0].japones)
+    }
+
+    @Test
+    fun testExtractionTaiyo(robot: FxRobot) {
+        val html = """
+            <div data-open="true">
+                <h2><button><span class="text-foreground">Volume 5</span></button></h2>
+                <section>
+                    <div class="py-2">
+                        <div class="flex flex-col gap-1">
+                            <h3 class="text-sm">Capítulo 50</h3>
+                            <a class="grid">
+                                <div><p class="line-clamp-1"><span class="font-medium">50</span> — Desfecho</p></div>
+                            </a>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        """.trimIndent()
+        val file = File(tempDir, "taiyo.html")
+        file.writeText(html)
+        
+        val txtEndereco = robot.lookup("#txtEndereco").queryAs(JFXTextField::class.java)
+        robot.interact {
+            txtEndereco.text = file.absolutePath
+        }
+        
+        robot.clickOn("#btnExecutar")
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        val table = robot.lookup("#tbViewTabela").queryAs(TableView::class.java)
+        assertEquals(1, table.items.size)
+        val vol = table.items[0] as com.fenix.ordenararquivos.model.entities.capitulos.Volume
+        assertEquals(5.0, vol.volume)
+        assertEquals("Desfecho", vol.capitulos[0].ingles)
+    }
+
+    @Test
+    fun testBtnArquivoAction(robot: FxRobot) {
+        // Since FileChooser cannot be easily mocked without PowerMock or similar, 
+        // we just verify the button exists and is clickable.
+        // In a real environment, this would open a native dialog.
+        val btnArquivo = robot.lookup("#btnArquivo").queryAs(JFXButton::class.java)
+        assertNotNull(btnArquivo)
     }
 }

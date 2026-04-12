@@ -10,10 +10,14 @@ import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
+import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXComboBox
 import com.jfoenix.controls.JFXTabPane
 import com.jfoenix.controls.JFXTextField
+import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.controller.PopupAmazon
 import javafx.fxml.FXMLLoader
+import javafx.scene.Node
 import javafx.scene.Scene
 import javafx.scene.control.TableView
 import javafx.scene.input.KeyCode
@@ -22,6 +26,8 @@ import javafx.stage.Stage
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.mockito.MockedStatic
+import org.mockito.Mockito
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
 import org.mockito.Mockito.atLeastOnce
@@ -46,6 +52,9 @@ class AbaPastasUiTest : BaseTest() {
 
     @TempDir
     lateinit var tempDir: Path
+
+    private lateinit var mockAlertas: MockedStatic<AlertasPopup>
+    private lateinit var mockPopupAmazon: MockedStatic<PopupAmazon>
 
     companion object {
         private var staticKeepAlive: java.sql.Connection? = null
@@ -112,8 +121,20 @@ class AbaPastasUiTest : BaseTest() {
 
     @BeforeEach
     fun setUp(robot: FxRobot) {
+        mockAlertas = Mockito.mockStatic(AlertasPopup::class.java)
+        mockPopupAmazon = Mockito.mockStatic(PopupAmazon::class.java)
+        
+        // Default returns for mocks
+        mockAlertas.`when`<Boolean> { AlertasPopup.confirmacaoModal(any(), any()) }.thenReturn(true)
+
         robot.clickOn("Pastas")
         WaitForAsyncUtils.waitForFxEvents()
+    }
+
+    @AfterEach
+    fun tearDown() {
+        mockAlertas.close()
+        mockPopupAmazon.close()
     }
 
     @Test
@@ -338,5 +359,124 @@ class AbaPastasUiTest : BaseTest() {
         assertEquals("Editora Naruto Shippuden", robot.lookup("#txtPublisher").queryAs(JFXTextField::class.java).text, "Editora não atualizada corretamente após botão aplicar. Valor atual: ${robot.lookup("#txtPublisher").queryAs(JFXTextField::class.java).text}")
         
         verify(mockComicInfoService, atLeastOnce()).updateMal(any(), any(), any())
+    }
+
+    @Test
+    fun testValidacoesEntrada(robot: FxRobot) {
+        val txtPasta = robot.lookup("#txtPasta").queryAs(JFXTextField::class.java)
+        val btnCarregar = robot.lookup("#btnCarregar").queryAs(JFXButton::class.java)
+        
+        // 1. Carregar sem pasta
+        robot.interact { txtPasta.text = "" }
+        robot.clickOn(btnCarregar)
+        mockAlertas.verify(MockedStatic.Verification {
+            AlertasPopup.alertaModal(eq("Alerta"), eq("Necessário informar uma pasta para carregar."))
+        }, times(1))
+
+        // 2. Aplicar sem manga
+        val cbManga = robot.lookup("#cbManga").queryAs(JFXComboBox::class.java)
+        val btnAplicar = robot.lookup("#btnAplicar").queryAs(JFXButton::class.java)
+        robot.interact { 
+            txtPasta.text = "caminho/qualquer"
+            cbManga.value = null 
+        }
+        robot.clickOn(btnAplicar)
+        mockAlertas.verify(MockedStatic.Verification {
+            AlertasPopup.alertaModal(eq("Alerta"), eq("Não informado o nome do manga."))
+        }, times(1))
+
+        // 3. Consultar MAL sem dados
+        val tabRoot = robot.lookup("#tbTabRootPastas").queryAs(JFXTabPane::class.java)
+        robot.interact { tabRoot.selectionModel.select(1) }
+        val btnMalConsultar = robot.lookup("#btnMalConsultar").queryAs(JFXButton::class.java)
+        robot.interact {
+            robot.lookup("#txtMalId").queryAs(JFXTextField::class.java).text = ""
+            robot.lookup("#txtMalNome").queryAs(JFXTextField::class.java).text = ""
+        }
+        robot.clickOn(btnMalConsultar)
+        mockAlertas.verify(MockedStatic.Verification {
+            AlertasPopup.alertaModal(eq("Alerta"), eq("Necessário informar um id ou nome."))
+        }, times(1))
+    }
+
+    @Test
+    fun testGerarCapasFlow(robot: FxRobot) {
+        val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        
+        robot.interact {
+            tbViewProcessar.items.setAll(
+                Pasta(File("f1"), "f1", "Manga", 1f, 1f, "Scan"),
+                Pasta(File("f2"), "f2", "Manga", 2f, 5f, "Scan")
+            )
+        }
+        
+        val btnGerarCapas = robot.lookup("#btnGerarCapas").queryAs(JFXButton::class.java)
+        robot.clickOn(btnGerarCapas)
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        // Deve ter adicionado 2 capas (uma para o Vol 1 e outra para o Vol 2)
+        assertEquals(4, tbViewProcessar.items.size, "Deveria ter 4 itens após gerar capas")
+        assertTrue(tbViewProcessar.items.any { it.isCapa && it.volume == 1f }, "Capa do Volume 1 não encontrada")
+        assertTrue(tbViewProcessar.items.any { it.isCapa && it.volume == 2f }, "Capa do Volume 2 não encontrada")
+    }
+
+    @Test
+    fun testContextMenuScanPropagation(robot: FxRobot) {
+        val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        robot.interact {
+            tbViewProcessar.items.setAll(
+                Pasta(File("f1"), "f1", "Manga", 1f, 1f, "Antigo"),
+                Pasta(File("f2"), "f2", "Manga", 1f, 2f, "Novo"),
+                Pasta(File("f3"), "f3", "Manga", 1f, 3f, "Antigo")
+            )
+            tbViewProcessar.selectionModel.select(1) // Item do meio
+        }
+
+        val cell = robot.lookup("Novo").queryAs(javafx.scene.Node::class.java)
+        robot.rightClickOn(cell)
+        robot.clickOn("Aplicar scan nos arquivos próximos")
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        assertEquals("Novo", tbViewProcessar.items[2].scan, "O scan não foi propagado para o próximo item")
+
+        robot.rightClickOn(cell)
+        robot.clickOn("Aplicar scan nos arquivos anteriores")
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        assertEquals("Novo", tbViewProcessar.items[0].scan, "O scan não foi propagado para o item anterior")
+    }
+
+    @Test
+    fun testZerarVolumes(robot: FxRobot) {
+        val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        robot.interact {
+            tbViewProcessar.items.setAll(
+                Pasta(File("f1"), "f1", "Manga", 10f, 1f, "S"),
+                Pasta(File("f2"), "f2", "Manga", 20f, 2f, "S")
+            )
+        }
+
+        val cell = robot.lookup("#tbViewProcessar").lookup(".table-cell").nth(1).queryAs(javafx.scene.Node::class.java)
+        robot.rightClickOn(cell)
+        robot.clickOn("Zerar volumes")
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        assertTrue(tbViewProcessar.items.all { it.volume == 0f }, "Nem todos os volumes foram zerados")
+    }
+
+    @Test
+    fun testAtalhoTrocaAba(robot: FxRobot) {
+        val tabRoot = robot.lookup("#tbTabRootPastas").queryAs(JFXTabPane::class.java)
+        
+        // Vai para ComicInfo
+        robot.interact { tabRoot.selectionModel.select(1) }
+        assertEquals(1, tabRoot.selectionModel.selectedIndex)
+
+        // Pressiona Ctrl + D para voltar para Arquivos
+        robot.press(KeyCode.CONTROL, KeyCode.D).release(KeyCode.CONTROL, KeyCode.D)
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        assertEquals(0, tabRoot.selectionModel.selectedIndex, "O atalho Ctrl+D não alternou para a aba de Arquivos")
     }
 }
