@@ -23,15 +23,14 @@ import javafx.scene.control.TableView
 import javafx.scene.input.KeyCode
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
+import javafx.collections.FXCollections
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.mockito.MockedStatic
-import org.mockito.Mockito
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
-import org.mockito.Mockito.atLeastOnce
-import org.mockito.Mockito.verify
+import org.mockito.MockedStatic
+import org.mockito.Mockito
 import org.mockito.kotlin.*
 import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
@@ -377,9 +376,9 @@ class AbaPastasUiTest : BaseTest() {
         // 1. Carregar sem pasta
         robot.interact { txtPasta.text = "" }
         robot.clickOn(btnCarregar)
-        mockAlertas.verify(MockedStatic.Verification {
-            AlertasPopup.alertaModal(eq("Alerta"), eq("Necessário informar uma pasta para carregar."))
-        }, times(1))
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        mockAlertas.verify({ AlertasPopup.alertaModal(eq("Alerta"), eq("Necessário informar uma pasta para carregar.")) })
 
         // 2. Aplicar sem manga
         val cbManga = robot.lookup("#cbManga").queryAs(JFXComboBox::class.java)
@@ -389,9 +388,9 @@ class AbaPastasUiTest : BaseTest() {
             cbManga.value = null 
         }
         robot.clickOn(btnAplicar)
-        mockAlertas.verify(MockedStatic.Verification {
-            AlertasPopup.alertaModal(eq("Alerta"), eq("Não informado o nome do manga."))
-        }, times(1))
+        WaitForAsyncUtils.waitForFxEvents()
+
+        mockAlertas.verify({ AlertasPopup.alertaModal(eq("Alerta"), eq("Não informado o nome do manga.")) })
 
         // 3. Consultar MAL sem dados
         val tabRoot = robot.lookup("#tbTabRootPastas").queryAs(JFXTabPane::class.java)
@@ -402,9 +401,7 @@ class AbaPastasUiTest : BaseTest() {
             robot.lookup("#txtMalNome").queryAs(JFXTextField::class.java).text = ""
         }
         robot.clickOn(btnMalConsultar)
-        mockAlertas.verify(MockedStatic.Verification {
-            AlertasPopup.alertaModal(eq("Alerta"), eq("Necessário informar um id ou nome."))
-        }, times(1))
+        mockAlertas.verify({ AlertasPopup.alertaModal(eq("Alerta"), eq("Necessário informar um id ou nome.")) })
     }
 
     @Test
@@ -413,10 +410,16 @@ class AbaPastasUiTest : BaseTest() {
         val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         
         robot.interact {
-            tbViewProcessar.items.setAll(
+            val items = FXCollections.observableArrayList(
                 Pasta(File("f1"), "f1", "Manga", 1f, 1f, "Scan"),
                 Pasta(File("f2"), "f2", "Manga", 2f, 5f, "Scan")
             )
+            // Injetar na lista privada do controller para ele "ver" os itens
+            val field = pastasController.javaClass.getDeclaredField("mObsListaProcessar")
+            field.isAccessible = true
+            field.set(pastasController, items)
+            
+            tbViewProcessar.items = items
         }
         
         val btnGerarCapas = robot.lookup("#btnGerarCapas").queryAs(JFXButton::class.java)
@@ -435,23 +438,31 @@ class AbaPastasUiTest : BaseTest() {
     fun testContextMenuScanPropagation(robot: FxRobot) {
         val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         robot.interact {
-            tbViewProcessar.items.setAll(
+            val items = FXCollections.observableArrayList(
                 Pasta(File("f1"), "f1", "Manga", 1f, 1f, "Antigo"),
                 Pasta(File("f2"), "f2", "Manga", 1f, 2f, "Novo"),
                 Pasta(File("f3"), "f3", "Manga", 1f, 3f, "Antigo")
             )
+            val field = pastasController.javaClass.getDeclaredField("mObsListaProcessar")
+            field.isAccessible = true
+            field.set(pastasController, items)
+            
+            tbViewProcessar.items = items
             tbViewProcessar.selectionModel.select(1) // Item do meio
         }
 
-        val cell = robot.lookup("Novo").queryAs(javafx.scene.Node::class.java)
-        robot.rightClickOn(cell)
-        robot.clickOn("Aplicar scan nos arquivos próximos")
+        robot.interact {
+            val menu = tbViewProcessar.contextMenu
+            menu.items.find { it.text == "Aplicar scan nos arquivos próximos" }?.fire()
+        }
         
         WaitForAsyncUtils.waitForFxEvents()
         assertEquals("Novo", tbViewProcessar.items[2].scan, "O scan não foi propagado para o próximo item")
 
-        robot.rightClickOn(cell)
-        robot.clickOn("Aplicar scan nos arquivos anteriores")
+        robot.interact {
+            val menu = tbViewProcessar.contextMenu
+            menu.items.find { it.text == "Aplicar scan nos arquivos anteriores" }?.fire()
+        }
         
         WaitForAsyncUtils.waitForFxEvents()
         assertEquals("Novo", tbViewProcessar.items[0].scan, "O scan não foi propagado para o item anterior")
@@ -462,15 +473,21 @@ class AbaPastasUiTest : BaseTest() {
     fun testZerarVolumes(robot: FxRobot) {
         val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         robot.interact {
-            tbViewProcessar.items.setAll(
+            val items = FXCollections.observableArrayList(
                 Pasta(File("f1"), "f1", "Manga", 10f, 1f, "S"),
                 Pasta(File("f2"), "f2", "Manga", 20f, 2f, "S")
             )
+            val field = pastasController.javaClass.getDeclaredField("mObsListaProcessar")
+            field.isAccessible = true
+            field.set(pastasController, items)
+            
+            tbViewProcessar.items = items
         }
 
-        val cell = robot.lookup("#tbViewProcessar").lookup(".table-cell").nth(1).queryAs(javafx.scene.Node::class.java)
-        robot.rightClickOn(cell)
-        robot.clickOn("Zerar volumes")
+        robot.interact {
+            val menu = tbViewProcessar.contextMenu
+            menu.items.find { it.text == "Zerar volumes" }?.fire()
+        }
         
         WaitForAsyncUtils.waitForFxEvents()
         assertTrue(tbViewProcessar.items.all { it.volume == 0f }, "Nem todos os volumes foram zerados")

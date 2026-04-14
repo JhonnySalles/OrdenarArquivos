@@ -5,9 +5,11 @@ import com.fenix.ordenararquivos.controller.PopupAlertaController
 import javafx.application.Platform
 import javafx.fxml.FXMLLoader
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CountDownLatch
 
+@Tag("UI")
 class AlertasTest : BaseJfxTest() {
 
     @Test

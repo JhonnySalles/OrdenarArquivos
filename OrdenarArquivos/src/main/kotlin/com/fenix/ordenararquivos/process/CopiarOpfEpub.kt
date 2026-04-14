@@ -14,6 +14,7 @@ object CopiarOpfEpub {
 
     private val LOG = LoggerFactory.getLogger(CopiarOpfEpub::class.java)
 
+    @JvmStatic
     fun processar(origem: String, destino: String) {
         if (origem.isEmpty()) {
             LOG.info("Necessário informar um caminho de origem para processar os arquivos.")

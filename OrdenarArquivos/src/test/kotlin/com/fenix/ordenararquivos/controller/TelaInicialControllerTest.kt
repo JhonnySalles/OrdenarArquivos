@@ -32,8 +32,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.system.exitProcess
 
 
-@TestMethodOrder(MethodOrderer.OrderAnnotation::class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag("UI")
 @ExtendWith(ApplicationExtension::class)
 class TelaInicialControllerTest {
 

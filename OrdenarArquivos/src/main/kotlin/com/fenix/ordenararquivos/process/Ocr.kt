@@ -168,6 +168,9 @@ object Ocr {
 
     @JvmStatic
     fun process(image : File, separadorPagina : String, separadorCapitulo: String) : String {
+        if (!image.exists() || image.length() == 0.toLong())
+            return ""
+
         if (isTeste)
             return "001-05 Suggestion"
 
@@ -182,6 +185,8 @@ object Ocr {
         try {
             ocrFile = File(PASTA_TEMPORARIA.toString() + "\\ocr_" + image.name.substringBeforeLast(".") + ".jpg")
             val ocrImage = ImageIO.read(image)
+            if (ocrImage == null) return ""
+
             ImageIO.write(ocrImage, "jpg", ocrFile)
 
             input = Mat(ocrImage.height, ocrImage.width, CvType.CV_8UC3)

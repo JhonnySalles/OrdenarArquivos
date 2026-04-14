@@ -1,9 +1,15 @@
 package com.fenix.ordenararquivos.configuration
 
+import com.fenix.ordenararquivos.database.DataBase
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class ConfiguracaoTest {
+
+    @org.junit.jupiter.api.BeforeEach
+    fun setUp() {
+        DataBase.isTeste = true
+    }
 
     @Test
     fun `test get caminhoCommicTagger`() {
@@ -16,10 +22,10 @@ class ConfiguracaoTest {
     fun `test set and get caminhoCommicTagger`() {
         val originalValue = Configuracao.caminhoCommicTagger
         val testValue = "test/path/commictagger"
-        
+
         Configuracao.caminhoCommicTagger = testValue
         assertEquals(testValue, Configuracao.caminhoCommicTagger)
-        
+
         // Restore original value to avoid side effects on other tests
         Configuracao.caminhoCommicTagger = originalValue
     }
@@ -34,10 +40,10 @@ class ConfiguracaoTest {
     fun `test set and get registrosConsultaMal`() {
         val originalValue = Configuracao.registrosConsultaMal
         val testValue = 100
-        
+
         Configuracao.registrosConsultaMal = testValue
         assertEquals(testValue, Configuracao.registrosConsultaMal)
-        
+
         // Restore
         Configuracao.registrosConsultaMal = originalValue
     }

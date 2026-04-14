@@ -106,7 +106,7 @@ data class CoMet(
         if (!paths.isNullOrEmpty()) {
             this.coverImage = null
             val cover = comic.pages?.firstOrNull { it.type != null && it.type == ComicPageType.FrontCover } ?: comic.pages?.firstOrNull()
-            if (cover != null)
+            if (cover?.image != null && cover.image!! < paths.size)
                 this.coverImage = paths[cover.image!!]
         }
 

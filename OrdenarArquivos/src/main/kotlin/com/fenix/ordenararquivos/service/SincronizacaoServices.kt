@@ -62,10 +62,14 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
     private val collectComicInfo = "COMICINFO"
 
     companion object {
-        private val sincManga: ObservableList<Manga> = FXCollections.observableArrayList()
-        private val sincComicInfo: ObservableList<ComicInfo> = FXCollections.observableArrayList()
+        val sincManga: ObservableList<Manga> = FXCollections.observableArrayList()
+        val sincComicInfo: ObservableList<ComicInfo> = FXCollections.observableArrayList()
         private val sincronizar: ObservableList<Pair<Tipo, Int>> = FXCollections.observableArrayList()
+        
+        @JvmStatic
         fun enviar(manga: com.fenix.ordenararquivos.model.entities.Manga) = sincManga.add(Manga(manga))
+        
+        @JvmStatic
         fun enviar(comic: com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo) = sincComicInfo.add(ComicInfo(comic))
     }
 

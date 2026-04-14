@@ -30,6 +30,11 @@ object AlertasPopup {
     private val CSS_THEME: String = (AlertasPopup::class.java.getResource("/css/Dark_TelaInicial.css") as URL).toExternalForm()
     private lateinit var ROOT_STACK_PANE: StackPane
     private lateinit var NODE_BLUR: Node
+    
+    var isTeste: Boolean = false
+    var testResult: Boolean = true
+    var lastAlertTitle: String? = null
+    var lastAlertText: String? = null
 
     var rootStackPane: StackPane
         get() = ROOT_STACK_PANE
@@ -161,6 +166,11 @@ object AlertasPopup {
 
     var RESULTADO = false
     private fun alertModern(rootStackPane: StackPane, nodeBlur: Node, titulo: String, texto: String, imagem: ImageView): Boolean {
+        if (isTeste) {
+            lastAlertTitle = titulo
+            lastAlertText = texto
+            return testResult
+        }
         RESULTADO = false
         val blur = BoxBlur(3.0, 3.0, 3)
         val alert: JFXAlert<String> = JFXAlert(rootStackPane.scene.window)
@@ -213,6 +223,11 @@ object AlertasPopup {
     }
 
     private fun dialogModern(rootStackPane: StackPane, nodeBlur: Node?, botoes: MutableList<JFXButton>, titulo: String, texto: String, imagem: ImageView) {
+        if (isTeste) {
+            lastAlertTitle = titulo
+            lastAlertText = texto
+            return
+        }
         val blur = BoxBlur(3.0, 3.0, 3)
 
         if (botoes.isEmpty())

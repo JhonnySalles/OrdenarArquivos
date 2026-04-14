@@ -6,10 +6,12 @@ import javafx.application.Platform
 import javafx.collections.ListChangeListener
 import javafx.scene.layout.AnchorPane
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+@Tag("UI")
 class NotificacoesTest : BaseJfxTest() {
 
     @Test

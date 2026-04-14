@@ -24,6 +24,7 @@ object Winrar {
     private val mServiceComicInfo = ComicInfoServices()
 
     private var mProcess: Process? = null
+    @JvmStatic
     fun compactarArquivo(rar: File, arquivos: List<File>): Boolean {
         var success = true
         var compactar = ""
@@ -65,6 +66,7 @@ object Winrar {
         }
     }
 
+    @JvmStatic
     fun extrairArquivo(rar: File, arquivo: String): File? {
         var comicInfo: File? = null
         var proc: Process? = null
@@ -85,8 +87,12 @@ object Winrar {
                 error += "$s"
             if (resultado.isEmpty() && error.isNotEmpty())
                 mLOG.info("Error comand: $resultado Não foi possível extrair o arquivo ${arquivo}.")
-            else
-                comicInfo = File(Utils.getCaminho(rar.path) + '\\' + arquivo)
+            else {
+                val extracted = File(Utils.getCaminho(rar.path) + '\\' + arquivo)
+                if (extracted.exists()) {
+                    comicInfo = extracted
+                }
+            }
         } catch (e: Exception) {
             mLOG.error(e.message, e)
         } finally {

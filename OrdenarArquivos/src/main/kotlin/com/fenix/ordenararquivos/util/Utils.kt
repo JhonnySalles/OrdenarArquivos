@@ -59,10 +59,11 @@ class Utils {
         }
 
         fun getNumber(texto: String): Double? {
-            val numero = texto.replace(NOT_NUMBER_PATTERN.toRegex(), "").trim { it <= ' ' }
+            // Usa regex para encontrar o primeiro padrão numérico válido (opcionalmente com decimal)
+            val match = "[0-9]+(\\.[0-9]+)?".toRegex().find(texto)
             return try {
-                java.lang.Double.valueOf(numero)
-            } catch (e1: NumberFormatException) {
+                match?.value?.toDouble()
+            } catch (e1: Exception) {
                 null
             }
         }
@@ -125,8 +126,9 @@ class Utils {
             var capitalizeNext = true
             for (char in texto.trim().lowercase(locale)) {
                 when {
-                    // Se for um separador (espaço, hífen, apóstrofo), anexa e marca a próxima para capitalizar
-                    char.isWhitespace() || char == '-' || char == '\'' -> {
+                    // Se for um separador (espaço, hífen), anexa e marca a próxima para capitalizar.
+                    // O apóstrofo (') foi removido para evitar "It'S" em vez de "It's".
+                    char.isWhitespace() || char == '-' -> {
                         sb.append(char)
                         capitalizeNext = true
                     }

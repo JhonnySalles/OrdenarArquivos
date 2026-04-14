@@ -21,7 +21,7 @@
         <test.mockito.version>5.9.0</test.mockito.version>
         <test.mockito-kotlin.version>5.2.1</test.mockito-kotlin.version>
 
-        <exclude.groups>UI</exclude.groups>
+        <exclude.groups></exclude.groups>
 
         <javafx.version>17.0.13</javafx.version>
         <jfoenix.version>9.0.10</jfoenix.version>
@@ -132,6 +132,13 @@
             <groupId>org.testfx</groupId>
             <artifactId>testfx-core</artifactId>
             <version>${test.testfx.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>openjfx-monocle</artifactId>
+            <version>17.0.10</version>
             <scope>test</scope>
         </dependency>
 
@@ -397,6 +404,20 @@
                         --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.util=ALL-UNNAMED
                         --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.model.enums=ALL-UNNAMED
                         --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.model.entities.comicinfo=ALL-UNNAMED
+                        
+                        --add-exports javafx.graphics/com.sun.glass.ui=ALL-UNNAMED
+                        --add-exports javafx.graphics/com.sun.glass.ui.monocle=ALL-UNNAMED
+                        --add-exports javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED
+                        --add-exports javafx.graphics/com.sun.javafx.util=ALL-UNNAMED
+                        --add-exports javafx.graphics/com.sun.glass.events=ALL-UNNAMED
+                        --add-exports javafx.graphics/com.sun.javafx.font=ALL-UNNAMED
+                        --add-exports javafx.base/com.sun.javafx.logging=ALL-UNNAMED
+                        --add-opens javafx.graphics/com.sun.glass.ui=ALL-UNNAMED
+                        --add-opens javafx.graphics/com.sun.glass.ui.monocle=ALL-UNNAMED
+                        --add-opens javafx.graphics/com.sun.javafx.util=ALL-UNNAMED
+                        --add-opens javafx.graphics/com.sun.glass.events=ALL-UNNAMED
+                        --add-opens javafx.graphics/com.sun.javafx.font=ALL-UNNAMED
+                        --add-opens javafx.base/com.sun.javafx.logging=ALL-UNNAMED
                         
                         --add-exports com.fenix.ordenararquivos/com.fenix.ordenararquivos.database=ALL-UNNAMED
                         --add-exports com.fenix.ordenararquivos/com.fenix.ordenararquivos.service=ALL-UNNAMED

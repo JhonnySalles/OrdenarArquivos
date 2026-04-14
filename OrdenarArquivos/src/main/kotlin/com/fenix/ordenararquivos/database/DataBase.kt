@@ -50,8 +50,10 @@ object DataBase {
             mCONN?.close()
             mCONN = null
         } catch (e: SQLException) {
-            e.printStackTrace()
-            mLOG.error("Erro ao fechar a conexão com o banco.", e)
+            if (!isTeste) {
+                e.printStackTrace()
+                mLOG.error("Erro ao fechar a conexão com o banco.", e)
+            }
         }
     }
 
@@ -61,7 +63,7 @@ object DataBase {
             try {
                 st.close()
             } catch (e: SQLException) {
-                e.printStackTrace()
+                if (!isTeste) e.printStackTrace()
             }
         }
     }
@@ -72,7 +74,7 @@ object DataBase {
             try {
                 rs.close()
             } catch (e: SQLException) {
-                e.printStackTrace()
+                if (!isTeste) e.printStackTrace()
             }
         }
     }

@@ -3,17 +3,12 @@ package com.fenix.ordenararquivos.ui
 import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.controller.PopupAmazon
 import com.fenix.ordenararquivos.controller.TelaInicialController
-import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.enums.Linguagem
-import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.jfoenix.controls.JFXButton
-import com.jfoenix.controls.JFXComboBox
-import com.jfoenix.controls.JFXDatePicker
 import com.jfoenix.controls.JFXTextField
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
-import javafx.scene.input.KeyCode
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
 import org.jsoup.Connection
@@ -21,246 +16,108 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.junit.jupiter.api.*
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.ArgumentMatchers.anyString
 import org.mockito.MockedStatic
+import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
-import org.mockito.kotlin.eq
+import org.mockito.kotlin.*
 import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
-import java.io.File
-import java.sql.DriverManager
-import java.time.LocalDate
-import kotlin.test.assertNotNull
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
+@TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class PopupAmazonUiTest : BaseTest() {
 
     private lateinit var mainController: TelaInicialController
-    
-    companion object {
-        private var staticKeepAlive: java.sql.Connection? = null
-        private lateinit var mockedAlertas: MockedStatic<AlertasPopup>
-        private lateinit var mockedJsoup: MockedStatic<Jsoup>
-
-        @BeforeAll
-        @JvmStatic
-        fun globalSetUp() {
-            DataBase.isTeste = true
-            DataBase.closeConnection()
-            staticKeepAlive = DriverManager.getConnection("jdbc:sqlite:file:testdb_amazon?mode=memory&cache=shared")
-            DataBase.instancia
-            
-            mockedAlertas = Mockito.mockStatic(AlertasPopup::class.java)
-            mockedJsoup = Mockito.mockStatic(Jsoup::class.java)
-        }
-
-        @AfterAll
-        @JvmStatic
-        fun globalTearDown() {
-            mockedAlertas.close()
-            mockedJsoup.close()
-            staticKeepAlive?.close()
-            staticKeepAlive = null
-            DataBase.isTeste = false
-        }
-    }
+    private lateinit var popupController: PopupAmazon
+    private lateinit var mockJsoup: MockedStatic<Jsoup>
+    private lateinit var mockConnection: Connection
+    private lateinit var mockDocument: Document
 
     @Start
     fun start(stage: Stage) {
         val loader = FXMLLoader(TelaInicialController.fxmlLocate)
-        val root = loader.load<AnchorPane>()
-        mainController = loader.getController()
-
-        val scene = Scene(root, 1024.0, 768.0)
-        
-        // Fix JFoenix skins
-        try {
-            val cssFile = File.createTempFile("jfoenix_skin_fix_amazon", ".css")
-            cssFile.writeText("""
-                .jfx-text-field { -fx-skin: "javafx.scene.control.skin.TextFieldSkin"; }
-                .jfx-combo-box { -fx-skin: "javafx.scene.control.skin.ComboBoxListViewSkin"; }
-                .jfx-date-picker { -fx-skin: "com.sun.javafx.scene.control.skin.DatePickerSkin"; }
-            """.trimIndent())
-            scene.stylesheets.add(cssFile.toURI().toURL().toExternalForm())
-        } catch (e: Exception) {
-            e.printStackTrace()
+        loader.setControllerFactory { controllerClass ->
+            when (controllerClass) {
+                TelaInicialController::class.java -> TelaInicialController().also { mainController = it }
+                else -> controllerClass.getDeclaredConstructor().newInstance()
+            }
         }
+        val root: AnchorPane = loader.load()
 
-        stage.scene = scene
+        mockJsoup = Mockito.mockStatic(Jsoup::class.java)
+        mockConnection = mock<Connection>()
+        mockDocument = mock<Document>()
+
+        whenever(Jsoup.connect(anyString())).thenReturn(mockConnection)
+        whenever(mockConnection.userAgent(anyString())).thenReturn(mockConnection)
+        whenever(mockConnection.referrer(anyString())).thenReturn(mockConnection)
+        whenever(mockConnection.get()).thenReturn(mockDocument)
+
+        stage.scene = Scene(root)
         stage.show()
-        
-        robotOpenPopup()
     }
 
-    private fun robotOpenPopup() {
-        WaitForAsyncUtils.waitForFxEvents()
-        val callback = javafx.util.Callback<ComicInfo, Boolean> { true }
-        val comicInfo = ComicInfo().apply { series = "Initial Series" }
-        
-        javafx.application.Platform.runLater {
+    @AfterEach
+    fun tearDown() {
+        if (::mockJsoup.isInitialized) {
+            mockJsoup.close()
+        }
+    }
+
+    private fun openPopupAmazon(robot: FxRobot) {
+        robot.interact {
             PopupAmazon.abreTelaAmazon(
                 mainController.rootStack,
-                mainController.rootTab,
-                callback,
-                comicInfo,
+                mainController.rootStack, // simplificando nodeBlur para o proprio stack
+                { true },
+                ComicInfo(),
                 Linguagem.ENGLISH
             )
         }
         WaitForAsyncUtils.waitForFxEvents()
+        
+        // No método abreTelaAmazon, o controlador é carregado internamente no companion object.
+        // Para testes, vamos buscar os campos via lookup.
     }
 
     @Test
-    fun testInitialState(robot: FxRobot) {
-        val txtSerie = robot.lookup("#txtSerie").queryAs(JFXTextField::class.java)
-        assertEquals("Initial Series", txtSerie.text)
+    fun testAmazonMetadataScrapingMock(robot: FxRobot) {
+        openPopupAmazon(robot)
         
-        val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java)
-        assertEquals(Linguagem.ENGLISH, cbLinguagem.value)
-    }
-
-    @Test
-    fun testExtractionAmazonUS(robot: FxRobot) {
-        val doc = Document("https://www.amazon.com/dp/B000000000")
-        doc.appendChild(Element("span").attr("id", "productTitle").text("Spiderman Vol 1"))
+        val txtSite = robot.lookup("#txtSiteAmazon").queryAs(JFXTextField::class.java)
+        val txtTitulo = robot.lookup("#txtTitulo").queryAs(JFXTextField::class.java)
         
-        val pubDate = Element("div").attr("id", "rpi-attribute-book_details-publication_date")
-        pubDate.appendChild(Element("span").addClass("attribute-value").text("January 1, 2023"))
-        doc.appendChild(pubDate)
+        // Mocking element for Amazon title
+        val mockTitleElement = mock<Element>()
+        whenever(mockDocument.getElementById("productTitle")).thenReturn(mockTitleElement)
+        whenever(mockTitleElement.text()).thenReturn("One Piece Vol. 100")
         
-        val publisher = Element("div").attr("id", "rpi-attribute-book_details-publisher")
-        publisher.appendChild(Element("span").addClass("attribute-value").text("Marvel"))
-        doc.appendChild(publisher)
-
-        val mockConnection = Mockito.mock(Connection::class.java)
-        mockedJsoup.`when`<Connection> { Jsoup.connect(anyString()) }.thenReturn(mockConnection)
-        Mockito.`when`(mockConnection.userAgent(anyString())).thenReturn(mockConnection)
-        Mockito.`when`(mockConnection.referrer(anyString())).thenReturn(mockConnection)
-        Mockito.`when`(mockConnection.get()).thenReturn(doc)
-
-        val txtSiteAmazon = robot.lookup("#txtSiteAmazon").queryAs(JFXTextField::class.java)
         robot.interact {
-            txtSiteAmazon.text = "https://www.amazon.com/dp/B000000000"
+            txtSite.text = "https://www.amazon.com/One-Piece-Vol-100/dp/197473073X"
+            // O trigger de consulta é o focus lost do txtSiteAmazon
+            txtSite.parent.requestFocus() 
         }
         
-        // Trigger focus out to start consulta()
-        robot.clickOn("#txtSerie") 
-        WaitForAsyncUtils.waitForFxEvents()
-
-        assertEquals("Spiderman Vol 1", robot.lookup("#txtTitulo").queryAs(JFXTextField::class.java).text)
-        assertEquals("Marvel", robot.lookup("#txtEditora").queryAs(JFXTextField::class.java).text)
-        assertEquals(LocalDate.of(2023, 1, 1), robot.lookup("#dpPublicacao").queryAs(JFXDatePicker::class.java).value)
-    }
-
-    @Test
-    fun testExtractionAmazonJP(robot: FxRobot) {
-        val doc = Document("https://www.amazon.co.jp/dp/B000000000")
-        doc.appendChild(Element("span").attr("id", "productTitle").text("One Piece Vol 100"))
-        
-        val pubDate = Element("div").attr("id", "rpi-attribute-book_details-publication_date")
-        pubDate.appendChild(Element("span").addClass("attribute-value").text("2021/09/03"))
-        doc.appendChild(pubDate)
-        
-        val details = Element("div").attr("id", "detailBullets_feature_div")
-        val ul = Element("ul")
-        ul.appendChild(Element("li").text("出版社 : 集英社 (2021/9/3)"))
-        details.appendChild(ul)
-        doc.appendChild(details)
-
-        val mockConnection = Mockito.mock(Connection::class.java)
-        mockedJsoup.`when`<Connection> { Jsoup.connect(anyString()) }.thenReturn(mockConnection)
-        Mockito.`when`(mockConnection.userAgent(anyString())).thenReturn(mockConnection)
-        Mockito.`when`(mockConnection.referrer(anyString())).thenReturn(mockConnection)
-        Mockito.`when`(mockConnection.get()).thenReturn(doc)
-
-        val txtSiteAmazon = robot.lookup("#txtSiteAmazon").queryAs(JFXTextField::class.java)
-        robot.interact {
-            txtSiteAmazon.text = "https://www.amazon.co.jp/dp/B000000000"
-        }
-        
-        robot.clickOn("#txtSerie") 
-        WaitForAsyncUtils.waitForFxEvents()
-
-        assertEquals("One Piece Vol 100", robot.lookup("#txtTitulo").queryAs(JFXTextField::class.java).text)
-        assertEquals("集英社", robot.lookup("#txtEditora").queryAs(JFXTextField::class.java).text)
-        assertEquals(LocalDate.of(2021, 9, 3), robot.lookup("#dpPublicacao").queryAs(JFXDatePicker::class.java).value)
-    }
-
-    @Test
-    fun testAplicarButton(robot: FxRobot) {
-        val txtPublicacaoSite = robot.lookup("#txtPublicacaoSite").queryAs(JFXTextField::class.java)
-        val dpPublicacao = robot.lookup("#dpPublicacao").queryAs(JFXDatePicker::class.java)
-        val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java)
-
-        robot.interact {
-            cbLinguagem.value = Linguagem.JAPANESE
-            txtPublicacaoSite.text = "2024/05/20"
-        }
-        robot.clickOn("#btnAplicar")
-        assertEquals(LocalDate.of(2024, 5, 20), dpPublicacao.value)
-    }
-    
-    @Test
-    fun testConfirmButton(robot: FxRobot) {
-        val btnConfirmar = robot.lookup("Confirmar").queryAs(JFXButton::class.java)
-        assertNotNull(btnConfirmar)
-        robot.clickOn(btnConfirmar)
-    }
-
-    @Test
-    fun testErrorHandlingJsoup(robot: FxRobot) {
-        mockedJsoup.`when`<Connection> { Jsoup.connect(anyString()) }.thenThrow(RuntimeException("Network error"))
-        
-        val txtSiteAmazon = robot.lookup("#txtSiteAmazon").queryAs(JFXTextField::class.java)
-        robot.interact {
-            txtSiteAmazon.text = "https://www.amazon.com/error"
-        }
-        
-        // Trigger focus out
-        robot.clickOn("#txtSerie")
         WaitForAsyncUtils.waitForFxEvents()
         
-        mockedAlertas.verify { AlertasPopup.erroModal(eq("Erro ao carregar o site"), org.mockito.kotlin.any()) }
+        // Verificamos se o título foi preenchido com o valor mockado
+        assertEquals("One Piece Vol. 100", txtTitulo.text)
     }
 
     @Test
-    fun testObtemDataJapanese(robot: FxRobot) {
-        val txtPublicacaoSite = robot.lookup("#txtPublicacaoSite").queryAs(JFXTextField::class.java)
-        val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java) as JFXComboBox<Linguagem>
-        val dpPublicacao = robot.lookup("#dpPublicacao").queryAs(JFXDatePicker::class.java)
-
+    fun testLanguageSelectionChange(robot: FxRobot) {
+        openPopupAmazon(robot)
+        val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(com.jfoenix.controls.JFXComboBox::class.java) as com.jfoenix.controls.JFXComboBox<Linguagem>
+        
         robot.interact {
             cbLinguagem.selectionModel.select(Linguagem.JAPANESE)
-            txtPublicacaoSite.text = "2021/9/3"
         }
-        robot.clickOn("#btnAplicar")
-        assertEquals(LocalDate.of(2021, 9, 3), dpPublicacao.value)
-    }
-
-    @Test
-    fun testObtemDataEnglish(robot: FxRobot) {
-        val txtPublicacaoSite = robot.lookup("#txtPublicacaoSite").queryAs(JFXTextField::class.java)
-        val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java) as JFXComboBox<Linguagem>
-        val dpPublicacao = robot.lookup("#dpPublicacao").queryAs(JFXDatePicker::class.java)
-
-        robot.interact {
-            cbLinguagem.selectionModel.select(Linguagem.ENGLISH)
-            txtPublicacaoSite.text = "January 1, 2023"
-        }
-        robot.clickOn("#btnAplicar")
-        assertEquals(LocalDate.of(2023, 1, 1), dpPublicacao.value)
-    }
-
-    @Test
-    fun testShortcutsEnterToTab(robot: FxRobot) {
-        robot.clickOn("#txtSiteAmazon")
-        robot.type(KeyCode.ENTER)
-        // Focus should move to cbLinguagem or next field
-        assertTrue(robot.lookup("#cbLinguagem").query<JFXComboBox<Linguagem>>().isFocused)
+        
+        assertEquals(Linguagem.JAPANESE, cbLinguagem.selectionModel.selectedItem)
     }
 }

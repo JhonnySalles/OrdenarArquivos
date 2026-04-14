@@ -60,4 +60,21 @@ abstract class BaseTest {
         mKeepAlive = null
         DataBase.isTeste = false
     }
+
+    /**
+     * Helper para interagir com itens de menu de contexto em ambiente Headless (Monocle).
+     * O Monocle muitas vezes não renderiza o popup de uma forma que o robot.clickOn(text) encontre.
+     */
+    fun interactWithContextMenu(robot: org.testfx.api.FxRobot, itemText: String) {
+        // Tenta encontrar o nó em todas as janelas (incluindo popups)
+        val node = robot.listWindows().flatMap { it.scene.root.lookupAll(itemText) }.firstOrNull()
+        if (node != null) {
+            robot.clickOn(node)
+        } else {
+            // Fallback: Tenta via navegação de teclado se o menu estiver aberto
+            robot.type(javafx.scene.input.KeyCode.DOWN)
+            robot.type(javafx.scene.input.KeyCode.ENTER)
+        }
+        org.testfx.util.WaitForAsyncUtils.waitForFxEvents()
+    }
 }

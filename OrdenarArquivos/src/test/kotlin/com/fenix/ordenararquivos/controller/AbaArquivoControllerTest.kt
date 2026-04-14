@@ -24,8 +24,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.zip.ZipFile
 
-@TestMethodOrder(MethodOrderer.OrderAnnotation::class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag("UI")
 @ExtendWith(ApplicationExtension::class)
 class AbaArquivoControllerTest {
 

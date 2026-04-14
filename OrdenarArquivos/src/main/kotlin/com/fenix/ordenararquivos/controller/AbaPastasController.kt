@@ -15,6 +15,7 @@ import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.process.Winrar
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
+import com.fenix.ordenararquivos.service.PastaParsingService
 import com.fenix.ordenararquivos.util.Utils
 import com.jfoenix.controls.*
 import javafx.application.Platform
@@ -382,10 +383,7 @@ class AbaPastasController : Initializable {
                     try {
                         val lista = mutableListOf<Pasta>()
 
-                        val regexCapitulo = "(?i)(capitulo|capítulo|chapter|chap| ch\\.?| cap\\.?)([ \\d.]+)".toRegex()
-                        val regexVolume = "(?i)(volume|vol\\.?)([ \\d.]+)".toRegex()
-                        val apenasNumeros = "^[\\d.]+".toRegex()
-
+                        val parsingService = PastaParsingService()
                         val max = pasta.listFiles()?.size?.toLong() ?: 0L
                         var i = 0L
 
@@ -397,58 +395,18 @@ class AbaPastasController : Initializable {
                             updateProgress(i, max)
                             updateMessage("Carregando item $i de $max.")
 
-                            var nome = if (file.name.contains(",")) file.name.replace(",", "") else file.name
+                            val result = parsingService.parse(file.name)
 
-                            var volume = "0"
-                            var capitulos = "0"
-                            var scan = ""
-                            var titulo = ""
-                            var isCapa = false
-
-                            if (nome.matches(apenasNumeros))
-                                capitulos = nome
-                            else {
-                                regexCapitulo.find(nome)?.let { match ->
-                                    capitulos = if (match.groups.size > 2 && match.groups[2] != null)
-                                        match.groups[2]!!.value.trim()
-                                    else
-                                        match.value.lowercase().replace("ch.", "").replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "")
-                                    val before = nome.substringBefore(match.value).trim()
-                                    scan = regexVolume.find(before)?.let { if (it.value.isNotEmpty()) before.substringBefore(it.value) else before } ?: before
-                                    titulo = nome.substringAfter(match.value).trim()
-                                }
-                                regexVolume.find(nome)?.let { match ->
-                                    if (match.value.isNotEmpty())
-                                        volume = if (match.groups.size > 2 && match.groups[2] != null)
-                                            match.groups[2]!!.value.trim()
-                                        else
-                                            match.value.replace("vol.", "").replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "")
-                                }
-
-                                if (scan.contains("_"))
-                                    scan = scan.replace("_", " ").trim()
-                                else if (scan.isEmpty() && nome.contains("]"))
-                                    scan = nome.substringBefore("]").replace("[", "")
-
-                                if (scan.contains("]"))
-                                    scan = scan.substringBefore("]").replace("[", "")
-
-                                if (nome.contains("]"))
-                                    nome = nome.substringAfter("]").substringBefore("-").trim()
-
-                                if (titulo.contains("_"))
-                                    titulo = titulo.replace("_", " ").trim()
-
-                                if (titulo.startsWith("-"))
-                                    titulo = titulo.substring(1).trim()
-
-                                isCapa = file.name.lowercase().contains("capa")
-
-                                if (isCapa)
-                                    capitulos = "0"
-                            }
-
-                            lista.add(Pasta(pasta = file, arquivo = file.name, nome = cbManga.editor.text, volume = volume.toFloatOrNull() ?: 0f, capitulo = capitulos.toFloatOrNull() ?: 0f, scan = scan, titulo = titulo, isCapa = isCapa))
+                            lista.add(Pasta(
+                                pasta = file, 
+                                arquivo = file.name, 
+                                nome = cbManga.editor.text, 
+                                volume = result.volume.toFloatOrNull() ?: 0f, 
+                                capitulo = result.capitulo.toFloatOrNull() ?: 0f, 
+                                scan = result.scan, 
+                                titulo = result.titulo, 
+                                isCapa = result.isCapa
+                            ))
                         }
 
 

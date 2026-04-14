@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
@@ -27,6 +28,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.zip.ZipInputStream
 
+@Tag("UI")
 @ExtendWith(ApplicationExtension::class, MockitoExtension::class)
 class AbaPastasControllerTest {
 
