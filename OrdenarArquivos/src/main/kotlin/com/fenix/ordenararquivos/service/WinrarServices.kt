@@ -1,7 +1,11 @@
 package com.fenix.ordenararquivos.service
 
+import com.fenix.ordenararquivos.model.entities.Manga
+import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
+import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.process.Winrar
 import com.fenix.ordenararquivos.util.Utils
+import javafx.util.Callback
 import java.io.File
 
 open class WinrarServices {
@@ -23,6 +27,11 @@ open class WinrarServices {
         }
 
         return Winrar.extrairArquivo(arquivo, "*zSumário.*")
+    }
+
+    open fun compactar(destino: File, zip: File, manga: Manga, comicInfo: ComicInfo, pastas: MutableList<File>, comic: MutableMap<String, File>, linguagem: Linguagem,
+                      isCompactar: Boolean, isGerarCapitulos: Boolean, isAtualizarComic: Boolean = true, callback: Callback<Triple<Long, Long, String>, Boolean>): Boolean {
+        return Winrar.compactar(destino, zip, manga, comicInfo, pastas, comic, linguagem, isCompactar, isGerarCapitulos, isAtualizarComic, callback)
     }
 
 }

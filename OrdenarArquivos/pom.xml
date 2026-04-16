@@ -404,6 +404,7 @@
                         --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.util=ALL-UNNAMED
                         --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.model.enums=ALL-UNNAMED
                         --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.model.entities.comicinfo=ALL-UNNAMED
+                        --add-opens com.fenix.ordenararquivos/com.fenix.ordenararquivos.e2e=ALL-UNNAMED
                         
                         --add-exports javafx.graphics/com.sun.glass.ui=ALL-UNNAMED
                         --add-exports javafx.graphics/com.sun.glass.ui.monocle=ALL-UNNAMED
@@ -431,7 +432,7 @@
                         --add-opens javafx.controls/javafx.scene.control.skin=com.jfoenix
                         --add-opens javafx.graphics/com.sun.javafx.scene=com.jfoenix
 
-                        -Dcom.jfoenix.disableAnimations=true
+                        -Dcom.jfoenix.disableAnimations=true -Xmx256m -Xms128m
                     </argLine>
                     <excludedGroups>${exclude.groups}</excludedGroups>
                     <useFile>false</useFile>

@@ -26,6 +26,7 @@ import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
+import java.io.File
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
@@ -86,27 +87,64 @@ class PopupAmazonUiTest : BaseTest() {
     }
 
     @Test
-    fun testAmazonMetadataScrapingMock(robot: FxRobot) {
+    fun testAmazonScrapingEn(robot: FxRobot) {
         openPopupAmazon(robot)
         
         val txtSite = robot.lookup("#txtSiteAmazon").queryAs(JFXTextField::class.java)
         val txtTitulo = robot.lookup("#txtTitulo").queryAs(JFXTextField::class.java)
+        val txtEditora = robot.lookup("#txtEditora").queryAs(JFXTextField::class.java)
+        val dpPublicacao = robot.lookup("#dpPublicacao").queryAs(javafx.scene.control.DatePicker::class.java)
         
-        // Mocking element for Amazon title
-        val mockTitleElement = mock<Element>()
-        whenever(mockDocument.getElementById("productTitle")).thenReturn(mockTitleElement)
-        whenever(mockTitleElement.text()).thenReturn("One Piece Vol. 100")
+        // Carregar fixture real
+        val htmlFile = File("src/test/resources/fixtures/amazon_en.html")
+        val doc = Jsoup.parse(htmlFile, "UTF-8")
+        whenever(mockConnection.get()).thenReturn(doc)
         
         robot.interact {
-            txtSite.text = "https://www.amazon.com/One-Piece-Vol-100/dp/197473073X"
-            // O trigger de consulta é o focus lost do txtSiteAmazon
-            txtSite.parent.requestFocus() 
+            txtSite.text = "https://www.amazon.com/example/dp/B000000000"
+            // Trigger focus lost
+            txtSite.parent.requestFocus()
         }
         
         WaitForAsyncUtils.waitForFxEvents()
         
-        // Verificamos se o título foi preenchido com o valor mockado
-        assertEquals("One Piece Vol. 100", txtTitulo.text)
+        assertEquals("Manga Title EN", txtTitulo.text)
+        assertEquals("Publisher EN", txtEditora.text)
+        assertEquals("2024-01-01", dpPublicacao.value.toString())
+    }
+
+    @Test
+    fun testAmazonScrapingJp(robot: FxRobot) {
+        // Abrir popup com linguagem Japonesa
+        robot.interact {
+            PopupAmazon.abreTelaAmazon(
+                mainController.rootStack,
+                mainController.rootStack,
+                { true },
+                ComicInfo(),
+                Linguagem.JAPANESE
+            )
+        }
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        val txtSite = robot.lookup("#txtSiteAmazon").queryAs(JFXTextField::class.java)
+        val txtTitulo = robot.lookup("#txtTitulo").queryAs(JFXTextField::class.java)
+        val dpPublicacao = robot.lookup("#dpPublicacao").queryAs(javafx.scene.control.DatePicker::class.java)
+        
+        // Carregar fixture Japonesa
+        val htmlFile = File("src/test/resources/fixtures/amazon_jp.html")
+        val doc = Jsoup.parse(htmlFile, "UTF-8")
+        whenever(mockConnection.get()).thenReturn(doc)
+        
+        robot.interact {
+            txtSite.text = "https://www.amazon.co.jp/example/dp/B000000000"
+            txtSite.parent.requestFocus()
+        }
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        assertEquals("Manga Title JP", txtTitulo.text)
+        assertEquals("2024-01-01", dpPublicacao.value.toString())
     }
 
     @Test

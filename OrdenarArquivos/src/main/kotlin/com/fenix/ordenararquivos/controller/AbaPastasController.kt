@@ -527,7 +527,13 @@ class AbaPastasController : Initializable {
 
                         val pasta = "[${item.scan}] ${item.nome} - Volume ${volume.format(item.volume)} ${if (item.isCapa) "Capa" else "Capítulo " + capitulo.format(item.capitulo)}"
                         val path = item.pasta.toPath()
-                        val file = Files.move(path, path.resolveSibling(pasta), StandardCopyOption.REPLACE_EXISTING).toFile()
+                        val target = path.resolveSibling(pasta)
+                        
+                        val file = if (path != target) {
+                            Files.move(path, target, StandardCopyOption.REPLACE_EXISTING).toFile()
+                        } else {
+                            item.pasta
+                        }
                         compactar.add(file)
                         if (item.isCapa)
                             comic["000"] = file

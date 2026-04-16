@@ -122,18 +122,18 @@ class PopupAmazon : Initializable {
             consulta.review = txtAreaComentario.text
     }
 
-    private fun obtemData(texto : String, linguagem: Linguagem) : String {
+    internal fun obtemData(texto : String, linguagem: Linguagem) : String {
         return when(linguagem) {
             Linguagem.JAPANESE -> {
-                val day = texto.substringAfterLast("/")
-                val year = texto.substringBefore("/")
-                val mouth = texto.substringAfter("/").substringBefore("/")
-                "$year-${mouth.padStart(2, '0')}-${day.padStart(2, '0')}"
+                val day = texto.substringAfterLast("/").trim()
+                val year = texto.substringBefore("/").trim()
+                val month = texto.substringAfter("/").substringBefore("/").trim()
+                "$year-${month.padStart(2, '0')}-${day.padStart(2, '0')}"
             }
             Linguagem.ENGLISH -> {
-                val day = texto.substringBefore(",").substringAfter(" ")
-                val year = texto.substringAfter(",")
-                val mouth = when(texto.lowercase().substringBefore(" ")) {
+                val day = texto.substringBefore(",").substringAfter(" ").trim()
+                val year = texto.substringAfter(",").trim()
+                val month = when (texto.lowercase().substringBefore(" ").trim()) {
                     "january" -> "01"
                     "february" -> "02"
                     "march" -> "03"
@@ -149,7 +149,7 @@ class PopupAmazon : Initializable {
                     else -> ""
                 }
 
-                "$year-${mouth.padStart(2, '0')}-${day.padStart(2, '0')}"
+                "$year-${month.padStart(2, '0')}-${day.padStart(2, '0')}"
             }
             else -> texto
         }
@@ -183,182 +183,186 @@ class PopupAmazon : Initializable {
                 cbLinguagem.value
 
             cbLinguagem.selectionModel.select(linguagem)
+            parse(pagina, linguagem)
 
-            var titulo = ""
-            var publicacao = ""
-            var publicacaoSite = ""
-            var editora = ""
-            var editoraSite = ""
-            var comentario = ""
-            var serie = ""
-            var isbn = ""
-
-            when (linguagem) {
-                Linguagem.ENGLISH -> {
-                    pagina.getElementById("productTitle")?.let { titulo = it.text() }
-                    pagina.getElementById("bookDescription_feature_div")?.let { comentario = it.text() }
-
-                    val publication = pagina.getElementById("rpi-attribute-book_details-publication_date")
-                    if (publication != null) {
-                        for (element in publication.allElements)
-                            if (element.className().contains("attribute-value", true)) {
-                                publicacaoSite = element.text()
-                                publicacao = obtemData(element.text(), linguagem)
-                                break
-                            }
-                    }
-
-                    val detailIsbn = pagina.getElementById("rpi-attribute-book_details-isbn13")
-                    if (detailIsbn != null) {
-                        for (element in detailIsbn.allElements)
-                            if (element.className().contains("attribute-value", true)) {
-                                isbn = element.text()
-                                break
-                            }
-                    }
-
-                    val publisher = pagina.getElementById("rpi-attribute-book_details-publisher")
-                    if (publisher != null) {
-                        for (element in publisher.allElements)
-                            if (element.className().contains("attribute-value", true)) {
-                                editora = element.text()
-                                editoraSite = element.text()
-                                break
-                            }
-                    }
-
-                    val series = pagina.getElementById("rpi-attribute-book_details-series")
-                    if (series != null) {
-                        for (element in series.allElements)
-                            if (element.className().contains("attribute-value", true)) {
-                                serie = element.text()
-                                break
-                            }
-                    }
-
-                    val details = pagina.getElementById("detailBullets_feature_div")
-                    if (details != null) {
-                        val tables = details.getElementsByAttribute("li")
-                        for (item in tables) {
-                            if (!item.text().contains(":"))
-                                continue
-
-                            val title = item.text().substringBefore(":").lowercase().trim()
-                            when (title) {
-                                "publisher" -> {
-                                    val value = item.text().substringAfter(":").trim()
-
-                                    if (editoraSite.isEmpty()) {
-                                        editoraSite = value.substringBefore("(").trim()
-                                        editora = editoraSite
-                                    }
-
-                                    if (publicacaoSite.isEmpty()) {
-                                        publicacaoSite = value.substringAfter("(").replace(")","").trim()
-                                        publicacao = obtemData(publicacaoSite, linguagem)
-                                    }
-                                }
-                                "isbn-13" -> {
-                                    if (isbn.isEmpty()) {
-                                        val value = item.text().substringAfter(":").trim()
-                                        isbn = value
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                Linguagem.JAPANESE -> {
-                    pagina.getElementById("productTitle")?.let { titulo = it.text() }
-                    pagina.getElementById("bookDescription_feature_div")?.let { comentario = it.text() }
-
-                    val publication = pagina.getElementById("rpi-attribute-book_details-publication_date")
-                    if (publication != null) {
-                        for (element in publication.allElements)
-                            if (element.className().contains("attribute-value", true)) {
-                                publicacaoSite = element.text()
-                                publicacao = obtemData(element.text(), linguagem)
-                                break
-                            }
-                    }
-
-                    val detailIsbn = pagina.getElementById("rpi-attribute-book_details-isbn13")
-                    if (detailIsbn != null) {
-                        for (element in detailIsbn.allElements)
-                            if (element.className().contains("attribute-value", true)) {
-                                isbn = element.text()
-                                break
-                            }
-                    }
-
-                    val publisher = pagina.getElementById("rpi-attribute-book_details-publisher")
-                    if (publisher != null) {
-                        for (element in publisher.allElements)
-                            if (element.className().contains("attribute-value", true)) {
-                                editora = element.text()
-                                editoraSite = element.text()
-                                break
-                            }
-                    }
-
-                    val details = pagina.getElementById("detailBullets_feature_div")
-                    if (details != null) {
-                        val tables = details.getElementsByAttribute("li")
-                        for (item in tables) {
-                            if (!item.text().contains(":"))
-                                continue
-
-                            val title = item.text().substringBefore(":").lowercase().trim()
-                            when (title) {
-                                "出版社" -> {
-                                    val value = item.text().substringAfter(":").trim()
-
-                                    if (editoraSite.isEmpty()) {
-                                        editoraSite = value.substringAfter(":").substringBefore("(").trim()
-                                        editora = editoraSite
-                                    }
-                                }
-                                "発売日" -> {
-                                    val value = item.text().substringAfter(":").trim()
-                                    if (publicacaoSite.isEmpty()) {
-                                        publicacaoSite = value
-                                        publicacao = obtemData(value, linguagem)
-                                    }
-                                }
-                                "isbn-13" -> {
-                                    if (isbn.isEmpty()) {
-                                        val value = item.text().substringAfter(":").trim()
-                                        isbn = value
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                else -> { }
-            }
-
-            if (txtSerie.text.isNullOrEmpty() && serie.isNotEmpty())
-                txtSerie.text = serie
-
-            if (txtTitulo.text.isNullOrEmpty())
-                txtTitulo.text = titulo
-
-            if (txtEditora.text.isNullOrEmpty())
-                txtEditora.text = editora
-
-            if (txtAreaComentario.text.isNullOrEmpty())
-                txtAreaComentario.text = comentario
-
-            txtEditoraSite.text = editoraSite
-            txtPublicacaoSite.text = publicacaoSite
-
-            if (dpPublicacao.value == null)
-                dpPublicacao.value = LocalDate.parse(publicacao.trim())
         } catch (e: Exception) {
             LOGGER.error(e.message, e)
             AlertasPopup.erroModal("Erro ao realizar o processamento do site", e.message.toString())
         }
+    }
+
+    internal fun parse(pagina: Document, linguagem: Linguagem) {
+        var titulo = ""
+        var publicacao = ""
+        var publicacaoSite = ""
+        var editora = ""
+        var editoraSite = ""
+        var comentario = ""
+        var serie = ""
+        var isbn = ""
+
+        when (linguagem) {
+            Linguagem.ENGLISH -> {
+                pagina.getElementById("productTitle")?.let { titulo = it.text() }
+                pagina.getElementById("bookDescription_feature_div")?.let { comentario = it.text() }
+
+                val publication = pagina.getElementById("rpi-attribute-book_details-publication_date")
+                if (publication != null) {
+                    for (element in publication.allElements)
+                        if (element.className().contains("attribute-value", true)) {
+                            publicacaoSite = element.text()
+                            publicacao = obtemData(element.text(), linguagem)
+                            break
+                        }
+                }
+
+                val detailIsbn = pagina.getElementById("rpi-attribute-book_details-isbn13")
+                if (detailIsbn != null) {
+                    for (element in detailIsbn.allElements)
+                        if (element.className().contains("attribute-value", true)) {
+                            isbn = element.text()
+                            break
+                        }
+                }
+
+                val publisher = pagina.getElementById("rpi-attribute-book_details-publisher")
+                if (publisher != null) {
+                    for (element in publisher.allElements)
+                        if (element.className().contains("attribute-value", true)) {
+                            editora = element.text()
+                            editoraSite = element.text()
+                            break
+                        }
+                }
+
+                val series = pagina.getElementById("rpi-attribute-book_details-series")
+                if (series != null) {
+                    for (element in series.allElements)
+                        if (element.className().contains("attribute-value", true)) {
+                            serie = element.text()
+                            break
+                        }
+                }
+
+                val details = pagina.getElementById("detailBullets_feature_div")
+                if (details != null) {
+                    val tables = details.getElementsByAttribute("li")
+                    for (item in tables) {
+                        if (!item.text().contains(":"))
+                            continue
+
+                        val title = item.text().substringBefore(":").lowercase().trim()
+                        when (title) {
+                            "publisher" -> {
+                                val value = item.text().substringAfter(":").trim()
+
+                                if (editoraSite.isEmpty()) {
+                                    editoraSite = value.substringBefore("(").trim()
+                                    editora = editoraSite
+                                }
+
+                                if (publicacaoSite.isEmpty()) {
+                                    publicacaoSite = value.substringAfter("(").replace(")", "").trim()
+                                    publicacao = obtemData(publicacaoSite, linguagem)
+                                }
+                            }
+                            "isbn-13" -> {
+                                if (isbn.isEmpty()) {
+                                    val value = item.text().substringAfter(":").trim()
+                                    isbn = value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Linguagem.JAPANESE -> {
+                pagina.getElementById("productTitle")?.let { titulo = it.text() }
+                pagina.getElementById("bookDescription_feature_div")?.let { comentario = it.text() }
+
+                val publication = pagina.getElementById("rpi-attribute-book_details-publication_date")
+                if (publication != null) {
+                    for (element in publication.allElements)
+                        if (element.className().contains("attribute-value", true)) {
+                            publicacaoSite = element.text()
+                            publicacao = obtemData(element.text(), linguagem)
+                            break
+                        }
+                }
+
+                val detailIsbn = pagina.getElementById("rpi-attribute-book_details-isbn13")
+                if (detailIsbn != null) {
+                    for (element in detailIsbn.allElements)
+                        if (element.className().contains("attribute-value", true)) {
+                            isbn = element.text()
+                            break
+                        }
+                }
+
+                val publisher = pagina.getElementById("rpi-attribute-book_details-publisher")
+                if (publisher != null) {
+                    for (element in publisher.allElements)
+                        if (element.className().contains("attribute-value", true)) {
+                            editora = element.text()
+                            editoraSite = element.text()
+                            break
+                        }
+                }
+
+                val details = pagina.getElementById("detailBullets_feature_div")
+                if (details != null) {
+                    val tables = details.getElementsByAttribute("li")
+                    for (item in tables) {
+                        if (!item.text().contains(":"))
+                            continue
+
+                        val title = item.text().substringBefore(":").lowercase().trim()
+                        when (title) {
+                            "出版社" -> {
+                                val value = item.text().substringAfter(":").trim()
+
+                                if (editoraSite.isEmpty()) {
+                                    editoraSite = value.substringAfter(":").substringBefore("(").trim()
+                                    editora = editoraSite
+                                }
+                            }
+                            "発売日" -> {
+                                val value = item.text().substringAfter(":").trim()
+                                if (publicacaoSite.isEmpty()) {
+                                    publicacaoSite = value
+                                    publicacao = obtemData(value, linguagem)
+                                }
+                            }
+                            "isbn-13" -> {
+                                if (isbn.isEmpty()) {
+                                    val value = item.text().substringAfter(":").trim()
+                                    isbn = value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else -> {}
+        }
+
+        if (txtSerie.text.isNullOrEmpty() && serie.isNotEmpty())
+            txtSerie.text = serie
+
+        if (txtTitulo.text.isNullOrEmpty())
+            txtTitulo.text = titulo
+
+        if (txtEditora.text.isNullOrEmpty())
+            txtEditora.text = editora
+
+        if (txtAreaComentario.text.isNullOrEmpty())
+            txtAreaComentario.text = comentario
+
+        txtEditoraSite.text = editoraSite
+        txtPublicacaoSite.text = publicacaoSite
+
+        if (dpPublicacao.value == null && publicacao.isNotEmpty())
+            dpPublicacao.value = LocalDate.parse(publicacao.trim())
     }
 
     private fun configuraListeners() {

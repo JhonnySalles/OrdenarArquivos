@@ -92,23 +92,54 @@ class PopupCapitulosUiTest : BaseTest() {
     }
 
     @Test
-    fun testExecutarScrapingMock(robot: FxRobot) {
+    fun testExecutarScrapingMangaPlanet(robot: FxRobot) {
         testAbriPopupCapitulos(robot)
         
         val txtEndereco = robot.lookup("#txtEndereco").queryAs(JFXTextField::class.java)
         val btnExecutar = robot.lookup("#btnExecutar").queryAs(JFXButton::class.java)
+        val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java)
+        
+        // Carregar fixture real
+        val htmlFile = File("src/test/resources/fixtures/mangaplanet.html")
+        val doc = Jsoup.parse(htmlFile, "UTF-8")
+        whenever(mockConnection.get()).thenReturn(doc)
         
         robot.interact {
-            txtEndereco.text = "https://mangadex.org/title/example"
+            txtEndereco.text = "https://mangaplanet.com/comic/example"
         }
         
-        // Simular Documento HTML vindo do Jsoup para Mangadex
-        // (Nota: em um teste real, precisaríamos de um HTML real mapeado)
-        // Por enquanto validamos se o comando de execução dispara o mock
         robot.clickOn(btnExecutar)
         WaitForAsyncUtils.waitForFxEvents()
         
-        mockJsoup.verify(MockedStatic.Verification { Jsoup.connect(anyString()) }, atLeastOnce())
+        // Verificar se a tabela foi populada (a fixture mangaplanet.html tem capítulos)
+        assertTrue(tbViewTabela.items.size > 0, "A tabela de capítulos deveria estar populada")
+        
+        // Opcional: verificar se o primeiro volume tem capítulos
+        val primeiroVol = tbViewTabela.items[0] as com.fenix.ordenararquivos.model.entities.capitulos.Volume
+        assertFalse(primeiroVol.capitulos.isEmpty(), "O primeiro volume deveria ter capítulos extraídos")
+    }
+
+    @Test
+    fun testExecutarScrapingComick(robot: FxRobot) {
+        testAbriPopupCapitulos(robot)
+        
+        val txtEndereco = robot.lookup("#txtEndereco").queryAs(JFXTextField::class.java)
+        val btnExecutar = robot.lookup("#btnExecutar").queryAs(JFXButton::class.java)
+        val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java)
+        
+        // Carregar fixture real
+        val htmlFile = File("src/test/resources/fixtures/comick.html")
+        val doc = Jsoup.parse(htmlFile, "UTF-8")
+        whenever(mockConnection.get()).thenReturn(doc)
+        
+        robot.interact {
+            txtEndereco.text = "https://comick.app/comic/example"
+        }
+        
+        robot.clickOn(btnExecutar)
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        assertTrue(tbViewTabela.items.size > 0, "A tabela de capítulos deveria estar populada (Comick)")
     }
 
     @Test

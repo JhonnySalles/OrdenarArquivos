@@ -334,7 +334,7 @@ class PopupCapitulos : Initializable {
     }
 
     //<--------------------------  Manga Planet  -------------------------->
-    private fun extractMangaPlanet(pagina: Document) : List<Volume> {
+    internal fun extractMangaPlanet(pagina: Document) : List<Volume> {
         val volumes = mutableListOf<Volume>()
 
         // Select each accordion item, which groups chapters under a volume title
@@ -401,7 +401,7 @@ class PopupCapitulos : Initializable {
     }
 
     //<--------------------------  Comick  -------------------------->
-    private fun extractComick(pagina: Document) : List<Volume> {
+    internal fun extractComick(pagina: Document) : List<Volume> {
         val rawChapterEntries = mutableListOf<TempCapInfo>()
         val chapterRows = pagina.select("table tbody tr.group")
 
@@ -435,8 +435,8 @@ class PopupCapitulos : Initializable {
                     // Se o título ainda estiver vazio e houver um terceiro span (sem span de volume no meio)
                     // Isso pode acontecer se o span de volume não for detectado corretamente ou não existir
                     // e o título estiver no terceiro span (após o span do número do capítulo e um span vazio/diferente).
-                    // Neste HTML específico, o título está no span com classe "text-xs md:text-base".
-                    val titleSpan = linkElement.selectFirst("span.text-xs.md:text-base")
+                    // Neste HTML específico, o título está no span com classe "text-xs".
+                    val titleSpan = linkElement.selectFirst("span.text-xs")
                     if (title.isBlank() && titleSpan != null)
                         title = titleSpan.text().trim()
 
@@ -494,7 +494,7 @@ class PopupCapitulos : Initializable {
     )
 
     //<--------------------------  Manga Fire  -------------------------->
-    private fun extractMangaFire(pagina: Document) : List<Volume> {
+    internal fun extractMangaFire(pagina: Document) : List<Volume> {
         val japones = Utils.JAPANESE_PATTERN.toRegex()
         val volume = Volume(volume = -1.0, capitulos = mutableListOf())
 
@@ -543,7 +543,7 @@ class PopupCapitulos : Initializable {
     }
 
     //<--------------------------  Tayo -------------------------->
-    private fun extractTayo(pagina: Document) : List<Volume> {
+    internal fun extractTayo(pagina: Document) : List<Volume> {
         val volumesList = mutableListOf<Volume>()
 
         // Seleciona cada bloco de volume (que é um acordeão)
@@ -630,7 +630,7 @@ class PopupCapitulos : Initializable {
     }
 
     //<--------------------------  MangaForest -------------------------->
-    private fun extractMangaForest(pagina: Document) : List<Volume> {
+    internal fun extractMangaForest(pagina: Document) : List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
         val chapterList = pagina.getElementById("chapter-list-inner")
         val chapters = chapterList?.getElementsByTag("li")
@@ -665,7 +665,7 @@ class PopupCapitulos : Initializable {
     }
 
     //<--------------------------  MangaRead -------------------------->
-    private fun extractMangaRead(pagina: Document) : List<Volume> {
+    internal fun extractMangaRead(pagina: Document) : List<Volume> {
         // Mapa para armazenar os volumes. Como não há volumes explícitos, usaremos 0.0 como padrão.
         val volumesMap = mutableMapOf<Double, Volume>()
 
@@ -701,7 +701,7 @@ class PopupCapitulos : Initializable {
     }
 
     //<--------------------------  MangaDex -------------------------->
-    private fun extractMangaDex(pagina: Document) : List<Volume> {
+    internal fun extractMangaDex(pagina: Document) : List<Volume> {
         // Mapa para agrupar os capítulos por volume dinamicamente.
         val volumesMap = mutableMapOf<Double, Volume>()
 
@@ -775,7 +775,7 @@ class PopupCapitulos : Initializable {
     }
 
     //<--------------------------  Zbato -------------------------->
-    private fun extractZBato(pagina: Document) : List<Volume> {
+    internal fun extractZBato(pagina: Document) : List<Volume> {
         // Mapa para agrupar capítulos por volume. Usaremos 0.0 como padrão.
         val volumesMap = mutableMapOf<Double, Volume>()
         // Conjunto para rastrear capítulos já processados e evitar duplicatas (v2).

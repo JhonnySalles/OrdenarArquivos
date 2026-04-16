@@ -1552,7 +1552,7 @@ class AbaArquivoController : Initializable {
                     mangaCapture?.let { manga.merge(it) }
                     manga.caminhos = listaCaminhosCapture
 
-                    if (Winrar.compactar(mCaminhoDestino!!, File(arquivoZip), manga, comicInfoCapture, pastasCompactar, pastasComic, linguagem, compactarArquivoCapture, gerarCapituloCapture, callback = callback))
+                    if (mRarService.compactar(mCaminhoDestino!!, File(arquivoZip), manga, comicInfoCapture, pastasCompactar, pastasComic, linguagem, compactarArquivoCapture, gerarCapituloCapture, callback = callback))
                         LAST_PROCESS_FOLDERS = pastasCompactar
                 } catch (e: Exception) {
                     mLOG.error("Erro ao processar.", e)
@@ -1981,7 +1981,7 @@ class AbaArquivoController : Initializable {
                 var texto = ""
                 val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
                 for (i in inicio..fim)
-                    texto += String.format(padding, i) + Utils.SEPARADOR_PAGINA + if (i < fim) "\r\n" else ""
+                    texto += String.format(padding, i) + Utils.SEPARADOR_PAGINA + "1" + if (i < fim) "\r\n" else ""
                 txtAreaImportar.replaceText(0, txtAreaImportar.length, texto)
             } else txtGerarInicio.unFocusColor = Color.GRAY
         } else {
