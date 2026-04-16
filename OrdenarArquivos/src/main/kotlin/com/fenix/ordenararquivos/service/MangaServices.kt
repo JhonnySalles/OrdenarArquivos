@@ -22,12 +22,18 @@ class MangaServices {
     private val mSELECT_CAMINHO = "SELECT id, capitulo, pagina, pasta, tag FROM Caminho WHERE id_manga = ?"
     private val mDELETE_CAMINHO = "DELETE FROM Caminho WHERE id_manga = ?"
     private val mSELECT_ALL_MANGA = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome LIKE ?"
+    private val mSELECT_ALL_MANGA_PAGINATED = "SELECT m.id, m.nome, m.volume, m.capitulo, m.arquivo, m.quantidade, m.capitulos, m.atualizacao, c.comic FROM Manga m LEFT JOIN ComicInfo c ON m.nome = c.series OR m.nome = c.title OR m.nome = c.comic WHERE m.nome LIKE ? GROUP BY m.id ORDER BY m.nome, m.volume, m.capitulo LIMIT ? OFFSET ?"
+    private val mDELETE_MANGA = "DELETE FROM Manga WHERE id = ?"
+    private val mSELECT_MANGA_ID = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE id = ?"
+    private val mCOUNT_MANGA_BY_NAME = "SELECT count(id) FROM Manga WHERE nome = ?"
 
     private val mSELECT_ENVIO = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE atualizacao >= ?"
     private val mLIST_MANGA = "SELECT nome FROM Manga GROUP BY nome ORDER BY nome"
     private val mSUGESTAO = "SELECT nome FROM Manga WHERE lower(nome) LIKE ? GROUP BY nome ORDER BY nome"
 
     private val conn: Connection get() = instancia
+
+    fun find(id: Long): Manga? = select(id)
 
     fun find(manga: Manga, anterior : Boolean = false): Manga? {
         return find(manga.nome, manga.volume, manga.capitulo, anterior)
@@ -47,6 +53,7 @@ class MangaServices {
 
     fun findEnvio(envio: LocalDateTime) : List<Manga> = select(envio)
 
+    @JvmOverloads
     fun save(manga: Manga, isSendCloud : Boolean = true, atualizacao : LocalDateTime = LocalDateTime.now()) {
         manga.atualizacao = atualizacao
         try {
@@ -70,12 +77,14 @@ class MangaServices {
     }
 
     @Throws(SQLException::class)
-    fun findAll(nome: String): List<Manga> {
+    fun findAll(nome: String, limit: Int = 1000, offset: Int = 0): List<Manga> {
         var st: PreparedStatement? = null
         var rs: ResultSet? = null
         return try {
-            st = conn.prepareStatement(mSELECT_ALL_MANGA)
-            st.setString(1, nome)
+            st = conn.prepareStatement(mSELECT_ALL_MANGA_PAGINATED)
+            st.setString(1, "%$nome%")
+            st.setInt(2, limit)
+            st.setInt(3, offset)
             rs = st.executeQuery()
             val mangas = mutableListOf<Manga>()
             while (rs.next()) {
@@ -83,7 +92,7 @@ class MangaServices {
                     rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
                     rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
                 )
-                manga.caminhos = select(manga)
+                manga.comic = rs.getString("comic") ?: ""
                 mangas.add(manga)
             }
             mangas
@@ -240,13 +249,56 @@ class MangaServices {
     }
 
     @Throws(SQLException::class)
-    private fun delete(idCaminho: Long) {
+    fun deleteManga(manga: Manga) {
+        var st: PreparedStatement? = null
+        try {
+            // Deleta caminhos
+            delete(manga.id)
+
+            // Verifica se deve deletar ComicInfo
+            val nome = manga.nome
+            val total = countMangaByName(nome)
+            if (total <= 1) {
+                // Se for o último manga com este nome, deleta o comic info
+                val comicInfo = ComicInfoServices().find(nome)
+                if (comicInfo != null)
+                   ComicInfoServices().delete(comicInfo.id!!)
+            }
+
+            // Deleta manga
+            st = conn.prepareStatement(mDELETE_MANGA)
+            st.setLong(1, manga.id)
+            st.executeUpdate()
+        } catch (e: SQLException) {
+            mLOG.error("Erro ao deletar o manga.", e)
+            throw e
+        } finally {
+            closeStatement(st)
+        }
+    }
+
+    @Throws(SQLException::class)
+    private fun countMangaByName(nome: String): Int {
+        var st: PreparedStatement? = null
+        var rs: ResultSet? = null
+        return try {
+            st = conn.prepareStatement(mCOUNT_MANGA_BY_NAME)
+            st.setString(1, nome)
+            rs = st.executeQuery()
+            if (rs.next()) rs.getInt(1) else 0
+        } finally {
+            closeStatement(st)
+            closeResultSet(rs)
+        }
+    }
+
+    @Throws(SQLException::class)
+    private fun delete(idManga: Long) {
         var st: PreparedStatement? = null
         try {
             st = conn.prepareStatement(mDELETE_CAMINHO)
-            st.setLong(1, idCaminho)
+            st.setLong(1, idManga)
             conn.autoCommit = false
-            conn.beginRequest()
             st.executeUpdate()
             conn.commit()
         } catch (e: SQLException) {
@@ -296,6 +348,33 @@ class MangaServices {
             closeStatement(st)
         }
         return null
+    }
+
+    @Throws(SQLException::class)
+    private fun select(id: Long): Manga? {
+        var st: PreparedStatement? = null
+        var rs: ResultSet? = null
+        return try {
+            st = conn.prepareStatement(mSELECT_MANGA_ID)
+            st.setLong(1, id)
+            rs = st.executeQuery()
+            var manga: Manga? = null
+            if (rs.next()) {
+                manga = Manga(
+                    rs.getLong("id"), rs.getString("nome"), rs.getString("volume"),
+                    rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
+                    rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
+                )
+                manga.caminhos = select(manga)
+            }
+            manga
+        } catch (e: SQLException) {
+            mLOG.error("Erro ao buscar o manga por ID.", e)
+            throw e
+        } finally {
+            closeStatement(st)
+            closeResultSet(rs)
+        }
     }
 
     @Throws(SQLException::class)

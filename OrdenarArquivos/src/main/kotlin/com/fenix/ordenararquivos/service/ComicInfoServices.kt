@@ -37,6 +37,7 @@ class ComicInfoServices {
     private val mUPDATE_COMIC_INFO = "UPDATE ComicInfo SET comic = ?, idMal = ?, series = ?, title = ?, publisher = ?, genre = ?, imprint = ?, seriesGroup = ?, storyArc = ?, maturityRating = ?, alternativeSeries = ?, language = ?,  atualizacao = ? WHERE id = ?"
     private val mINSERT_COMIC_INFO = "INSERT INTO ComicInfo (id, comic, idMal, series, title, publisher, genre, imprint, seriesGroup, storyArc, maturityRating, alternativeSeries, language, criacao, atualizacao) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
     private val mSELECT_COMIC_INFO = "SELECT id, comic, idMal, series, title, publisher, genre, imprint, seriesGroup, storyArc, maturityRating, alternativeSeries, language FROM ComicInfo WHERE language = ? AND (UPPER(comic) LIKE ? or UPPER(series) LIKE ? or UPPER(title) LIKE ?) LIMIT 1"
+    private val mSELECT_COMIC_INFO_BY_NAME = "SELECT id, comic, idMal, series, title, publisher, genre, imprint, seriesGroup, storyArc, maturityRating, alternativeSeries, language FROM ComicInfo WHERE UPPER(comic) LIKE ? or UPPER(series) LIKE ? or UPPER(title) LIKE ? LIMIT 1"
     private val mDELETE_COMIC_INFO = "DELETE FROM ComicInfo WHERE id = ?"
 
     private val mSELECT_ENVIO = "SELECT id, comic, idMal, series, title, publisher, genre, imprint, seriesGroup, storyArc, maturityRating, alternativeSeries, language, atualizacao FROM ComicInfo WHERE atualizacao >= ?"
@@ -63,6 +64,7 @@ class ComicInfoServices {
     }
 
     fun find(nome: String, linguagem : String) : ComicInfo? = select(nome, linguagem)
+    fun find(nome: String) : ComicInfo? = select(nome)
 
     @Throws(SQLException::class)
     fun select(nome: String, linguagem : String): ComicInfo? {
@@ -74,6 +76,36 @@ class ComicInfoServices {
             st.setString(2, nome.uppercase())
             st.setString(3, nome.uppercase())
             st.setString(4, nome.uppercase())
+            rs = st.executeQuery()
+            var comic: ComicInfo? = null
+            if (rs.next()) {
+                comic = ComicInfo(
+                    UUID.fromString(rs.getString("id")), if (rs.getLong("idMal") > 0) rs.getLong("idMal") else null,
+                    rs.getString("comic"), rs.getString("title"), rs.getString("series"), rs.getString("publisher"),
+                    rs.getString("alternativeSeries"), rs.getString("storyArc"), rs.getString("seriesGroup"),
+                    rs.getString("imprint"), rs.getString("genre"), rs.getString("language"),
+                    if (rs.getString("maturityRating") != null) AgeRating.valueOf(rs.getString("maturityRating")) else null
+                )
+            }
+            comic
+        } catch (e: SQLException) {
+            mLOG.error("Erro ao buscar o manga.", e)
+            throw e
+        } finally {
+            closeStatement(st)
+            closeResultSet(rs)
+        }
+    }
+
+    @Throws(SQLException::class)
+    fun select(nome: String): ComicInfo? {
+        var st: PreparedStatement? = null
+        var rs: ResultSet? = null
+        return try {
+            st = conn.prepareStatement(mSELECT_COMIC_INFO_BY_NAME)
+            st.setString(1, nome.uppercase())
+            st.setString(2, nome.uppercase())
+            st.setString(3, nome.uppercase())
             rs = st.executeQuery()
             var comic: ComicInfo? = null
             if (rs.next()) {
@@ -166,7 +198,7 @@ class ComicInfoServices {
     }
 
     @Throws(SQLException::class)
-    private fun delete(id: UUID) {
+    fun delete(id: UUID) {
         var st: PreparedStatement? = null
         try {
             st = conn.prepareStatement(mDELETE_COMIC_INFO)

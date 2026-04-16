@@ -3,7 +3,7 @@ package com.fenix.ordenararquivos.model.entities
 import com.google.firebase.database.Exclude
 import java.time.LocalDateTime
 
-data class Manga(
+data class Manga @JvmOverloads constructor(
     var id: Long = 0,
     var nome: String = "",
     var volume: String = "",
@@ -12,7 +12,8 @@ data class Manga(
     var capitulos: String = "",
     var quantidade: Int = 0,
     @Exclude @set:Exclude @get:Exclude var atualizacao: LocalDateTime = LocalDateTime.now(),
-    var caminhos: MutableList<Caminhos> = arrayListOf()
+    var caminhos: MutableList<Caminhos> = arrayListOf(),
+    @Exclude @set:Exclude @get:Exclude var comic: String = ""
 ) {
     constructor(id: Long, nome: String, volume: String, capitulo: String, arquivo: String, quantidade: Int, capitulos: String, atualizacao: LocalDateTime) : this(id, nome, volume, capitulo, arquivo, capitulos, quantidade, atualizacao) { }
 
@@ -28,6 +29,7 @@ data class Manga(
         this.capitulos = manga.capitulos
         this.quantidade = manga.quantidade
         this.caminhos = manga.caminhos
+        this.comic = manga.comic
     }
 
     override fun toString(): String {
@@ -69,9 +71,10 @@ data class Manga(
                 capitulos = manga.capitulos,
                 quantidade = manga.quantidade,
                 atualizacao = manga.atualizacao,
-                caminhos = manga.caminhos.toMutableList()
+                caminhos = manga.caminhos.toMutableList(),
+                comic = manga.comic
             )
         }
     }
 
-}
+}

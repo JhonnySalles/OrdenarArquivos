@@ -58,6 +58,9 @@ class TelaInicialController : Initializable {
     private lateinit var pastasController: AbaPastasController
 
     @FXML
+    private lateinit var abaMangaController: AbaMangaController
+
+    @FXML
     private fun onSelectChanged(event: Event) {
         if (::tbTabArquivo.isInitialized && ::tbTabPasta.isInitialized) {
             AbaArquivoController.isAbaSelecionada = tbTabArquivo.isSelected
@@ -93,6 +96,7 @@ class TelaInicialController : Initializable {
         arquivoController.controllerPai = this
         comicinfoController.controllerPai = this
         pastasController.controllerPai = this
+        abaMangaController.controllerPai = this
 
         arquivoController.limpaCampos()
     }

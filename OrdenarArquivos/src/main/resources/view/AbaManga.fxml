@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.jfoenix.controls.JFXTextField?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<AnchorPane fx:id="apRoot" minHeight="0.0" minWidth="0.0" prefHeight="800.0" prefWidth="900.0" styleClass="background-Black3" stylesheets="@../styles/Styles.css" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.AbaMangaController">
+   <children>
+      <VBox prefHeight="200.0" prefWidth="100.0" spacing="10.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <children>
+            <HBox alignment="CENTER_LEFT" prefHeight="50.0" prefWidth="200.0" spacing="10.0">
+               <children>
+                  <JFXTextField fx:id="txtFiltro" focusColor="#0cff00" labelFloat="true" onKeyReleased="#onKeyFiltro" prefHeight="30.0" prefWidth="400.0" promptText="Filtrar por nome do mangá" styleClass="texto-stilo-2" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+               </children>
+               <padding>
+                  <Insets left="15.0" right="15.0" />
+               </padding>
+               <VBox.margin>
+                  <Insets top="10.0" />
+               </VBox.margin>
+            </HBox>
+            <TableView fx:id="tbViewManga" editable="true" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
+               <columns>
+                  <TableColumn fx:id="clId" prefWidth="60.0" text="ID" />
+                  <TableColumn fx:id="clNome" prefWidth="200.0" text="Nome" />
+                  <TableColumn fx:id="clVolume" prefWidth="100.0" text="Volume" />
+                  <TableColumn fx:id="clCapitulo" prefWidth="100.0" text="Capítulo" />
+                  <TableColumn fx:id="clArquivo" prefWidth="200.0" text="Arquivo" />
+                  <TableColumn fx:id="clCapitulos" prefWidth="100.0" text="Capítulos" />
+                  <TableColumn fx:id="clQuantidade" prefWidth="100.0" text="Quantidade" />
+                  <TableColumn fx:id="clComic" prefWidth="150.0" text="Comic" />
+                  <TableColumn fx:id="clAcoes" prefWidth="120.0" text="Ações" />
+               </columns>
+            </TableView>
+         </children>
+      </VBox>
+   </children>
+</AnchorPane>
