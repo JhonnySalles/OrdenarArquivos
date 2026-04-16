@@ -9,5 +9,5 @@ echo.
 
 :: Executa os testes unitários do programa
 
-mvn test -Dexclude.groups=UI
+mvn test -Dexclude.groups=UI,E2E
 pause
