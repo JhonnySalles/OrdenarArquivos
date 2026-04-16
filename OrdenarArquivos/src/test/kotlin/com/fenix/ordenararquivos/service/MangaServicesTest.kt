@@ -121,6 +121,66 @@ class MangaServicesTest : BaseTest() {
     }
 
     @Test
+    fun testFindAllPaginated() {
+        for (i in 1..10) {
+            val name = "Manga ${String.format("%02d", i)}"
+            mService.save(Manga(nome = name, volume = "$i", capitulo = "001"), isSendCloud = false)
+        }
+
+        // Limit 3, Offset 0
+        val page1 = mService.findAll("%", 3, 0)
+        assertEquals(3, page1.size)
+        assertEquals("Manga 01", page1[0].nome)
+
+        // Limit 3, Offset 3
+        val page2 = mService.findAll("%", 3, 3)
+        assertEquals(3, page2.size)
+        assertEquals("Manga 04", page2[0].nome)
+    }
+
+    @Test
+    fun testFindWithComicJoin() {
+        val manga = Manga(nome = "Dragon Ball", volume = "01", capitulo = "001")
+        mService.save(manga, isSendCloud = false)
+
+        val comicInfo = com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo().apply {
+            series = "Dragon Ball"
+            comic = "DB-Z"
+        }
+        ComicInfoServices().save(comicInfo)
+
+        val found = mService.findAll("Dragon Ball", 1, 0)
+        assertEquals(1, found.size)
+        assertEquals("DB-Z", found[0].comic, "Deve carregar o nome do comic via JOIN")
+    }
+
+    @Test
+    fun testDeleteMangaCascade() {
+        val manga1 = Manga(nome = "Bleach", volume = "01", capitulo = "001")
+        val manga2 = Manga(nome = "Bleach", volume = "02", capitulo = "002")
+        mService.save(manga1, isSendCloud = false)
+        mService.save(manga2, isSendCloud = false)
+
+        val comicInfo = com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo().apply {
+            series = "Bleach"
+            comic = "Shiniga-mi"
+            languageISO = "ja"
+        }
+        val ciService = ComicInfoServices()
+        ciService.save(comicInfo)
+
+        // Caso 1: Deletar um volume, mas outro existe. ComicInfo deve permanecer.
+        mService.deleteManga(manga1)
+        assertNull(mService.find(manga1.id), "Manga 1 deve ser deletado")
+        assertNotNull(ciService.find("Bleach", "ja"), "ComicInfo deve permanecer pois manga 2 ainda existe")
+
+        // Caso 2: Deletar o último volume. ComicInfo deve ser deletado.
+        mService.deleteManga(manga2)
+        assertNull(mService.find(manga2.id), "Manga 2 deve ser deletado")
+        assertNull(ciService.find("Bleach", "ja"), "ComicInfo deve ser deletado pois era o último manga")
+    }
+
+    @Test
     fun testSugestao() {
         mService.save(Manga(nome = "Attack on Titan"), isSendCloud = false)
         mService.save(Manga(nome = "Solo Leveling"), isSendCloud = false)
