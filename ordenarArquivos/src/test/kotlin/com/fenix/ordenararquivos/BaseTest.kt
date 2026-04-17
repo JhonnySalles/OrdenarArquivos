@@ -35,6 +35,8 @@ abstract class BaseTest {
     fun baseSetUp() {
         mLOG.info("Configurando ambiente de teste (:memory:)...")
         DataBase.isTeste = true
+        com.fenix.ordenararquivos.notification.AlertasPopup.isTeste = true
+        com.fenix.ordenararquivos.notification.AlertasPopup.testResult = true
         DataBase.closeConnection()
 
         mKeepAlive = DriverManager.getConnection("jdbc:sqlite:file:testdb?mode=memory&cache=shared")
@@ -55,6 +57,7 @@ abstract class BaseTest {
     @AfterAll
     fun baseTearDown() {
         mLOG.info("Limpando ambiente de teste...")
+        com.fenix.ordenararquivos.notification.AlertasPopup.isTeste = false
         DataBase.closeConnection()
         mKeepAlive?.close()
         mKeepAlive = null
