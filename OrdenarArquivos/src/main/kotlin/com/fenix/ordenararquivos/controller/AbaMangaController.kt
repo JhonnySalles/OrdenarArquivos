@@ -2,10 +2,13 @@ package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
+import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXTextField
+import java.net.URL
+import java.util.*
 import javafx.application.Platform
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
@@ -24,8 +27,6 @@ import javafx.scene.layout.HBox
 import javafx.stage.Modality
 import javafx.stage.Stage
 import javafx.util.converter.IntegerStringConverter
-import java.net.URL
-import java.util.*
 
 class AbaMangaController : Initializable {
 
@@ -45,7 +46,7 @@ class AbaMangaController : Initializable {
     private val mServiceManga = MangaServices()
     private val mServiceComicInfo = ComicInfoServices()
     private val mMangas: ObservableList<Manga> = FXCollections.observableArrayList()
-    
+
     private var mOffset = 0
     private val mLimit = 1000
     private var mCarregando = false
@@ -56,10 +57,12 @@ class AbaMangaController : Initializable {
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         initTable()
         carregarDados()
-        
+
         // Listener para Scroll Infinito
         tbViewManga.lookup(".virtual-flow")?.let { flow ->
-            val scrollBar = (flow as ScrollPane).childrenUnmodifiable.filterIsInstance<ScrollBar>().firstOrNull { it.orientation == javafx.geometry.Orientation.VERTICAL }
+            val scrollBar =
+                    (flow as ScrollPane).childrenUnmodifiable.filterIsInstance<ScrollBar>()
+                            .firstOrNull { it.orientation == javafx.geometry.Orientation.VERTICAL }
             scrollBar?.valueProperty()?.addListener { _, _, newValue ->
                 if (newValue.toDouble() >= 0.9 && !mCarregando && mTemMais) {
                     carregarDados(incremental = true)
@@ -70,7 +73,7 @@ class AbaMangaController : Initializable {
 
     private fun initTable() {
         clId.cellValueFactory = PropertyValueFactory("id")
-        
+
         clNome.cellValueFactory = PropertyValueFactory("nome")
         clNome.cellFactory = TextFieldTableCell.forTableColumn()
         clNome.setOnEditCommit { it.rowValue.nome = it.newValue }
@@ -117,33 +120,50 @@ class AbaMangaController : Initializable {
     private fun initAcoes() {
         clAcoes.setCellFactory {
             object : TableCell<Manga, Void>() {
-                private val btnConfirmar = JFXButton().apply {
-                    graphic = ImageView(Image(javaClass.getResourceAsStream("/images/icoV_48.png"))).apply {
-                        fitHeight = 16.0
-                        fitWidth = 16.0
-                    }
-                    styleClass.add("background-Green2")
-                    setOnAction {
-                        val manga = tableView.items[index]
-                        salvarManga(manga)
-                    }
-                }
+                private val btnConfirmar =
+                        JFXButton().apply {
+                            val stream =
+                                    AbaMangaController::class.java.getResourceAsStream(
+                                            "/images/icoConfirmar_48.png"
+                                    )
+                            if (stream != null) {
+                                graphic =
+                                        ImageView(Image(stream)).apply {
+                                            fitHeight = 16.0
+                                            fitWidth = 16.0
+                                        }
+                            }
+                            styleClass.add("background-Green2")
+                            setOnAction {
+                                val manga = tableView.items[index]
+                                salvarManga(manga)
+                            }
+                        }
 
-                private val btnExcluir = JFXButton().apply {
-                    graphic = ImageView(Image(javaClass.getResourceAsStream("/images/icoX_48.png"))).apply {
-                        fitHeight = 16.0
-                        fitWidth = 16.0
-                    }
-                    styleClass.add("background-Red2")
-                    setOnAction {
-                        val manga = tableView.items[index]
-                        excluirManga(manga)
-                    }
-                }
+                private val btnExcluir =
+                        JFXButton().apply {
+                            val stream =
+                                    AbaMangaController::class.java.getResourceAsStream(
+                                            "/images/icoCancelar_48.png"
+                                    )
+                            if (stream != null) {
+                                graphic =
+                                        ImageView(Image(stream)).apply {
+                                            fitHeight = 16.0
+                                            fitWidth = 16.0
+                                        }
+                            }
+                            styleClass.add("background-Red2")
+                            setOnAction {
+                                val manga = tableView.items[index]
+                                excluirManga(manga)
+                            }
+                        }
 
-                private val container = HBox(5.0, btnConfirmar, btnExcluir).apply {
-                    alignment = javafx.geometry.Pos.CENTER
-                }
+                private val container =
+                        HBox(5.0, btnConfirmar, btnExcluir).apply {
+                            alignment = javafx.geometry.Pos.CENTER
+                        }
 
                 override fun updateItem(item: Void?, empty: Boolean) {
                     super.updateItem(item, empty)
@@ -155,7 +175,7 @@ class AbaMangaController : Initializable {
 
     private fun carregarDados(incremental: Boolean = false) {
         if (mCarregando) return
-        
+
         mCarregando = true
         if (!incremental) {
             mOffset = 0
@@ -163,27 +183,28 @@ class AbaMangaController : Initializable {
             mMangas.clear()
         }
 
-        val task = object : Task<List<Manga>>() {
-            override fun call(): List<Manga> {
-                return mServiceManga.findAll(txtFiltro.text, mLimit, mOffset)
-            }
+        val task =
+                object : Task<List<Manga>>() {
+                    override fun call(): List<Manga> {
+                        return mServiceManga.findAll(txtFiltro.text, mLimit, mOffset)
+                    }
 
-            override fun succeeded() {
-                val novos = value
-                if (novos.isEmpty()) {
-                    mTemMais = false
-                } else {
-                    mMangas.addAll(novos)
-                    mOffset += mLimit
+                    override fun succeeded() {
+                        val novos = value
+                        if (novos.isEmpty()) {
+                            mTemMais = false
+                        } else {
+                            mMangas.addAll(novos)
+                            mOffset += mLimit
+                        }
+                        mCarregando = false
+                    }
+
+                    override fun failed() {
+                        mCarregando = false
+                        exception.printStackTrace()
+                    }
                 }
-                mCarregando = false
-            }
-
-            override fun failed() {
-                mCarregando = false
-                exception.printStackTrace()
-            }
-        }
         Thread(task).start()
     }
 
@@ -198,7 +219,9 @@ class AbaMangaController : Initializable {
             mServiceManga.save(manga)
             // Atualizar ComicInfo se o campo comic mudou
             if (manga.comic.isNotEmpty()) {
-                val ci = mServiceComicInfo.find(manga.nome, "pt") ?: mServiceComicInfo.find(manga.nome, "ja") ?: ComicInfo()
+                val ci =
+                        mServiceComicInfo.find(manga.nome, "pt")
+                                ?: mServiceComicInfo.find(manga.nome, "ja") ?: ComicInfo()
                 ci.comic = manga.comic
                 ci.series = manga.nome
                 mServiceComicInfo.save(ci)
@@ -212,12 +235,13 @@ class AbaMangaController : Initializable {
     }
 
     private fun excluirManga(manga: Manga) {
-        val alert = Alert(Alert.AlertType.CONFIRMATION)
-        alert.title = "Excluir Manga"
-        alert.headerText = "Deseja realmente excluir o manga: ${manga.nome}?"
-        alert.contentText = "Esta ação excluirá também os caminhos e o comicinfo associado."
-        
-        if (alert.showAndWait().get() == ButtonType.OK) {
+        if (AlertasPopup.confirmacaoModal(
+                        controllerPai.rootStack,
+                        controllerPai.rootTab,
+                        "Excluir Manga",
+                        "Deseja realmente excluir o manga: ${manga.nome}?\nEsta ação excluirá também os caminhos e o comicinfo associado."
+                )
+        ) {
             try {
                 mServiceManga.deleteManga(manga)
                 mMangas.remove(manga)
@@ -233,27 +257,34 @@ class AbaMangaController : Initializable {
             val loader = FXMLLoader(javaClass.getResource("/view/PopupComicInfo.fxml"))
             val root = loader.load<AnchorPane>()
             val controller = loader.getController<PopupComicInfoController>()
-            
+
             // Busca o ComicInfo associado ao manga
-            val comicInfo = mServiceComicInfo.find(manga.nome, "pt") ?: mServiceComicInfo.find(manga.nome, "ja") ?: ComicInfo().apply { 
-                series = manga.nome
-                comic = manga.comic
-            }
-            
+            val comicInfo =
+                    mServiceComicInfo.find(manga.nome, "pt")
+                            ?: mServiceComicInfo.find(manga.nome, "ja")
+                                    ?: ComicInfo().apply {
+                                series = manga.nome
+                                comic = manga.comic
+                            }
+
             controller.setComicInfo(comicInfo)
-            
+
             val stage = Stage()
             stage.title = "Editar ComicInfo - ${manga.nome}"
             stage.initModality(Modality.WINDOW_MODAL)
             stage.initOwner(apRoot.scene.window)
             stage.scene = Scene(root)
             stage.showAndWait()
-            
+
             // Recarrega os dados caso mude o nome do comic
             carregarDados()
-            
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    companion object {
+        val fxmlLocate: java.net.URL?
+            get() = TelaInicialController::class.java.getResource("/view/AbaManga.fxml")
     }
 }
