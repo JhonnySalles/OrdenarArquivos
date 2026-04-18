@@ -13,6 +13,11 @@ object App {
     private val mLog = LoggerFactory.getLogger(Run::class.java)
 
     private fun inicializarSentry() {
+        if (System.getProperty("is.test") == "true") {
+            mLog.info("Sentry ignorado em ambiente de teste.")
+            return
+        }
+
         try {
             if (!File("secrets.properties").exists()) {
                 mLog.warn("Aviso: Arquivo secrets.properties não encontrado.")

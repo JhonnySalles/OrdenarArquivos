@@ -19,6 +19,7 @@ class AppBootstrapTest {
 
     @BeforeEach
     fun setup() {
+        System.setProperty("is.test", "true")
         mockCopiarOpf = mockStatic(CopiarOpfEpub::class.java)
     }
 
