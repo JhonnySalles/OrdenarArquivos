@@ -50,6 +50,7 @@ class PopupComicInfoController : Initializable {
     @FXML private lateinit var btnConfirmar: JFXButton
     @FXML private lateinit var btnCancelar: JFXButton
 
+    var onClose: (() -> Unit)? = null
     private lateinit var mComicInfo: ComicInfo
     private val mServiceComicInfo = ComicInfoServices()
     private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
@@ -163,7 +164,9 @@ class PopupComicInfoController : Initializable {
     }
 
     private fun fechar() {
-        val stage = btnConfirmar.scene.window as Stage
-        stage.close()
+        onClose?.invoke() ?: run {
+            val stage = btnConfirmar.scene.window as Stage
+            stage.close()
+        }
     }
 }

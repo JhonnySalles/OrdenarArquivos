@@ -6,7 +6,9 @@ import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.jfoenix.controls.JFXButton
+import com.jfoenix.controls.JFXDialog
 import com.jfoenix.controls.JFXTextField
+import javafx.scene.effect.BoxBlur
 import java.net.URL
 import java.util.*
 import javafx.application.Platform
@@ -51,12 +53,13 @@ class AbaMangaController : Initializable {
     private val mLimit = 1000
     private var mCarregando = false
     private var mTemMais = true
+    private var mPrimeiroCarregamento = true
 
     lateinit var controllerPai: TelaInicialController
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         initTable()
-        carregarDados()
+        // carregarDados() - Removido para lazy loading
 
         // Listener para Scroll Infinito
         tbViewManga.lookup(".virtual-flow")?.let { flow ->
@@ -211,7 +214,15 @@ class AbaMangaController : Initializable {
     @FXML
     private fun onKeyFiltro() {
         // Simples debounce poderia ser adicionado aqui, mas por ora carregamento direto
+        mPrimeiroCarregamento = false
         carregarDados()
+    }
+
+    fun checkCarregarDados() {
+        if (mPrimeiroCarregamento) {
+            mPrimeiroCarregamento = false
+            carregarDados()
+        }
     }
 
     private fun salvarManga(manga: Manga) {
@@ -252,7 +263,7 @@ class AbaMangaController : Initializable {
         }
     }
 
-    private fun abrirPopupComicInfo(manga: Manga) {
+    internal fun abrirPopupComicInfo(manga: Manga) {
         try {
             val loader = FXMLLoader(javaClass.getResource("/view/PopupComicInfo.fxml"))
             val root = loader.load<AnchorPane>()
@@ -269,15 +280,23 @@ class AbaMangaController : Initializable {
 
             controller.setComicInfo(comicInfo)
 
-            val stage = Stage()
-            stage.title = "Editar ComicInfo - ${manga.nome}"
-            stage.initModality(Modality.WINDOW_MODAL)
-            stage.initOwner(apRoot.scene.window)
-            stage.scene = Scene(root)
-            stage.showAndWait()
+            val blur = BoxBlur(3.0, 3.0, 3)
+            val dialog = JFXDialog(controllerPai.rootStack, root, JFXDialog.DialogTransition.CENTER)
+            dialog.isOverlayClose = false
 
-            // Recarrega os dados caso mude o nome do comic
-            carregarDados()
+            controller.onClose = { dialog.close() }
+
+            dialog.setOnDialogClosed {
+                controllerPai.rootTab.effect = null
+                controllerPai.rootTab.isDisable = false
+                // Recarrega os dados caso mude o nome do comic
+                carregarDados()
+            }
+
+            controllerPai.rootTab.effect = blur
+            controllerPai.rootTab.isDisable = true
+            dialog.show()
+
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -286,5 +305,6 @@ class AbaMangaController : Initializable {
     companion object {
         val fxmlLocate: java.net.URL?
             get() = TelaInicialController::class.java.getResource("/view/AbaManga.fxml")
+        var isAbaSelecionada = false
     }
 }

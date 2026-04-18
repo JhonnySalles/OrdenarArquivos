@@ -43,6 +43,9 @@ class TelaInicialController : Initializable {
     private lateinit var tbTabComicInfo: Tab
 
     @FXML
+    private lateinit var tbTabManga: Tab
+
+    @FXML
     private lateinit var lblProgresso: Label
 
     @FXML
@@ -62,10 +65,15 @@ class TelaInicialController : Initializable {
 
     @FXML
     private fun onSelectChanged(event: Event) {
-        if (::tbTabArquivo.isInitialized && ::tbTabPasta.isInitialized) {
+        if (::tbTabArquivo.isInitialized && ::tbTabPasta.isInitialized && ::tbTabManga.isInitialized) {
             AbaArquivoController.isAbaSelecionada = tbTabArquivo.isSelected
             AbaPastasController.isAbaSelecionada = tbTabPasta.isSelected
-        } else
+            AbaMangaController.isAbaSelecionada = tbTabManga.isSelected
+
+            if (tbTabManga.isSelected) {
+                abaMangaController.checkCarregarDados()
+            }
+        } else if (::tbTabArquivo.isInitialized)
             AbaArquivoController.isAbaSelecionada = true
     }
 

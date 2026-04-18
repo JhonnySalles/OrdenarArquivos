@@ -41,7 +41,7 @@
                               </AnchorPane>
                            </content>
                         </Tab>
-                        <Tab fx:id="tbTabManga" text="Manga">
+                        <Tab fx:id="tbTabManga" onSelectionChanged="#onSelectChanged" text="Manga">
                            <content>
                               <AnchorPane prefHeight="200.0" prefWidth="200.0">
                                  <children>

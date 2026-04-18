@@ -37,6 +37,7 @@ object Ocr {
     }
 
     var isTeste : Boolean = false
+    var testSuggestion : String = "001-05 Suggestion"
     private const val mGerarImagens = true
     private var mGeminiKey : String
     private var mIsFirstKey : Boolean = true
@@ -172,7 +173,7 @@ object Ocr {
             return ""
 
         if (isTeste)
-            return "001-05 Suggestion"
+            return testSuggestion
 
         return if (mGemini)
             processGemini(image, geraPromptGemini(separadorPagina, separadorCapitulo))
