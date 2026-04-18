@@ -13,6 +13,8 @@ import com.jfoenix.controls.JFXTextField
 import java.util.concurrent.TimeUnit
 import javafx.application.Platform
 import javafx.fxml.FXMLLoader
+import javafx.scene.Node
+import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
@@ -94,6 +96,7 @@ class AbaMangaUiTest : BaseTest() {
         }
         
         // Sincronização robusta: espera até que a lista seja populada (o que indica fim da Task)
+        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
         val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java)
         WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { tbViewManga.items.size == 2 }
         WaitForAsyncUtils.waitForFxEvents()
@@ -102,13 +105,33 @@ class AbaMangaUiTest : BaseTest() {
     @Test
     @Order(1)
     fun testMangaTablePopulation(robot: FxRobot) {
-        val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
+        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
+        val tabContent = tabPane.tabs[3].content as Parent
+        val tbViewManga = robot.from(tabContent).lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
         assertEquals(2, tbViewManga.items.size)
     }
 
     @Test
     @Order(2)
+    fun testVolumeMaisIncrementsValue(robot: FxRobot) {
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        val txtVolume = robot.lookup("#txtVolume").queryAs(JFXTextField::class.java)
+        val txtFiltro = robot.lookup("#txtFiltro").queryAs(JFXTextField::class.java)
+
+        robot.interact {
+            txtFiltro.requestFocus()
+            txtVolume.text = "01"
+        }
+        robot.clickOn("#btnVolumeMais")
+        assertEquals("02", txtVolume.text)
+    }
+
+    @Test
+    @Order(3)
     fun testFiltroManga(robot: FxRobot) {
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
         val txtFiltro = robot.lookup("#txtFiltro").queryAs(JFXTextField::class.java)
         val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
 
@@ -126,7 +149,7 @@ class AbaMangaUiTest : BaseTest() {
             txtFiltro.fireEvent(event)
         }
 
-        // Aguarda o resultado do filtro (o controller limpa a lista e adiciona o novo item)
+        // Aguarda o resultado do filtro
         WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
             tbViewManga.items.size == 1 && tbViewManga.items[0].nome == "One Piece"
         }
@@ -218,6 +241,42 @@ class AbaMangaUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
 
         verify(mockMangaService, timeout(2000)).deleteManga(any())
+    }
+
+    @Test
+    @Order(6)
+    fun testOpenPopupComicInfo(robot: FxRobot) {
+        val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
+
+        robot.interact {
+            tbViewManga.scrollTo(0)
+            tbViewManga.selectionModel.select(0)
+            tbViewManga.layout()
+            tbViewManga.refresh()
+        }
+        WaitForAsyncUtils.waitForFxEvents()
+
+        // Chamar o método diretamente para garantir estabilidade no ambiente headless
+        robot.interact {
+            val manga = tbViewManga.items[0]
+            controller.abrirPopupComicInfo(manga)
+        }
+        
+        // Aguardar o JFXDialog aparecer com paciência (animação do JFoenix)
+        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) {
+            robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent
+        }
+
+        // Verificar presença do layout do dialog
+        val dialogLayout = robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>()
+        assertTrue(dialogLayout.isPresent, "JFXDialog (.jfx-dialog-layout) não foi detectado")
+
+        val btnCancelar = robot.from(dialogLayout.get()).lookup("#btnCancelar").queryAs(JFXButton::class.java)
+        robot.interact { btnCancelar.fire() }
+        WaitForAsyncUtils.waitForFxEvents()
+        assertFalse(robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent, "JFXDialog não fechou")
+        WaitForAsyncUtils.waitForFxEvents()
+        assertFalse(robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent, "JFXDialog não fechou")
     }
 
     @AfterEach

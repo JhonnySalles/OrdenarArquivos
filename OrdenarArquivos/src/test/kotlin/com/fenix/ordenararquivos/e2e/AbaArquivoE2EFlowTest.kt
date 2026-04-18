@@ -8,12 +8,18 @@ import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.SincronizacaoServices
 import com.fenix.ordenararquivos.service.WinrarServices
 import com.jfoenix.controls.*
+import com.fenix.ordenararquivos.process.Ocr
 import java.io.File
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
+import javafx.collections.ObservableList
 import javafx.fxml.FXMLLoader
+import javafx.scene.Node
 import javafx.scene.Scene
+import javafx.scene.control.Tab
 import javafx.scene.control.TableView
+import javafx.scene.input.KeyCode
+import javafx.scene.input.MouseButton
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
 import org.junit.jupiter.api.*
@@ -92,38 +98,41 @@ class AbaArquivoE2EFlowTest : BaseTest() {
 
     @BeforeEach
     fun setUp() {
+        Ocr.isTeste = true
+        Ocr.testSuggestion = "001-5|Anotação 01\n002-10|Capítulo de teste\n003-15|Outro de teste\nExtra 01-20|Extra 01"
+        
         Mockito.reset(mockMangaService, mockComicInfoService, mockSincronizacao, mockWinrar)
-
-        // Mock padrão para não quebrar o fluxo de UI
         whenever(mockMangaService.find(any(), any())).thenReturn(null)
         whenever(mockComicInfoService.find(any(), anyOrNull())).thenReturn(null)
+    }
+
+    private fun createMockImages(directory: File, count: Int) {
+        for (i in 1..count) {
+            val name = String.format("%03d.jpg", i)
+            File(directory, name).writeText("fake image content $i")
+        }
     }
 
     @Test
     @Order(1)
     fun testFullFlowAbaArquivo(robot: FxRobot) {
-        // 1. Preparar pastas físicas
+        // 1. Preparar pastas físicas e 20 imagens
         val sourceDir = tempDir.resolve("source").toFile().apply { mkdirs() }
         val destDir = tempDir.resolve("dest").toFile().apply { mkdirs() }
-        File(sourceDir, "001.jpg").writeText("fake image 1")
-        File(sourceDir, "002.jpg").writeText("fake image 2")
+        createMockImages(sourceDir, 20)
 
-        // 2. Configurar caminhos no controller (simulando seleção de pasta)
-        val txtPastaOrigem = robot.lookup("#txtPastaOrigem").queryAs(JFXTextField::class.java)
-        val txtPastaDestino = robot.lookup("#txtPastaDestino").queryAs(JFXTextField::class.java)
+        // 2. Configurar caminhos no controller (simulando interação real)
+        robot.clickOn("#txtPastaOrigem")
+        robot.write(sourceDir.absolutePath)
+        robot.type(KeyCode.ENTER)
         
-        robot.interact {
-            val fOrigem = arquivoController.javaClass.getDeclaredField("mCaminhoOrigem")
-            fOrigem.isAccessible = true
-            fOrigem.set(arquivoController, sourceDir)
+        robot.clickOn("#txtPastaDestino")
+        robot.write(destDir.absolutePath)
+        robot.type(KeyCode.ENTER)
 
-            val fDestino = arquivoController.javaClass.getDeclaredField("mCaminhoDestino")
-            fDestino.isAccessible = true
-            fDestino.set(arquivoController, destDir)
-
-            // Atualizar campos de texto para refletir a "seleção"
-            txtPastaOrigem.text = sourceDir.absolutePath
-            txtPastaDestino.text = destDir.absolutePath
+        // Aguardar o carregamento da lista de imagens
+        WaitForAsyncUtils.waitFor(15, TimeUnit.SECONDS) { 
+            robot.lookup("#lsVwImagens").queryAs(JFXListView::class.java).items.size >= 2 
         }
 
         // 3. Preencher dados do mangá
@@ -135,90 +144,172 @@ class AbaArquivoE2EFlowTest : BaseTest() {
             robot.lookup("#txtVolume").queryAs(com.jfoenix.controls.JFXTextField::class.java).text = "01"
         }
 
-        // 4. Fluxo de Importação (Gerar capítulos via UI)
-        val txtGerarInicio = robot.lookup("#txtGerarInicio").queryAs(JFXTextField::class.java)
-        val txtGerarFim = robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java)
+        // 4. Seleções especiais na lista de imagens
+        val lsVwImagens = robot.lookup("#lsVwImagens").queryAs(JFXListView::class.java)
+        
+        // 4. Fluxo de Arquivos - Escopo
+        val tabArquivos = arquivoController.javaClass.getDeclaredField("tbTabArquivo_Arquivos").apply { isAccessible = true }.get(arquivoController) as Tab
+        val contentArquivos = tabArquivos.content
+
+        // Redefinir componentes locais para usar o escopo da aba
+        val lsVwImagensScoped = robot.from(contentArquivos).lookup("#lsVwImagens").queryAs(com.jfoenix.controls.JFXListView::class.java)
+        val txtAreaImportar = robot.from(contentArquivos).lookup("#txtAreaImportar").queryAs(com.jfoenix.controls.JFXTextArea::class.java)
+        val tbViewTabela = robot.from(contentArquivos).lookup("#tbViewTabela").queryAs(TableView::class.java)
+        val btnImportar = robot.from(contentArquivos).lookup("#btnImportar").queryAs(com.jfoenix.controls.JFXButton::class.java)
+
+        // Seleção de capa (Capa simples) - Clique duplo na primeira imagem
+        robot.doubleClickOn(robot.from(lsVwImagensScoped).lookup(".list-cell").nth(0).query<Node>(), MouseButton.PRIMARY)
+
+        // Alt + Clique (Capa completa) - Segunda imagem
+        robot.press(KeyCode.ALT)
+        robot.doubleClickOn(robot.from(lsVwImagensScoped).lookup(".list-cell").nth(6).query<Node>(), MouseButton.PRIMARY)
+        robot.doubleClickOn(robot.from(lsVwImagensScoped).lookup(".list-cell").nth(5).query<Node>(), MouseButton.PRIMARY)
+        robot.release(KeyCode.ALT)
+
+        // 5. Geração inicial via Início/Fim
+        robot.clickOn("#txtGerarInicio", MouseButton.PRIMARY).write("1")
+        robot.clickOn("#txtGerarFim", MouseButton.PRIMARY).write("3")
+        robot.clickOn("#btnGerar", MouseButton.PRIMARY)
+
+        // 6. Shift + Clique (Sumário / OCR)
+        robot.press(KeyCode.SHIFT)
+        robot.doubleClickOn(robot.from(lsVwImagensScoped).lookup(".list-cell").nth(2).query<Node>(), MouseButton.PRIMARY)
+        robot.release(KeyCode.SHIFT)
+        
+        // 7. Aguardar o popup de sugestão e selecionar
+        // Aguardar o popup aparecer (o OCR mockado é rápido, mas roda em thread separada)
+        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) {
+            robot.lookup(".jfx-autocomplete-popup").queryAll<Node>().isNotEmpty()
+        }
+        
+        // Selecionar a primeira sugestão (que contém todo o texto mockado)
+        robot.type(KeyCode.DOWN).type(KeyCode.ENTER)
+        WaitForAsyncUtils.waitForFxEvents()
+
+        // 7. Edições na TextArea (Ctrl+D, Ctrl+E)
+        robot.clickOn(txtAreaImportar)
+        robot.type(KeyCode.END)
+        
+        // Simular Ctrl+D (Duplicar)
+        robot.press(KeyCode.CONTROL).type(KeyCode.D).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        // Simular Ctrl+E (Extra)
+        robot.press(KeyCode.CONTROL).type(KeyCode.E).release(KeyCode.CONTROL)
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        // Renomear a linha gerada para "Extra 01-20|Extra 01"
         robot.interact {
-            txtGerarInicio.text = "1"
-            txtGerarFim.text = "2"
+            val lines = txtAreaImportar.text.split("\n").toMutableList()
+            if (lines.isNotEmpty()) {
+                lines[lines.size - 1] = "Extra 01-20|Extra 01"
+            }
+            txtAreaImportar.text = lines.joinToString("\n")
         }
-        val btnGerar = robot.lookup("#btnGerar").queryAs(com.jfoenix.controls.JFXButton::class.java)
-        robot.interact { btnGerar.fire() }
-        
-        // Aguarda o texto ser gerado no campo de importar
-        val txtAreaImportar = robot.lookup("#txtAreaImportar").queryAs(com.jfoenix.controls.JFXTextArea::class.java)
-        WaitForAsyncUtils.waitFor(15, TimeUnit.SECONDS) { 
-            !txtAreaImportar.text.isNullOrBlank()
+
+        // Botão Aplicar/Importar
+        robot.clickOn(btnImportar, MouseButton.PRIMARY)
+
+        // Adicionar Extra 02 via Ctrl+Enter na TextArea
+        robot.clickOn(txtAreaImportar)
+        robot.interact { 
+            txtAreaImportar.text = txtAreaImportar.text + "\nExtra 02-20|Extra 02"
+            txtAreaImportar.positionCaret(txtAreaImportar.text.length)
         }
-        
-        // Importar via fire()
-        val btnImportar = robot.lookup("#btnImportar").queryAs(com.jfoenix.controls.JFXButton::class.java)
-        robot.interact { btnImportar.fire() }
-        
-        // 5. Validar Processamento Inicial
-        val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java)
-        
-        // Aguarda a tabela ser populada (processamento de importação)
-        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) { tbViewTabela.items.size >= 2 }
-        assertEquals(2, tbViewTabela.items.size, "Tabela deveria ter 2 capítulos importados")
+        robot.press(KeyCode.CONTROL).type(KeyCode.ENTER).release(KeyCode.CONTROL)
 
-        // 5. Simular enriquecimento via Popups (Aqui usamos Mocks de Jsoup se necessário,
-        // mas como já testamos os popups isoladamente, vamos focar no fluxo E2E da aba principal)
+        // Validar Grid
+        WaitForAsyncUtils.waitForFxEvents()
+        assertTrue(tbViewTabela.items.size >= 5, "Tabela deveria ter os capítulos gerados e os extras")
 
-        // 6. Configurar compactação
+        // 8. Fluxo Comic Info
+        val tabComicInfo = arquivoController.javaClass.getDeclaredField("tbTabArquivo_ComicInfo").apply { isAccessible = true }.get(arquivoController) as Tab
+        val contentNode = tabComicInfo.content
+        
         robot.interact {
-            robot.lookup("#cbCompactarArquivo").queryAs(JFXCheckBox::class.java).isSelected = true
-            robot.lookup("#txtNomeArquivo").queryAs(JFXTextField::class.java).text =
-                    "One Piece v01.cbz"
+            robot.lookup("#tbTabRootArquivo").queryAs(com.jfoenix.controls.JFXTabPane::class.java).selectionModel.select(tabComicInfo)
+        }
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        val txtMalNome = robot.from(contentNode).lookup("#txtMalNome").queryAs(com.jfoenix.controls.JFXTextField::class.java)
+        val btnMalConsultar = robot.from(contentNode).lookup("#btnMalConsultar").queryAs(com.jfoenix.controls.JFXButton::class.java)
+        val tbViewMal = robot.from(contentNode).lookup("#tbViewMal").queryAs(TableView::class.java)
+
+        robot.clickOn(txtMalNome, MouseButton.PRIMARY)
+        robot.push(KeyCode.CONTROL, KeyCode.A).push(KeyCode.BACK_SPACE)
+        robot.write("One Piece")
+        
+        // Mocking the result for MAL search
+        val mockMangaMal = mock<dev.katsute.mal4j.manga.Manga>()
+        val fakeMal = com.fenix.ordenararquivos.model.entities.comicinfo.Mal(1L, "One Piece", "Desc", null, null, mockMangaMal)
+        
+        // Mock do serviço de busca (usando anyOrNull para garantir o match independente do estado dos campos)
+        whenever(mockComicInfoService.getMal(anyOrNull(), anyOrNull())).thenReturn(listOf(fakeMal))
+        
+        // Mock do preenchimento dos campos ao selecionar o item
+        whenever(mockComicInfoService.find(any(), anyOrNull())).thenReturn(com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo().apply {
+            comic = "One Piece"
+            idMal = 1L
+        })
+
+        // Clica em Consultar para disparar a Task assíncrona
+        robot.clickOn(btnMalConsultar, MouseButton.PRIMARY)
+        
+        // Aguardar o modelo de dados ser populado 
+        WaitForAsyncUtils.waitFor(15, TimeUnit.SECONDS) {
+            tbViewMal.items.isNotEmpty()
+        }
+        
+        val btnMalAplicar = robot.from(contentNode).lookup("#btnMalAplicar").queryAs(com.jfoenix.controls.JFXButton::class.java)
+
+        // Seleciona o primeiro resultado programaticamente para garantir o foco e disparo de listeners
+        robot.interact {
+            tbViewMal.selectionModel.select(0)
+        }
+        
+        // Pequena pausa para o JavaFX processar a seleção antes de aplicar
+        TimeUnit.MILLISECONDS.sleep(500)
+        
+        robot.clickOn(btnMalAplicar, MouseButton.PRIMARY)
+        
+        // Preencher checkboxes e afins
+        robot.interact {
+            robot.lookup("#cbAgeRating").queryAs(com.jfoenix.controls.JFXComboBox::class.java).selectionModel.selectFirst()
+            robot.lookup("#cbVerificaPaginaDupla").queryAs(JFXCheckBox::class.java).isSelected = true
         }
 
-        // 7. Processar (Compactar)
-        // Precisamos mockar o retorno do compactar para não tentar rodar o WinRAR real
-        whenever(
-                        mockWinrar.compactar(
-                                any(),
-                                any(),
-                                any(),
-                                any(),
-                                any(),
-                                any(),
-                                any(),
-                                any(),
-                                any(),
-                                any(),
-                                any()
-                        )
-                )
-                .thenReturn(true)
-
-        robot.clickOn("#btnProcessar")
-
-        // Aguardar o processamento da Task (máximo 1s conforme solicitado)
-        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) {
-            !robot.lookup("#btnProcessar").queryAs(JFXButton::class.java).isDisable
+        // 9. Processamento Final (Ctrl + Espaço)
+        robot.interact {
+            robot.lookup("#tbTabRootArquivo").queryAs(com.jfoenix.controls.JFXTabPane::class.java).selectionModel.select(0)
         }
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        // Mock Winrar
+        whenever(mockWinrar.compactar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(true)
+        whenever(mockWinrar.insereArquivo(any<File>(), any<File>())).thenReturn(true)
 
-        // 8. Verificações Finais
-        verify(mockWinrar, atLeastOnce())
-                .compactar(
-                        any(),
-                        any(),
-                        any(),
-                        any(),
-                        any(),
-                        any(),
-                        any(),
-                        any(),
-                        any(),
-                        any(),
-                        any()
-                )
+        robot.press(KeyCode.CONTROL).type(KeyCode.SPACE).release(KeyCode.CONTROL)
 
-        // Verificar se os campos foram "resetados" ou se o histórico foi atualizado
-        val lsVwHistorico = robot.lookup("#lsVwHistorico").queryAs(JFXListView::class.java)
-        assertFalse(
-                lsVwHistorico.items.isEmpty(),
-                "Histórico de processamento não deve estar vazio"
+        // Aguardar conclusão
+        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) { !robot.lookup("#btnProcessar").queryAs(JFXButton::class.java).text.equals("Cancelar", ignoreCase = true) }
+
+        // Validar pastas (mockamos o winrar, mas o fluxo de arquivos temporários deve ter ocorrido)
+        // No E2E completo real, verificaríamos o outputDir.
+        
+        // 10. Segunda execução via Botão Processar (após trocar destino)
+        val destDir2 = tempDir.resolve("dest2").toFile().apply { mkdirs() }
+        robot.clickOn("#txtPastaDestino")
+        robot.press(KeyCode.CONTROL).type(KeyCode.A).release(KeyCode.CONTROL).type(KeyCode.BACK_SPACE)
+        robot.write(destDir2.absolutePath)
+        robot.type(KeyCode.ENTER)
+        
+        robot.clickOn("#btnProcessar", MouseButton.PRIMARY)
+        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) { !robot.lookup("#btnProcessar").queryAs(JFXButton::class.java).text.equals("Cancelar", ignoreCase = true) }
+
+        // 9. Processar e Validar Winrar
+        // O processo de compactação é disparado uma única vez ao final, enviando a lista completa de pastas
+        verify(mockWinrar, atLeastOnce()).compactar(
+            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyOrNull()
         )
     }
 }

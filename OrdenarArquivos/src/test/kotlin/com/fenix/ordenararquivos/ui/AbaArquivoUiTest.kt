@@ -17,6 +17,7 @@ import com.fenix.ordenararquivos.service.SincronizacaoServices
 import com.jfoenix.controls.*
 import javafx.application.Platform
 import javafx.fxml.FXMLLoader
+import javafx.scene.Node
 import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.scene.control.Label
@@ -136,10 +137,11 @@ class AbaArquivoUiTest : BaseTest() {
         robot.interact {
             try {
                 // Resetar campos de texto
-                robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = ""
-                robot.lookup("#txtVolume").queryAs(JFXTextField::class.java).text = ""
-                robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text = ""
-                robot.lookup("#txtSeries").queryAs(JFXTextField::class.java).text = ""
+                val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+                robot.lookup(root as Node).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = ""
+                robot.lookup(root as Node).lookup("#txtVolume").queryAs(JFXTextField::class.java).text = ""
+                robot.lookup(root as Node).lookup("#txtTitle").queryAs(JFXTextField::class.java).text = ""
+                robot.lookup(root as Node).lookup("#txtSeries").queryAs(JFXTextField::class.java).text = ""
                 
                 // Resetar via reflection se necessário para isolamento total
                 val fManga = controller.javaClass.getDeclaredField("mManga")
@@ -161,8 +163,9 @@ class AbaArquivoUiTest : BaseTest() {
     @Test
     @Order(1)
     fun testVolumeMaisIncrementsValue(robot: FxRobot) {
-        val txtVolume = robot.lookup("#txtVolume").queryAs(JFXTextField::class.java)
-        val txtNomePastaManga = robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val txtVolume = robot.lookup(root as Node).lookup("#txtVolume").queryAs(JFXTextField::class.java)
+        val txtNomePastaManga = robot.lookup(root as Node).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
 
         robot.interact {
             txtNomePastaManga.text = "Dummy Manga"
@@ -175,8 +178,9 @@ class AbaArquivoUiTest : BaseTest() {
     @Test
     @Order(2)
     fun testVolumeMenosDecrementsValue(robot: FxRobot) {
-        val txtVolume = robot.lookup("#txtVolume").queryAs(JFXTextField::class.java)
-        val txtNomePastaManga = robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val txtVolume = robot.lookup(root as Node).lookup("#txtVolume").queryAs(JFXTextField::class.java)
+        val txtNomePastaManga = robot.lookup(root as Node).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
 
         robot.interact {
             txtNomePastaManga.text = "Dummy Manga"
@@ -189,8 +193,9 @@ class AbaArquivoUiTest : BaseTest() {
     @Test
     @Order(3)
     fun testShortcutToggleExtra(robot: FxRobot) {
-        val textArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
-        robot.clickOn(textArea)
+        val tabArquivosContent = robot.lookup("#tbTabArquivo_Arquivos").queryAs(javafx.scene.control.Tab::class.java).content as Parent
+        val textArea = robot.lookup(tabArquivosContent as Node).lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
+        robot.clickOn("#txtAreaImportar")
         robot.interact { textArea.text = "001-001" }
 
         robot.interact {
@@ -203,53 +208,64 @@ class AbaArquivoUiTest : BaseTest() {
     }
 
     @Test
-    @Order(12)
+    @Order(6)
     fun testMangaConsultation(robot: FxRobot) {
-        val malResult = mock<com.fenix.ordenararquivos.model.entities.comicinfo.Mal>()
-        doReturn(123L).whenever(malResult).id
-        doReturn("Consulted").whenever(malResult).nome
-        doReturn(listOf(malResult)).whenever(mockComicInfoService).getMal(any(), any())
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val tabRoot = robot.lookup(root as Node).lookup("#tbTabRootArquivo").queryAs(JFXTabPane::class.java)
+        val tabComicInfoContent = tabRoot.tabs[1].content as Parent
 
-        robot.interact {
-            val tabPane = robot.lookup("#tbTabRootArquivo").queryAs(TabPane::class.java)
-            tabPane.selectionModel.select(tabPane.tabs.find { it.id == "tbTabArquivo_ComicInfo" })
-        }
+        // Ir para a aba ComicInfo
+        robot.interact { tabRoot.selectionModel.select(1) }
         WaitForAsyncUtils.waitForFxEvents()
 
-        robot.interact {
-            robot.lookup("#txtMalId").queryAs(JFXTextField::class.java).text = "123"
-            robot.lookup("#txtMalNome").queryAs(JFXTextField::class.java).text = "Naruto"
-        }
-        robot.clickOn("#btnMalConsultar")
+        // 1. Mock
+        val devMalManga1 = mock<dev.katsute.mal4j.manga.Manga>()
+        val malClassic = Mal(121L, "Naruto Classic", "Desc Classic", null, null, devMalManga1)
+        val devMalManga2 = mock<dev.katsute.mal4j.manga.Manga>()
+        val malShippuden = Mal(122L, "Naruto Shippuden", "Desc Shippuden", null, null, devMalManga2)
 
-        // Wait for it to become disabled (task started)
-        try {
-            WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { 
-                robot.lookup("#btnMalConsultar").queryAs(JFXButton::class.java).isDisable == true 
-            }
-        } catch (e: Exception) {}
+        whenever(mockComicInfoService.getMal(anyOrNull(), any()))
+                .thenReturn(listOf(malClassic, malShippuden))
 
-        // Wait for it to become enabled (task finished)
-        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) { 
-            robot.lookup("#btnMalConsultar").queryAs(JFXButton::class.java).isDisable == false 
+        whenever(mockComicInfoService.updateMal(any(), any(), any())).thenAnswer { invocation ->
+            val comic = invocation.getArgument<ComicInfo>(0)
+            val mal = invocation.getArgument<Mal>(1)
+            comic.title = mal.nome
+            comic.series = mal.nome + " Series"
+            comic.publisher = "Editora " + mal.nome
+            null
         }
+
+        // Realizar consulta MAL
+        robot.clickOn("#txtMalNome").write("Naruto")
+        robot.clickOn("#btnConsultar")
+
+        WaitForAsyncUtils.waitForFxEvents()
+        Thread.sleep(1000) 
         WaitForAsyncUtils.waitForFxEvents()
 
-        val tabPane = robot.lookup("#tbTabRootArquivo").queryAs(TabPane::class.java)
-        val tab = tabPane.tabs.find { it.id == "tbTabArquivo_ComicInfo" }
+        val tbViewMal = robot.lookup(tabComicInfoContent as Node).lookup("#tbViewMal").queryAs(TableView::class.java) as TableView<Mal>
+        assertEquals(2, tbViewMal.items.size)
+
+        // 2. Fluxo: Duplo Clique
+        robot.doubleClickOn("Naruto Classic")
+        WaitForAsyncUtils.waitForFxEvents()
+        Thread.sleep(500)
+
+        assertEquals("Naruto Classic", robot.lookup(tabComicInfoContent as Node).lookup("#txtTitle").queryAs(JFXTextField::class.java).text)
         
-        // Ensure mComicInfo.comic has the name we expect since updateMal is mocked
-        robot.interact {
-            val getMethod = controller.javaClass.getDeclaredMethod("getMComicInfo")
-            getMethod.isAccessible = true
-            val comicInfo = getMethod.invoke(controller) as com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-            comicInfo.comic = "Consulted"
-            
-            // Trigger the label update manually since we are in a tight loop
-            tab?.text = "Comic Info (Consulted)"
-        }
+        // 3. Fluxo: Aplicar
+        robot.clickOn("Naruto Shippuden")
+        robot.clickOn("#btnMalAplicar")
 
-        assertTrue(tab?.text?.contains("Consulted") == true, "Tab text: '${tab?.text}'")
+        WaitForAsyncUtils.waitForFxEvents()
+        Thread.sleep(500)
+        assertEquals("Naruto Shippuden", robot.lookup(tabComicInfoContent as Node).lookup("#txtTitle").queryAs(JFXTextField::class.java).text)
+
+        // 4. Salvar
+        robot.clickOn("#btnGravarComicInfo")
+        
+        verify(mockComicInfoService, atLeastOnce()).updateMal(any<ComicInfo>(), any<Mal>(), any())
     }
 
     @Test
@@ -273,27 +289,25 @@ class AbaArquivoUiTest : BaseTest() {
         field.isAccessible = true
         assertEquals(
                 "001-05 Suggestion",
-                (field.get(controller) as com.jfoenix.controls.JFXAutoCompletePopup<*>).suggestions[
-                        0]
+                (field.get(controller) as com.jfoenix.controls.JFXAutoCompletePopup<*>).suggestions[0]
         )
     }
 
     @Test
-    @Order(15)
+    @Order(3)
     fun testProcessarArquivos(robot: FxRobot) {
-        val tempDir = File(System.getProperty("java.io.tmpdir"), "test_ordena")
-        tempDir.mkdirs()
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val tabRoot = robot.lookup(root as Node).lookup("#tbTabRootArquivo").queryAs(JFXTabPane::class.java)
+        val tabArquivosContent = tabRoot.tabs[0].content as Parent
 
-        robot.interact {
-            listOf("mCaminhoOrigem", "mCaminhoDestino").forEach {
-                val f = controller.javaClass.getDeclaredField(it)
-                f.isAccessible = true
-                f.set(controller, tempDir)
-            }
-            robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = "Test Manga"
-        }
+        val txtPasta = robot.lookup(root as Node).lookup("#txtAreaImportar").queryAs(JFXTextField::class.java)
+        robot.interact { txtPasta.text = tempDir.toAbsolutePath().toString() }
 
-        robot.interact { robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text = "001-001" }
+        robot.clickOn("#btnAreaImportarPesquisar")
+
+        val txtArea = robot.lookup(tabArquivosContent as Node).lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
+        robot.interact { txtArea.text = "001-001\n002-002" }
+
         robot.clickOn("#btnImportar")
 
         robot.clickOn("#btnProcessar")
@@ -344,97 +358,65 @@ class AbaArquivoUiTest : BaseTest() {
         Thread.sleep(500)
 
         // Verificar se os campos foram preenchidos com os dados do mock
-        assertEquals("Teste Title", robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text)
-        assertEquals("Teste Series", robot.lookup("#txtSeries").queryAs(JFXTextField::class.java).text)
-        assertEquals("Editora Teste", robot.lookup("#txtPublisher").queryAs(JFXTextField::class.java).text)
-        assertEquals("Alternate Teste", robot.lookup("#txtAlternateSeries").queryAs(JFXTextField::class.java).text)
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val tabComicInfoContent = robot.lookup("#tbTabArquivo_ComicInfo").queryAs(javafx.scene.control.Tab::class.java).content as Parent
         
-        val cbAgeRating = robot.lookup("#cbAgeRating").queryAs(JFXComboBox::class.java) as JFXComboBox<AgeRating>
+        assertEquals("Teste Title", robot.from(tabComicInfoContent).lookup("#txtTitle").queryAs(JFXTextField::class.java).text)
+        assertEquals("Teste Series", robot.from(tabComicInfoContent).lookup("#txtSeries").queryAs(JFXTextField::class.java).text)
+        assertEquals("Editora Teste", robot.from(tabComicInfoContent).lookup("#txtPublisher").queryAs(JFXTextField::class.java).text)
+        assertEquals("Alternate Teste", robot.from(tabComicInfoContent).lookup("#txtAlternateSeries").queryAs(JFXTextField::class.java).text)
+        
+        val cbAgeRating = robot.from(tabComicInfoContent).lookup("#cbAgeRating").queryAs(JFXComboBox::class.java) as JFXComboBox<AgeRating>
         assertEquals(AgeRating.Teen, cbAgeRating.value)
     }
 
-
     @Test
-    @Order(13)
-    fun testMockMalRequest(robot: FxRobot) {
-        // Navegar para a aba ComicInfo (selecionando programaticamente para evitar ambiguidade de cliques)
-        val tabRoot = robot.lookup("#tbTabRootArquivo").queryAs(JFXTabPane::class.java)
+    @Order(7)
+    fun testValidacaoConsultaMangaCamposVazios(robot: FxRobot) {
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val tabRoot = robot.from(root as Node).lookup("#tbTabRootArquivo").queryAs(JFXTabPane::class.java)
+        val tabComicInfoContent = tabRoot.tabs[1].content as Parent
+
+        // Ir para a aba ComicInfo
         robot.interact { tabRoot.selectionModel.select(1) }
         WaitForAsyncUtils.waitForFxEvents()
         
-        // 1. Mock de dois objetos Manga do Mal4J para resultados diferentes
-        val devMalManga1 = mock<dev.katsute.mal4j.manga.Manga>()
-        val malClassic = Mal(121L, "Naruto Classic", "Desc Classic", null, null, devMalManga1)
-        
-        val devMalManga2 = mock<dev.katsute.mal4j.manga.Manga>()
-        val malShippuden = Mal(122L, "Naruto Shippuden", "Desc Shippuden", null, null, devMalManga2)
-        
-        doReturn(listOf(malClassic, malShippuden)).whenever(mockComicInfoService).getMal(anyOrNull(), any())
-
-        // Configurar updateMal para preencher o ComicInfo com dados do Mal selecionado dinamicamente
-        doAnswer { invocation ->
-            val comic = invocation.getArgument<ComicInfo>(0)
-            val mal = invocation.getArgument<Mal>(1)
-            comic.title = mal.nome
-            comic.series = mal.nome + " Series"
-            comic.publisher = "Editora " + mal.nome
-            null
-        }.whenever(mockComicInfoService).updateMal(any(), any(), any())
-
-        // Realizar consulta
-        robot.clickOn("#txtMalNome").write("Naruto")
+        robot.interact {
+            AlertasPopup.lastAlertText = null
+            val txtMalId = robot.lookup(tabComicInfoContent as Node).lookup("#txtMalId").queryAs(JFXTextField::class.java)
+            (txtMalId.parent as javafx.scene.layout.Pane).requestFocus() 
+            txtMalId.text = ""
+            robot.lookup(tabComicInfoContent as Node).lookup("#txtMalNome").queryAs(JFXTextField::class.java).text = ""
+        }
         robot.clickOn("#btnMalConsultar")
         
-        WaitForAsyncUtils.waitForFxEvents()
-        val tbViewMal = robot.lookup("#tbViewMal").queryAs(TableView::class.java) as TableView<Mal>
+        // Espera explícita pelo alerta
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { AlertasPopup.lastAlertText != null }
         
-        // Esperar a tarefa terminar de popular o TableView (máximo 15 segundos)
-        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { 
-            tbViewMal.items.isNotEmpty()
-        }
-        
-        WaitForAsyncUtils.waitForFxEvents()
+        assertEquals("Alerta", AlertasPopup.lastAlertTitle)
+        assertTrue(AlertasPopup.lastAlertText?.contains("id ou nome") == true, "Mensagem de erro de MAL não encontrada. Atual: ${AlertasPopup.lastAlertText}")
 
-        assertEquals(2, tbViewMal.items.size, "Quantidade de itens inesperada. Valor atual: ${tbViewMal.items.size}")
-
-        // 2. Fluxo: Duplo Clique no Primeiro Item (Naruto Classic)
-        robot.doubleClickOn("Naruto Classic")
-        WaitForAsyncUtils.waitForFxEvents()
-        Thread.sleep(500)
-
-        // Validar fields após double click
-        assertEquals("Naruto Classic", robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text, "Título não preenchido corretamente após duplo clique.")
-        
-        // 3. Fluxo: Selecionar Segundo Item (Naruto Shippuden) e Botão Aplicar
-        robot.interact { 
-            tbViewMal.selectionModel.clearAndSelect(1)
-            tbViewMal.requestFocus()
+        // Testar Aplicar sem seleção
+        robot.interact {
+            AlertasPopup.lastAlertText = null
+            robot.lookup(tabComicInfoContent as Node).lookup("#tbViewMal").queryAs(TableView::class.java).selectionModel.clearSelection()
         }
         robot.clickOn("#btnMalAplicar")
-        
-        // Wait for title update instead of button state (more reliable)
-        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { 
-            robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text == "Naruto Shippuden" 
-        }
-        WaitForAsyncUtils.waitForFxEvents()
-        Thread.sleep(500)
-
-        // Validar fields após botão aplicar
-        assertEquals("Naruto Shippuden", robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text, "Título nâo atualizado corretamente após botão aplicar.")
-        
-        verify(mockComicInfoService, atLeastOnce()).updateMal(any<ComicInfo>(), any<Mal>(), any())
     }
 
     @Test
     @Order(4)
     fun testGerarCapitulosFlow(robot: FxRobot) {
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val tabArquivosContent = robot.lookup("#tbTabArquivo_Arquivos").queryAs(javafx.scene.control.Tab::class.java).content as Parent
+
         robot.interact {
-            robot.lookup("#txtGerarInicio").queryAs(JFXTextField::class.java).text = "10"
-            robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java).text = "12"
+            robot.lookup(tabArquivosContent as Node).lookup("#txtGerarInicio").queryAs(JFXTextField::class.java).text = "10"
+            robot.lookup(tabArquivosContent as Node).lookup("#txtGerarFim").queryAs(JFXTextField::class.java).text = "12"
         }
         robot.clickOn("#btnGerar")
         
-        val textArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
+        val textArea = robot.lookup(tabArquivosContent as Node).lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         assertTrue(textArea.text.contains("010-"))
         assertTrue(textArea.text.contains("011-"))
         assertTrue(textArea.text.contains("012-"))
@@ -443,16 +425,19 @@ class AbaArquivoUiTest : BaseTest() {
     @Test
     @Order(6)
     fun testTabelaOperacoes(robot: FxRobot) {
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val tabArquivosContent = robot.lookup("#tbTabRootArquivo").queryAs(JFXTabPane::class.java).tabs[0].content as Parent
+
         robot.interact {
-            robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text = "001-001\n002-002"
+            robot.lookup(tabArquivosContent as Node).lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text = "001-001\n002-002"
         }
         robot.clickOn("#btnImportar")
         
-        val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java)
+        val tbViewTabela = robot.lookup(tabArquivosContent as Node).lookup("#tbViewTabela").queryAs(TableView::class.java)
         assertEquals(2, tbViewTabela.items.size)
         
         robot.interact {
-            robot.lookup("#txtQuantidade").queryAs(JFXTextField::class.java).text = "10"
+            robot.lookup(tabArquivosContent as Node).lookup("#txtQuantidade").queryAs(JFXTextField::class.java).text = "10"
         }
         robot.clickOn("#btnSomar")
         
@@ -460,7 +445,7 @@ class AbaArquivoUiTest : BaseTest() {
         assertEquals(11, firstItem.numero)
         
         robot.interact {
-            robot.lookup("#txtQuantidade").queryAs(JFXTextField::class.java).text = "5"
+            robot.lookup(tabArquivosContent as Node).lookup("#txtQuantidade").queryAs(JFXTextField::class.java).text = "5"
         }
         robot.clickOn("#btnSubtrair")
         assertEquals(6, firstItem.numero)
@@ -469,21 +454,28 @@ class AbaArquivoUiTest : BaseTest() {
     @Test
     @Order(8)
     fun testLimparTudoFlow(robot: FxRobot) {
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val tabRoot = robot.lookup(root as Node).lookup("#tbTabRootArquivo").queryAs(JFXTabPane::class.java)
+        val tabArquivosContent = tabRoot.tabs[0].content as Parent
+
         robot.interact {
-            robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = "To be cleared"
-            robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text = "Data"
+            robot.lookup(root as Node).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = "To be cleared"
+            robot.lookup(tabArquivosContent as Node).lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text = "Data"
         }
         
         robot.clickOn("#btnLimparTudo")
         WaitForAsyncUtils.waitForFxEvents()
         
-        assertEquals("[JPN] Manga -", robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text)
-        assertEquals("", robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text)
+        assertEquals("[JPN] Manga -", robot.lookup(root as Node).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text)
+        assertEquals("", robot.lookup(tabArquivosContent as Node).lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text)
     }
 
     @Test
     @Order(14)
     fun testGravarComicInfoPersistence(robot: FxRobot) {
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val tabComicInfoContent = robot.lookup("#tbTabArquivo_ComicInfo").queryAs(javafx.scene.control.Tab::class.java).content as Parent
+
         // Mocking setup for save
         robot.interact {
             val tabRoot = robot.lookup("#tbTabRootArquivo").queryAs(JFXTabPane::class.java)
@@ -492,8 +484,8 @@ class AbaArquivoUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
 
         robot.interact {
-            robot.lookup("#txtPastaDestino").queryAs(JFXTextField::class.java).text = System.getProperty("java.io.tmpdir")
-            robot.lookup("#txtNomeArquivo").queryAs(JFXTextField::class.java).text = "test.cbr"
+            robot.from(root).lookup("#txtPastaDestino").queryAs(JFXTextField::class.java).text = System.getProperty("java.io.tmpdir")
+            robot.from(root).lookup("#txtNomeArquivo").queryAs(JFXTextField::class.java).text = "test.cbr"
             
             // Força o carregamento da pasta para evitar NPE por mCaminhoDestino == null
             val method = controller.javaClass.getDeclaredMethod("carregaPastaDestino")
@@ -560,7 +552,8 @@ class AbaArquivoUiTest : BaseTest() {
     @Test
     @Order(5)
     fun testShortcutsAdvanced(robot: FxRobot) {
-        val textArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
+        val tabArquivosContent = robot.lookup("#tbTabArquivo_Arquivos").queryAs(javafx.scene.control.Tab::class.java).content as Parent
+        val textArea = robot.from(tabArquivosContent).lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         
         // Teste Ctrl+O (Ordenar)
         robot.interact { 
@@ -584,6 +577,7 @@ class AbaArquivoUiTest : BaseTest() {
     @Test
     @Order(7)
     fun testValidationAlerts(robot: FxRobot) {
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
         // Garantir campos vazios
         robot.interact {
             val fOrigem = controller.javaClass.getDeclaredField("mCaminhoOrigem")
@@ -595,10 +589,10 @@ class AbaArquivoUiTest : BaseTest() {
             fDestino.set(controller, null)
         }
 
-        robot.clickOn("#btnProcessar")
+        robot.clickOn(robot.from(root).lookup("#btnProcessar").query())
         
         // O controller define a cor de unFocus para RED em caso de erro
-        val txtPastaOrigem = robot.lookup("#txtPastaOrigem").queryAs(JFXTextField::class.java)
+        val txtPastaOrigem = robot.from(root).lookup("#txtPastaOrigem").queryAs(JFXTextField::class.java)
         assertEquals(javafx.scene.paint.Color.RED, txtPastaOrigem.unFocusColor)
     }
 
@@ -608,6 +602,10 @@ class AbaArquivoUiTest : BaseTest() {
         val tempDir = File(System.getProperty("java.io.tmpdir"), "test_hist")
         tempDir.mkdirs()
         
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val tabArquivosContent = robot.lookup("#tbTabArquivo_Arquivos").queryAs(javafx.scene.control.Tab::class.java).content as Parent
+        val tabComicInfoContent = robot.lookup("#tbTabArquivo_ComicInfo").queryAs(javafx.scene.control.Tab::class.java).content as Parent
+
         robot.interact {
             val fOrigem = controller.javaClass.getDeclaredField("mCaminhoOrigem")
             fOrigem.isAccessible = true
@@ -617,12 +615,12 @@ class AbaArquivoUiTest : BaseTest() {
             fDestino.isAccessible = true
             fDestino.set(controller, tempDir)
             
-            robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = "Hist Manga"
-            robot.lookup("#txtVolume").queryAs(JFXTextField::class.java).text = "01"
-            robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text = "001-001"
+            robot.from(root).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = "Hist Manga"
+            robot.from(root).lookup("#txtVolume").queryAs(JFXTextField::class.java).text = "01"
+            robot.from(tabArquivosContent).lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text = "001-001"
             
             // Adicionar linguagem para passar na validação
-            val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java) as JFXComboBox<com.fenix.ordenararquivos.model.enums.Linguagem>
+            val cbLinguagem = robot.from(tabComicInfoContent).lookup("#cbLinguagem").queryAs(JFXComboBox::class.java) as JFXComboBox<com.fenix.ordenararquivos.model.enums.Linguagem>
             cbLinguagem.selectionModel.select(com.fenix.ordenararquivos.model.enums.Linguagem.PORTUGUESE)
         }
         
@@ -630,19 +628,19 @@ class AbaArquivoUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
         
         // Aguarda a tabela popular para passar na validação do validaCampos()
-        val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java)
+        val tbViewTabela = robot.from(tabArquivosContent).lookup("#tbViewTabela").queryAs(TableView::class.java)
         WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { tbViewTabela.items.isNotEmpty() }
 
         // Necessário preencher para passar na validação do controller (cbCompactarArquivo selecionado por padrão)
         robot.interact {
-            robot.lookup("#txtNomeArquivo").queryAs(JFXTextField::class.java).text = "Hist Manga Volume 01 (Jap) Sem capa.cbr"
+            robot.from(root).lookup("#txtNomeArquivo").queryAs(JFXTextField::class.java).text = "Hist Manga Volume 01 (Jap) Sem capa.cbr"
         }
         
-        robot.clickOn("#btnProcessar")
+        robot.clickOn(robot.from(root).lookup("#btnProcessar").query())
         
         WaitForAsyncUtils.waitForFxEvents()
         
-        val lsVwHistorico = robot.lookup("#lsVwHistorico").queryAs(JFXListView::class.java)
+        val lsVwHistorico = robot.from(tabArquivosContent).lookup("#lsVwHistorico").queryAs(JFXListView::class.java)
         assertTrue(lsVwHistorico.items.isNotEmpty())
         val hist = lsVwHistorico.items[0] as com.fenix.ordenararquivos.model.entities.Historico
         assertTrue(hist.nome.contains("Hist Manga"))
@@ -653,10 +651,11 @@ class AbaArquivoUiTest : BaseTest() {
     @Test
     @Order(18)
     fun testCheckboxesEstadoInicial(robot: FxRobot) {
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
         robot.interact {
-            assertTrue(robot.lookup("#cbCompactarArquivo").queryAs(JFXCheckBox::class.java).isSelected)
-            assertTrue(robot.lookup("#cbVerificaPaginaDupla").queryAs(JFXCheckBox::class.java).isSelected)
-            assertTrue(robot.lookup("#cbMesclarCapaTudo").queryAs(JFXCheckBox::class.java).isSelected)
+            assertTrue(robot.from(root).lookup("#cbCompactarArquivo").queryAs(JFXCheckBox::class.java).isSelected)
+            assertTrue(robot.from(root).lookup("#cbVerificaPaginaDupla").queryAs(JFXCheckBox::class.java).isSelected)
+            assertTrue(robot.from(root).lookup("#cbMesclarCapaTudo").queryAs(JFXCheckBox::class.java).isSelected)
         }
     }
 
@@ -698,20 +697,20 @@ class AbaArquivoUiTest : BaseTest() {
     @Test
     @Order(21)
     fun testShortcutDuplicarLinha(robot: FxRobot) {
+        val txtArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         robot.interact {
-            val txtArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
             txtArea.text = "Linha Teste"
             txtArea.positionCaret(txtArea.text.length)
             txtArea.requestFocus()
         }
         
-        robot.clickOn(robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java))
+        robot.clickOn("#txtAreaImportar")
         robot.press(KeyCode.CONTROL).type(KeyCode.D).release(KeyCode.CONTROL)
         WaitForAsyncUtils.waitForFxEvents()
         
         robot.interact {
-            val txtArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
-            assertTrue(txtArea.text.contains("Linha Teste\nLinha Teste"))
+            val txtAreaCheck = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
+            assertTrue(txtAreaCheck.text.contains("Linha Teste\nLinha Teste"))
         }
     }
 
@@ -720,12 +719,14 @@ class AbaArquivoUiTest : BaseTest() {
     fun testHistoricoRestaurarEstado(robot: FxRobot) {
         testHistoricoPersistence(robot) // Garante que há algo no histórico
 
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+
         // 1. Limpa tudo e aguarda reset
         robot.clickOn("#btnLimparTudo")
         WaitForAsyncUtils.waitForFxEvents()
 
         robot.interact {
-            assertEquals("[JPN] Manga -", robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text)
+            assertEquals("[JPN] Manga -", robot.from(root).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text)
             
             // 2. Seleciona o item no histórico de forma explícita
             val lsVwHistorico = robot.lookup("#lsVwHistorico").queryAs(JFXListView::class.java)
@@ -738,7 +739,7 @@ class AbaArquivoUiTest : BaseTest() {
 
         // 4. Valida restauração
         robot.interact {
-            val txtNome = robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
+            val txtNome = robot.from(root).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
             Assertions.assertNotEquals("[JPN] Manga -", txtNome.text)
             assertTrue(txtNome.text.contains("Hist Manga"))
         }
@@ -747,20 +748,21 @@ class AbaArquivoUiTest : BaseTest() {
     @Test
     @Order(23)
     fun testProximaPastaDestino(robot: FxRobot) {
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
         val baseDir = Files.createTempDirectory("test_proxima_pasta").toFile()
         val v1 = File(baseDir, "Volume 01").apply { mkdirs() }
         val v2 = File(baseDir, "Volume 02").apply { mkdirs() }
         
         try {
             robot.interact {
-                val txtPastaDestino = robot.lookup("#txtPastaDestino").queryAs(JFXTextField::class.java)
+                val txtPastaDestino = robot.from(root).lookup("#txtPastaDestino").queryAs(JFXTextField::class.java)
                 txtPastaDestino.text = v1.absolutePath
             }
             
             robot.clickOn("#btnProximaPastaDestino")
             WaitForAsyncUtils.waitForFxEvents()
             
-            val txtPastaDestino = robot.lookup("#txtPastaDestino").queryAs(JFXTextField::class.java)
+            val txtPastaDestino = robot.from(root).lookup("#txtPastaDestino").queryAs(JFXTextField::class.java)
             assertEquals(v2.absolutePath, txtPastaDestino.text)
         } finally {
             baseDir.deleteRecursively()

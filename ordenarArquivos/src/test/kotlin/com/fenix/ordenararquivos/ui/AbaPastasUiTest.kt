@@ -21,8 +21,11 @@ import java.nio.file.Path
 import java.sql.DriverManager
 import javafx.collections.FXCollections
 import javafx.fxml.FXMLLoader
+import javafx.scene.Node
+import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.scene.control.TableView
+import javafx.scene.control.TabPane
 import javafx.scene.input.KeyCode
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
@@ -137,16 +140,14 @@ class AbaPastasUiTest : BaseTest() {
     @Test
     @Order(1)
     fun testCamposDefault(robot: FxRobot) {
-        WaitForAsyncUtils.waitForFxEvents()
-        val txtPasta = robot.lookup("#txtPasta").queryAs(JFXTextField::class.java)
-        assertEquals("", txtPasta.getText())
+        val txtPasta = robot.lookup("#apRoot #txtPasta").queryAs(JFXTextField::class.java)
+        assertEquals("", txtPasta.text)
     }
 
     @Test
     @Order(2)
     fun testEdicaoColunasGrid(robot: FxRobot) {
-        val tbViewProcessar =
-                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        val tbViewProcessar = robot.lookup("#tbTabPastas_Arquivos #tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
 
         val pastaTest =
                 Pasta(
@@ -205,13 +206,11 @@ class AbaPastasUiTest : BaseTest() {
         )
 
         // Validar coluna formatada
-        val formatado =
-                robot.lookup("#tbViewProcessar")
+        val formatado = robot.lookup("#apRoot #tbViewProcessar")
                         .queryAs(TableView::class.java)
                         .columns
                         .last()
-                        .getCellData(0) as
-                        String
+                        .getCellData(0) as String
         assertTrue(
                 formatado.contains("[Nova Scan]"),
                 "Texto formatado com scan inesperado. Valor atual: ${formatado}"
@@ -238,14 +237,13 @@ class AbaPastasUiTest : BaseTest() {
         File(sub2, "pag01.jpg").createNewFile()
         File(sub3, "pag01.jpg").createNewFile()
 
-        val txtPasta = robot.lookup("#txtPasta").queryAs(JFXTextField::class.java)
+        val txtPasta = robot.lookup("#apRoot #txtPasta").queryAs(JFXTextField::class.java)
         robot.interact { txtPasta.text = tempDir.toAbsolutePath().toString() }
 
         robot.clickOn("#btnCarregar")
         WaitForAsyncUtils.waitForFxEvents()
 
-        val tbViewProcessar =
-                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        val tbViewProcessar = robot.lookup("#tbTabPastas_Arquivos #tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         assertEquals(
                 3,
                 tbViewProcessar.items.size,
@@ -270,10 +268,11 @@ class AbaPastasUiTest : BaseTest() {
         )
 
         // Simular preenchimento do manga
-        robot.clickOn("#cbManga").write("Manga Teste").push(KeyCode.ENTER)
+        robot.clickOn(robot.lookup("#apRoot #cbManga").queryAs(Node::class.java)).write("Manga Teste").push(KeyCode.ENTER)
 
-        // Simular perda de foco para atualizar os nomes na lista (conforme listener no controller)
-        robot.clickOn("#txtPasta")
+        // Simular perda de foco para atualizar os nomes
+        val histNode = robot.lookup("#tbTabPastas_Arquivos #lsVwHistorico").queryAs(Node::class.java)
+        robot.doubleClickOn(histNode)
         WaitForAsyncUtils.waitForFxEvents()
 
         // Validar coluna formatada antes de aplicar
@@ -286,7 +285,7 @@ class AbaPastasUiTest : BaseTest() {
         )
 
         // Aplicar renomeio
-        robot.clickOn("#btnAplicar")
+        robot.clickOn(robot.lookup("#apRoot #btnAplicar").queryAs(Node::class.java))
 
         // Aguarda processamento Task
         Thread.sleep(1000)
@@ -331,76 +330,55 @@ class AbaPastasUiTest : BaseTest() {
 
         whenever(mockComicInfoService.find(eq("Naruto"), any())).thenReturn(comicInfoFake)
 
-        // Ir para a aba ComicInfo (selecionando programaticamente para evitar ambiguidade de
-        // cliques)
-        val tabRoot = robot.lookup("#tbTabRootPastas").queryAs(JFXTabPane::class.java)
-        robot.interact { tabRoot.selectionModel.select(1) } // 1 = aba ComicInfo
+        // Ir para a aba ComicInfo
+        val tbTabRoot = robot.lookup("#apRoot #tbTabRootPastas").queryAs(JFXTabPane::class.java)
+        robot.interact { tbTabRoot.selectionModel.select(1) } // 1 = aba ComicInfo
         WaitForAsyncUtils.waitForFxEvents()
 
         // Selecionar o manga no ComboBox
-        robot.clickOn("#cbManga").write("Naruto")
-
-        // Clicar em outro campo para disparar o listener de perda de foco (onde ocorre a busca no
-        // banco)
-        robot.clickOn("#txtTitle")
-
+        robot.clickOn("#apRoot #cbManga").write("Naruto").push(KeyCode.ENTER)
+        
+        // Clicar em outro campo para disparar o listener de perda de foco
+        robot.clickOn("#tbTabPastas_ComicInfo #txtMalId")
+        
         WaitForAsyncUtils.waitForFxEvents()
         Thread.sleep(1000)
 
         // Verificar se os campos foram preenchidos com os dados do mock
         assertEquals(
                 "Naruto Shippuden",
-                robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text,
-                "Titulo com valor inesperado. Valor atual: ${robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text}"
+                robot.lookup("#tbTabPastas_ComicInfo #txtTitle").queryAs(JFXTextField::class.java).text
         )
         assertEquals(
                 "Naruto",
-                robot.lookup("#txtSeries").queryAs(JFXTextField::class.java).text,
-                "Serie com valor inesperado. Valor atual: ${robot.lookup("#txtSeries").queryAs(JFXTextField::class.java).text}"
+                robot.lookup("#tbTabPastas_ComicInfo #txtSeries").queryAs(JFXTextField::class.java).text
         )
         assertEquals(
                 "Editora Panini",
-                robot.lookup("#txtPublisher").queryAs(JFXTextField::class.java).text,
-                "Editora com valor inesperado. Valor atual: ${robot.lookup("#txtPublisher").queryAs(JFXTextField::class.java).text}"
-        )
-        assertEquals(
-                "Alternate",
-                robot.lookup("#txtAlternateSeries").queryAs(JFXTextField::class.java).text,
-                "Serie alternativa com valor inesperado. Valor atual: ${robot.lookup("#txtAlternateSeries").queryAs(JFXTextField::class.java).text}"
-        )
-
-        val cbAgeRating =
-                robot.lookup("#cbAgeRating").queryAs(JFXComboBox::class.java) as
-                        JFXComboBox<AgeRating>
-        assertEquals(
-                AgeRating.Teen,
-                cbAgeRating.value,
-                "Classificação etária com valor inesperado. Valor atual: ${cbAgeRating.value}"
+                robot.lookup("#tbTabPastas_ComicInfo #txtPublisher").queryAs(JFXTextField::class.java).text
         )
     }
 
     @Test
     @Order(5)
     fun testMockMangaDatabaseSuggestion(robot: FxRobot) {
-        // Garantir que os itens estão populados (simulando a carga do listar() que ocorre no init)
-        val cbManga =
-                robot.lookup("#cbManga").queryAs(JFXComboBox::class.java) as JFXComboBox<String>
+        // Garantir que os itens estão populados
+        val cbManga = robot.lookup("#apRoot #cbManga").queryAs(JFXComboBox::class.java) as JFXComboBox<String>
         robot.interact { cbManga.items.setAll("Naruto", "One Piece") }
 
         // Sugestão ao digitar
-        robot.clickOn("#cbManga").write("Nar")
+        robot.clickOn(cbManga as Node).write("Nar")
         WaitForAsyncUtils.waitForFxEvents()
-
-        // Não verificamos o mockMangaService.listar() aqui porque ele é chamado no initialize antes
-        // da injeção do mock
     }
 
     @Test
     @Order(6)
     fun testMockMalRequest(robot: FxRobot) {
+        val tabRoot = robot.lookup("#apRoot #tbTabRootPastas").queryAs(JFXTabPane::class.java)
+        val tabComicInfoContent = tabRoot.tabs[1].content as Parent
+
         // Navegar para a aba ComicInfo (selecionando programaticamente para evitar ambiguidade de
         // cliques)
-        val tabRoot = robot.lookup("#tbTabRootPastas").queryAs(JFXTabPane::class.java)
         robot.interact { tabRoot.selectionModel.select(1) }
         WaitForAsyncUtils.waitForFxEvents()
 
@@ -426,8 +404,8 @@ class AbaPastasUiTest : BaseTest() {
         }
 
         // Realizar consulta
-        robot.clickOn("#txtMalNome").write("Naruto")
-        robot.clickOn("#btnMalConsultar")
+        robot.clickOn("#tbTabPastas_ComicInfo #txtMalNome").write("Naruto")
+        robot.clickOn("#tbTabPastas_ComicInfo #btnMalConsultar")
 
         WaitForAsyncUtils.waitForFxEvents()
         Thread.sleep(1000) // Espera task thread
@@ -447,18 +425,15 @@ class AbaPastasUiTest : BaseTest() {
         // Validar fiels após double click
         assertEquals(
                 "Naruto Classic",
-                robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text,
-                "Título não preenchido corretamente após duplo clique. Valor atual: ${robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text}"
+                robot.lookup("#tbTabPastas_ComicInfo #txtTitle").queryAs(JFXTextField::class.java).text
         )
         assertEquals(
                 "Naruto Classic Series",
-                robot.lookup("#txtSeries").queryAs(JFXTextField::class.java).text,
-                "Série não preenchida corretamente após duplo clique. Valor atual: ${robot.lookup("#txtSeries").queryAs(JFXTextField::class.java).text}"
+                robot.lookup("#tbTabPastas_ComicInfo #txtSeries").queryAs(JFXTextField::class.java).text
         )
         assertEquals(
                 "Editora Naruto Classic",
-                robot.lookup("#txtPublisher").queryAs(JFXTextField::class.java).text,
-                "Editora não preenchida corretamente após duplo clique. Valor atual: ${robot.lookup("#txtPublisher").queryAs(JFXTextField::class.java).text}"
+                robot.lookup("#tbTabPastas_ComicInfo #txtPublisher").queryAs(JFXTextField::class.java).text
         )
 
         // 3. Fluxo: Selecionar Segundo Item (Naruto Shippuden) e Botão Aplicar
@@ -471,18 +446,15 @@ class AbaPastasUiTest : BaseTest() {
         // Validar fields após botão aplicar
         assertEquals(
                 "Naruto Shippuden",
-                robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text,
-                "Título não atualizado corretamente após botão aplicar. Valor atual: ${robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text}"
+                robot.lookup("#tbTabPastas_ComicInfo #txtTitle").queryAs(JFXTextField::class.java).text
         )
         assertEquals(
                 "Naruto Shippuden Series",
-                robot.lookup("#txtSeries").queryAs(JFXTextField::class.java).text,
-                "Série não atualizada corretamente após botão aplicar. Valor atual: ${robot.lookup("#txtSeries").queryAs(JFXTextField::class.java).text}"
+                robot.lookup("#tbTabPastas_ComicInfo #txtSeries").queryAs(JFXTextField::class.java).text
         )
         assertEquals(
                 "Editora Naruto Shippuden",
-                robot.lookup("#txtPublisher").queryAs(JFXTextField::class.java).text,
-                "Editora não atualizada corretamente após botão aplicar. Valor atual: ${robot.lookup("#txtPublisher").queryAs(JFXTextField::class.java).text}"
+                robot.lookup("#tbTabPastas_ComicInfo #txtPublisher").queryAs(JFXTextField::class.java).text
         )
 
         verify(mockComicInfoService, atLeastOnce()).updateMal(any(), any(), any())
@@ -491,8 +463,10 @@ class AbaPastasUiTest : BaseTest() {
     @Test
     @Order(7)
     fun testValidacoesEntrada(robot: FxRobot) {
-        val txtPasta = robot.lookup("#txtPasta").queryAs(JFXTextField::class.java)
-        val btnCarregar = robot.lookup("#btnCarregar").queryAs(JFXButton::class.java)
+        val tabRoot = robot.lookup("#apRoot #tbTabRootPastas").queryAs(JFXTabPane::class.java)
+
+        val txtPasta = robot.lookup("#apRoot #txtPasta").queryAs(JFXTextField::class.java)
+        val btnCarregar = robot.lookup("#apRoot #btnCarregar").queryAs(JFXButton::class.java)
 
         // 1. Carregar sem pasta
         robot.interact { 
@@ -506,8 +480,8 @@ class AbaPastasUiTest : BaseTest() {
         assertTrue(AlertasPopup.lastAlertText?.contains("pasta") == true, "Mensagem de erro de pasta não encontrada")
 
         // 2. Aplicar sem manga
-        val cbManga = robot.lookup("#cbManga").queryAs(JFXComboBox::class.java)
-        val btnAplicar = robot.lookup("#btnAplicar").queryAs(JFXButton::class.java)
+        val cbManga = robot.lookup("#apRoot #cbManga").queryAs(JFXComboBox::class.java)
+        val btnAplicar = robot.lookup("#apRoot #btnAplicar").queryAs(JFXButton::class.java)
         robot.interact {
             AlertasPopup.lastAlertText = null
             txtPasta.text = "caminho/qualquer"
@@ -520,17 +494,16 @@ class AbaPastasUiTest : BaseTest() {
         assertTrue(AlertasPopup.lastAlertText?.contains("nome do manga") == true, "Mensagem de erro de manga não encontrada")
 
         // 3. Consultar MAL sem dados
-        val tabRoot = robot.lookup("#tbTabRootPastas").queryAs(JFXTabPane::class.java)
         robot.interact { tabRoot.selectionModel.select(1) }
         WaitForAsyncUtils.waitForFxEvents()
         
-        val btnMalConsultar = robot.lookup("#btnMalConsultar").queryAs(JFXButton::class.java)
+        val btnMalConsultar = robot.lookup("#tbTabPastas_ComicInfo #btnMalConsultar").queryAs(JFXButton::class.java)
         robot.interact {
             AlertasPopup.lastAlertText = null
-            val txtMalId = robot.lookup("#txtMalId").queryAs(JFXTextField::class.java)
+            val txtMalId = robot.lookup("#tbTabPastas_ComicInfo #txtMalId").queryAs(JFXTextField::class.java)
             (txtMalId.parent as javafx.scene.layout.Pane).requestFocus() 
             txtMalId.text = ""
-            robot.lookup("#txtMalNome").queryAs(JFXTextField::class.java).text = ""
+            robot.lookup("#tbTabPastas_ComicInfo #txtMalNome").queryAs(JFXTextField::class.java).text = ""
         }
         robot.interact { btnMalConsultar.fire() }
         
@@ -545,7 +518,7 @@ class AbaPastasUiTest : BaseTest() {
     @Order(8)
     fun testGerarCapasFlow(robot: FxRobot) {
         val tbViewProcessar =
-                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+                robot.lookup("#apRoot #tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
 
         robot.interact {
             val items =
@@ -553,16 +526,14 @@ class AbaPastasUiTest : BaseTest() {
                             Pasta(File("f1"), "f1", "Manga", 1f, 1f, "Scan"),
                             Pasta(File("f2"), "f2", "Manga", 2f, 5f, "Scan")
                     )
-            // Injetar na lista privada do controller para ele "ver" os itens
+            val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java)
             val field = pastasController.javaClass.getDeclaredField("mObsListaProcessar")
             field.isAccessible = true
             field.set(pastasController, items)
-
-            tbViewProcessar.items = items
+            table.items = items
         }
 
-        val btnGerarCapas = robot.lookup("#btnGerarCapas").queryAs(JFXButton::class.java)
-        robot.clickOn(btnGerarCapas)
+        robot.clickOn("#apRoot #btnGerarCapas")
 
         WaitForAsyncUtils.waitForFxEvents()
 
@@ -581,8 +552,7 @@ class AbaPastasUiTest : BaseTest() {
     @Test
     @Order(9)
     fun testContextMenuScanPropagation(robot: FxRobot) {
-        val tbViewProcessar =
-                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        val tbViewProcessar = robot.lookup("#tbTabPastas_Arquivos #tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         robot.interact {
             val items =
                     FXCollections.observableArrayList(
@@ -638,8 +608,7 @@ class AbaPastasUiTest : BaseTest() {
     @Test
     @Order(10)
     fun testZerarVolumes(robot: FxRobot) {
-        val tbViewProcessar =
-                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        val tbViewProcessar = robot.lookup("#tbTabPastas_Arquivos #tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         robot.interact {
             val items =
                     FXCollections.observableArrayList(

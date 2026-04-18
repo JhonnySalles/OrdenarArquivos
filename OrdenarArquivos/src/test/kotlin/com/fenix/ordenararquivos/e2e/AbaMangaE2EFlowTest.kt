@@ -47,7 +47,13 @@ class AbaMangaE2EFlowTest : BaseTest() {
             } else AbaMangaController()
         }
         val root: AnchorPane = loader.load()
-        stage.scene = Scene(root, 1000.0, 700.0)
+        
+        // JFXDialog precisa de um StackPane na cena para ser exibido.
+        val stackPane = javafx.scene.layout.StackPane(root)
+        whenever(mockTelaInicial.rootStack).thenReturn(stackPane)
+        whenever(mockTelaInicial.rootTab).thenReturn(com.jfoenix.controls.JFXTabPane())
+
+        stage.scene = Scene(stackPane, 1000.0, 700.0)
         stage.show()
     }
 
@@ -68,6 +74,8 @@ class AbaMangaE2EFlowTest : BaseTest() {
         // Mockar componentes de UI do TelaInicial para evitar NPE no binding de progresso
         whenever(mockTelaInicial.rootProgress).thenReturn(javafx.scene.control.ProgressBar())
         whenever(mockTelaInicial.rootMessage).thenReturn(javafx.scene.control.Label())
+        // rootStack e rootTab já são configurados no start ou podem ser resetados aqui se necessário, 
+        // mas no start já garantimos que o stackPane da cena é o que o mock retorna.
 
         val manga1 = Manga(id = 1L, nome = "Naruto", volume = "01", capitulo = "01", arquivo = "Naruto_01.cbz", capitulos = "1", quantidade = 1, comic = "Naruto")
         val manga2 = Manga(id = 2L, nome = "One Piece", volume = "01", capitulo = "01", arquivo = "OP_01.cbz", capitulos = "1", quantidade = 1, comic = "OP")

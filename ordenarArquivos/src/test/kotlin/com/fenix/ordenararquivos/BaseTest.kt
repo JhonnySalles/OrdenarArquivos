@@ -18,6 +18,9 @@ abstract class BaseTest {
 
     companion object {
         init {
+            // Identifica ambiente de teste para desabilitar serviços externos (ex: Sentry)
+            System.setProperty("is.test", "true")
+            
             // Silenciando logs verbosos do JavaFX/JFoenix antes do primeiro teste
             System.setProperty("glass.accessible.force", "false")
             System.setProperty("com.sun.javafx.binding.Logging.level", "OFF")

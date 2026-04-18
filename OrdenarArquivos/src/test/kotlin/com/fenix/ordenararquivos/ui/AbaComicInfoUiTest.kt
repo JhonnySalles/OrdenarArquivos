@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit
 import javafx.application.Platform
 import javafx.fxml.FXMLLoader
 import javafx.scene.Node
+import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.scene.control.Tab
 import javafx.scene.control.TableCell
@@ -225,9 +226,7 @@ class AbaComicInfoUiTest : BaseTest() {
     @Order(1)
     fun testCarregarItens(robot: FxRobot) {
         helperCarregarItens(robot)
-        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
-        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
-        val table = tabContent.lookup("#tbViewProcessar") as TableView<Processar>
+        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
         assertEquals(1, table.items.size)
     }
 
@@ -286,14 +285,10 @@ class AbaComicInfoUiTest : BaseTest() {
     @Order(4)
     fun testGerarTags(robot: FxRobot) {
         helperCarregarItens(robot)
-        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
-        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
-        val btnGerar = tabContent.lookup("#btnTagsProcessar") as JFXButton
-        val table = tabContent.lookup("#tbViewProcessar") as TableView<Processar>
+        val btnGerar = robot.lookup("#btnTagsProcessar").queryAs(JFXButton::class.java)
+        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
         val item = table.items[0]
 
-        // Inicialmente as tags podem vir do helperCarregarItens. No teste normalizamos para
-        // garantir.
         robot.interact { btnGerar.fire() }
 
         WaitForAsyncUtils.waitForFxEvents()
