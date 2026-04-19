@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.net.URL?>
 <?import com.jfoenix.controls.JFXTextField?>
+<?import java.net.URL?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
@@ -9,7 +9,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<AnchorPane fx:id="apRoot" minHeight="0.0" minWidth="0.0" prefHeight="800.0" prefWidth="900.0" styleClass="background-Black3" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.AbaMangaController">
+<AnchorPane fx:id="apRoot" minHeight="0.0" minWidth="0.0" prefHeight="800.0" prefWidth="900.0" styleClass="background-Black3" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.AbaMangaController">
    <stylesheets>
       <URL value="@../css/Dark_TelaInicial.css" />
       <URL value="@../css/Paleta_Cores.css" />
@@ -19,7 +19,7 @@
          <children>
             <HBox alignment="CENTER_LEFT" prefHeight="50.0" prefWidth="200.0" spacing="10.0">
                <children>
-                  <JFXTextField fx:id="txtFiltro" focusColor="#0cff00" labelFloat="true" onKeyReleased="#onKeyFiltro" prefHeight="30.0" prefWidth="400.0" promptText="Filtrar por nome do mangá" styleClass="texto-stilo-2" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                  <JFXTextField fx:id="txtFiltro" focusColor="#0cff00" labelFloat="true" onKeyReleased="#onKeyFiltro" prefHeight="30.0" prefWidth="400.0" promptText="Manga" styleClass="texto-stilo-1" unFocusColor="#106ebe" HBox.hgrow="ALWAYS" />
                </children>
                <padding>
                   <Insets left="15.0" right="15.0" />

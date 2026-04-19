@@ -5,8 +5,10 @@ import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.service.ComicInfoServices
-import com.jfoenix.controls.*
-import javafx.application.Platform
+import com.jfoenix.controls.JFXButton
+import com.jfoenix.controls.JFXComboBox
+import com.jfoenix.controls.JFXTextArea
+import com.jfoenix.controls.JFXTextField
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import javafx.concurrent.Task
@@ -22,33 +24,77 @@ import java.util.*
 
 class PopupComicInfoController : Initializable {
 
-    @FXML private lateinit var txtIdMal: JFXTextField
-    @FXML private lateinit var cbAgeRating: JFXComboBox<AgeRating>
-    @FXML private lateinit var cbLinguagem: JFXComboBox<Linguagem>
-    @FXML private lateinit var txtTitle: JFXTextField
-    @FXML private lateinit var txtSeries: JFXTextField
-    @FXML private lateinit var txtComic: JFXTextField
-    @FXML private lateinit var txtPublisher: JFXTextField
-    @FXML private lateinit var txtAlternateSeries: JFXTextField
-    @FXML private lateinit var txtSeriesGroup: JFXTextField
-    @FXML private lateinit var txtStoryArc: JFXTextField
-    @FXML private lateinit var txtGenre: JFXTextField
-    @FXML private lateinit var txtImprint: JFXTextField
-    @FXML private lateinit var txtNotes: JFXTextArea
+    @FXML
+    private lateinit var txtIdMal: JFXTextField
 
-    @FXML private lateinit var txtMalId: JFXTextField
-    @FXML private lateinit var txtMalNome: JFXTextField
-    @FXML private lateinit var btnMalConsultar: JFXButton
-    @FXML private lateinit var btnMalAplicar: JFXButton
-    
-    @FXML private lateinit var tbViewMal: TableView<Mal>
-    @FXML private lateinit var clMalId: TableColumn<Mal, Long>
-    @FXML private lateinit var clMalNome: TableColumn<Mal, String>
-    @FXML private lateinit var clMalSite: TableColumn<Mal, JFXButton>
-    @FXML private lateinit var clMalImagem: TableColumn<Mal, ImageView>
+    @FXML
+    private lateinit var cbAgeRating: JFXComboBox<AgeRating>
 
-    @FXML private lateinit var btnConfirmar: JFXButton
-    @FXML private lateinit var btnCancelar: JFXButton
+    @FXML
+    private lateinit var cbLinguagem: JFXComboBox<Linguagem>
+
+    @FXML
+    private lateinit var txtTitle: JFXTextField
+
+    @FXML
+    private lateinit var txtSeries: JFXTextField
+
+    @FXML
+    private lateinit var txtComic: JFXTextField
+
+    @FXML
+    private lateinit var txtPublisher: JFXTextField
+
+    @FXML
+    private lateinit var txtAlternateSeries: JFXTextField
+
+    @FXML
+    private lateinit var txtSeriesGroup: JFXTextField
+
+    @FXML
+    private lateinit var txtStoryArc: JFXTextField
+
+    @FXML
+    private lateinit var txtGenre: JFXTextField
+
+    @FXML
+    private lateinit var txtImprint: JFXTextField
+
+    @FXML
+    private lateinit var txtNotes: JFXTextArea
+
+    @FXML
+    private lateinit var txtMalId: JFXTextField
+
+    @FXML
+    private lateinit var txtMalNome: JFXTextField
+
+    @FXML
+    private lateinit var btnMalConsultar: JFXButton
+
+    @FXML
+    private lateinit var btnMalAplicar: JFXButton
+
+    @FXML
+    private lateinit var tbViewMal: TableView<Mal>
+
+    @FXML
+    private lateinit var clMalId: TableColumn<Mal, Long>
+
+    @FXML
+    private lateinit var clMalNome: TableColumn<Mal, String>
+
+    @FXML
+    private lateinit var clMalSite: TableColumn<Mal, JFXButton>
+
+    @FXML
+    private lateinit var clMalImagem: TableColumn<Mal, ImageView>
+
+    @FXML
+    private lateinit var btnConfirmar: JFXButton
+
+    @FXML
+    private lateinit var btnCancelar: JFXButton
 
     var onClose: (() -> Unit)? = null
     private lateinit var mComicInfo: ComicInfo
@@ -64,14 +110,14 @@ class PopupComicInfoController : Initializable {
         clMalId.cellValueFactory = PropertyValueFactory("id")
         clMalNome.cellValueFactory = PropertyValueFactory("nome")
         clMalSite.cellValueFactory = PropertyValueFactory("site")
-        clMalImagem.cellValueFactory = PropertyValueFactory("imagemView")
+        clMalImagem.cellValueFactory = PropertyValueFactory("imagem")
         tbViewMal.items = mObsListaMal
     }
 
     private fun initCombos() {
         cbAgeRating.items.setAll(*AgeRating.values())
         cbLinguagem.items.setAll(*Linguagem.values())
-        cbLinguagem.value = Linguagem.JAPANESE 
+        cbLinguagem.value = Linguagem.JAPANESE
     }
 
     fun setComicInfo(comicInfo: ComicInfo?) {
@@ -93,7 +139,7 @@ class PopupComicInfoController : Initializable {
         txtGenre.text = mComicInfo.genre ?: ""
         txtImprint.text = mComicInfo.imprint ?: ""
         txtNotes.text = mComicInfo.notes ?: ""
-        
+
         txtMalNome.text = mComicInfo.series ?: mComicInfo.title ?: ""
     }
 
