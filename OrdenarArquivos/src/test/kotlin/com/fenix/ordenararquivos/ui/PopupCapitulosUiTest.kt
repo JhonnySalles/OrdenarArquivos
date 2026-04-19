@@ -5,11 +5,13 @@ import com.fenix.ordenararquivos.controller.PopupCapitulos
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXTextField
+import com.jfoenix.controls.JFXTabPane
 import java.io.File
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
 import javafx.scene.control.TableView
 import javafx.scene.layout.AnchorPane
+import javafx.scene.layout.StackPane
 import javafx.stage.Stage
 import org.jsoup.Connection
 import org.jsoup.Jsoup
@@ -25,11 +27,11 @@ import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
+import java.util.concurrent.TimeUnit
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
-@Disabled("Broken in current baseline")
 class PopupCapitulosUiTest : BaseTest() {
 
     private lateinit var mainController: TelaInicialController
@@ -38,17 +40,24 @@ class PopupCapitulosUiTest : BaseTest() {
     private lateinit var mockConnection: Connection
     private lateinit var mockDocument: Document
 
+    private lateinit var mockTelaInicialController: TelaInicialController
+
     @Start
     fun start(stage: Stage) {
-        val loader = FXMLLoader(TelaInicialController.fxmlLocate)
+        mockTelaInicialController = mock<TelaInicialController>()
+        whenever(mockTelaInicialController.rootStack).thenReturn(StackPane())
+        whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
+
+        val loader = FXMLLoader(PopupCapitulos.fxmlLocate)
         loader.setControllerFactory { controllerClass ->
-            when (controllerClass) {
-                TelaInicialController::class.java ->
-                        TelaInicialController().also { mainController = it }
-                else -> controllerClass.getDeclaredConstructor().newInstance()
+            if (controllerClass == PopupCapitulos::class.java) {
+                PopupCapitulos().also { popupController = it }
+            } else {
+                controllerClass.getDeclaredConstructor().newInstance()
             }
         }
         val root: AnchorPane = loader.load()
+        // PopupCapitulos does not have controllerPai
 
         // Mocking Jsoup before triggering initialization that might use it
         mockJsoup = Mockito.mockStatic(Jsoup::class.java)
@@ -61,6 +70,7 @@ class PopupCapitulosUiTest : BaseTest() {
         whenever(mockConnection.get()).thenReturn(mockDocument)
 
         stage.scene = Scene(root)
+        applyJFoenixFix(stage.scene)
         stage.show()
     }
 
@@ -73,25 +83,8 @@ class PopupCapitulosUiTest : BaseTest() {
 
     @Test
     fun testAbriPopupCapitulos(robot: FxRobot) {
-        // O popup de capítulos é aberto a partir da Aba Arquivo ou Aba Pastas.
-        // Simulando abertura manual para testar o controlador isolado ou via gatilho
-
-        robot.interact {
-            val loader =
-                    FXMLLoader(PopupCapitulos::class.java.getResource("/view/PopupCapitulos.fxml"))
-            val parent = loader.load<javafx.scene.Parent>()
-            popupController = loader.getController()
-
-            val dialog =
-                    com.jfoenix.controls.JFXDialog(
-                            mainController.rootStack,
-                            parent as javafx.scene.layout.Region,
-                            com.jfoenix.controls.JFXDialog.DialogTransition.CENTER
-                    )
-            dialog.show()
-        }
+        // O popup de capítulos agora é carregado isoladamente no @Start.
         WaitForAsyncUtils.waitForFxEvents()
-
         assertNotNull(robot.lookup("#txtEndereco").queryAs(JFXTextField::class.java))
     }
 
@@ -140,8 +133,13 @@ class PopupCapitulosUiTest : BaseTest() {
 
         robot.interact { txtEndereco.text = "https://comick.app/comic/example" }
 
-        robot.clickOn(btnExecutar)
+        robot.interact { btnExecutar.fire() }
+        
+        // Aguardar o modelo de dados ser populado
         WaitForAsyncUtils.waitForFxEvents()
+        WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS) {
+            tbViewTabela.items.isNotEmpty()
+        }
 
         assertTrue(
                 tbViewTabela.items.size > 0,

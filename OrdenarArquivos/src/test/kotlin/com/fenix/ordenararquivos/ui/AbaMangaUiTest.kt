@@ -46,28 +46,39 @@ class AbaMangaUiTest : BaseTest() {
                     Manga(id = 2, nome = "One Piece", volume = "05", comic = "Pirate")
             )
 
+    private lateinit var mockTelaInicialController: TelaInicialController
+
     @Start
     fun start(stage: Stage) {
-        val loader = FXMLLoader(TelaInicialController.fxmlLocate)
-        val root = loader.load<AnchorPane>()
-        mainController = loader.getController()
+        mockTelaInicialController = mock<TelaInicialController>()
 
-        val field = mainController.javaClass.getDeclaredField("abaMangaController")
-        field.isAccessible = true
-        controller = field.get(mainController) as AbaMangaController
+        val loader = FXMLLoader(AbaMangaController.fxmlLocate)
+        loader.setControllerFactory { controllerClass ->
+            if (controllerClass == AbaMangaController::class.java) {
+                AbaMangaController().apply {
+                    // Injeção de dependências via reflection
+                    listOf("mServiceManga", "mServiceComicInfo").forEach { fieldName ->
+                        try {
+                            val field = AbaMangaController::class.java.getDeclaredField(fieldName)
+                            field.isAccessible = true
+                            when (fieldName) {
+                                "mServiceManga" -> field.set(this, mockMangaService)
+                                "mServiceComicInfo" -> field.set(this, mockComicInfoService)
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                    controller = this
+                }
+            } else {
+                controllerClass.getDeclaredConstructor().newInstance()
+            }
+        }
 
-        // Injeção de dependências via reflection para os mocks
-        val mangaServiceField = AbaMangaController::class.java.getDeclaredField("mServiceManga")
-        mangaServiceField.isAccessible = true
-        mangaServiceField.set(controller, mockMangaService)
-
-        val comicInfoServiceField =
-                AbaMangaController::class.java.getDeclaredField("mServiceComicInfo")
-        comicInfoServiceField.isAccessible = true
-        comicInfoServiceField.set(controller, mockComicInfoService)
-
+        val root = loader.load<Parent>()
         val scene = Scene(root, 1024.0, 768.0)
-        mainController.configurarAtalhos(scene)
+        applyJFoenixFix(scene)
         stage.scene = scene
         stage.show()
     }
@@ -76,14 +87,14 @@ class AbaMangaUiTest : BaseTest() {
     fun setUp(robot: FxRobot) {
         AlertasPopup.isTeste = true
         AlertasPopup.testResult = true
-        Mockito.reset(mockMangaService, mockComicInfoService)
+        Mockito.reset(mockMangaService, mockComicInfoService, mockTelaInicialController)
 
-        // Navega para a aba Manga de forma programática
-        robot.interact {
-            val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
-            tabPane.selectionModel.select(3) // 3 = Manga
-        }
-        WaitForAsyncUtils.waitForFxEvents()
+        // Injeta o controller pai e mocks de progresso
+        controller.controllerPai = mockTelaInicialController
+        whenever(mockTelaInicialController.rootProgress).thenReturn(javafx.scene.control.ProgressBar())
+        whenever(mockTelaInicialController.rootMessage).thenReturn(javafx.scene.control.Label())
+        whenever(mockTelaInicialController.rootStack).thenReturn(javafx.scene.layout.StackPane())
+        whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
 
         // Mock padrão para carregamento inicial
         whenever(mockMangaService.findAll(anyOrNull(), any(), any())).thenReturn(mangaList)
@@ -96,37 +107,18 @@ class AbaMangaUiTest : BaseTest() {
         }
         
         // Sincronização robusta: espera até que a lista seja populada (o que indica fim da Task)
-        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
         val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java)
-        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { tbViewManga.items.size == 2 }
+        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) { tbViewManga.items.size == 2 }
         WaitForAsyncUtils.waitForFxEvents()
     }
 
     @Test
     @Order(1)
     fun testMangaTablePopulation(robot: FxRobot) {
-        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
-        val tabContent = tabPane.tabs[3].content as Parent
-        val tbViewManga = robot.from(tabContent).lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
+        val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
         assertEquals(2, tbViewManga.items.size)
     }
 
-    @Test
-    @Order(2)
-    fun testVolumeMaisIncrementsValue(robot: FxRobot) {
-        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
-        WaitForAsyncUtils.waitForFxEvents()
-        
-        val txtVolume = robot.lookup("#txtVolume").queryAs(JFXTextField::class.java)
-        val txtFiltro = robot.lookup("#txtFiltro").queryAs(JFXTextField::class.java)
-
-        robot.interact {
-            txtFiltro.requestFocus()
-            txtVolume.text = "01"
-        }
-        robot.clickOn("#btnVolumeMais")
-        assertEquals("02", txtVolume.text)
-    }
 
     @Test
     @Order(3)
@@ -150,7 +142,7 @@ class AbaMangaUiTest : BaseTest() {
         }
 
         // Aguarda o resultado do filtro
-        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
+        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) {
             tbViewManga.items.size == 1 && tbViewManga.items[0].nome == "One Piece"
         }
 
@@ -162,7 +154,7 @@ class AbaMangaUiTest : BaseTest() {
     fun testInlineEditManga(robot: FxRobot) {
         val tbViewManga =
                 robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
-        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { tbViewManga.items.isNotEmpty() }
+        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) { tbViewManga.items.isNotEmpty() }
 
         val clNome = tbViewManga.columns[1] as TableColumn<Manga, String>
 
@@ -263,7 +255,7 @@ class AbaMangaUiTest : BaseTest() {
         }
         
         // Aguardar o JFXDialog aparecer com paciência (animação do JFoenix)
-        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) {
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
             robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent
         }
 

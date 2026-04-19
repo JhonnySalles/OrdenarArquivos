@@ -51,8 +51,14 @@ class PopupAlertaUiTest : BaseTest() {
     @Start
     fun start(stage: Stage) {
         val loader = FXMLLoader(PopupAlertaController.fxmlLocate)
+        loader.setControllerFactory { controllerClass ->
+            if (controllerClass == PopupAlertaController::class.java) {
+                PopupAlertaController().also { controller = it }
+            } else {
+                controllerClass.getDeclaredConstructor().newInstance()
+            }
+        }
         val root = loader.load<AnchorPane>()
-        controller = loader.getController()
 
         val scene = Scene(root, 500.0, 180.0)
         

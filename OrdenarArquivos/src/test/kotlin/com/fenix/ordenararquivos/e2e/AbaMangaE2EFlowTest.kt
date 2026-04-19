@@ -55,6 +55,8 @@ class AbaMangaE2EFlowTest : BaseTest() {
 
         stage.scene = Scene(stackPane, 1000.0, 700.0)
         stage.show()
+        stage.toFront()
+        WaitForAsyncUtils.waitForFxEvents()
     }
 
     private fun injectMocksInternal(controller: AbaMangaController) {
@@ -90,7 +92,7 @@ class AbaMangaE2EFlowTest : BaseTest() {
             method.invoke(mangaController, false)
         }
 
-        WaitForAsyncUtils.waitFor(20, TimeUnit.SECONDS) {
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
             robot.lookup("#tbViewManga").queryAs(TableView::class.java).items.size >= 2
         }
     }
@@ -109,7 +111,7 @@ class AbaMangaE2EFlowTest : BaseTest() {
             method.invoke(mangaController, false)
         }
         
-        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) { tbViewManga.items.size == 1 }
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { tbViewManga.items.size == 1 }
         assertEquals("Naruto", tbViewManga.items[0].nome)
 
         // 2. Limpar Filtro
@@ -120,6 +122,6 @@ class AbaMangaE2EFlowTest : BaseTest() {
             method.isAccessible = true
             method.invoke(mangaController, false)
         }
-        WaitForAsyncUtils.waitFor(15, TimeUnit.SECONDS) { tbViewManga.items.size == 2 }
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { tbViewManga.items.size == 2 }
     }
 }

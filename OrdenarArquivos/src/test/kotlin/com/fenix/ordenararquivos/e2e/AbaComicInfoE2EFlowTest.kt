@@ -57,8 +57,11 @@ class AbaComicInfoE2EFlowTest : BaseTest() {
             } else AbaComicInfoController()
         }
         val root: AnchorPane = loader.load()
+
         stage.scene = Scene(root, 1000.0, 700.0)
         stage.show()
+        stage.toFront()
+        WaitForAsyncUtils.waitForFxEvents()
     }
 
     private fun injectMocksInternal(controller: AbaComicInfoController) {
@@ -113,7 +116,7 @@ class AbaComicInfoE2EFlowTest : BaseTest() {
         
         // 3. Validar carregamento
         val tbView = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
-        WaitForAsyncUtils.waitFor(30, TimeUnit.SECONDS) { tbView.items.size == 2 }
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { tbView.items.size == 2 }
         
         // 4. Testar OCR (Gatilho)
         val btnOcr = robot.lookup("#btnOcrProcessar").queryAs(JFXButton::class.java)

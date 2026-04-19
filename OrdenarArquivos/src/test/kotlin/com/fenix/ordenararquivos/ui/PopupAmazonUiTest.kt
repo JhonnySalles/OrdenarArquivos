@@ -6,10 +6,12 @@ import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.jfoenix.controls.JFXTextField
+import com.jfoenix.controls.JFXTabPane
 import java.io.File
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
 import javafx.scene.layout.AnchorPane
+import javafx.scene.layout.StackPane
 import javafx.stage.Stage
 import org.jsoup.Connection
 import org.jsoup.Jsoup
@@ -29,7 +31,6 @@ import org.testfx.util.WaitForAsyncUtils
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
-@Disabled("Broken in current baseline")
 class PopupAmazonUiTest : BaseTest() {
 
     private lateinit var mainController: TelaInicialController
@@ -38,17 +39,24 @@ class PopupAmazonUiTest : BaseTest() {
     private lateinit var mockConnection: Connection
     private lateinit var mockDocument: Document
 
+    private lateinit var mockTelaInicialController: TelaInicialController
+
     @Start
     fun start(stage: Stage) {
-        val loader = FXMLLoader(TelaInicialController.fxmlLocate)
+        mockTelaInicialController = mock<TelaInicialController>()
+        whenever(mockTelaInicialController.rootStack).thenReturn(StackPane())
+        whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
+
+        val loader = FXMLLoader(PopupAmazon.fxmlLocate)
         loader.setControllerFactory { controllerClass ->
-            when (controllerClass) {
-                TelaInicialController::class.java ->
-                        TelaInicialController().also { mainController = it }
-                else -> controllerClass.getDeclaredConstructor().newInstance()
+            if (controllerClass == PopupAmazon::class.java) {
+                PopupAmazon().also { popupController = it }
+            } else {
+                controllerClass.getDeclaredConstructor().newInstance()
             }
         }
         val root: AnchorPane = loader.load()
+        // PopupAmazon does not have controllerPai
 
         mockJsoup = Mockito.mockStatic(Jsoup::class.java)
         mockConnection = mock<Connection>()
@@ -60,6 +68,8 @@ class PopupAmazonUiTest : BaseTest() {
         whenever(mockConnection.get()).thenReturn(mockDocument)
 
         stage.scene = Scene(root)
+        stage.scene.stylesheets.add(TelaInicialController::class.java.getResource("/css/jfoenix-components-fix.css")?.toExternalForm())
+        applyJFoenixFix(stage.scene)
         stage.show()
     }
 
@@ -72,18 +82,10 @@ class PopupAmazonUiTest : BaseTest() {
 
     private fun openPopupAmazon(robot: FxRobot) {
         robot.interact {
-            PopupAmazon.abreTelaAmazon(
-                    mainController.rootStack,
-                    mainController.rootStack, // simplificando nodeBlur para o proprio stack
-                    { true },
-                    ComicInfo(),
-                    Linguagem.ENGLISH
-            )
+            popupController.objeto = ComicInfo()
+            popupController.setLinguagem(Linguagem.ENGLISH)
         }
         WaitForAsyncUtils.waitForFxEvents()
-
-        // No método abreTelaAmazon, o controlador é carregado internamente no companion object.
-        // Para testes, vamos buscar os campos via lookup.
     }
 
     @Test
@@ -118,13 +120,8 @@ class PopupAmazonUiTest : BaseTest() {
     fun testAmazonScrapingJp(robot: FxRobot) {
         // Abrir popup com linguagem Japonesa
         robot.interact {
-            PopupAmazon.abreTelaAmazon(
-                    mainController.rootStack,
-                    mainController.rootStack,
-                    { true },
-                    ComicInfo(),
-                    Linguagem.JAPANESE
-            )
+            popupController.objeto = ComicInfo()
+            popupController.setLinguagem(Linguagem.JAPANESE)
         }
         WaitForAsyncUtils.waitForFxEvents()
 

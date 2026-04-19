@@ -27,8 +27,14 @@ class PopupNotificacaoUiTest : BaseTest() {
     @Start
     fun start(stage: Stage) {
         val loader = FXMLLoader(PopupNotificacaoController.fxmlLocate)
+        loader.setControllerFactory { controllerClass ->
+            if (controllerClass == PopupNotificacaoController::class.java) {
+                PopupNotificacaoController().also { controller = it }
+            } else {
+                controllerClass.getDeclaredConstructor().newInstance()
+            }
+        }
         root = loader.load()
-        controller = loader.getController()
 
         stage.scene = Scene(root)
         stage.show()

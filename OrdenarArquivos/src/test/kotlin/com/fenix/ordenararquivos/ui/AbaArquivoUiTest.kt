@@ -90,8 +90,7 @@ class AbaArquivoUiTest : BaseTest() {
             Notificacoes.rootAnchorPane = AnchorPane()
         } catch (e: Exception) {}
 
-        val fxmlPath = "/view/AbaArquivo.fxml"
-        val loader = FXMLLoader(AbaArquivoController::class.java.getResource(fxmlPath))
+        val loader = FXMLLoader(AbaArquivoController.fxmlLocate)
         loader.setControllerFactory { controllerClass ->
             if (controllerClass == AbaArquivoController::class.java) {
                 AbaArquivoController().apply {
@@ -116,6 +115,7 @@ class AbaArquivoUiTest : BaseTest() {
 
         val root = loader.load<Parent>()
         stage.scene = Scene(root)
+        applyJFoenixFix(stage.scene)
         stage.show()
     }
 
@@ -138,10 +138,10 @@ class AbaArquivoUiTest : BaseTest() {
             try {
                 // Resetar campos de texto
                 val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
-                robot.lookup(root as Node).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = ""
-                robot.lookup(root as Node).lookup("#txtVolume").queryAs(JFXTextField::class.java).text = ""
-                robot.lookup(root as Node).lookup("#txtTitle").queryAs(JFXTextField::class.java).text = ""
-                robot.lookup(root as Node).lookup("#txtSeries").queryAs(JFXTextField::class.java).text = ""
+                robot.from(root as Node).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = ""
+                robot.from(root as Node).lookup("#txtVolume").queryAs(JFXTextField::class.java).text = ""
+                robot.from(root as Node).lookup("#txtTitle").queryAs(JFXTextField::class.java).text = ""
+                robot.from(root as Node).lookup("#txtSeries").queryAs(JFXTextField::class.java).text = ""
                 
                 // Resetar via reflection se necessário para isolamento total
                 val fManga = controller.javaClass.getDeclaredField("mManga")
@@ -164,8 +164,8 @@ class AbaArquivoUiTest : BaseTest() {
     @Order(1)
     fun testVolumeMaisIncrementsValue(robot: FxRobot) {
         val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
-        val txtVolume = robot.lookup(root as Node).lookup("#txtVolume").queryAs(JFXTextField::class.java)
-        val txtNomePastaManga = robot.lookup(root as Node).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
+        val txtVolume = robot.from(root as Node).lookup("#txtVolume").queryAs(JFXTextField::class.java)
+        val txtNomePastaManga = robot.from(root as Node).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
 
         robot.interact {
             txtNomePastaManga.text = "Dummy Manga"
@@ -179,8 +179,8 @@ class AbaArquivoUiTest : BaseTest() {
     @Order(2)
     fun testVolumeMenosDecrementsValue(robot: FxRobot) {
         val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
-        val txtVolume = robot.lookup(root as Node).lookup("#txtVolume").queryAs(JFXTextField::class.java)
-        val txtNomePastaManga = robot.lookup(root as Node).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
+        val txtVolume = robot.from(root as Node).lookup("#txtVolume").queryAs(JFXTextField::class.java)
+        val txtNomePastaManga = robot.from(root as Node).lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
 
         robot.interact {
             txtNomePastaManga.text = "Dummy Manga"
@@ -238,9 +238,11 @@ class AbaArquivoUiTest : BaseTest() {
         robot.clickOn("#txtMalNome").write("Naruto")
         robot.clickOn("#btnConsultar")
 
+        // Aguardar o modelo de dados ser populado
         WaitForAsyncUtils.waitForFxEvents()
-        Thread.sleep(1000) 
-        WaitForAsyncUtils.waitForFxEvents()
+        WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS) {
+            robot.lookup("#tbViewMal").queryAs(TableView::class.java).items.isNotEmpty()
+        }
 
         val tbViewMal = robot.lookup("#tbViewMal").queryAs(TableView::class.java) as TableView<Mal>
         assertEquals(2, tbViewMal.items.size)
@@ -276,7 +278,7 @@ class AbaArquivoUiTest : BaseTest() {
             method.invoke(controller, dummyImage)
         }
 
-        WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS) {
+        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) {
             val field = controller.javaClass.getDeclaredField("mSugestao")
             field.isAccessible = true
             (field.get(controller) as com.jfoenix.controls.JFXAutoCompletePopup<*>).suggestions
@@ -380,7 +382,7 @@ class AbaArquivoUiTest : BaseTest() {
         robot.clickOn("#btnMalConsultar")
         
         // Espera explícita pelo alerta
-        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { AlertasPopup.lastAlertText != null }
+        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) { AlertasPopup.lastAlertText != null }
         
         assertEquals("Alerta", AlertasPopup.lastAlertTitle)
         assertTrue(AlertasPopup.lastAlertText?.contains("id ou nome") == true, "Mensagem de erro de MAL não encontrada. Atual: ${AlertasPopup.lastAlertText}")
@@ -516,7 +518,7 @@ class AbaArquivoUiTest : BaseTest() {
             robot.clickOn("#btnAjustarNomes")
             
             // Aguarda o processamento async (padding 3 é o padrão do controller)
-            WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
+            WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) {
                 tempDir.listFiles()?.any { it.name == "001.jpg" } == true
             }
 
@@ -566,7 +568,7 @@ class AbaArquivoUiTest : BaseTest() {
             fDestino.set(controller, null)
         }
 
-        robot.clickOn(robot.from(root).lookup("#btnProcessar").query())
+        robot.clickOn(robot.from(root).lookup("#btnProcessar").query() as Node)
         
         // O controller define a cor de unFocus para RED em caso de erro
         val txtPastaOrigem = robot.from(root).lookup("#txtPastaOrigem").queryAs(JFXTextField::class.java)
@@ -603,7 +605,7 @@ class AbaArquivoUiTest : BaseTest() {
             
             // Aguarda a tabela popular para passar na validação do validaCampos()
             val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java)
-            WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { tbViewTabela.items.isNotEmpty() }
+            WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) { tbViewTabela.items.isNotEmpty() }
 
             // Necessário preencher para passar na validação do controller (cbCompactarArquivo selecionado por padrão)
             robot.interact {

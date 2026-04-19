@@ -12,6 +12,10 @@ import java.sql.DriverManager
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(TestStatusListener::class)
 abstract class BaseTest {
+    
+    // Caminho para o CSS de fix de skin do JFoenix para ambiente headless
+    protected var jfoenixFixCss: String? = null
+
 
     private val mLOG = LoggerFactory.getLogger(BaseTest::class.java)
     private var mKeepAlive : Connection? = null
@@ -55,6 +59,23 @@ abstract class BaseTest {
         } catch (e: Exception) {
             mLOG.error("Erro ao verificar tabelas: ${e.message}")
         }
+
+        // Preparar o CSS de fix para JFoenix em ambiente Headless
+        try {
+            val cssFile = java.io.File.createTempFile("jfoenix_skin_fix", ".css")
+            cssFile.writeText("""
+                .jfx-text-field { -fx-skin: "javafx.scene.control.skin.TextFieldSkin"; }
+                .jfx-password-field { -fx-skin: "javafx.scene.control.skin.TextFieldSkin"; }
+                .jfx-text-area { -fx-skin: "javafx.scene.control.skin.TextAreaSkin"; }
+                .jfx-combo-box { -fx-skin: "javafx.scene.control.skin.ComboBoxListViewSkin"; }
+                .jfx-button { -fx-skin: "javafx.scene.control.skin.ButtonSkin"; }
+                .jfx-list-view { -fx-skin: "javafx.scene.control.skin.ListViewSkin"; }
+                .jfx-tab-pane { -fx-skin: "javafx.scene.control.skin.TabPaneSkin"; }
+            """.trimIndent())
+            jfoenixFixCss = cssFile.toURI().toURL().toExternalForm()
+        } catch (e: Exception) {
+            mLOG.error("Erro ao criar CSS de fix: ${e.message}")
+        }
     }
 
     @AfterAll
@@ -82,5 +103,27 @@ abstract class BaseTest {
             robot.type(javafx.scene.input.KeyCode.ENTER)
         }
         org.testfx.util.WaitForAsyncUtils.waitForFxEvents()
+    }
+
+    /**
+     * Helper para localizar uma TableView e aguardar que contenha itens.
+     */
+    fun <T> findTableView(robot: org.testfx.api.FxRobot, id: String, timeout: Long = 5): javafx.scene.control.TableView<T> {
+        val table = robot.lookup(id).queryAs(javafx.scene.control.TableView::class.java) as javafx.scene.control.TableView<T>
+        org.testfx.util.WaitForAsyncUtils.waitFor(timeout, java.util.concurrent.TimeUnit.SECONDS) {
+            table.items != null
+        }
+        return table
+    }
+
+    /**
+     * Aplica o fix de CSS na cena fornecida.
+     */
+    fun applyJFoenixFix(scene: javafx.scene.Scene) {
+        jfoenixFixCss?.let {
+            if (!scene.stylesheets.contains(it)) {
+                scene.stylesheets.add(it)
+            }
+        }
     }
 }

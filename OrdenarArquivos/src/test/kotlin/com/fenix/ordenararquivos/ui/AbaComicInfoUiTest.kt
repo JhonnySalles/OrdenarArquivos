@@ -81,48 +81,44 @@ class AbaComicInfoUiTest : BaseTest() {
         }
     }
 
+    private lateinit var mockTelaInicialController: TelaInicialController
+
     @Start
     fun start(stage: Stage) {
-        val loader = FXMLLoader(TelaInicialController.fxmlLocate)
-        val root = loader.load<AnchorPane>()
-        mainController = loader.getController()
-
-        val field = mainController.javaClass.getDeclaredField("comicinfoController")
-        field.isAccessible = true
-        comicinfoController = field.get(mainController) as AbaComicInfoController
-
+        mockTelaInicialController = mock<TelaInicialController>()
         mockWinrar = mock<WinrarServices>()
         mockOcrServices = mock<OcrServices>()
 
+        val loader = FXMLLoader(AbaComicInfoController.fxmlLocate)
+        loader.setControllerFactory { controllerClass ->
+            if (controllerClass == AbaComicInfoController::class.java) {
+                AbaComicInfoController().apply {
+                    // Injeção de dependências via reflection
+                    listOf("mRarService", "mOcrService").forEach { fieldName ->
+                        try {
+                            val field = AbaComicInfoController::class.java.getDeclaredField(fieldName)
+                            field.isAccessible = true
+                            when (fieldName) {
+                                "mRarService" -> field.set(this, mockWinrar)
+                                "mOcrService" -> field.set(this, mockOcrServices)
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                    comicinfoController = this
+                }
+            } else {
+                controllerClass.getDeclaredConstructor().newInstance()
+            }
+        }
+
+        val root = loader.load<Parent>()
         val scene = Scene(root, 1024.0, 768.0)
+        applyJFoenixFix(scene)
 
-        // Workaround for JFoenix skins
-        try {
-            val cssFile = File.createTempFile("jfoenix_skin_fix", ".css")
-            cssFile.writeText(
-                    """
-                .jfx-text-field { -fx-skin: "javafx.scene.control.skin.TextFieldSkin" !important; }
-                .jfx-password-field { -fx-skin: "javafx.scene.control.skin.TextFieldSkin" !important; }
-                .jfx-text-area { -fx-skin: "javafx.scene.control.skin.TextAreaSkin" !important; }
-                .jfx-combo-box { -fx-skin: "javafx.scene.control.skin.ComboBoxListViewSkin" !important; }
-                .jfx-button { -fx-skin: "javafx.scene.control.skin.ButtonSkin" !important; }
-                .jfx-tab-pane { -fx-skin: "javafx.scene.control.skin.TabPaneSkin" !important; }
-            """.trimIndent()
-            )
-            scene.stylesheets.add(cssFile.toURI().toURL().toExternalForm())
-        } catch (e: Exception) {}
-
-        mainController.configurarAtalhos(scene)
         stage.scene = scene
         stage.show()
-
-        // Select Comic Info tab
-        val tabPane = root.lookup("#tpGlobal") as JFXTabPane
-        val tabField = mainController.javaClass.getDeclaredField("tbTabComicInfo")
-        tabField.isAccessible = true
-        val tab = tabField.get(mainController) as Tab
-        Platform.runLater { tabPane.selectionModel.select(tab) }
-        WaitForAsyncUtils.waitForFxEvents()
     }
 
     @BeforeEach
@@ -136,20 +132,14 @@ class AbaComicInfoUiTest : BaseTest() {
 
         mockOcr = Mockito.mockStatic(Ocr::class.java)
 
-        val winrarField = comicinfoController.javaClass.getDeclaredField("mRarService")
-        winrarField.isAccessible = true
-        winrarField.set(comicinfoController, mockWinrar)
+        Mockito.reset(mockWinrar, mockOcrServices, mockTelaInicialController)
 
-        val ocrServicesField = comicinfoController.javaClass.getDeclaredField("mOcrService")
-        ocrServicesField.isAccessible = true
-        ocrServicesField.set(comicinfoController, mockOcrServices)
-
-        AlertasPopup.isTeste = true
-        AlertasPopup.lastAlertText = null
-        AlertasPopup.lastAlertTitle = null
-
-        Mockito.reset(mockWinrar)
-        Mockito.reset(mockOcrServices)
+        // Injeta o controller pai e mocks de progresso
+        comicinfoController.controllerPai = mockTelaInicialController
+        whenever(mockTelaInicialController.rootProgress).thenReturn(javafx.scene.control.ProgressBar())
+        whenever(mockTelaInicialController.rootMessage).thenReturn(javafx.scene.control.Label())
+        whenever(mockTelaInicialController.rootStack).thenReturn(javafx.scene.layout.StackPane())
+        whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
     }
 
     @AfterEach
@@ -182,12 +172,8 @@ class AbaComicInfoUiTest : BaseTest() {
         mockOcr?.`when`<String>(MockedStatic.Verification { Ocr.process(any(), any(), any()) })
                 ?.thenReturn("001-01")
 
-        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
-        val tab = tabPane.selectionModel.selectedItem
-        val tabContent = tab.content as AnchorPane
-
-        val txtPasta = tabContent.lookup("#txtPastaProcessar") as JFXTextField
-        val btnCarregar = tabContent.lookup("#btnCarregar") as JFXButton
+        val txtPasta = robot.lookup("#txtPastaProcessar").queryAs(JFXTextField::class.java)
+        val btnCarregar = robot.lookup("#btnCarregar").queryAs(JFXButton::class.java)
 
         robot.interact { txtPasta.text = tempDirFile.absolutePath }
 
@@ -195,24 +181,23 @@ class AbaComicInfoUiTest : BaseTest() {
         robot.interact { btnCarregar.fire() }
 
         // Aguardar o conteúdo com timeout e estabilização (garantir que carregarItens terminou)
-        WaitForAsyncUtils.waitFor(30, TimeUnit.SECONDS) {
-            val table = tabContent.lookup("#tbViewProcessar") as TableView<*>
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
+            val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java)
             table.items.size >= numItens
         }
 
         // Injetar também na lista privada do controller para consistência absoluta
         robot.interact {
-            val table = tabContent.lookup("#tbViewProcessar") as TableView<*>
+            val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<*>
             val field = comicinfoController.javaClass.getDeclaredField("mObsListaProcessar")
             field.isAccessible = true
             field.set(comicinfoController, table.items)
         }
 
         // Garantir que a renderização terminando antes de focar
-        Thread.sleep(200)
         WaitForAsyncUtils.waitForFxEvents()
 
-        val table = tabContent.lookup("#tbViewProcessar") as TableView<*>
+        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java)
         robot.interact {
             if (table.items.isNotEmpty()) {
                 table.selectionModel.clearAndSelect(0)
@@ -234,9 +219,7 @@ class AbaComicInfoUiTest : BaseTest() {
     @Order(2)
     fun testNormalizarTags(robot: FxRobot) {
         helperCarregarItens(robot)
-        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
-        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
-        val table = tabContent.lookup("#tbViewProcessar") as TableView<Processar>
+        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
         val item = table.items[0]
 
         // Setup initial tags
@@ -244,8 +227,8 @@ class AbaComicInfoUiTest : BaseTest() {
             item.tags = "0${com.fenix.ordenararquivos.util.Utils.SEPARADOR_IMAGEM}capitulo 1"
         }
 
-        val btnNormaliza = tabContent.lookup("#btnTagsNormaliza") as JFXButton
-        val cbLinguagem = tabContent.lookup("#cbLinguagem") as JFXComboBox<Linguagem>
+        val btnNormaliza = robot.lookup("#btnTagsNormaliza").queryAs(JFXButton::class.java)
+        val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java) as JFXComboBox<Linguagem>
 
         robot.interact {
             // Explicitly set language to PORTUGUESE for deterministic results
@@ -266,16 +249,14 @@ class AbaComicInfoUiTest : BaseTest() {
         helperCarregarItens(robot)
         whenever(mockWinrar.insereComicInfo(any(), any())).thenReturn(true)
 
-        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
-        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
-        val btnSalvar = tabContent.lookup("#btnSalvarTodos") as JFXButton
+        val btnSalvar = robot.lookup("#btnSalvarTodos").queryAs(JFXButton::class.java)
 
         robot.interact { 
             btnSalvar.fire() 
         }
 
         // Aumenta o timeout para o processamento assíncrono em headless
-        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) { !btnSalvar.isDisable }
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { !btnSalvar.isDisable }
         WaitForAsyncUtils.waitForFxEvents()
         
         Mockito.verify(mockWinrar, Mockito.atLeastOnce()).insereComicInfo(any(), any())
@@ -299,9 +280,7 @@ class AbaComicInfoUiTest : BaseTest() {
     @Order(5)
     fun testAplicarTags(robot: FxRobot) {
         helperCarregarItens(robot)
-        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
-        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
-        val table = tabContent.lookup("#tbViewProcessar") as TableView<Processar>
+        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
         val item = table.items[0]
 
         // Definir uma tag no formato "imagem|Capítulo 001 # Titulo" para testar o Split de
@@ -311,7 +290,7 @@ class AbaComicInfoUiTest : BaseTest() {
                     "0${com.fenix.ordenararquivos.util.Utils.SEPARADOR_IMAGEM} Capítulo 001 ${com.fenix.ordenararquivos.util.Utils.SEPARADOR_IMPORTACAO} Meu Titulo"
         }
 
-        val btnAplicar = tabContent.lookup("#btnTagsAplicar") as JFXButton
+        val btnAplicar = robot.lookup("#btnTagsAplicar").queryAs(JFXButton::class.java)
         robot.interact { btnAplicar.fire() }
 
         WaitForAsyncUtils.waitForFxEvents()
@@ -359,9 +338,7 @@ class AbaComicInfoUiTest : BaseTest() {
     @Order(7)
     fun testOcrProcessarTask(robot: FxRobot) {
         helperCarregarItens(robot)
-        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
-        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
-        val btnOcr = tabContent.lookup("#btnOcrProcessar") as JFXButton
+        val btnOcr = robot.lookup("#btnOcrProcessar").queryAs(JFXButton::class.java)
 
         // Mocks necessários para o fluxo de OCR no controller
         val dummySumario = File(tempDir.toFile(), "sumario.jpg").apply { createNewFile() }
@@ -370,9 +347,9 @@ class AbaComicInfoUiTest : BaseTest() {
 
         robot.interact { btnOcr.fire() }
 
-        val table = tabContent.lookup("#tbViewProcessar") as TableView<Processar>
+        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
         // Aguarda a execução da Task de OCR com mais paciência
-        WaitForAsyncUtils.waitFor(30, TimeUnit.SECONDS) {
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
             !btnOcr.isDisable && table.items[0].isProcessado
         }
 
@@ -386,9 +363,7 @@ class AbaComicInfoUiTest : BaseTest() {
     @Order(8)
     fun testBotaoCapitulos(robot: FxRobot) {
         helperCarregarItens(robot)
-        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
-        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
-        val btnCapitulos = tabContent.lookup("#btnCapitulos") as JFXButton
+        val btnCapitulos = robot.lookup("#btnCapitulos").queryAs(JFXButton::class.java)
 
         robot.interact { btnCapitulos.fire() }
 

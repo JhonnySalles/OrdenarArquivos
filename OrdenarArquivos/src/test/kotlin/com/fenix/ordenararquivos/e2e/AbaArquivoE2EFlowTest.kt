@@ -48,36 +48,41 @@ class AbaArquivoE2EFlowTest : BaseTest() {
     private val mockComicInfoService = mock<ComicInfoServices>()
     private val mockSincronizacao = mock<SincronizacaoServices>()
     private val mockWinrar = mock<WinrarServices>()
+    private val mockTelaInicial = mock<TelaInicialController>()
 
     @Start
     fun start(stage: Stage) {
         this.stage = stage
-        val loader = FXMLLoader(TelaInicialController.fxmlLocate)
-        loader.setControllerFactory { controllerClass ->
-            when (controllerClass) {
-                TelaInicialController::class.java ->
-                        TelaInicialController().also { mainController = it }
-                AbaArquivoController::class.java ->
-                        AbaArquivoController().also { arquivoController = it }
-                else -> controllerClass.getDeclaredConstructor().newInstance()
-            }
+        val loader = FXMLLoader(AbaArquivoController.fxmlLocate)
+        loader.setControllerFactory { type: Class<*> ->
+            if (type == AbaArquivoController::class.java) {
+                AbaArquivoController().apply {
+                    arquivoController = this
+                    controllerPai = mockTelaInicial
+                    
+                    // Mockar o ProgressBar e Label da TelaInicial para evitar NPE no bind
+                    val rootProgress = javafx.scene.control.ProgressBar()
+                    val rootMessage = javafx.scene.control.Label()
+                    org.mockito.kotlin.whenever(mockTelaInicial.rootProgress).thenReturn(rootProgress)
+                    org.mockito.kotlin.whenever(mockTelaInicial.rootMessage).thenReturn(rootMessage)
+                    
+                    injectMocksInternal(this)
+                }
+            } else AbaArquivoController()
         }
         val root: AnchorPane = loader.load()
-
-        // Injetar mocks nos controllers via reflection se necessário ou se o factory não bastar
-        // Para AbaArquivo, o TelaInicialController injeta as dependências no initialize
-        // Mas podemos forçar aqui para garantir os mocks do teste.
-        injectMocks(arquivoController)
-
+        
+        // Inicializar o sistema de notificações para evitar UninitializedPropertyAccessException
+        com.fenix.ordenararquivos.notification.Notificacoes.rootAnchorPane = root
+        
         stage.scene = Scene(root, 1200.0, 800.0)
+        applyJFoenixFix(stage.scene)
         stage.show()
         stage.toFront()
-
-        // Garantir que a UI está pronta
         WaitForAsyncUtils.waitForFxEvents()
     }
 
-    private fun injectMocks(controller: AbaArquivoController) {
+    private fun injectMocksInternal(controller: AbaArquivoController) {
         val fields =
                 mapOf(
                         "mServiceManga" to mockMangaService,
@@ -130,9 +135,10 @@ class AbaArquivoE2EFlowTest : BaseTest() {
         robot.write(destDir.absolutePath)
         robot.type(KeyCode.ENTER)
 
-        // Aguardar o carregamento da lista de imagens
-        WaitForAsyncUtils.waitFor(15, TimeUnit.SECONDS) { 
-            robot.lookup("#lsVwImagens").queryAs(JFXListView::class.java).items.size >= 2 
+        // Aguardar o carregamento da lista de imagens (aumentado para 5s para evitar flakiness)
+        WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS) { 
+            val listView = robot.lookup("#lsVwImagens").queryAs(com.jfoenix.controls.JFXListView::class.java)
+            listView.items != null && listView.items.size >= 2 
         }
 
         // 3. Preencher dados do mangá
@@ -178,7 +184,7 @@ class AbaArquivoE2EFlowTest : BaseTest() {
         
         // 7. Aguardar o popup de sugestão e selecionar
         // Aguardar o popup aparecer (o OCR mockado é rápido, mas roda em thread separada)
-        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) {
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
             robot.lookup(".jfx-autocomplete-popup").queryAll<Node>().isNotEmpty()
         }
         
@@ -255,8 +261,8 @@ class AbaArquivoE2EFlowTest : BaseTest() {
         // Clica em Consultar para disparar a Task assíncrona
         robot.clickOn(btnMalConsultar, MouseButton.PRIMARY)
         
-        // Aguardar o modelo de dados ser populado 
-        WaitForAsyncUtils.waitFor(15, TimeUnit.SECONDS) {
+        // Aguardar o modelo de dados ser populado
+        WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) {
             tbViewMal.items.isNotEmpty()
         }
         
@@ -267,8 +273,8 @@ class AbaArquivoE2EFlowTest : BaseTest() {
             tbViewMal.selectionModel.select(0)
         }
         
-        // Pequena pausa para o JavaFX processar a seleção antes de aplicar
-        TimeUnit.MILLISECONDS.sleep(500)
+        // Aguarda eventos de seleção serem processados
+        WaitForAsyncUtils.waitForFxEvents()
         
         robot.clickOn(btnMalAplicar, MouseButton.PRIMARY)
         
@@ -291,7 +297,7 @@ class AbaArquivoE2EFlowTest : BaseTest() {
         robot.press(KeyCode.CONTROL).type(KeyCode.SPACE).release(KeyCode.CONTROL)
 
         // Aguardar conclusão
-        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) { !robot.lookup("#btnProcessar").queryAs(JFXButton::class.java).text.equals("Cancelar", ignoreCase = true) }
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { !robot.lookup("#btnProcessar").queryAs(JFXButton::class.java).text.equals("Cancelar", ignoreCase = true) }
 
         // Validar pastas (mockamos o winrar, mas o fluxo de arquivos temporários deve ter ocorrido)
         // No E2E completo real, verificaríamos o outputDir.
@@ -304,7 +310,7 @@ class AbaArquivoE2EFlowTest : BaseTest() {
         robot.type(KeyCode.ENTER)
         
         robot.clickOn("#btnProcessar", MouseButton.PRIMARY)
-        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) { !robot.lookup("#btnProcessar").queryAs(JFXButton::class.java).text.equals("Cancelar", ignoreCase = true) }
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { !robot.lookup("#btnProcessar").queryAs(JFXButton::class.java).text.equals("Cancelar", ignoreCase = true) }
 
         // 9. Processar e Validar Winrar
         // O processo de compactação é disparado uma única vez ao final, enviando a lista completa de pastas
