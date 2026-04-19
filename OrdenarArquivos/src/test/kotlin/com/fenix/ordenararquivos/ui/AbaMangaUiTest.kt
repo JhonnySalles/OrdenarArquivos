@@ -19,6 +19,7 @@ import javafx.scene.Scene
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.layout.AnchorPane
+import javafx.scene.layout.StackPane
 import javafx.stage.Stage
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
@@ -47,6 +48,8 @@ class AbaMangaUiTest : BaseTest() {
             )
 
     private lateinit var mockTelaInicialController: TelaInicialController
+    private lateinit var rootStack: StackPane
+    private lateinit var rootNode: Parent
 
     @Start
     fun start(stage: Stage) {
@@ -76,8 +79,9 @@ class AbaMangaUiTest : BaseTest() {
             }
         }
 
-        val root = loader.load<Parent>()
-        val scene = Scene(root, 1024.0, 768.0)
+        rootNode = loader.load<Parent>()
+        rootStack = StackPane(rootNode)
+        val scene = Scene(rootStack, 1024.0, 768.0)
         applyJFoenixFix(scene)
         stage.scene = scene
         stage.show()
@@ -91,9 +95,15 @@ class AbaMangaUiTest : BaseTest() {
 
         // Injeta o controller pai e mocks de progresso
         controller.controllerPai = mockTelaInicialController
+        
+        // Inicializa containers estáticos para notificações e alertas
+        AlertasPopup.rootStackPane = rootStack
+        AlertasPopup.nodeBlur = rootNode
+        com.fenix.ordenararquivos.notification.Notificacoes.rootAnchorPane = rootNode as AnchorPane
+
         whenever(mockTelaInicialController.rootProgress).thenReturn(javafx.scene.control.ProgressBar())
         whenever(mockTelaInicialController.rootMessage).thenReturn(javafx.scene.control.Label())
-        whenever(mockTelaInicialController.rootStack).thenReturn(javafx.scene.layout.StackPane())
+        whenever(mockTelaInicialController.rootStack).thenReturn(rootStack)
         whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
 
         // Mock padrão para carregamento inicial
@@ -265,9 +275,11 @@ class AbaMangaUiTest : BaseTest() {
 
         val btnCancelar = robot.from(dialogLayout.get()).lookup("#btnCancelar").queryAs(JFXButton::class.java)
         robot.interact { btnCancelar.fire() }
-        WaitForAsyncUtils.waitForFxEvents()
-        assertFalse(robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent, "JFXDialog não fechou")
-        WaitForAsyncUtils.waitForFxEvents()
+        
+        // Aguardar o JFXDialog sumir (considerando animação de fechamento)
+        WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) {
+            !robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent
+        }
         assertFalse(robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent, "JFXDialog não fechou")
     }
 

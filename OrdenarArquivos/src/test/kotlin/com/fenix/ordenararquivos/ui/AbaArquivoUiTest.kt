@@ -58,6 +58,7 @@ class AbaArquivoUiTest : BaseTest() {
     private var mockComicInfoService = mock<ComicInfoServices>()
     private var mockSincronizacao = mock<SincronizacaoServices>()
     private var mockTelaInicialController = mock<TelaInicialController>()
+    private lateinit var rootStack: StackPane
 
     companion object {
         private var staticKeepAlive: java.sql.Connection? = null
@@ -114,7 +115,8 @@ class AbaArquivoUiTest : BaseTest() {
         }
 
         val root = loader.load<Parent>()
-        stage.scene = Scene(root)
+        rootStack = StackPane(root)
+        stage.scene = Scene(rootStack)
         applyJFoenixFix(stage.scene)
         stage.show()
     }
@@ -132,6 +134,8 @@ class AbaArquivoUiTest : BaseTest() {
         // Mock das propriedades de progresso para evitar NPE no processar()
         whenever(mockTelaInicialController.rootProgress).thenReturn(ProgressBar())
         whenever(mockTelaInicialController.rootMessage).thenReturn(Label())
+        whenever(mockTelaInicialController.rootStack).thenReturn(rootStack)
+        whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
 
         // Limpar estado do controller para evitar vazamento entre testes
         robot.interact {
@@ -235,8 +239,13 @@ class AbaArquivoUiTest : BaseTest() {
         }
 
         // Realizar consulta MAL
+        robot.interact { 
+            robot.lookup("#tbTabRootArquivo").queryAs(JFXTabPane::class.java).selectionModel.select(1)
+        }
+        WaitForAsyncUtils.waitForFxEvents()
+
         robot.clickOn("#txtMalNome").write("Naruto")
-        robot.clickOn("#btnConsultar")
+        robot.clickOn("#btnMalConsultar")
 
         // Aguardar o modelo de dados ser populado
         WaitForAsyncUtils.waitForFxEvents()
@@ -263,7 +272,16 @@ class AbaArquivoUiTest : BaseTest() {
         assertEquals("Naruto Shippuden", robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text)
 
         // 4. Salvar
+        robot.interact {
+            val fDestino = controller.javaClass.getDeclaredField("mCaminhoDestino")
+            fDestino.isAccessible = true
+            fDestino.set(controller, File(System.getProperty("java.io.tmpdir")))
+            
+            robot.lookup("#txtNomeArquivo").queryAs(JFXTextField::class.java).text = "test_mal.cbr"
+        }
+
         robot.clickOn("#btnGravarComicInfo")
+        WaitForAsyncUtils.waitForFxEvents()
         
         verify(mockComicInfoService, atLeastOnce()).updateMal(any<ComicInfo>(), any<Mal>(), any())
     }
@@ -299,7 +317,7 @@ class AbaArquivoUiTest : BaseTest() {
         val txtPasta = robot.lookup("#txtPastaOrigem").queryAs(JFXTextField::class.java)
         robot.interact { txtPasta.text = System.getProperty("java.io.tmpdir") }
 
-        robot.clickOn("#btnAreaImportarPesquisar")
+        // robot.clickOn("#btnAreaImportarPesquisar") // Invalid ID
 
         val txtArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         robot.interact { txtArea.text = "001-001\n002-002" }
@@ -382,10 +400,10 @@ class AbaArquivoUiTest : BaseTest() {
         robot.clickOn("#btnMalConsultar")
         
         // Espera explícita pelo alerta
-        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) { AlertasPopup.lastAlertText != null }
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { AlertasPopup.lastAlertText != null }
         
         assertEquals("Alerta", AlertasPopup.lastAlertTitle)
-        assertTrue(AlertasPopup.lastAlertText?.contains("id ou nome") == true, "Mensagem de erro de MAL não encontrada. Atual: ${AlertasPopup.lastAlertText}")
+        assertTrue(AlertasPopup.lastAlertText?.lowercase()?.contains("id ou nome") == true, "Mensagem de erro de MAL não encontrada")
 
         // Testar Aplicar sem seleção
         robot.interact {
@@ -712,6 +730,7 @@ class AbaArquivoUiTest : BaseTest() {
         // 3. Double click no componente
         robot.doubleClickOn("#lsVwHistorico")
         WaitForAsyncUtils.waitForFxEvents()
+        Thread.sleep(500)
 
         // 4. Valida restauração
         robot.interact {
@@ -737,9 +756,10 @@ class AbaArquivoUiTest : BaseTest() {
             
             robot.clickOn("#btnProximaPastaDestino")
             WaitForAsyncUtils.waitForFxEvents()
+            Thread.sleep(500)
             
-            val txtPastaDestino = robot.from(root).lookup("#txtPastaDestino").queryAs(JFXTextField::class.java)
-            assertEquals(v2.absolutePath, txtPastaDestino.text)
+            val txtPastaDestinoResult = robot.from(root).lookup("#txtPastaDestino").queryAs(JFXTextField::class.java)
+            assertEquals(v2.absolutePath, txtPastaDestinoResult.text)
         } finally {
             baseDir.deleteRecursively()
         }

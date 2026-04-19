@@ -9,6 +9,7 @@ import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.entities.comicinfo.Pages
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.process.Ocr
 import com.fenix.ordenararquivos.service.OcrServices
 import com.fenix.ordenararquivos.service.WinrarServices
@@ -32,6 +33,7 @@ import javafx.scene.control.TableView
 import javafx.scene.control.TextArea
 import javafx.scene.input.KeyCode
 import javafx.scene.layout.AnchorPane
+import javafx.scene.layout.StackPane
 import javafx.stage.Stage
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
@@ -82,6 +84,8 @@ class AbaComicInfoUiTest : BaseTest() {
     }
 
     private lateinit var mockTelaInicialController: TelaInicialController
+    private lateinit var rootStack: StackPane
+    private lateinit var rootNode: Parent
 
     @Start
     fun start(stage: Stage) {
@@ -113,8 +117,9 @@ class AbaComicInfoUiTest : BaseTest() {
             }
         }
 
-        val root = loader.load<Parent>()
-        val scene = Scene(root, 1024.0, 768.0)
+        rootNode = loader.load<Parent>()
+        rootStack = StackPane(rootNode)
+        val scene = Scene(rootStack, 1024.0, 768.0)
         applyJFoenixFix(scene)
 
         stage.scene = scene
@@ -128,6 +133,18 @@ class AbaComicInfoUiTest : BaseTest() {
         AlertasPopup.testResult = true
         AlertasPopup.lastAlertTitle = null
         AlertasPopup.lastAlertText = null
+        
+        // Inicialização de componentes estáticos de UI para evitar UninitializedPropertyAccessException
+        AlertasPopup.rootStackPane = rootStack
+        AlertasPopup.nodeBlur = rootNode
+        
+        if (rootNode is AnchorPane) {
+            Notificacoes.rootAnchorPane = rootNode as AnchorPane
+        } else {
+            // Cria um AnchorPane temporário se o root não for um, para evitar erro nas notificações
+            Notificacoes.rootAnchorPane = AnchorPane()
+        }
+
         File("temp").mkdirs()
 
         mockOcr = Mockito.mockStatic(Ocr::class.java)
@@ -135,10 +152,11 @@ class AbaComicInfoUiTest : BaseTest() {
         Mockito.reset(mockWinrar, mockOcrServices, mockTelaInicialController)
 
         // Injeta o controller pai e mocks de progresso
+        mainController = mockTelaInicialController
         comicinfoController.controllerPai = mockTelaInicialController
         whenever(mockTelaInicialController.rootProgress).thenReturn(javafx.scene.control.ProgressBar())
         whenever(mockTelaInicialController.rootMessage).thenReturn(javafx.scene.control.Label())
-        whenever(mockTelaInicialController.rootStack).thenReturn(javafx.scene.layout.StackPane())
+        whenever(mockTelaInicialController.rootStack).thenReturn(rootStack)
         whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
     }
 
@@ -310,9 +328,7 @@ class AbaComicInfoUiTest : BaseTest() {
     fun testMenuContextoRemover(robot: FxRobot) {
         // Carregar 3 itens para o teste
         helperCarregarItens(robot, 3)
-        val tabPane = robot.lookup("#tpGlobal").queryAs(JFXTabPane::class.java)
-        val tabContent = tabPane.selectionModel.selectedItem.content as AnchorPane
-        val table = tabContent.lookup("#tbViewProcessar") as TableView<Processar>
+        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
 
         robot.interact {
             table.requestFocus()

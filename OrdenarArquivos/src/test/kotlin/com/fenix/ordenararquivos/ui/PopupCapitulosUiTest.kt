@@ -59,7 +59,14 @@ class PopupCapitulosUiTest : BaseTest() {
         val root: AnchorPane = loader.load()
         // PopupCapitulos does not have controllerPai
 
-        // Mocking Jsoup before triggering initialization that might use it
+        stage.scene = Scene(root)
+        applyJFoenixFix(stage.scene)
+        stage.show()
+    }
+
+    @BeforeEach
+    fun setUp(robot: FxRobot) {
+        // Mocking Jsoup
         mockJsoup = Mockito.mockStatic(Jsoup::class.java)
         mockConnection = mock<Connection>()
         mockDocument = mock<Document>()
@@ -68,10 +75,6 @@ class PopupCapitulosUiTest : BaseTest() {
         whenever(mockConnection.userAgent(anyString())).thenReturn(mockConnection)
         whenever(mockConnection.referrer(anyString())).thenReturn(mockConnection)
         whenever(mockConnection.get()).thenReturn(mockDocument)
-
-        stage.scene = Scene(root)
-        applyJFoenixFix(stage.scene)
-        stage.show()
     }
 
     @AfterEach
@@ -137,7 +140,7 @@ class PopupCapitulosUiTest : BaseTest() {
         
         // Aguardar o modelo de dados ser populado
         WaitForAsyncUtils.waitForFxEvents()
-        WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS) {
+        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) {
             tbViewTabela.items.isNotEmpty()
         }
 

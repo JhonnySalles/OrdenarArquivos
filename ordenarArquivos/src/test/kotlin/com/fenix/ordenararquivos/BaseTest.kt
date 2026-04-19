@@ -60,22 +60,22 @@ abstract class BaseTest {
             mLOG.error("Erro ao verificar tabelas: ${e.message}")
         }
 
-        // Preparar o CSS de fix para JFoenix em ambiente Headless
-        try {
-            val cssFile = java.io.File.createTempFile("jfoenix_skin_fix", ".css")
-            cssFile.writeText("""
-                .jfx-text-field { -fx-skin: "javafx.scene.control.skin.TextFieldSkin"; }
-                .jfx-password-field { -fx-skin: "javafx.scene.control.skin.TextFieldSkin"; }
-                .jfx-text-area { -fx-skin: "javafx.scene.control.skin.TextAreaSkin"; }
-                .jfx-combo-box { -fx-skin: "javafx.scene.control.skin.ComboBoxListViewSkin"; }
-                .jfx-button { -fx-skin: "javafx.scene.control.skin.ButtonSkin"; }
-                .jfx-list-view { -fx-skin: "javafx.scene.control.skin.ListViewSkin"; }
-                .jfx-tab-pane { -fx-skin: "javafx.scene.control.skin.TabPaneSkin"; }
-            """.trimIndent())
-            jfoenixFixCss = cssFile.toURI().toURL().toExternalForm()
-        } catch (e: Exception) {
-            mLOG.error("Erro ao criar CSS de fix: ${e.message}")
-        }
+//        // Preparar o CSS de fix para JFoenix em ambiente Headless
+//        try {
+//            val cssFile = java.io.File.createTempFile("jfoenix_skin_fix", ".css")
+//            cssFile.writeText("""
+//                .jfx-text-field { -fx-skin: "javafx.scene.control.skin.TextFieldSkin"; }
+//                .jfx-password-field { -fx-skin: "javafx.scene.control.skin.TextFieldSkin"; }
+//                .jfx-text-area { -fx-skin: "javafx.scene.control.skin.TextAreaSkin"; }
+//                .jfx-combo-box { -fx-skin: "javafx.scene.control.skin.ComboBoxListViewSkin"; }
+//                .jfx-button { -fx-skin: "javafx.scene.control.skin.ButtonSkin"; }
+//                .jfx-list-view { -fx-skin: "javafx.scene.control.skin.ListViewSkin"; }
+//                .jfx-tab-pane { -fx-skin: "javafx.scene.control.skin.TabPaneSkin"; }
+//            """.trimIndent())
+//            jfoenixFixCss = cssFile.toURI().toURL().toExternalForm()
+//        } catch (e: Exception) {
+//            mLOG.error("Erro ao criar CSS de fix: ${e.message}")
+//        }
     }
 
     @AfterAll
@@ -120,10 +120,10 @@ abstract class BaseTest {
      * Aplica o fix de CSS na cena fornecida.
      */
     fun applyJFoenixFix(scene: javafx.scene.Scene) {
-        jfoenixFixCss?.let {
-            if (!scene.stylesheets.contains(it)) {
-                scene.stylesheets.add(it)
-            }
-        }
+//        jfoenixFixCss?.let {
+//            if (!scene.stylesheets.contains(it)) {
+//                scene.stylesheets.add(it)
+//            }
+//        }
     }
 }

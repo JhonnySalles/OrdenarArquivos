@@ -280,7 +280,9 @@ class AbaMangaController : Initializable {
             controller.setComicInfo(comicInfo)
 
             val blur = BoxBlur(3.0, 3.0, 3)
-            val dialog = JFXDialog(controllerPai.rootStack, root, JFXDialog.DialogTransition.CENTER)
+            val dialogLayout = com.jfoenix.controls.JFXDialogLayout()
+            dialogLayout.setBody(root)
+            val dialog = JFXDialog(controllerPai.rootStack, dialogLayout, JFXDialog.DialogTransition.CENTER)
             dialog.isOverlayClose = false
 
             controller.onClose = { dialog.close() }

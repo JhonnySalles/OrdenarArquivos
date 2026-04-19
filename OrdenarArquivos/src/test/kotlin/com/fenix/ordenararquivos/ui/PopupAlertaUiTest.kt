@@ -133,6 +133,7 @@ class PopupAlertaUiTest : BaseTest() {
         }
         
         robot.clickOn("#btnOk")
+        WaitForAsyncUtils.waitForFxEvents()
         assertTrue(clicked)
     }
 }
