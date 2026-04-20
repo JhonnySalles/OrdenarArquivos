@@ -10,28 +10,27 @@ import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
 import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.process.Winrar
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXComboBox
 import com.jfoenix.controls.JFXTabPane
 import com.jfoenix.controls.JFXTextField
-import java.io.File
-import java.nio.file.Path
-import java.sql.DriverManager
 import javafx.fxml.FXMLLoader
 import javafx.scene.Node
 import javafx.scene.Parent
 import javafx.scene.Scene
-import javafx.scene.control.TableView
 import javafx.scene.control.TableColumn
+import javafx.scene.control.TableView
 import javafx.scene.input.KeyCode
 import javafx.scene.layout.AnchorPane
+import javafx.scene.layout.StackPane
+import javafx.stage.Stage
+import com.fenix.ordenararquivos.model.entities.Manga
+import com.fenix.ordenararquivos.model.entities.Caminhos
 import org.junit.jupiter.api.*
-import com.fenix.ordenararquivos.process.Winrar
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
 import org.mockito.MockedStatic
@@ -41,6 +40,9 @@ import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
+import java.io.File
+import java.nio.file.Path
+import java.sql.DriverManager
 import java.util.concurrent.TimeUnit
 
 @Tag("UI")
@@ -118,7 +120,7 @@ class AbaPastasUiTest : BaseTest() {
         
         val scene = Scene(rootStack, 1024.0, 768.0)
         applyJFoenixFix(scene)
-        stage.scene = scene
+        stage.setScene(scene)
         stage.show()
     }
 
@@ -490,7 +492,7 @@ class AbaPastasUiTest : BaseTest() {
         val mockManga = Manga().apply {
             nome = "Manga Teste"
             volume = "14"
-            caminhos = listOf(Caminhos("081", "1", "Tag", ""))
+            caminhos = mutableListOf(Caminhos("081", "1", "Tag", ""))
         }
         whenever(mockMangaService.findAll(eq("Manga Teste"))).thenReturn(listOf(mockManga))
 
