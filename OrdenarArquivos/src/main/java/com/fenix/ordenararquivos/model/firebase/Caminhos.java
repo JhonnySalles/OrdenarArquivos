@@ -51,7 +51,7 @@ public class Caminhos {
     }
 
     public static com.fenix.ordenararquivos.model.entities.Caminhos toCominhos(Manga manga, HashMap<String, ?> obj) {
-        return new com.fenix.ordenararquivos.model.entities.Caminhos(manga, (String) obj.get("capitulo"), ((Long) obj.get("pagina")).intValue(), (String) obj.get("pasta"), (String) obj.get("tag"));
+        return new com.fenix.ordenararquivos.model.entities.Caminhos(manga, (String) obj.get("capitulo"), ((Number) obj.get("pagina")).intValue(), (String) obj.get("pasta"), (String) obj.get("tag"));
     }
 
     @Override

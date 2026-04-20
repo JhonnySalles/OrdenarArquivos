@@ -104,7 +104,7 @@ public class Manga {
     }
 
     public static com.fenix.ordenararquivos.model.entities.Manga toManga(Long id, HashMap<String, ?> obj) {
-        return new com.fenix.ordenararquivos.model.entities.Manga(id, (String) obj.get("nome"), (String) obj.get("volume"), (String) obj.get("capitulo"), (String) obj.get("arquivo"), (String) obj.get("capitulos"), ((Long) obj.get("quantidade")).intValue(), LocalDateTime.now(), new ArrayList<>(), "");
+        return new com.fenix.ordenararquivos.model.entities.Manga(id, (String) obj.get("nome"), (String) obj.get("volume"), (String) obj.get("capitulo"), (String) obj.get("arquivo"), (String) obj.get("capitulos"), ((Number) obj.get("quantidade")).intValue(), LocalDateTime.now(), new ArrayList<>(), "");
     }
 
     @Override
