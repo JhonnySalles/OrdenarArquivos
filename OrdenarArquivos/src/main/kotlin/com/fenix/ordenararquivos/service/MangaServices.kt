@@ -1,11 +1,9 @@
 package com.fenix.ordenararquivos.service
 
-import com.fenix.ordenararquivos.database.DataBase.closeResultSet
-import com.fenix.ordenararquivos.database.DataBase.closeStatement
-import com.fenix.ordenararquivos.database.DataBase.instancia
-import com.fenix.ordenararquivos.model.entities.Caminhos
-import com.fenix.ordenararquivos.model.entities.Manga
-import com.fenix.ordenararquivos.util.Utils
+import com.fenix.ordenararquivos.database.*
+import com.fenix.ordenararquivos.model.entities.*
+import com.fenix.ordenararquivos.service.ComicInfoServices
+import com.fenix.ordenararquivos.util.*
 import org.slf4j.LoggerFactory
 import java.sql.*
 import java.time.LocalDateTime
@@ -31,9 +29,14 @@ class MangaServices {
     private val mLIST_MANGA = "SELECT nome FROM Manga GROUP BY nome ORDER BY nome"
     private val mSUGESTAO = "SELECT nome FROM Manga WHERE lower(nome) LIKE ? GROUP BY nome ORDER BY nome"
 
-    private val conn: Connection get() = instancia
+    private val mSELECT_MANGA_BY_NOME_VOLUME = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome = ? AND volume = ?"
+    private val mINSERT_EXCLUIDO = "INSERT INTO Excluido (comic, atualizacao) VALUES (?, ?)"
+    private val mDELETE_EXCLUIDO = "DELETE FROM Excluido WHERE comic = ?"
+    private val mSELECT_EXCLUIDO_ENVIO = "SELECT comic, atualizacao FROM Excluido WHERE atualizacao >= ?"
 
-    fun find(id: Long): Manga? = select(id)
+    private val conn: Connection get() = DataBase.instancia
+
+    fun find(id: Long): Manga? = selectById(id)
 
     fun find(manga: Manga, anterior : Boolean = false): Manga? {
         return find(manga.nome, manga.volume, manga.capitulo, anterior)
@@ -51,12 +54,13 @@ class MangaServices {
         }
     }
 
-    fun findEnvio(envio: LocalDateTime) : List<Manga> = select(envio)
+    fun findEnvio(envio: LocalDateTime) : List<Manga> = selectByEnvio(envio)
 
     @JvmOverloads
     fun save(manga: Manga, isSendCloud : Boolean = true, atualizacao : LocalDateTime = LocalDateTime.now()) {
         manga.atualizacao = atualizacao
         try {
+            deleteExcluido(manga.nome + " - " + manga.volume)
             if (manga.id == 0L) {
                 mLOG.info("Inserindo novo manga: ${manga.nome}")
                 insert(manga)
@@ -94,7 +98,7 @@ class MangaServices {
                 )
                 manga.comic = rs.getString("comic") ?: ""
                 if (isCaminho)
-                    manga.caminhos = select(manga)
+                    manga.caminhos = selectByManga(manga)
                 mangas.add(manga)
             }
             mangas
@@ -102,8 +106,8 @@ class MangaServices {
             mLOG.error("Erro ao buscar o manga.", e)
             throw e
         } finally {
-            closeStatement(st)
-            closeResultSet(rs)
+            DataBase.closeStatement(st)
+            DataBase.closeResultSet(rs)
         }
     }
 
@@ -124,15 +128,15 @@ class MangaServices {
                     rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
                     rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
                 )
-                manga.caminhos = select(manga)
+                manga.caminhos = selectByManga(manga)
             }
             manga
         } catch (e: SQLException) {
             mLOG.error("Erro ao buscar o manga.", e)
             throw e
         } finally {
-            closeStatement(st)
-            closeResultSet(rs)
+            DataBase.closeStatement(st)
+            DataBase.closeResultSet(rs)
         }
     }
 
@@ -152,15 +156,15 @@ class MangaServices {
                         rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
                         rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
                 )
-                manga.caminhos = select(manga)
+                manga.caminhos = selectByManga(manga)
             }
             manga
         } catch (e: SQLException) {
             mLOG.error("Erro ao buscar o manga.", e)
             throw e
         } finally {
-            closeStatement(st)
-            closeResultSet(rs)
+            DataBase.closeStatement(st)
+            DataBase.closeResultSet(rs)
         }
     }
 
@@ -186,7 +190,7 @@ class MangaServices {
             mLOG.error("Erro ao atualizar o manga.", e)
             throw e
         } finally {
-            closeStatement(st)
+            DataBase.closeStatement(st)
         }
     }
 
@@ -219,13 +223,13 @@ class MangaServices {
             mLOG.error("Erro ao inserir o manga.", e)
             throw e
         } finally {
-            closeStatement(st)
+            DataBase.closeStatement(st)
         }
         return null
     }
 
     @Throws(SQLException::class)
-    private fun select(manga: Manga): ArrayList<Caminhos> {
+    private fun selectByManga(manga: Manga): ArrayList<Caminhos> {
         var st: PreparedStatement? = null
         var rs: ResultSet? = null
         return try {
@@ -245,8 +249,8 @@ class MangaServices {
             mLOG.error("Erro ao buscar os caminhos.", e)
             throw e
         } finally {
-            closeStatement(st)
-            closeResultSet(rs)
+            DataBase.closeStatement(st)
+            DataBase.closeResultSet(rs)
         }
     }
 
@@ -254,20 +258,17 @@ class MangaServices {
     fun deleteManga(manga: Manga) {
         var st: PreparedStatement? = null
         try {
-            // Deleta caminhos
+            insertExcluido(manga.nome + " - " + manga.volume)
             delete(manga.id)
 
-            // Verifica se deve deletar ComicInfo
             val nome = manga.nome
             val total = countMangaByName(nome)
             if (total <= 1) {
-                // Se for o último manga com este nome, deleta o comic info
                 val comicInfo = ComicInfoServices().find(nome)
                 if (comicInfo != null)
                    ComicInfoServices().delete(comicInfo.id!!)
             }
 
-            // Deleta manga
             st = conn.prepareStatement(mDELETE_MANGA)
             st.setLong(1, manga.id)
             st.executeUpdate()
@@ -275,7 +276,7 @@ class MangaServices {
             mLOG.error("Erro ao deletar o manga.", e)
             throw e
         } finally {
-            closeStatement(st)
+            DataBase.closeStatement(st)
         }
     }
 
@@ -289,8 +290,8 @@ class MangaServices {
             rs = st.executeQuery()
             if (rs.next()) rs.getInt(1) else 0
         } finally {
-            closeStatement(st)
-            closeResultSet(rs)
+            DataBase.closeStatement(st)
+            DataBase.closeResultSet(rs)
         }
     }
 
@@ -317,7 +318,7 @@ class MangaServices {
             } catch (e: SQLException) {
                 mLOG.error("Erro ao atualizar o commit.", e)
             }
-            closeStatement(st)
+            DataBase.closeStatement(st)
         }
     }
 
@@ -347,13 +348,42 @@ class MangaServices {
             mLOG.error("Erro ao inserir os caminhos.", e)
             throw e
         } finally {
-            closeStatement(st)
+            DataBase.closeStatement(st)
         }
         return null
     }
 
     @Throws(SQLException::class)
-    private fun select(id: Long): Manga? {
+    fun find(nome: String, volume: String): Manga? {
+        var st: PreparedStatement? = null
+        var rs: ResultSet? = null
+        return try {
+            st = conn.prepareStatement(mSELECT_MANGA_BY_NOME_VOLUME)
+            var index = 0
+            st.setString(++index, nome)
+            st.setString(++index, volume)
+            rs = st.executeQuery()
+            var manga: Manga? = null
+            if (rs.next()) {
+                manga = Manga(
+                    rs.getLong("id"), rs.getString("nome"), rs.getString("volume"),
+                    rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
+                    rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
+                )
+                manga.caminhos = selectByManga(manga)
+            }
+            manga
+        } catch (e: SQLException) {
+            mLOG.error("Erro ao buscar o manga por Nome e Volume.", e)
+            throw e
+        } finally {
+            DataBase.closeStatement(st)
+            DataBase.closeResultSet(rs)
+        }
+    }
+
+    @Throws(SQLException::class)
+    private fun selectById(id: Long): Manga? {
         var st: PreparedStatement? = null
         var rs: ResultSet? = null
         return try {
@@ -367,20 +397,20 @@ class MangaServices {
                     rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
                     rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
                 )
-                manga.caminhos = select(manga)
+                manga.caminhos = selectByManga(manga)
             }
             manga
         } catch (e: SQLException) {
             mLOG.error("Erro ao buscar o manga por ID.", e)
             throw e
         } finally {
-            closeStatement(st)
-            closeResultSet(rs)
+            DataBase.closeStatement(st)
+            DataBase.closeResultSet(rs)
         }
     }
 
     @Throws(SQLException::class)
-    private fun select(envio: LocalDateTime): List<Manga> {
+    private fun selectByEnvio(envio: LocalDateTime): List<Manga> {
         var st: PreparedStatement? = null
         var rs: ResultSet? = null
         return try {
@@ -393,7 +423,7 @@ class MangaServices {
                     rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
                     rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
                 )
-                manga.caminhos = select(manga)
+                manga.caminhos = selectByManga(manga)
                 list.add(manga)
             }
             list
@@ -401,8 +431,8 @@ class MangaServices {
             mLOG.error("Erro ao buscar os envios.", e)
             throw e
         } finally {
-            closeStatement(st)
-            closeResultSet(rs)
+            DataBase.closeStatement(st)
+            DataBase.closeResultSet(rs)
         }
     }
 
@@ -421,8 +451,8 @@ class MangaServices {
             mLOG.error("Erro ao listar os mangas.", e)
             throw e
         } finally {
-            closeStatement(st)
-            closeResultSet(rs)
+            DataBase.closeStatement(st)
+            DataBase.closeResultSet(rs)
         }
     }
 
@@ -442,8 +472,69 @@ class MangaServices {
             mLOG.error("Erro ao obter a lista de sugestão.", e)
             throw e
         } finally {
-            closeStatement(st)
-            closeResultSet(rs)
+            DataBase.closeStatement(st)
+            DataBase.closeResultSet(rs)
+        }
+    }
+
+    fun findEnvioExclusao(envio: LocalDateTime): List<Pair<String, LocalDateTime>> {
+        var st: PreparedStatement? = null
+        var rs: ResultSet? = null
+        return try {
+            st = conn.prepareStatement(mSELECT_EXCLUIDO_ENVIO)
+            st.setString(1, Utils.fromDateTime(envio))
+            rs = st.executeQuery()
+            val list = mutableListOf<Pair<String, LocalDateTime>>()
+            while (rs.next()) {
+                list.add(Pair(rs.getString("comic"), Utils.toDateTime(rs.getString("atualizacao"))))
+            }
+            list
+        } catch (e: SQLException) {
+            mLOG.error("Erro ao buscar exclusões para envio.", e)
+            emptyList()
+        } finally {
+            DataBase.closeStatement(st)
+            DataBase.closeResultSet(rs)
+        }
+    }
+
+    @Throws(SQLException::class)
+    private fun insertExcluido(comic: String, atualizacao: LocalDateTime = LocalDateTime.now()) {
+        var st: PreparedStatement? = null
+        try {
+            st = conn.prepareStatement(mINSERT_EXCLUIDO)
+            st.setString(1, comic)
+            st.setString(2, Utils.fromDateTime(atualizacao))
+            st.executeUpdate()
+        } catch (e: SQLException) {
+            mLOG.error("Erro ao inserir na tabela Excluido.", e)
+            throw e
+        } finally {
+            DataBase.closeStatement(st)
+        }
+    }
+
+    @Throws(SQLException::class)
+    private fun deleteExcluido(comic: String) {
+        var st: PreparedStatement? = null
+        try {
+            st = conn.prepareStatement(mDELETE_EXCLUIDO)
+            st.setString(1, comic)
+            st.executeUpdate()
+        } catch (e: SQLException) {
+            mLOG.error("Erro ao deletar da tabela Excluido.", e)
+            throw e
+        } finally {
+            DataBase.closeStatement(st)
+        }
+    }
+
+    fun insereExclusao(comic: String, atualizacao: LocalDateTime) {
+        try {
+            deleteExcluido(comic)
+            insertExcluido(comic, atualizacao)
+        } catch (e: Exception) {
+            mLOG.error("Erro ao registrar exclusão silenciosa.", e)
         }
     }
 

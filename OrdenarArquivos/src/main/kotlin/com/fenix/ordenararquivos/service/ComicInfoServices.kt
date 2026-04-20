@@ -203,24 +203,11 @@ class ComicInfoServices {
         try {
             st = conn.prepareStatement(mDELETE_COMIC_INFO)
             st.setString(1, id.toString())
-            conn.autoCommit = false
-            conn.beginRequest()
             st.executeUpdate()
-            conn.commit()
         } catch (e: SQLException) {
-            try {
-                conn.rollback()
-            } catch (e1: SQLException) {
-                mLOG.error("Erro ao realizar o rollback.", e)
-            }
             mLOG.error("Erro ao deletar o comic info.", e)
             throw e
         } finally {
-            try {
-                conn.autoCommit = true
-            } catch (e: SQLException) {
-                mLOG.error("Erro ao atualizar o commit.", e)
-            }
             closeStatement(st)
         }
     }

@@ -3,6 +3,10 @@ module com.fenix.ordenararquivos {
     exports com.fenix.ordenararquivos.controller;
     exports com.fenix.ordenararquivos.model.firebase;
     exports com.fenix.ordenararquivos.model.entities;
+    exports com.fenix.ordenararquivos.model.entities.comicinfo;
+    exports com.fenix.ordenararquivos.database;
+    exports com.fenix.ordenararquivos.service;
+    exports com.fenix.ordenararquivos.util;
     exports com.fenix.ordenararquivos.logback;
 
     requires transitive javafx.controls;

@@ -31,12 +31,12 @@ import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.stream.Collectors
+import kotlin.String
 
 
 class SincronizacaoServices(private val controller: AbaArquivoController) : TimerTask() {
@@ -59,6 +59,7 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
     private var sincronizando = false
 
     private val collectOrdenar = "ORDENAR"
+    private val collectExclusao = "ORDENAR EXCLUSAO"
     private val collectComicInfo = "COMICINFO"
 
     companion object {
@@ -164,20 +165,28 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
                 val envio = LocalDateTime.now().format(formaterDataHora)
 
                 if (sinc.isNotEmpty()) {
-                    val docRef = DB.collection(collectOrdenar).document(formaterData.format(LocalDate.now()))
-                    val data: MutableMap<String, Any> = HashMap()
-                    val document = docRef.get().get()
+                    val index = mutableMapOf<String, Date>()
+                    val docRef = DB.collection(collectOrdenar)
+                    val docIndex = docRef.document("_INDEX").get().get()
 
-                    if (document.exists())
-                        for (key in document.data!!.keys)
-                            data[key] = document.data!![key] as HashMap<String, *>
+                    if (docIndex.exists()) {
+                        val item = docIndex.data ?: mapOf()
+                        index.putAll(item as Map<String, Date>)
+                    }
+
+                    val docExclusao = DB.collection(collectExclusao)
 
                     for (manga in sinc) {
                         manga.sincronizacao = envio
-                        data[getIdCloud(manga)] = manga
+                        val id = getIdCloud(manga)
+                        index[id] = Date()
+                        docRef.document(id).set(removeValoresNull(manga)).get()
+                        val exDoc = docExclusao.document(id).get().get()
+                        if (exDoc.exists())
+                            docExclusao.document(id).delete().get()
                     }
-                    val result = docRef.set(data)
-                    result.get()
+
+                    docRef.document("_INDEX").set(index as Map<String, Any>).get()
                     registros += sinc.size
                     mLOG.info("Enviado dados de mangas a cloud: " + sinc.size + " registros. ")
                 }
@@ -194,6 +203,38 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
                 mLOG.error("Erro ao enviar dados de Mangas da cloud, adicionado arquivos para novo ciclo. ${e.message}", e)
                 throw e
             }
+        }
+
+        // Envio de exclusões
+        var processadoExclusao = false
+        try {
+            val exclusoes = serviceManga.findEnvioExclusao(sincronizacao!!.envio)
+            if (exclusoes.isNotEmpty()) {
+                mLOG.info("Enviando exclusões de Mangas para a cloud... ")
+                val docRefOrdenar = DB.collection(collectOrdenar)
+                val docIndexOrdenar = docRefOrdenar.document("_INDEX").get().get()
+                val indexOrdenar = if (docIndexOrdenar.exists()) (docIndexOrdenar.data as MutableMap<String, Any>) else mutableMapOf()
+                
+                val docRefExcluir = DB.collection(collectExclusao)
+
+                for (ex in exclusoes) {
+                    val id = ex.first
+                    docRefOrdenar.document(id).delete().get()
+                    indexOrdenar.remove(id)
+
+                    val data = mutableMapOf<String, Any>()
+                    data["sincronizacao"] = LocalDateTime.now().format(formaterDataHora)
+                    docRefExcluir.document(id).set(data).get()
+                }
+                
+                docRefOrdenar.document("_INDEX").set(indexOrdenar).get()
+                mLOG.info("Enviadas ${exclusoes.size} exclusões de Mangas.")
+                processados += "Enviado ${exclusoes.size} registro(s) de exclusões. "
+                notificacao += "Enviado ${exclusoes.size} registro(s) de exclusões.\n"
+            }
+            processadoExclusao = true
+        } catch (e: Exception) {
+            mLOG.error("Erro ao enviar exclusões de Mangas da cloud. ${e.message}", e)
         }
 
         var processadoComic = false
@@ -244,45 +285,47 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
         if (notificacao.isNotEmpty())
             Platform.runLater { Notificacoes.notificacao(Notificacao.SUCESSO, "Recebimento da cloud com sucesso", notificacao.substringBeforeLast("\n")) }
 
-        return processadoManga && processadoComic
+        return processadoManga || processadoComic || processadoExclusao
     }
     
     private fun receber(): Boolean {
         var notificacao = ""
 
         val atualizacao = sincronizacao!!.envio.minusSeconds(2)
-        var processadoManga = false
+        var processadoManga : Boolean
         try {
             mLOG.info("Recebendo dados de Manga da cloud.... ")
             val lista = mutableListOf<com.fenix.ordenararquivos.model.entities.Manga>()
-            val atual = LocalDate.now().format(formaterData)
 
-            val query = DB.collection(collectOrdenar).get()
-            val querySnapshot = query.get()
-            val documents = querySnapshot.documents
-            for (document in documents) {
-                val data = LocalDate.parse(document.id, formaterData)
+            val docRef = DB.collection(collectOrdenar)
+            val docIndex = docRef.document("_INDEX").get().get()
+            val documents = mutableListOf<String>()
 
-                if (sincronizacao!!.recebimento.toLocalDate().isAfter(data) && !atual.equals(document.id, ignoreCase = true))
-                    continue
+            val recebimento = Date.from(sincronizacao!!.recebimento.atZone(ZoneId.systemDefault()).toInstant())
 
-                for (key in document.data.keys) {
-                    val obj = document.data[key] as HashMap<String, *>
-                    val sinc = LocalDateTime.parse(obj["sincronizacao"] as String, formaterDataHora)
-                    if (sinc.isAfter(sincronizacao!!.recebimento)) {
-                        val manga = Manga.toManga(0, obj)
-                        lista.add(manga)
-                        val caminhos = (document.data[key] as HashMap<*, *>)["caminhos"] as List<*>
-                        for (caminho in caminhos)
-                          manga.addCaminhos(com.fenix.ordenararquivos.model.firebase.Caminhos.toCominhos(manga, (caminho as HashMap<String, *>) ))
-                    }
+            if (docIndex.exists()) {
+                docIndex.data?.keys?.forEach {
+                    val data = docIndex.data!![it] as com.google.cloud.Timestamp
+                    if (recebimento.before(data.toDate()))
+                        documents.add(it)
                 }
+            }
+
+            for (id in documents) {
+                val document = docRef.document(id).get().get() ?: continue
+                val data = document.data ?: continue
+                val obj = data as HashMap<String, *>
+                val manga = Manga.toManga(0, obj)
+                lista.add(manga)
+                val caminhos = obj["caminhos"] as? List<*> ?: listOf<Any>()
+                for (caminho in caminhos)
+                    manga.addCaminhos(com.fenix.ordenararquivos.model.firebase.Caminhos.toCominhos(manga, (caminho as HashMap<String, *>) ))
             }
 
             mLOG.info("Processando retorno dados de Manga da cloud: " + lista.size + " registros.")
             registros = lista.size
             for (sinc in lista) {
-                var manga: com.fenix.ordenararquivos.model.entities.Manga? = serviceManga.find(sinc)
+                var manga: com.fenix.ordenararquivos.model.entities.Manga? = serviceManga.find(sinc.nome, sinc.volume)
                 if (manga != null)
                     manga.merge(sinc)
                 else
@@ -291,9 +334,37 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
                 serviceManga.save(manga, false, atualizacao)
             }
 
+            mLOG.info("Recebendo dados de Manga excluídos da cloud.... ")
+            val docExRef = DB.collection(collectExclusao)
+            val snapshots = docExRef.get().get().documents
+            var excluidos = 0
+            val dataEnvioBloqueio = sincronizacao!!.envio.minusMinutes(1)
+            
+            for (doc in snapshots) {
+                val sync = doc.getString("sincronizacao") ?: continue
+                val data = LocalDateTime.parse(sync, formaterDataHora)
+                if (data.isAfter(sincronizacao!!.recebimento)) {
+                    val arquivo = doc.id
+                    val nome = arquivo.substringBeforeLast("-").trim()
+                    val volume = arquivo.substringAfterLast("-").trim()
+                    val manga = serviceManga.find(nome, volume)
+                    if (manga != null) {
+                        serviceManga.insereExclusao(arquivo, dataEnvioBloqueio)
+                        serviceManga.deleteManga(manga)
+                        excluidos++
+                    }
+                }
+            }
+
             if (registros > 0) {
                 processados += "Recebido $registros registro(s) de Manga. "
                 notificacao += "Recebido $registros registro(s) de Manga.\n"
+            }
+
+            if (excluidos > 0) {
+                processados += "Excluído $excluidos registro(s) de Manga. "
+                notificacao += "Excluído $excluidos registro(s) de Manga.\n"
+                mLOG.info("Foram processadas $excluidos exclusões de Mangas vindas da cloud.")
             }
 
             processadoManga = true
@@ -303,7 +374,7 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
             throw e
         }
 
-        var processadoComic = false
+        var processadoComic : Boolean
         try {
             mLOG.info("Recebendo dados do ComicInfo da cloud.... ")
             val lista = mutableListOf<com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo>()
@@ -444,7 +515,7 @@ class SincronizacaoServices(private val controller: AbaArquivoController) : Time
         }
     }
 
-    private fun removeValoresNull(userObject: ComicInfo): Map<String, Any> {
+    private fun removeValoresNull(userObject: Any): Map<String, Any> {
         val gson = GsonBuilder().create()
         val map: Map<String, Any> = Gson().fromJson(gson.toJson(userObject), object : TypeToken<HashMap<String?, Any?>?>() {}.type)
         return map
