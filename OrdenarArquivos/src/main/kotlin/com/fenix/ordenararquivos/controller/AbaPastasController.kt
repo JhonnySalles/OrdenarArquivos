@@ -10,7 +10,6 @@ import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.model.enums.Selecionado
-import com.fenix.ordenararquivos.model.enums.TipoCapa
 import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.process.Winrar

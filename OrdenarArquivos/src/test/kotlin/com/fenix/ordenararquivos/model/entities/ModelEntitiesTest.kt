@@ -3,7 +3,8 @@ package com.fenix.ordenararquivos.model.entities
 import com.fenix.ordenararquivos.model.entities.capitulos.Capitulo
 import com.fenix.ordenararquivos.model.entities.capitulos.Volume
 import com.fenix.ordenararquivos.model.entities.comet.CoMet
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.time.LocalDateTime

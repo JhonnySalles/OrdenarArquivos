@@ -2,7 +2,6 @@ package com.fenix.ordenararquivos.util
 
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import java.util.*
 
 class UtilsTest {
 

@@ -1,23 +1,22 @@
 package com.fenix.ordenararquivos.components
 
-import javafx.beans.property.SimpleBooleanProperty
-import javafx.scene.control.TableCell
-import javafx.util.Callback
-import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Tag
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.ExtendWith
-import org.testfx.api.FxRobot
-import org.testfx.framework.junit5.ApplicationExtension
-import org.testfx.util.WaitForAsyncUtils
 import com.jfoenix.controls.JFXCheckBox
-import javafx.beans.value.ObservableValue
+import javafx.beans.property.SimpleBooleanProperty
 import javafx.scene.Scene
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.layout.VBox
 import javafx.stage.Stage
+import javafx.util.Callback
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.testfx.api.FxRobot
+import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
+import org.testfx.util.WaitForAsyncUtils
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)

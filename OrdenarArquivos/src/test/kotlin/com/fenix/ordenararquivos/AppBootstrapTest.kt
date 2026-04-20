@@ -1,12 +1,15 @@
 package com.fenix.ordenararquivos
 
 import com.fenix.ordenararquivos.process.CopiarOpfEpub
-import org.junit.jupiter.api.*
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.mockito.MockedStatic
-import org.mockito.Mockito.*
-import org.mockito.kotlin.any
+import org.mockito.Mockito.atLeastOnce
+import org.mockito.Mockito.mockStatic
 import java.io.File
 import java.nio.file.Path
 

@@ -1,8 +1,10 @@
 package com.fenix.ordenararquivos.service
 
 import com.fenix.ordenararquivos.process.Ocr
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Path

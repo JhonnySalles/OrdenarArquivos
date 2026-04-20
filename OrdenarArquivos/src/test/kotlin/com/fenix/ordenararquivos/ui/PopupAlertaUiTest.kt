@@ -3,7 +3,6 @@ package com.fenix.ordenararquivos.ui
 import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.controller.PopupAlertaController
 import com.fenix.ordenararquivos.database.DataBase
-import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXTextArea
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
@@ -11,8 +10,11 @@ import javafx.scene.control.Label
 import javafx.scene.image.ImageView
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension

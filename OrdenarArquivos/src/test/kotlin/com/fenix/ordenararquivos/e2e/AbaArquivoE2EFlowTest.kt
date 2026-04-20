@@ -3,18 +3,13 @@ package com.fenix.ordenararquivos.e2e
 import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.controller.AbaArquivoController
 import com.fenix.ordenararquivos.controller.TelaInicialController
-import com.fenix.ordenararquivos.model.entities.Manga
+import com.fenix.ordenararquivos.process.Ocr
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.SincronizacaoServices
 import com.fenix.ordenararquivos.service.WinrarServices
-import com.fenix.ordenararquivos.service.OcrServices
 import com.jfoenix.controls.*
-import com.fenix.ordenararquivos.process.Ocr
-import java.io.File
-import java.nio.file.Path
-import java.util.concurrent.TimeUnit
-import javafx.collections.ObservableList
+import javafx.application.Platform
 import javafx.fxml.FXMLLoader
 import javafx.scene.Node
 import javafx.scene.Scene
@@ -24,9 +19,8 @@ import javafx.scene.input.KeyCode
 import javafx.scene.input.MouseButton
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
-import javafx.application.Platform
 import org.junit.jupiter.api.*
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
 import org.mockito.Mockito
@@ -35,6 +29,9 @@ import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
+import java.io.File
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 
 @Tag("E2E")
 @ExtendWith(ApplicationExtension::class)

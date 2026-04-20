@@ -2,7 +2,7 @@ package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.BaseJfxTest
 import org.jsoup.Jsoup
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.File
 

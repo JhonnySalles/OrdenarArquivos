@@ -6,11 +6,7 @@ import com.fenix.ordenararquivos.model.entities.Manga
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.MockedStatic
-import org.mockito.Mockito.mockStatic
-import org.mockito.kotlin.*
 import java.time.LocalDateTime
-import java.time.temporal.ChronoUnit
 
 class MangaServicesTest : BaseTest() {
 

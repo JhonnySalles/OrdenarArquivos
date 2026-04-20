@@ -5,7 +5,7 @@ import com.fenix.ordenararquivos.model.enums.Linguagem
 import javafx.application.Platform
 import javafx.fxml.FXMLLoader
 import org.jsoup.Jsoup
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.util.concurrent.CountDownLatch

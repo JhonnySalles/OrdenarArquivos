@@ -4,9 +4,8 @@ import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.controller.PopupCapitulos
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.jfoenix.controls.JFXButton
-import com.jfoenix.controls.JFXTextField
 import com.jfoenix.controls.JFXTabPane
-import java.io.File
+import com.jfoenix.controls.JFXTextField
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
 import javafx.scene.control.TableView
@@ -22,11 +21,14 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.MockedStatic
 import org.mockito.Mockito
-import org.mockito.kotlin.*
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.whenever
 import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 @Tag("UI")

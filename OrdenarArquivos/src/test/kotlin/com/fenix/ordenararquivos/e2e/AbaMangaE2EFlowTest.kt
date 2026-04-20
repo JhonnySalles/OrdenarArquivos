@@ -4,22 +4,19 @@ import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.controller.AbaMangaController
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.model.entities.Manga
-import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.ComicInfoServices
+import com.fenix.ordenararquivos.service.MangaServices
 import com.jfoenix.controls.JFXTextField
-import com.jfoenix.controls.JFXTabPane
-import java.util.concurrent.TimeUnit
+import javafx.application.Platform
 import javafx.fxml.FXMLLoader
-import javafx.scene.Scene
 import javafx.scene.Node
+import javafx.scene.Scene
 import javafx.scene.control.Tab
 import javafx.scene.control.TableView
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
-import javafx.application.Platform
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
 import org.mockito.kotlin.*
@@ -27,6 +24,7 @@ import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
+import java.util.concurrent.TimeUnit
 
 @Tag("E2E")
 @ExtendWith(ApplicationExtension::class)

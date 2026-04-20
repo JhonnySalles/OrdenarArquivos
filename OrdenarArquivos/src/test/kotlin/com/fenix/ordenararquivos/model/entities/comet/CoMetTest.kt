@@ -1,8 +1,8 @@
 package com.fenix.ordenararquivos.model.entities.comet
 
+import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Manga
-import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 

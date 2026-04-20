@@ -1,8 +1,10 @@
 package com.fenix.ordenararquivos
 
-import org.junit.jupiter.api.extension.*
+import org.junit.jupiter.api.extension.AfterAllCallback
+import org.junit.jupiter.api.extension.BeforeTestExecutionCallback
+import org.junit.jupiter.api.extension.ExtensionContext
+import org.junit.jupiter.api.extension.TestWatcher
 import java.util.*
-import java.util.Optional
 
 private data class TestResult(val name: String, val status: String, val color: String)
 

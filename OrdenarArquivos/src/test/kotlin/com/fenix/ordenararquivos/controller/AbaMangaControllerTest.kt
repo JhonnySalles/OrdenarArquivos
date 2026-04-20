@@ -2,18 +2,16 @@ package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.BaseJfxTest
 import com.fenix.ordenararquivos.model.entities.Manga
-import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.ComicInfoServices
+import com.fenix.ordenararquivos.service.MangaServices
 import com.jfoenix.controls.JFXTextField
-import javafx.collections.FXCollections
 import javafx.scene.control.TableView
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
 import java.lang.reflect.Field
-import java.lang.reflect.Method
-import java.time.LocalDateTime
 
 class AbaMangaControllerUnitTest : BaseJfxTest() {
 

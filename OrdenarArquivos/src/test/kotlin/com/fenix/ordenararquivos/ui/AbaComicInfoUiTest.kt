@@ -6,7 +6,6 @@ import com.fenix.ordenararquivos.controller.PopupAmazon
 import com.fenix.ordenararquivos.controller.PopupCapitulos
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.model.entities.Processar
-import com.fenix.ordenararquivos.model.entities.comicinfo.Pages
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.notification.Notificacoes
@@ -17,20 +16,10 @@ import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXComboBox
 import com.jfoenix.controls.JFXTabPane
 import com.jfoenix.controls.JFXTextField
-import java.io.File
-import java.nio.file.Path
-import java.sql.DriverManager
-import java.util.concurrent.TimeUnit
-import javafx.application.Platform
 import javafx.fxml.FXMLLoader
-import javafx.scene.Node
 import javafx.scene.Parent
 import javafx.scene.Scene
-import javafx.scene.control.Tab
-import javafx.scene.control.TableCell
-import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
-import javafx.scene.control.TextArea
 import javafx.scene.input.KeyCode
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.StackPane
@@ -41,12 +30,17 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
 import org.mockito.MockedStatic
 import org.mockito.Mockito
-import org.mockito.kotlin.*
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
-import javafx.scene.input.KeyEvent
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
+import java.io.File
+import java.nio.file.Path
+import java.sql.DriverManager
+import java.util.concurrent.TimeUnit
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)

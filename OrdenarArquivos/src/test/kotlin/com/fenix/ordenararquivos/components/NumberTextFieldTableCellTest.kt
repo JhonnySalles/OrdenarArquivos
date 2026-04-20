@@ -2,7 +2,8 @@ package com.fenix.ordenararquivos.components
 
 import javafx.scene.control.TextField
 import javafx.scene.control.TextFormatter
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith

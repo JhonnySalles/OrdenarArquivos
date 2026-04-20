@@ -15,14 +15,12 @@ import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.SincronizacaoServices
 import com.jfoenix.controls.*
-import javafx.application.Platform
 import javafx.fxml.FXMLLoader
 import javafx.scene.Node
 import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.scene.control.Label
 import javafx.scene.control.ProgressBar
-import javafx.scene.control.TabPane
 import javafx.scene.control.TableView
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
@@ -32,21 +30,17 @@ import javafx.stage.Stage
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.MethodOrderer
-import org.junit.jupiter.api.Order
-import org.junit.jupiter.api.TestMethodOrder
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
 import org.mockito.kotlin.*
 import org.testfx.api.FxRobot
-import org.testfx.api.FxAssert
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
 import java.io.File
+import java.nio.file.Files
 import java.sql.DriverManager
 import java.util.concurrent.TimeUnit
-import java.nio.file.Files
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)

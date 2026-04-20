@@ -10,12 +10,12 @@ import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXComboBox
 import com.jfoenix.controls.JFXTextArea
 import com.jfoenix.controls.JFXTextField
-import java.lang.reflect.Field
 import javafx.scene.control.TableView
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
+import java.lang.reflect.Field
 
 class PopupComicInfoControllerUnitTest : BaseJfxTest() {
 

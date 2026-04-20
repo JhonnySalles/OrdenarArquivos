@@ -1,7 +1,6 @@
 package com.fenix.ordenararquivos.service
 
 import com.fenix.ordenararquivos.util.Utils
-import java.io.File
 
 class PastaParsingService {
 

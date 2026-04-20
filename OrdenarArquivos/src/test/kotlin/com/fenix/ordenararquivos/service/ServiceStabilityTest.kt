@@ -1,12 +1,11 @@
 package com.fenix.ordenararquivos.service
 
 import com.fenix.ordenararquivos.BaseTest
-import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.Caminhos
+import com.fenix.ordenararquivos.model.entities.Manga
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.time.LocalDateTime
 
 class ServiceStabilityTest : BaseTest() {
 

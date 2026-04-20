@@ -3,13 +3,14 @@ package com.fenix.ordenararquivos.animation
 import javafx.animation.Animation
 import javafx.scene.image.Image
 import javafx.scene.image.ImageView
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.testfx.framework.junit5.ApplicationExtension
-import org.testfx.api.FxRobot
 import org.mockito.Mockito.mock
+import org.testfx.api.FxRobot
+import org.testfx.framework.junit5.ApplicationExtension
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)

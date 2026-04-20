@@ -1,11 +1,11 @@
 package com.fenix.ordenararquivos.process
 
 import com.fenix.ordenararquivos.service.WinrarServices
-import org.junit.jupiter.api.*
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
-import java.io.IOException
 import java.nio.file.Path
 
 class WinrarRobustnessTest {

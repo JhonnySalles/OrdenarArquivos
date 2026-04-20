@@ -1,6 +1,5 @@
 package com.fenix.ordenararquivos.controller
 
-import com.fenix.ordenararquivos.model.entities.Pasta
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.WinrarServices

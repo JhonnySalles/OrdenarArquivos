@@ -1,9 +1,11 @@
 package com.fenix.ordenararquivos.database
 
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
-import java.sql.*
+import java.sql.ResultSet
+import java.sql.SQLException
+import java.sql.Statement
 
 class DatabaseResourceTest {
     

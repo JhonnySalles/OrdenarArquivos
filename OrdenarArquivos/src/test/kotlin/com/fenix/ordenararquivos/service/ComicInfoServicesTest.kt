@@ -4,20 +4,16 @@ import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.mock.comicinfo.MockComicInfo
 import com.fenix.ordenararquivos.mock.comicinfo.MockMal
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
 import com.fenix.ordenararquivos.model.enums.Linguagem
-import dev.katsute.mal4j.MyAnimeList
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.MockedStatic
 import org.mockito.Mockito.*
 import org.mockito.junit.jupiter.MockitoExtension
 import org.slf4j.LoggerFactory
 import java.net.http.HttpClient
 import java.net.http.HttpResponse
 import java.time.LocalDateTime
-import java.util.*
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 @ExtendWith(MockitoExtension::class)
