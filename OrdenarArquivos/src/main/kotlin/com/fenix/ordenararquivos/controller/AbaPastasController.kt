@@ -307,29 +307,35 @@ class AbaPastasController : Initializable {
     @FXML
     private fun onBtnCompactar() {
         if (btnCompactar.accessibleTextProperty().value.equals("COMPACTAR", ignoreCase = true)) {
-            val pastaTexto = txtPasta.text
-            if (pastaTexto.isNullOrEmpty()) {
-                AlertasPopup.alertaModal("Alerta", "Não informado a pasta para processamento.")
-                return
-            }
-
             val listaSelecionada = mObsListaProcessar.filter { it.isSelecionado }
             if (listaSelecionada.isEmpty()) {
                 AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado para compactar.")
                 return
             }
 
+            val pastaTexto = txtPasta.text
+            if (pastaTexto.isNullOrEmpty()) {
+                txtPasta.unFocusColor = Color.RED
+                AlertasPopup.alertaModal("Alerta", "Não informado a pasta para processamento.")
+                return
+            }
+
+            val mangaProcessar = cbManga.value
+            if (mangaProcessar.isNullOrEmpty()) {
+                cbManga.unFocusColor = Color.RED
+                AlertasPopup.alertaModal("Alerta", "Não informado o nome do manga.")
+                return
+            }
+
             btnCompactar.accessibleTextProperty().set("CANCELA")
             btnCompactar.text = "Cancelar"
             controllerPai.setCursor(Cursor.WAIT)
-            mCANCELAR = false
-
-            val mangaValor = cbManga.value ?: cbManga.editor.text ?: "Manga"
             desabilita()
 
             val task = object : Task<Void>() {
                 override fun call(): Void? {
                     try {
+                        mCANCELAR = false
                         val volumes = listaSelecionada.groupBy { it.volume }.toSortedMap()
                         val volumeFormat = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
                         val capituloFormat = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
@@ -347,7 +353,7 @@ class AbaPastasController : Initializable {
                             val comicMap = mutableMapOf<String, File>()
                             val caminhos = mutableListOf<Caminhos>()
                             val manga = Manga()
-                            manga.nome = mangaValor
+                            manga.nome = mangaProcessar
                             manga.volume = volumeFormat.format(vol)
 
                             val itensOrdenados = itens.sortedWith(compareBy({ !it.isCapa }, { it.capitulo }))
@@ -374,7 +380,7 @@ class AbaPastasController : Initializable {
                             val volume = volumeFormat.format(vol)
                             val tudo = if (comicMap.contains("000")) { comicMap["000"]?.listFiles()?.any { it.name.contains("tudo", true) } == true } else false
                             val semCapa = if (!tudo) " (Sem capa)" else ""
-                            val nome = "$mangaValor - Volume $volume$semCapa.rar"
+                            val nome = "$mangaProcessar - Volume $volume$semCapa.rar"
                             val arquivoZip = File(destino, nome)
 
                             val callback = Callback<Triple<Long, Long, String>, Boolean> { param ->
@@ -397,7 +403,7 @@ class AbaPastasController : Initializable {
 
                             val generatedXml = File(destino, "ComicInfo.xml")
                             if (generatedXml.exists()) {
-                                val newXmlName = "$mangaValor - Volume $volume - comicinfo.xml"
+                                val newXmlName = "$mangaProcessar - Volume $volume - comicinfo.xml"
                                 generatedXml.renameTo(File(destino, newXmlName))
                             }
                         }
@@ -640,13 +646,6 @@ class AbaPastasController : Initializable {
         if (pastaTexto.isNullOrEmpty()) {
             txtPasta.unFocusColor = Color.RED
             AlertasPopup.alertaModal("Alerta", "Não informado a pasta para processamento.")
-            return
-        }
-
-        val mangaValor = cbManga.value
-        if (mangaValor.isNullOrEmpty()) {
-            cbManga.unFocusColor = Color.RED
-            AlertasPopup.alertaModal("Alerta", "Não informado o nome do manga.")
             return
         }
 
