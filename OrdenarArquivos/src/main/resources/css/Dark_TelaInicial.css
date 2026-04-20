@@ -250,6 +250,10 @@
     -fx-background-color: transparent;
 }
 
+.table-view .check-box-table-cell {
+    -jfx-check-box: #60a917;
+}
+
 /*---------- List View ----------*/
 
 .list-view .list-cell {
@@ -290,13 +294,13 @@
 }
 
 .list-view .list-cell:capaSelected {
--fx-background-color: #00cc00;
--fx-text-fill: white;
+    -fx-background-color: #00cc00;
+    -fx-text-fill: white;
 }
 
 .list-view .list-cell:capaSelected:odd {
--fx-background-color: #008000;
--fx-text-fill: white;
+    -fx-background-color: #008000;
+    -fx-text-fill: white;
 }
 
 .list-view .list-cell:capaCompletaSelected {

@@ -77,7 +77,7 @@ class MangaServices {
     }
 
     @Throws(SQLException::class)
-    fun findAll(nome: String, limit: Int = 1000, offset: Int = 0): List<Manga> {
+    fun findAll(nome: String, limit: Int = 1000, offset: Int = 0, isCaminho: Boolean = false): List<Manga> {
         var st: PreparedStatement? = null
         var rs: ResultSet? = null
         return try {
@@ -93,6 +93,8 @@ class MangaServices {
                     rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
                 )
                 manga.comic = rs.getString("comic") ?: ""
+                if (isCaminho)
+                    manga.caminhos = select(manga)
                 mangas.add(manga)
             }
             mangas

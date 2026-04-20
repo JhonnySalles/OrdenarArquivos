@@ -13,7 +13,7 @@ class PastaParsingService {
         val isCapa: Boolean = false
     )
 
-    private val regexCapitulo = "(?i)(capitulo|capítulo|chapter|chap| ch\\.?| cap\\.?| c\\.?)([ \\d.]+)".toRegex()
+    private val regexCapitulo = "(?i)(\\bcapitulo|\\bcapítulo|\\bchapter|\\bchap|\\bch\\.?|\\bcap\\.?|\\bc\\.?)\\s*([\\d.]+)".toRegex()
     private val regexVolume = "(?i)(volume|vol\\.?| v\\.?)([ \\d.]+)".toRegex()
     private val apenasNumeros = "^[\\d.]+".toRegex()
 

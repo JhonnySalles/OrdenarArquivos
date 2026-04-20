@@ -11,7 +11,8 @@ data class Pasta(
     var capitulos: String = "",
     var scan: String = "",
     var titulo: String = "",
-    var isCapa : Boolean = false
+    var isCapa : Boolean = false,
+    var isSelecionado: Boolean = false
 ) {
 
     override fun toString(): String {
