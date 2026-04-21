@@ -256,6 +256,7 @@ class AbaPastasController : Initializable {
             lista.add(item)
         }
         mObsListaProcessar = FXCollections.observableArrayList(lista)
+        mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
         tbViewProcessar.items = mObsListaProcessar
         tbViewProcessar.refresh()
     }
@@ -612,6 +613,7 @@ class AbaPastasController : Initializable {
 
                         Platform.runLater {
                             mObsListaProcessar = FXCollections.observableArrayList(lista)
+                            mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
                             tbViewProcessar.items = mObsListaProcessar
                             ckbSelecionarTodos.isSelected = true
                         }
@@ -711,6 +713,7 @@ class AbaPastasController : Initializable {
         val letras = Utils.NOT_NUMBER_PATTERN.toRegex()
         for (item in mObsListaProcessar)
             item.volume = if (item.capitulo > 0) volumes[formater.format(item.capitulo)]?.replace(letras,"")?.toFloatOrNull() ?: 0f else 0f
+        mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
         tbViewProcessar.refresh()
     }
 
@@ -844,6 +847,8 @@ class AbaPastasController : Initializable {
                                 item.volume = volumesMap[capStr]!!
                         }
                     }
+
+                    mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
                 }
                 tbViewProcessar.refresh()
             }
