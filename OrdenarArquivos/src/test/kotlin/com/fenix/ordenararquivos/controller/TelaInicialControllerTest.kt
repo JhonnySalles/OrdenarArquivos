@@ -15,6 +15,8 @@ import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
 import javafx.stage.Stage
 import org.junit.jupiter.api.*
+import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.TestInstance.Lifecycle
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.extension.ExtendWith
@@ -34,6 +36,7 @@ import kotlin.system.exitProcess
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
+@TestInstance(Lifecycle.PER_CLASS)
 class TelaInicialControllerTest {
 
     private val mLOG = LoggerFactory.getLogger(TelaInicialControllerTest::class.java)

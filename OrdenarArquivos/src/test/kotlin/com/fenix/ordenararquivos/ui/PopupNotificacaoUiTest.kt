@@ -18,7 +18,6 @@ import org.testfx.util.WaitForAsyncUtils
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
-@Disabled("Broken in current baseline")
 class PopupNotificacaoUiTest : BaseTest() {
 
     private lateinit var controller: PopupNotificacaoController
@@ -51,6 +50,7 @@ class PopupNotificacaoUiTest : BaseTest() {
         assertEquals(350.0, root.prefWidth)
         assertEquals(45.0, root.prefHeight)
         assertEquals(60.0, controller.wheight)
+        assertEquals(smallText, controller.texto)
     }
 
     @Test

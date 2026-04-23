@@ -29,27 +29,6 @@ class PopupAlertaUiTest : BaseTest() {
 
     private lateinit var controller: PopupAlertaController
 
-    companion object {
-        private var staticKeepAlive: java.sql.Connection? = null
-
-        @BeforeAll
-        @JvmStatic
-        fun globalSetUp() {
-            DataBase.isTeste = true
-            DataBase.closeConnection()
-            staticKeepAlive = DriverManager.getConnection("jdbc:sqlite:file:testdb_alerta?mode=memory&cache=shared")
-            DataBase.instancia
-        }
-
-        @AfterAll
-        @JvmStatic
-        fun globalTearDown() {
-            staticKeepAlive?.close()
-            staticKeepAlive = null
-            DataBase.isTeste = false
-        }
-    }
-
     @Start
     fun start(stage: Stage) {
         val loader = FXMLLoader(PopupAlertaController.fxmlLocate)
@@ -134,7 +113,9 @@ class PopupAlertaUiTest : BaseTest() {
             controller.setEventosBotoes { clicked = true }
         }
         
-        robot.clickOn("#btnOk")
+        robot.interact {
+            robot.lookup("#btnOk").queryAs(javafx.scene.control.Button::class.java).fire()
+        }
         WaitForAsyncUtils.waitForFxEvents()
         assertTrue(clicked)
     }

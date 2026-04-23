@@ -3,12 +3,16 @@ package com.fenix.ordenararquivos.e2e
 import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.controller.AbaArquivoController
 import com.fenix.ordenararquivos.controller.TelaInicialController
+import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.process.Ocr
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.SincronizacaoServices
 import com.fenix.ordenararquivos.service.WinrarServices
 import com.jfoenix.controls.*
+import java.io.File
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import javafx.application.Platform
 import javafx.fxml.FXMLLoader
 import javafx.scene.Node
@@ -29,9 +33,6 @@ import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
-import java.io.File
-import java.nio.file.Path
-import java.util.concurrent.TimeUnit
 
 @Tag("E2E")
 @ExtendWith(ApplicationExtension::class)
@@ -79,9 +80,9 @@ class AbaArquivoE2EFlowTest : BaseTest() {
         val tab = tabField.get(mainController) as Tab
         Platform.runLater { mainTabPane.selectionModel.select(tab) }
         WaitForAsyncUtils.waitForFxEvents()
-        
+
         tabContent = tab.content
-        
+
         // Inicializar o sistema de notificações
         com.fenix.ordenararquivos.notification.Notificacoes.rootAnchorPane = root
     }
@@ -106,10 +107,11 @@ class AbaArquivoE2EFlowTest : BaseTest() {
     @BeforeEach
     fun setUp() {
         Ocr.isTeste = true
-        Ocr.testSuggestion = "001-5|Anotação 01\n002-10|Capítulo de teste\n003-15|Outro de teste\nExtra 01-20|Extra 01"
-        
+        Ocr.testSuggestion =
+                "001-5|Anotação 01\n002-10|Capítulo de teste\n003-15|Outro de teste\nExtra 01-20|Extra 01"
+
         Mockito.reset(mockMangaService, mockComicInfoService, mockSincronizacao, mockWinrar)
-        whenever(mockMangaService.find(any(), any())).thenReturn(null)
+        whenever(mockMangaService.find(any<Manga>(), any())).thenReturn(null)
         whenever(mockComicInfoService.find(any(), anyOrNull())).thenReturn(null)
     }
 
@@ -132,59 +134,109 @@ class AbaArquivoE2EFlowTest : BaseTest() {
         robot.clickOn(robot.from(tabContent).lookup("#txtPastaOrigem").query<Node>())
         robot.write(sourceDir.absolutePath)
         robot.type(KeyCode.ENTER)
-        
+
         robot.clickOn(robot.from(tabContent).lookup("#txtPastaDestino").query<Node>())
         robot.write(destDir.absolutePath)
         robot.type(KeyCode.ENTER)
 
         // Aguardar o carregamento da lista de imagens
-        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { 
-            val listView = robot.from(tabContent).lookup("#lsVwImagens").queryAs(com.jfoenix.controls.JFXListView::class.java)
-            listView.items != null && listView.items.size >= 2 
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
+            val listView =
+                    robot.from(tabContent)
+                            .lookup("#lsVwImagens")
+                            .queryAs(com.jfoenix.controls.JFXListView::class.java)
+            listView.items != null && listView.items.size >= 2
         }
 
         // 3. Preencher dados do mangá
-        robot.interact { 
-            stage.requestFocus() 
-            robot.from(tabContent).lookup("#cbLinguagem").queryAs(com.jfoenix.controls.JFXComboBox::class.java).value = 
-                    com.fenix.ordenararquivos.model.enums.Linguagem.JAPANESE
-            robot.from(tabContent).lookup("#txtNomePastaManga").queryAs(com.jfoenix.controls.JFXTextField::class.java).text = "[JPN] One Piece -"
-            robot.from(tabContent).lookup("#txtVolume").queryAs(com.jfoenix.controls.JFXTextField::class.java).text = "01"
+        robot.interact {
+            stage.requestFocus()
+            robot.from(tabContent)
+                    .lookup("#cbLinguagem")
+                    .queryAs(com.jfoenix.controls.JFXComboBox::class.java)
+                    .value = com.fenix.ordenararquivos.model.enums.Linguagem.JAPANESE
+            robot.from(tabContent)
+                    .lookup("#txtNomePastaManga")
+                    .queryAs(com.jfoenix.controls.JFXTextField::class.java)
+                    .text = "[JPN] One Piece -"
+            robot.from(tabContent)
+                    .lookup("#txtVolume")
+                    .queryAs(com.jfoenix.controls.JFXTextField::class.java)
+                    .text = "01"
         }
 
         // 4. Fluxo de Arquivos - Escopo
-        val tabArquivos = arquivoController.javaClass.getDeclaredField("tbTabArquivo_Arquivos").apply { isAccessible = true }.get(arquivoController) as Tab
+        val tabArquivos =
+                arquivoController
+                        .javaClass
+                        .getDeclaredField("tbTabArquivo_Arquivos")
+                        .apply { isAccessible = true }
+                        .get(arquivoController) as
+                        Tab
         val contentArquivos = tabArquivos.content
 
-        val lsVwImagensScoped = robot.from(contentArquivos).lookup("#lsVwImagens").queryAs(com.jfoenix.controls.JFXListView::class.java)
-        val txtAreaImportar = robot.from(contentArquivos).lookup("#txtAreaImportar").queryAs(com.jfoenix.controls.JFXTextArea::class.java)
-        val tbViewTabela = robot.from(contentArquivos).lookup("#tbViewTabela").queryAs(TableView::class.java)
-        val btnImportar = robot.from(contentArquivos).lookup("#btnImportar").queryAs(com.jfoenix.controls.JFXButton::class.java)
+        val lsVwImagensScoped =
+                robot.from(contentArquivos)
+                        .lookup("#lsVwImagens")
+                        .queryAs(com.jfoenix.controls.JFXListView::class.java)
+        val txtAreaImportar =
+                robot.from(contentArquivos)
+                        .lookup("#txtAreaImportar")
+                        .queryAs(com.jfoenix.controls.JFXTextArea::class.java)
+        val tbViewTabela =
+                robot.from(contentArquivos).lookup("#tbViewTabela").queryAs(TableView::class.java)
+        val btnImportar =
+                robot.from(contentArquivos)
+                        .lookup("#btnImportar")
+                        .queryAs(com.jfoenix.controls.JFXButton::class.java)
 
         // Seleção de capa
-        robot.doubleClickOn(robot.from(lsVwImagensScoped).lookup(".list-cell").nth(0).query<Node>(), MouseButton.PRIMARY)
+        robot.doubleClickOn(
+                robot.from(lsVwImagensScoped).lookup(".list-cell").nth(0).query<Node>(),
+                MouseButton.PRIMARY
+        )
 
         // Alt + Clique (Capa completa)
         robot.press(KeyCode.ALT)
-        robot.doubleClickOn(robot.from(lsVwImagensScoped).lookup(".list-cell").nth(6).query<Node>(), MouseButton.PRIMARY)
-        robot.doubleClickOn(robot.from(lsVwImagensScoped).lookup(".list-cell").nth(5).query<Node>(), MouseButton.PRIMARY)
+        robot.doubleClickOn(
+                robot.from(lsVwImagensScoped).lookup(".list-cell").nth(6).query<Node>(),
+                MouseButton.PRIMARY
+        )
+        robot.doubleClickOn(
+                robot.from(lsVwImagensScoped).lookup(".list-cell").nth(5).query<Node>(),
+                MouseButton.PRIMARY
+        )
         robot.release(KeyCode.ALT)
 
         // 5. Geração inicial via Início/Fim
-        robot.clickOn(robot.from(contentArquivos).lookup("#txtGerarInicio").query<Node>(), MouseButton.PRIMARY).write("1")
-        robot.clickOn(robot.from(contentArquivos).lookup("#txtGerarFim").query<Node>(), MouseButton.PRIMARY).write("3")
-        robot.clickOn(robot.from(contentArquivos).lookup("#btnGerar").query<Node>(), MouseButton.PRIMARY)
+        robot.clickOn(
+                        robot.from(contentArquivos).lookup("#txtGerarInicio").query<Node>(),
+                        MouseButton.PRIMARY
+                )
+                .write("1")
+        robot.clickOn(
+                        robot.from(contentArquivos).lookup("#txtGerarFim").query<Node>(),
+                        MouseButton.PRIMARY
+                )
+                .write("3")
+        robot.clickOn(
+                robot.from(contentArquivos).lookup("#btnGerar").query<Node>(),
+                MouseButton.PRIMARY
+        )
 
         // 6. Shift + Clique (Sumário / OCR)
         robot.press(KeyCode.SHIFT)
-        robot.doubleClickOn(robot.from(lsVwImagensScoped).lookup(".list-cell").nth(2).query<Node>(), MouseButton.PRIMARY)
+        robot.doubleClickOn(
+                robot.from(lsVwImagensScoped).lookup(".list-cell").nth(2).query<Node>(),
+                MouseButton.PRIMARY
+        )
         robot.release(KeyCode.SHIFT)
-        
+
         // 7. Aguardar o popup de sugestão
         WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) {
             robot.lookup(".jfx-autocomplete-popup").queryAll<Node>().isNotEmpty()
         }
-        
+
         robot.type(KeyCode.DOWN).type(KeyCode.ENTER)
         WaitForAsyncUtils.waitForFxEvents()
 
@@ -195,7 +247,7 @@ class AbaArquivoE2EFlowTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
         robot.press(KeyCode.CONTROL).type(KeyCode.E).release(KeyCode.CONTROL)
         WaitForAsyncUtils.waitForFxEvents()
-        
+
         robot.interact {
             val lines = txtAreaImportar.text.split("\n").toMutableList()
             if (lines.isNotEmpty()) {
@@ -208,7 +260,7 @@ class AbaArquivoE2EFlowTest : BaseTest() {
 
         // Adicionar Extra 02
         robot.clickOn(txtAreaImportar)
-        robot.interact { 
+        robot.interact {
             txtAreaImportar.text = txtAreaImportar.text + "\nExtra 02-20|Extra 02"
             txtAreaImportar.positionCaret(txtAreaImportar.text.length)
         }
@@ -219,57 +271,114 @@ class AbaArquivoE2EFlowTest : BaseTest() {
         assertTrue(tbViewTabela.items.size >= 5)
 
         // 8. Fluxo Comic Info
-        val tabComicInfo = arquivoController.javaClass.getDeclaredField("tbTabArquivo_ComicInfo").apply { isAccessible = true }.get(arquivoController) as Tab
+        val tabComicInfo =
+                arquivoController
+                        .javaClass
+                        .getDeclaredField("tbTabArquivo_ComicInfo")
+                        .apply { isAccessible = true }
+                        .get(arquivoController) as
+                        Tab
         val contentComicInfo = tabComicInfo.content
-        
+
         robot.interact {
-            robot.from(tabContent).lookup("#tbTabRootArquivo").queryAs(JFXTabPane::class.java).selectionModel.select(tabComicInfo)
+            robot.from(tabContent)
+                    .lookup("#tbTabRootArquivo")
+                    .queryAs(JFXTabPane::class.java)
+                    .selectionModel
+                    .select(tabComicInfo)
         }
         WaitForAsyncUtils.waitForFxEvents()
-        
-        val txtMalNome = robot.from(contentComicInfo).lookup("#txtMalNome").queryAs(JFXTextField::class.java)
-        val btnMalConsultar = robot.from(contentComicInfo).lookup("#btnMalConsultar").queryAs(JFXButton::class.java)
-        val tbViewMal = robot.from(contentComicInfo).lookup("#tbViewMal").queryAs(TableView::class.java)
+
+        val txtMalNome =
+                robot.from(contentComicInfo).lookup("#txtMalNome").queryAs(JFXTextField::class.java)
+        val btnMalConsultar =
+                robot.from(contentComicInfo)
+                        .lookup("#btnMalConsultar")
+                        .queryAs(JFXButton::class.java)
+        val tbViewMal =
+                robot.from(contentComicInfo).lookup("#tbViewMal").queryAs(TableView::class.java)
 
         robot.clickOn(txtMalNome, MouseButton.PRIMARY)
         robot.push(KeyCode.CONTROL, KeyCode.A).push(KeyCode.BACK_SPACE)
         robot.write("One Piece")
-        
+
         val mockMangaMal = mock<dev.katsute.mal4j.manga.Manga>()
-        val fakeMal = com.fenix.ordenararquivos.model.entities.comicinfo.Mal(1L, "One Piece", "Desc", null, null, mockMangaMal)
+        val fakeMal =
+                com.fenix.ordenararquivos.model.entities.comicinfo.Mal(
+                        1L,
+                        "One Piece",
+                        "Desc",
+                        null,
+                        null,
+                        mockMangaMal
+                )
         whenever(mockComicInfoService.getMal(anyOrNull(), anyOrNull())).thenReturn(listOf(fakeMal))
-        whenever(mockComicInfoService.find(any(), anyOrNull())).thenReturn(com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo().apply {
-            comic = "One Piece"
-            idMal = 1L
-        })
+        whenever(mockComicInfoService.find(any(), anyOrNull()))
+                .thenReturn(
+                        com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo().apply {
+                            comic = "One Piece"
+                            idMal = 1L
+                        }
+                )
 
         robot.clickOn(btnMalConsultar, MouseButton.PRIMARY)
         WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) { tbViewMal.items.isNotEmpty() }
-        
-        val btnMalAplicar = robot.from(contentComicInfo).lookup("#btnMalAplicar").queryAs(JFXButton::class.java)
+
+        val btnMalAplicar =
+                robot.from(contentComicInfo).lookup("#btnMalAplicar").queryAs(JFXButton::class.java)
         robot.interact { tbViewMal.selectionModel.select(0) }
         WaitForAsyncUtils.waitForFxEvents()
         robot.clickOn(btnMalAplicar, MouseButton.PRIMARY)
-        
+
         robot.interact {
-            robot.from(contentComicInfo).lookup("#cbAgeRating").queryAs(JFXComboBox::class.java).selectionModel.selectFirst()
-            robot.from(tabContent).lookup("#cbVerificaPaginaDupla").queryAs(JFXCheckBox::class.java).isSelected = true
+            robot.from(contentComicInfo)
+                    .lookup("#cbAgeRating")
+                    .queryAs(JFXComboBox::class.java)
+                    .selectionModel
+                    .selectFirst()
+            robot.from(tabContent)
+                    .lookup("#cbVerificaPaginaDupla")
+                    .queryAs(JFXCheckBox::class.java)
+                    .isSelected = true
         }
 
         // 9. Processamento Final
         robot.interact {
-            robot.from(tabContent).lookup("#tbTabRootArquivo").queryAs(JFXTabPane::class.java).selectionModel.select(0)
+            robot.from(tabContent)
+                    .lookup("#tbTabRootArquivo")
+                    .queryAs(JFXTabPane::class.java)
+                    .selectionModel
+                    .select(0)
         }
         WaitForAsyncUtils.waitForFxEvents()
-        
-        whenever(mockWinrar.compactar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(true)
+
+        whenever(
+                        mockWinrar.compactar(
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any()
+                        )
+                )
+                .thenReturn(true)
         whenever(mockWinrar.insereArquivo(any<File>(), any<File>())).thenReturn(true)
 
         robot.press(KeyCode.CONTROL).type(KeyCode.SPACE).release(KeyCode.CONTROL)
 
         // Aguardar conclusão
-        WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) { 
-            !robot.from(tabContent).lookup("#btnProcessar").queryAs(JFXButton::class.java).text.equals("Cancelar", ignoreCase = true) 
+        WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) {
+            !robot.from(tabContent)
+                    .lookup("#btnProcessar")
+                    .queryAs(JFXButton::class.java)
+                    .text
+                    .equals("Cancelar", ignoreCase = true)
         }
 
         // 10. Segunda execução
@@ -278,14 +387,32 @@ class AbaArquivoE2EFlowTest : BaseTest() {
         robot.push(KeyCode.CONTROL, KeyCode.A).push(KeyCode.BACK_SPACE)
         robot.write(destDir2.absolutePath)
         robot.type(KeyCode.ENTER)
-        
-        robot.clickOn(robot.from(tabContent).lookup("#btnProcessar").query<Node>(), MouseButton.PRIMARY)
-        WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) { 
-            !robot.from(tabContent).lookup("#btnProcessar").queryAs(JFXButton::class.java).text.equals("Cancelar", ignoreCase = true) 
+
+        robot.clickOn(
+                robot.from(tabContent).lookup("#btnProcessar").query<Node>(),
+                MouseButton.PRIMARY
+        )
+        WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) {
+            !robot.from(tabContent)
+                    .lookup("#btnProcessar")
+                    .queryAs(JFXButton::class.java)
+                    .text
+                    .equals("Cancelar", ignoreCase = true)
         }
 
-        verify(mockWinrar, atLeastOnce()).compactar(
-            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyOrNull()
-        )
+        verify(mockWinrar, atLeastOnce())
+                .compactar(
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        anyOrNull()
+                )
     }
 }

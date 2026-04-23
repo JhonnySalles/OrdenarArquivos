@@ -105,7 +105,7 @@ class AbaMangaUiTest : BaseTest() {
         whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
 
         // Mock padrão para carregamento inicial
-        whenever(mockMangaService.findAll(anyOrNull(), any(), any())).thenReturn(mangaList)
+        whenever(mockMangaService.findAll(anyOrNull(), any(), any(), any())).thenReturn(mangaList)
 
         // Força recarregamento e aguarda a conclusão da Task
         robot.interact {
@@ -136,7 +136,7 @@ class AbaMangaUiTest : BaseTest() {
         val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
 
         // Mock para o filtro específico
-        whenever(mockMangaService.findAll(eq("One"), any(), any())).thenReturn(listOf(mangaList[1]))
+        whenever(mockMangaService.findAll(eq("One"), any(), any(), any())).thenReturn(listOf(mangaList[1]))
 
         // Usa interact para definir o texto e disparar o evento de filtro de forma atômica
         robot.interact { 
@@ -154,7 +154,7 @@ class AbaMangaUiTest : BaseTest() {
             tbViewManga.items.size == 1 && tbViewManga.items[0].nome == "One Piece"
         }
 
-        verify(mockMangaService, atLeastOnce()).findAll(eq("One"), any(), any())
+        verify(mockMangaService, atLeastOnce()).findAll(eq("One"), any(), any(), any())
     }
 
     @Test

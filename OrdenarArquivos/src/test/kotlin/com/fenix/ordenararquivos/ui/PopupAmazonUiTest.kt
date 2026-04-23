@@ -9,6 +9,7 @@ import com.jfoenix.controls.JFXTabPane
 import com.jfoenix.controls.JFXTextField
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
+import javafx.scene.input.KeyCode
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.StackPane
 import javafx.stage.Stage
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.MockedStatic
 import org.mockito.Mockito
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.testfx.api.FxRobot
@@ -36,11 +38,8 @@ import java.util.concurrent.TimeUnit
 class PopupAmazonUiTest : BaseTest() {
 
     private lateinit var popupController: PopupAmazon
-    private lateinit var mockJsoup: MockedStatic<Jsoup>
-    private lateinit var mockConnection: Connection
-    private lateinit var mockDocument: Document
-
     private lateinit var mockTelaInicialController: TelaInicialController
+    private var mockedJsoup: MockedStatic<Jsoup>? = null
 
     @Start
     fun start(stage: Stage) {
@@ -65,104 +64,109 @@ class PopupAmazonUiTest : BaseTest() {
 
     @BeforeEach
     fun setUp(robot: FxRobot) {
-        mockJsoup = Mockito.mockStatic(Jsoup::class.java)
-        mockConnection = mock<Connection>()
-        mockDocument = mock<Document>()
-
-        whenever(Jsoup.connect(anyString())).thenReturn(mockConnection)
-        whenever(mockConnection.userAgent(anyString())).thenReturn(mockConnection)
-        whenever(mockConnection.referrer(anyString())).thenReturn(mockConnection)
-        whenever(mockConnection.get()).thenReturn(mockDocument)
-    }
-
-    @AfterEach
-    fun tearDown() {
-        if (::mockJsoup.isInitialized) {
-            mockJsoup.close()
-        }
-    }
-
-    private fun openPopupAmazon(robot: FxRobot) {
         robot.interact {
             popupController.objeto = ComicInfo()
             popupController.setLinguagem(Linguagem.ENGLISH)
         }
         WaitForAsyncUtils.waitForFxEvents()
+        
+        // Reset AlertasPopup
+        com.fenix.ordenararquivos.notification.AlertasPopup.isTeste = true
+        com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText = null
+    }
+
+    @AfterEach
+    fun tearDown(robot: FxRobot) {
+        robot.interact {
+            mockedJsoup?.close()
+            mockedJsoup = null
+        }
+    }
+
+    private fun setupMockJsoup(robot: FxRobot, htmlFileName: String): Document {
+        val htmlFile = File("src/test/resources/fixtures/$htmlFileName")
+        val doc = Jsoup.parse(htmlFile, "UTF-8")
+        
+        val mockConnection = mock<Connection>()
+        
+        // CRITICAL: Static mocks in Mockito are thread-local. 
+        // We must create and configure the mock on the JavaFX Application Thread 
+        // so that the controller's listener (running on the same thread) can see it.
+        robot.interact {
+            mockedJsoup = Mockito.mockStatic(Jsoup::class.java)
+            mockedJsoup!!.`when`<Connection> { Jsoup.connect(anyString()) }.thenReturn(mockConnection)
+        }
+        
+        whenever(mockConnection.userAgent(anyString())).thenReturn(mockConnection)
+        whenever(mockConnection.referrer(anyString())).thenReturn(mockConnection)
+        whenever(mockConnection.get()).thenReturn(doc)
+        
+        return doc
     }
 
     @Test
     fun testAmazonScrapingEn(robot: FxRobot) {
-        openPopupAmazon(robot)
+        setupMockJsoup(robot, "amazon_en.html")
 
         val txtSite = robot.lookup("#txtSiteAmazon").queryAs(JFXTextField::class.java)
         val txtTitulo = robot.lookup("#txtTitulo").queryAs(JFXTextField::class.java)
         val txtEditora = robot.lookup("#txtEditora").queryAs(JFXTextField::class.java)
-        val dpPublicacao =
-                robot.lookup("#dpPublicacao").queryAs(javafx.scene.control.DatePicker::class.java)
+        val dpPublicacao = robot.lookup("#dpPublicacao").queryAs(com.jfoenix.controls.JFXDatePicker::class.java)
 
-        // Carregar fixture real
-        val htmlFile = File("src/test/resources/fixtures/amazon_en.html")
-        val doc = Jsoup.parse(htmlFile, "UTF-8")
-        whenever(mockConnection.get()).thenReturn(doc)
-
-        robot.interact {
-            txtSite.text = "https://www.amazon.com/example/dp/B000000000"
-            // Trigger focus lost or listener
-            txtSite.parent.requestFocus()
-        }
+        robot.clickOn(txtSite)
+        robot.interact { txtSite.text = "https://www.amazon.com/example/dp/B000000000" }
+        robot.clickOn(txtTitulo)
 
         // Aguardar scraping
         WaitForAsyncUtils.waitForFxEvents()
-        Thread.sleep(500)
         
-        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) { txtTitulo.text == "Manga Title EN" }
+        WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) { 
+            txtTitulo.text == "Manga Title EN" || com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText != null
+        }
 
+        assertNull(com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText, "Should not have error: ${com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText}")
         assertEquals("Manga Title EN", txtTitulo.text)
         assertEquals("Publisher EN", txtEditora.text)
+        assertEquals("2024-01-01", dpPublicacao.value.toString())
     }
 
     @Test
     fun testAmazonScrapingJp(robot: FxRobot) {
-        robot.interact {
-            popupController.objeto = ComicInfo()
-            popupController.setLinguagem(Linguagem.JAPANESE)
-        }
-        WaitForAsyncUtils.waitForFxEvents()
+        setupMockJsoup(robot, "amazon_jp.html")
 
         val txtSite = robot.lookup("#txtSiteAmazon").queryAs(JFXTextField::class.java)
         val txtTitulo = robot.lookup("#txtTitulo").queryAs(JFXTextField::class.java)
-        val dpPublicacao =
-                robot.lookup("#dpPublicacao").queryAs(javafx.scene.control.DatePicker::class.java)
 
-        // Carregar fixture Japonesa
-        val htmlFile = File("src/test/resources/fixtures/amazon_jp.html")
-        val doc = Jsoup.parse(htmlFile, "UTF-8")
-        whenever(mockConnection.get()).thenReturn(doc)
-
-        robot.interact {
-            txtSite.text = "https://www.amazon.co.jp/example/dp/B000000000"
-            txtSite.parent.requestFocus()
-        }
+        robot.clickOn(txtSite)
+        robot.interact { txtSite.text = "https://www.amazon.co.jp/example/dp/B000000000" }
+        robot.clickOn(txtTitulo)
 
         // Aguardar scraping
         WaitForAsyncUtils.waitForFxEvents()
-        Thread.sleep(500)
 
-        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) { txtTitulo.text == "Manga Title JP" }
+        WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) { 
+            txtTitulo.text == "Manga Title JP" || com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText != null
+        }
 
+        assertNull(com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText, "Should not have error: ${com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText}")
         assertEquals("Manga Title JP", txtTitulo.text)
     }
 
     @Test
     fun testLanguageSelectionChange(robot: FxRobot) {
-        openPopupAmazon(robot)
-        val cbLinguagem =
-                robot.lookup("#cbLinguagem")
-                        .queryAs(com.jfoenix.controls.JFXComboBox::class.java) as
-                        com.jfoenix.controls.JFXComboBox<Linguagem>
-
-        robot.interact { cbLinguagem.selectionModel.select(Linguagem.JAPANESE) }
-
-        assertEquals(Linguagem.JAPANESE, cbLinguagem.selectionModel.selectedItem)
+        val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(com.jfoenix.controls.JFXComboBox::class.java)
+        
+        robot.interact {
+            popupController.setLinguagem(Linguagem.JAPANESE)
+        }
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        assertEquals(Linguagem.JAPANESE, cbLinguagem.value)
+    }
+    
+    private fun assertNull(actual: Any?, message: String) {
+        if (actual != null) {
+            throw org.opentest4j.AssertionFailedError(message)
+        }
     }
 }

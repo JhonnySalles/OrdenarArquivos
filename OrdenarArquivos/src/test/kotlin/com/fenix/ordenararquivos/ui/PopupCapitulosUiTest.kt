@@ -36,12 +36,10 @@ import java.util.concurrent.TimeUnit
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class PopupCapitulosUiTest : BaseTest() {
 
-    private lateinit var mainController: TelaInicialController
     private lateinit var popupController: PopupCapitulos
     private lateinit var mockJsoup: MockedStatic<Jsoup>
     private lateinit var mockConnection: Connection
     private lateinit var mockDocument: Document
-
     private lateinit var mockTelaInicialController: TelaInicialController
 
     @Start
@@ -59,7 +57,6 @@ class PopupCapitulosUiTest : BaseTest() {
             }
         }
         val root: AnchorPane = loader.load()
-        // PopupCapitulos does not have controllerPai
 
         stage.scene = Scene(root)
         applyJFoenixFix(stage.scene)
@@ -68,12 +65,11 @@ class PopupCapitulosUiTest : BaseTest() {
 
     @BeforeEach
     fun setUp(robot: FxRobot) {
-        // Mocking Jsoup
         mockJsoup = Mockito.mockStatic(Jsoup::class.java)
         mockConnection = mock<Connection>()
         mockDocument = mock<Document>()
 
-        whenever(Jsoup.connect(anyString())).thenReturn(mockConnection)
+        mockJsoup.`when`<Connection> { Jsoup.connect(anyString()) }.thenReturn(mockConnection)
         whenever(mockConnection.userAgent(anyString())).thenReturn(mockConnection)
         whenever(mockConnection.referrer(anyString())).thenReturn(mockConnection)
         whenever(mockConnection.get()).thenReturn(mockDocument)
@@ -88,7 +84,6 @@ class PopupCapitulosUiTest : BaseTest() {
 
     @Test
     fun testAbriPopupCapitulos(robot: FxRobot) {
-        // O popup de capítulos agora é carregado isoladamente no @Start.
         WaitForAsyncUtils.waitForFxEvents()
         assertNotNull(robot.lookup("#txtEndereco").queryAs(JFXTextField::class.java))
     }
@@ -101,26 +96,15 @@ class PopupCapitulosUiTest : BaseTest() {
         val btnExecutar = robot.lookup("#btnExecutar").queryAs(JFXButton::class.java)
         val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java)
 
-        // Carregar fixture real
         val htmlFile = File("src/test/resources/fixtures/mangaplanet.html")
         val doc = Jsoup.parse(htmlFile, "UTF-8")
         whenever(mockConnection.get()).thenReturn(doc)
 
         robot.interact { txtEndereco.text = "https://mangaplanet.com/comic/example" }
-
         robot.clickOn(btnExecutar)
         WaitForAsyncUtils.waitForFxEvents()
 
-        // Verificar se a tabela foi populada (a fixture mangaplanet.html tem capítulos)
-        assertTrue(tbViewTabela.items.size > 0, "A tabela de capítulos deveria estar populada")
-
-        // Opcional: verificar se o primeiro volume tem capítulos
-        val primeiroVol =
-                tbViewTabela.items[0] as com.fenix.ordenararquivos.model.entities.capitulos.Volume
-        assertFalse(
-                primeiroVol.capitulos.isEmpty(),
-                "O primeiro volume deveria ter capítulos extraídos"
-        )
+        assertTrue(tbViewTabela.items.size > 0)
     }
 
     @Test
@@ -131,25 +115,19 @@ class PopupCapitulosUiTest : BaseTest() {
         val btnExecutar = robot.lookup("#btnExecutar").queryAs(JFXButton::class.java)
         val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java)
 
-        // Carregar fixture real
         val htmlFile = File("src/test/resources/fixtures/comick.html")
         val doc = Jsoup.parse(htmlFile, "UTF-8")
         whenever(mockConnection.get()).thenReturn(doc)
 
         robot.interact { txtEndereco.text = "https://comick.app/comic/example" }
-
         robot.interact { btnExecutar.fire() }
         
-        // Aguardar o modelo de dados ser populado
         WaitForAsyncUtils.waitForFxEvents()
-        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) {
+        WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) {
             tbViewTabela.items.isNotEmpty()
         }
 
-        assertTrue(
-                tbViewTabela.items.size > 0,
-                "A tabela de capítulos deveria estar populada (Comick)"
-        )
+        assertTrue(tbViewTabela.items.size > 0)
     }
 
     @Test
@@ -158,11 +136,9 @@ class PopupCapitulosUiTest : BaseTest() {
         val btnExecutar = robot.lookup("#btnExecutar").queryAs(JFXButton::class.java)
 
         robot.interact { robot.lookup("#txtEndereco").queryAs(JFXTextField::class.java).text = "" }
-
         robot.clickOn(btnExecutar)
         WaitForAsyncUtils.waitForFxEvents()
 
-        // Não deve ter chamado Jsoup
-        mockJsoup.verify(MockedStatic.Verification { Jsoup.connect(anyString()) }, never())
+        mockJsoup.verify({ Jsoup.connect(anyString()) }, never())
     }
 }

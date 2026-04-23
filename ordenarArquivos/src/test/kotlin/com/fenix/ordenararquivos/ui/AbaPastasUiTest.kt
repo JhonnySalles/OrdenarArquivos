@@ -5,6 +5,8 @@ import com.fenix.ordenararquivos.controller.AbaPastasController
 import com.fenix.ordenararquivos.controller.PopupAmazon
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.database.DataBase
+import com.fenix.ordenararquivos.model.entities.Caminhos
+import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.Pasta
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
@@ -17,6 +19,10 @@ import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXComboBox
 import com.jfoenix.controls.JFXTabPane
 import com.jfoenix.controls.JFXTextField
+import java.io.File
+import java.nio.file.Path
+import java.sql.DriverManager
+import java.util.concurrent.TimeUnit
 import javafx.fxml.FXMLLoader
 import javafx.scene.Node
 import javafx.scene.Parent
@@ -27,8 +33,6 @@ import javafx.scene.input.KeyCode
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.StackPane
 import javafx.stage.Stage
-import com.fenix.ordenararquivos.model.entities.Manga
-import com.fenix.ordenararquivos.model.entities.Caminhos
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.extension.ExtendWith
@@ -40,10 +44,6 @@ import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
-import java.io.File
-import java.nio.file.Path
-import java.sql.DriverManager
-import java.util.concurrent.TimeUnit
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
@@ -117,7 +117,7 @@ class AbaPastasUiTest : BaseTest() {
 
         rootNode = loader.load<Parent>()
         rootStack = StackPane(rootNode)
-        
+
         val scene = Scene(rootStack, 1024.0, 768.0)
         applyJFoenixFix(scene)
         stage.setScene(scene)
@@ -141,7 +141,8 @@ class AbaPastasUiTest : BaseTest() {
 
         // Injeta o controller pai e mocks de progresso
         pastasController.controllerPai = mockTelaInicialController
-        whenever(mockTelaInicialController.rootProgress).thenReturn(javafx.scene.control.ProgressBar())
+        whenever(mockTelaInicialController.rootProgress)
+                .thenReturn(javafx.scene.control.ProgressBar())
         whenever(mockTelaInicialController.rootMessage).thenReturn(javafx.scene.control.Label())
         whenever(mockTelaInicialController.rootStack).thenReturn(rootStack)
         whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
@@ -157,7 +158,8 @@ class AbaPastasUiTest : BaseTest() {
     @Test
     @Order(2)
     fun testEdicaoColunasGrid(robot: FxRobot) {
-        val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        val tbViewProcessar =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
 
         val pastaTest =
                 Pasta(
@@ -178,12 +180,17 @@ class AbaPastasUiTest : BaseTest() {
         robot.write("Nova Scan")
         robot.interact {
             val column = tbViewProcessar.columns[2] as TableColumn<Pasta, String>
-            val event = TableColumn.CellEditEvent<Pasta, String>(
-                tbViewProcessar,
-                javafx.scene.control.TablePosition<Pasta, String>(tbViewProcessar, 0, column),
-                TableColumn.editCommitEvent<Pasta, String>(),
-                "Nova Scan"
-            )
+            val event =
+                    TableColumn.CellEditEvent<Pasta, String>(
+                            tbViewProcessar,
+                            javafx.scene.control.TablePosition<Pasta, String>(
+                                    tbViewProcessar,
+                                    0,
+                                    column
+                            ),
+                            TableColumn.editCommitEvent<Pasta, String>(),
+                            "Nova Scan"
+                    )
             column.onEditCommit.handle(event)
         }
 
@@ -193,12 +200,17 @@ class AbaPastasUiTest : BaseTest() {
         robot.write("Novo Titulo")
         robot.interact {
             val column = tbViewProcessar.columns[5] as TableColumn<Pasta, String>
-            val event = TableColumn.CellEditEvent<Pasta, String>(
-                tbViewProcessar,
-                javafx.scene.control.TablePosition<Pasta, String>(tbViewProcessar, 0, column),
-                TableColumn.editCommitEvent<Pasta, String>(),
-                "Novo Titulo"
-            )
+            val event =
+                    TableColumn.CellEditEvent<Pasta, String>(
+                            tbViewProcessar,
+                            javafx.scene.control.TablePosition<Pasta, String>(
+                                    tbViewProcessar,
+                                    0,
+                                    column
+                            ),
+                            TableColumn.editCommitEvent<Pasta, String>(),
+                            "Novo Titulo"
+                    )
             column.onEditCommit.handle(event)
         }
 
@@ -208,12 +220,17 @@ class AbaPastasUiTest : BaseTest() {
         robot.write("2")
         robot.interact {
             val column = tbViewProcessar.columns[3] as TableColumn<Pasta, Number>
-            val event = TableColumn.CellEditEvent<Pasta, Number>(
-                tbViewProcessar,
-                javafx.scene.control.TablePosition<Pasta, Number>(tbViewProcessar, 0, column),
-                TableColumn.editCommitEvent<Pasta, Number>(),
-                2.0f
-            )
+            val event =
+                    TableColumn.CellEditEvent<Pasta, Number>(
+                            tbViewProcessar,
+                            javafx.scene.control.TablePosition<Pasta, Number>(
+                                    tbViewProcessar,
+                                    0,
+                                    column
+                            ),
+                            TableColumn.editCommitEvent<Pasta, Number>(),
+                            2.0f
+                    )
             column.onEditCommit.handle(event)
         }
 
@@ -223,12 +240,17 @@ class AbaPastasUiTest : BaseTest() {
         robot.write("5")
         robot.interact {
             val column = tbViewProcessar.columns[4] as TableColumn<Pasta, Number>
-            val event = TableColumn.CellEditEvent<Pasta, Number>(
-                tbViewProcessar,
-                javafx.scene.control.TablePosition<Pasta, Number>(tbViewProcessar, 0, column),
-                TableColumn.editCommitEvent<Pasta, Number>(),
-                5.0f
-            )
+            val event =
+                    TableColumn.CellEditEvent<Pasta, Number>(
+                            tbViewProcessar,
+                            javafx.scene.control.TablePosition<Pasta, Number>(
+                                    tbViewProcessar,
+                                    0,
+                                    column
+                            ),
+                            TableColumn.editCommitEvent<Pasta, Number>(),
+                            5.0f
+                    )
             column.onEditCommit.handle(event)
         }
 
@@ -256,11 +278,13 @@ class AbaPastasUiTest : BaseTest() {
         )
 
         // Validar coluna formatada
-        val formatado = robot.lookup("#tbViewProcessar")
+        val formatado =
+                robot.lookup("#tbViewProcessar")
                         .queryAs(TableView::class.java)
                         .columns
                         .last()
-                        .getCellData(0) as String
+                        .getCellData(0) as
+                        String
         assertTrue(
                 formatado.contains("[Nova Scan]"),
                 "Texto formatado com scan inesperado. Valor atual: ${formatado}"
@@ -295,7 +319,8 @@ class AbaPastasUiTest : BaseTest() {
         robot.clickOn("#btnCarregar")
         WaitForAsyncUtils.waitForFxEvents()
 
-        val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        val tbViewProcessar =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         assertEquals(
                 4,
                 tbViewProcessar.items.size,
@@ -320,7 +345,9 @@ class AbaPastasUiTest : BaseTest() {
         )
 
         // Simular preenchimento do manga
-        robot.clickOn(robot.lookup("#cbManga").queryAs(Node::class.java)).write("Manga Teste").push(KeyCode.ENTER)
+        robot.clickOn(robot.lookup("#cbManga").queryAs(Node::class.java))
+                .write("Manga Teste")
+                .push(KeyCode.ENTER)
 
         // Simular perda de foco para atualizar os nomes
         val tbNode = robot.lookup("#tbViewProcessar").queryAs(Node::class.java)
@@ -340,8 +367,10 @@ class AbaPastasUiTest : BaseTest() {
         robot.clickOn(robot.lookup("#btnAplicar").queryAs(Node::class.java))
 
         // Aguarda processamento Task
-        WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS) {
-            tempDir.toFile().listFiles()?.any { it.name == "[Scan A] Manga Teste - Volume 01 Capítulo 001" } == true
+        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) {
+            tempDir.toFile().listFiles()?.any {
+                it.name == "[Scan A] Manga Teste - Volume 01 Capítulo 001"
+            } == true
         }
         WaitForAsyncUtils.waitForFxEvents()
 
@@ -380,10 +409,10 @@ class AbaPastasUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
 
         robot.clickOn("#cbManga").write("Naruto").push(KeyCode.ENTER)
-        robot.clickOn("#txtTitle") 
-        
+        robot.clickOn("#txtTitle")
+
         WaitForAsyncUtils.waitForFxEvents()
-        WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS) {
+        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) {
             robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text == "Naruto Shippuden"
         }
 
@@ -405,7 +434,8 @@ class AbaPastasUiTest : BaseTest() {
         val devMalManga2 = mock<dev.katsute.mal4j.manga.Manga>()
         val malShippuden = Mal(122L, "Naruto Shippuden", "Desc Shippuden", null, null, devMalManga2)
 
-        whenever(mockComicInfoService.getMal(anyOrNull(), any())).thenReturn(listOf(malClassic, malShippuden))
+        whenever(mockComicInfoService.getMal(anyOrNull(), any()))
+                .thenReturn(listOf(malClassic, malShippuden))
         whenever(mockComicInfoService.updateMal(any(), any(), any())).thenAnswer { invocation ->
             val comic = invocation.getArgument<ComicInfo>(0)
             val mal = invocation.getArgument<Mal>(1)
@@ -416,14 +446,14 @@ class AbaPastasUiTest : BaseTest() {
         robot.clickOn("#txtMalNome").write("Naruto")
         robot.clickOn("#btnMalConsultar")
 
-        WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS) {
+        WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) {
             robot.lookup("#tbViewMal").queryAs(TableView::class.java).items.isNotEmpty()
         }
 
         robot.doubleClickOn("Naruto Classic")
         WaitForAsyncUtils.waitForFxEvents()
         Thread.sleep(500)
-        
+
         assertEquals(
                 "Naruto Classic",
                 robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text
@@ -438,7 +468,7 @@ class AbaPastasUiTest : BaseTest() {
 
         robot.interact {
             AlertasPopup.lastAlertText = null
-            txtPasta.text = "" 
+            txtPasta.text = ""
         }
         robot.interact { btnCarregar.fire() }
         WaitForAsyncUtils.waitForFxEvents()
@@ -470,13 +500,16 @@ class AbaPastasUiTest : BaseTest() {
     @Test
     @Order(7)
     fun testSelecaoGridCheckbox(robot: FxRobot) {
-        val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        val tbViewProcessar =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         val pastaTest = Pasta(File("teste"), "Arquivo", isSelecionado = false)
         robot.interact { tbViewProcessar.items.add(pastaTest) }
 
         // Clica na célula da primeira coluna (índice 0)
-        robot.clickOn("Arquivo").moveBy(-200.0, 0.0).clickOn() // Tenta clicar no checkbox à esquerda
-        
+        robot.clickOn("Arquivo")
+                .moveBy(-200.0, 0.0)
+                .clickOn() // Tenta clicar no checkbox à esquerda
+
         // Alternativa via interact se o clique falhar em headless
         robot.interact { pastaTest.isSelecionado = true }
         assertTrue(pastaTest.isSelecionado)
@@ -485,19 +518,21 @@ class AbaPastasUiTest : BaseTest() {
     @Test
     @Order(8)
     fun testVolumeUpdateAutomaticoMock(robot: FxRobot) {
-        val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        val tbViewProcessar =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         val pastaTest = Pasta(File("Chapter 81"), "Chapter 81", capitulo = 81f, volume = 0f)
         robot.interact { tbViewProcessar.items.add(pastaTest) }
 
-        val mockManga = Manga().apply {
-            nome = "Manga Teste"
-            volume = "14"
-            caminhos = mutableListOf(Caminhos("081", "1", "Tag", ""))
-        }
-        whenever(mockMangaService.findAll(eq("Manga Teste"))).thenReturn(listOf(mockManga))
+        val mockManga =
+                Manga().apply {
+                    nome = "Manga Teste"
+                    volume = "14"
+                    caminhos = mutableListOf(Caminhos("081", "1", "Tag", ""))
+                }
+        whenever(mockMangaService.findAll(eq("Manga Teste"), any(), any(), any())).thenReturn(listOf(mockManga))
 
         robot.clickOn("#cbManga").write("Manga Teste").push(KeyCode.ENTER)
-        
+
         // Simula mudança de foco (trigger listener)
         robot.clickOn("#txtPasta")
         WaitForAsyncUtils.waitForFxEvents()
@@ -508,14 +543,15 @@ class AbaPastasUiTest : BaseTest() {
     @Test
     @Order(9)
     fun testContextMenuApagarTitulos(robot: FxRobot) {
-        val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        val tbViewProcessar =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         val p1 = Pasta(File("1"), "P1", titulo = "T1")
         val p2 = Pasta(File("2"), "P2", titulo = "T2")
         val p3 = Pasta(File("3"), "P3", titulo = "T3")
         robot.interact { tbViewProcessar.items.addAll(p1, p2, p3) }
 
         robot.interact { tbViewProcessar.selectionModel.select(1) } // Seleciona P2
-        
+
         // Simula clique no item de menu de contexto para apagar próximos
         robot.interact {
             val menu = tbViewProcessar.contextMenu
@@ -531,9 +567,16 @@ class AbaPastasUiTest : BaseTest() {
     @Test
     @Order(10)
     fun testCompactarFluxoCompleto(robot: FxRobot) {
-        val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
-        val pastaTest = Pasta(tempDir.resolve("Folder").toFile().apply { mkdirs() }, "Folder", volume = 1f, isSelecionado = true)
-        robot.interact { 
+        val tbViewProcessar =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        val pastaTest =
+                Pasta(
+                        tempDir.resolve("Folder").toFile().apply { mkdirs() },
+                        "Folder",
+                        volume = 1f,
+                        isSelecionado = true
+                )
+        robot.interact {
             tbViewProcessar.items.add(pastaTest)
             robot.lookup("#txtPasta").queryAs(JFXTextField::class.java).text = tempDir.toString()
         }
@@ -544,15 +587,32 @@ class AbaPastasUiTest : BaseTest() {
 
         val mockWinrar = Mockito.mockStatic(Winrar::class.java)
         try {
-            mockWinrar.`when`<Boolean> {
-                Winrar.compactar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
-            }.thenReturn(true)
+            mockWinrar
+                    .`when`<Boolean> {
+                        Winrar.compactar(
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any(),
+                                any()
+                        )
+                    }
+                    .thenReturn(true)
 
             robot.clickOn("#btnCompactar")
-            
-            WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) {
-                !tempDir.resolve("Manga - Volume 01 - comicinfo.xml").toFile().exists() // Na verdade ele vai renomear se existir
-                // No teste, o renameTo deve ocorrer. Vamos verificar se o arquivo com novo nome existe.
+
+            WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
+                !tempDir.resolve("Manga - Volume 01 - comicinfo.xml")
+                        .toFile()
+                        .exists() // Na verdade ele vai renomear se existir
+                // No teste, o renameTo deve ocorrer. Vamos verificar se o arquivo com novo nome
+                // existe.
                 tempDir.resolve("Manga - Volume 01 - comicinfo.xml").toFile().exists()
             }
 

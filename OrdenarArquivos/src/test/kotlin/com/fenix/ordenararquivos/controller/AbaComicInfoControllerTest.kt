@@ -11,6 +11,8 @@ import javafx.scene.control.TableView
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
 import org.junit.jupiter.api.*
+import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.TestInstance.Lifecycle
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.kotlin.any
@@ -24,6 +26,7 @@ import java.io.FileOutputStream
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
+@TestInstance(Lifecycle.PER_CLASS)
 class AbaComicInfoControllerTest {
 
     private lateinit var mainController: TelaInicialController

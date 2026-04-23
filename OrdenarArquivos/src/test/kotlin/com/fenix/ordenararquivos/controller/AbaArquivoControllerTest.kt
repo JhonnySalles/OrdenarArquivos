@@ -12,6 +12,8 @@ import javafx.scene.Scene
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
 import org.junit.jupiter.api.*
+import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.TestInstance.Lifecycle
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.kotlin.any
@@ -26,6 +28,7 @@ import java.util.zip.ZipFile
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
+@TestInstance(Lifecycle.PER_CLASS)
 class AbaArquivoControllerTest {
 
     private lateinit var controller: TelaInicialController
