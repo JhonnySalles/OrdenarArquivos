@@ -221,7 +221,7 @@ object Winrar {
                 it.title = manga.nome
 
             if (isAtualizarComic) {
-                it.number = manga.volume.replace(Regex("\\D"), "").toFloat()
+                it.number = manga.volume.replace(Regex("\\D"), "").let { v -> if (v != "") v.toFloat() else 0F }
                 it.volume = it.number.toInt()
                 it.count = it.volume
             }

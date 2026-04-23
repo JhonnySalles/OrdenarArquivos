@@ -1444,10 +1444,10 @@ class AbaArquivoController : Initializable {
             mSelecionado = lsVwImagens.selectionModel.selectedItem
 
         val nomePastaManga = txtNomePastaManga.text.trim { it <= ' ' }
-        val volumeCapture = txtVolume.text.trim { it <= ' ' }
+        val volume = txtVolume.text.trim { it <= ' ' }
         val nomeArquivo = txtNomeArquivo.text
         val selectedItem = mSelecionado ?: ""
-        val mangaCapture = mManga?.let { m -> Manga().apply { merge(m) } }
+        val manga = mManga?.let { m -> Manga().apply { merge(m) } } ?: geraManga(0)
         val comicInfo = ComicInfo(mComicInfo)
         val listaCaminhos = mListaCaminhos.map { it.copy() }.toMutableList()
 
@@ -1456,7 +1456,7 @@ class AbaArquivoController : Initializable {
         val compactarArquivo = cbCompactarArquivo.isSelected
         val gerarCapitulo = cbGerarCapitulo.isSelected
 
-        val nome = "$nomePastaManga $volumeCapture"
+        val nome = "$nomePastaManga $volume"
         val processarItem = Historico(
             nome, txtPastaOrigem.text, txtPastaDestino.text,
             txtNomePastaManga.text, txtVolume.text, txtNomeArquivo.text, txtNomePastaCapitulo.text, txtGerarInicio.text,
@@ -1481,7 +1481,7 @@ class AbaArquivoController : Initializable {
                     updateProgress(i, max)
 
                     updateMessage("Criando diretórios...")
-                    val nomePasta = (mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + nomePastaManga + " " + volumeCapture)
+                    val nomePasta = (mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + nomePastaManga + " " + volume)
                     updateMessage("Criando diretórios - $nomePasta Capa\\")
                     pastasCompactar.add(gerarCapa(nomePasta, mesclarCapaTudo))
                     pastasComic["000"] = pastasCompactar[0]
@@ -1545,9 +1545,6 @@ class AbaArquivoController : Initializable {
                         mCANCELAR
                     }
                     val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + nomeArquivo
-
-                    val manga = Manga()
-                    mangaCapture?.let { manga.merge(it) }
                     manga.caminhos = listaCaminhos
 
                     if (mRarService.compactar(mCaminhoDestino!!, File(arquivoZip), manga, comicInfo, pastasCompactar, pastasComic, linguagem, compactarArquivo, gerarCapitulo, callback = callback))
