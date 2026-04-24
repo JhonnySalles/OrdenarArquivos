@@ -25,6 +25,8 @@ import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.scene.control.Label
 import javafx.scene.control.ProgressBar
+import javafx.scene.control.Tab
+import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
@@ -137,7 +139,10 @@ class AbaArquivoUiTest : BaseTest() {
         whenever(mockTelaInicialController.rootProgress).thenReturn(ProgressBar())
         whenever(mockTelaInicialController.rootMessage).thenReturn(Label())
         whenever(mockTelaInicialController.rootStack).thenReturn(rootStack)
-        whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
+        val tabPane = JFXTabPane().apply {
+            tabs.addAll(Tab("Arquivo"), Tab("Comic Info"))
+        }
+        whenever(mockTelaInicialController.rootTab).thenReturn(tabPane)
 
         // Limpar estado do controller para evitar vazamento entre testes
         robot.interact {
@@ -870,6 +875,30 @@ class AbaArquivoUiTest : BaseTest() {
             val txtNome = robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
             Assertions.assertNotEquals("[JPN] Manga -", txtNome.text)
             assertTrue(txtNome.text.contains("Hist Manga"))
+
+            // Validação do estado interno (Caminhos) - NOVO
+            val fOrigem = controller.javaClass.getDeclaredField("mCaminhoOrigem")
+            fOrigem.isAccessible = true
+            val caminhoOrigem = fOrigem.get(controller) as File?
+            Assertions.assertNotNull(caminhoOrigem, "mCaminhoOrigem deveria ter sido restaurado")
+
+            val fDestino = controller.javaClass.getDeclaredField("mCaminhoDestino")
+            fDestino.isAccessible = true
+            val caminhoDestino = fDestino.get(controller) as File?
+            Assertions.assertNotNull(caminhoDestino, "mCaminhoDestino deveria ter sido restaurado")
+
+            // Valida mSelecionado - NOVO
+            val fSelecionado = controller.javaClass.getDeclaredField("mSelecionado")
+            fSelecionado.isAccessible = true
+            val selecionado = fSelecionado.get(controller) as String?
+            Assertions.assertNotNull(selecionado, "mSelecionado deveria ter sido restaurado")
+
+            // Valida aviso de sucesso - NOVO
+            val lblAviso = robot.lookup("#lblAviso").queryAs(Label::class.java)
+            assertTrue(
+                    lblAviso.text.contains("Histórico carregado"),
+                    "Deveria exibir mensagem de sucesso no histórico. Atual: ${lblAviso.text}"
+            )
         }
     }
 
@@ -900,5 +929,72 @@ class AbaArquivoUiTest : BaseTest() {
         } finally {
             baseDir.deleteRecursively()
         }
+    }
+
+    @Test
+    @Order(24)
+    fun testOcrSuggestionTrimFix(robot: FxRobot) {
+        val textArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
+        robot.interact {
+            textArea.text = "001-01"
+            
+            val field = controller.javaClass.getDeclaredField("mSugestao")
+            field.isAccessible = true
+            @Suppress("UNCHECKED_CAST")
+            val popup = field.get(controller) as JFXAutoCompletePopup<String>
+            popup.suggestions.clear()
+            popup.suggestions.add("001|  Tag Com Espaço  ")
+        }
+
+        robot.interact {
+            val menu = textArea.contextMenu
+            val item = menu.items.find { it.text == "Importar capítulos da sugestão" }
+            item?.onAction?.handle(javafx.event.ActionEvent())
+        }
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        assertEquals("001-01|Tag Com Espaço", textArea.text.trim())
+    }
+
+    @Test
+    @Order(25)
+    fun testContextMenuJapaneseFormatting(robot: FxRobot) {
+        val textArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
+        robot.interact {
+            textArea.text = "xxx-01| 第3部 Teste"
+        }
+        
+        robot.interact {
+            val menu = textArea.contextMenu
+            val item = menu.items.find { it.text == "Formatar Tag (Extrair cap. Japonês)" }
+            item?.onAction?.handle(javafx.event.ActionEvent())
+        }
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        assertEquals("003-01| Teste", textArea.text.trim())
+    }
+
+    @Test
+    @Order(26)
+    fun testTabComicInfoTitleUpdate(robot: FxRobot) {
+        val comicInfo = ComicInfo().apply {
+            comic = "Manga Teste Title"
+            idMal = 123
+        }
+        whenever(mockComicInfoService.find(any(), anyOrNull())).thenReturn(comicInfo)
+
+        robot.interact {
+            val txtNome = robot.lookup("#txtNomePastaManga").queryAs(javafx.scene.control.TextField::class.java)
+            txtNome.text = "Manga Teste"
+            controller.carregaComicInfo()
+        }
+        WaitForAsyncUtils.waitForFxEvents()
+
+        val tabPane = robot.lookup("#tbTabRootArquivo").queryAs(JFXTabPane::class.java)
+        val tabComic = tabPane.tabs[1]
+        assertTrue(
+                tabComic.text.contains("Manga Teste Title"),
+                "O título da aba deveria conter o nome do comic. Atual: ${tabComic.text}"
+        )
     }
 }

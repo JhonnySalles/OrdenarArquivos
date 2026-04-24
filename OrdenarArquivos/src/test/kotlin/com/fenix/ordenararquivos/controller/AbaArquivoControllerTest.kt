@@ -252,4 +252,61 @@ class AbaArquivoControllerTest {
         val txtPastaOrigem = robot.lookup("#txtPastaOrigem").queryAs(JFXTextField::class.java)
         assertEquals(javafx.scene.paint.Color.RED, txtPastaOrigem.unFocusColor)
     }
+
+    @Test
+    @Order(10)
+    @DisplayName("Deve extrair números de numerais japoneses corretamente")
+    fun testExtractNumberFromJapanese() {
+        val method = arquivoController.javaClass.getDeclaredMethod("extractNumberFromJapanese", String::class.java)
+        method.isAccessible = true
+        
+        assertEquals("2", method.invoke(arquivoController, "二"))
+        assertEquals("10", method.invoke(arquivoController, "十"))
+        assertEquals("2.1", method.invoke(arquivoController, "２．１"))
+        assertEquals("123", method.invoke(arquivoController, "123"))
+    }
+
+    @Test
+    @Order(11)
+    @DisplayName("Deve formatar tag removendo japonês e extraindo o número")
+    fun testFormatarTagRemovendoJapones(robot: FxRobot) {
+        val txtArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
+        val txtFim = robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java)
+        
+        robot.interact {
+            txtFim.text = "100"
+            txtArea.text = "xxx-75| 第2部 無効"
+        }
+        
+        val method = arquivoController.javaClass.getDeclaredMethod("formatarTagRemovendoJapones")
+        method.isAccessible = true
+        robot.interact { method.invoke(arquivoController) }
+        
+        assertEquals("002-75| 無効", txtArea.text)
+    }
+
+    @Test
+    @Order(12)
+    @DisplayName("Deve reprocessar capítulos com preenchimento 000")
+    fun testReprocessarCapitulos(robot: FxRobot) {
+        val txtArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
+        val txtInicio = robot.lookup("#txtGerarInicio").queryAs(JFXTextField::class.java)
+        val txtFim = robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java)
+        
+        robot.interact {
+            txtInicio.text = "1"
+            txtFim.text = "3"
+            txtArea.text = "old-01|Tag1\nold-02|Tag2"
+        }
+        
+        val method = arquivoController.javaClass.getDeclaredMethod("reprocessarCapitulos")
+        method.isAccessible = true
+        robot.interact { method.invoke(arquivoController) }
+        
+        val lines = txtArea.text.split("\n")
+        assertEquals(3, lines.size)
+        assertEquals("001-01|Tag1", lines[0])
+        assertEquals("002-02|Tag2", lines[1])
+        assertEquals("003-000", lines[2])
+    }
 }

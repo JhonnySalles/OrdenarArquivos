@@ -102,6 +102,38 @@ object Winrar {
     }
 
     @JvmStatic
+    fun extrairTudo(rar: File, destino: File): Boolean {
+        var proc: Process? = null
+        val comando = "rar x -ma4 -y " + '"' + rar.path + '"' + " " + '"' + destino.path + '"'
+        return try {
+            val rt: Runtime = Runtime.getRuntime()
+            proc = rt.exec(comando)
+
+            val stdInput = BufferedReader(InputStreamReader(proc.inputStream))
+            while (stdInput.readLine() != null) {
+            }
+
+            var error = ""
+            val stdError = BufferedReader(InputStreamReader(proc.errorStream))
+            var s: String?
+            while (stdError.readLine().also { s = it } != null)
+                error += "$s"
+
+            if (error.isNotEmpty()) {
+                mLOG.info("Error command: $error")
+                false
+            } else {
+                true
+            }
+        } catch (e: Exception) {
+            mLOG.error(e.message, e)
+            false
+        } finally {
+            proc?.destroy()
+        }
+    }
+
+    @JvmStatic
     fun compactar(destino : File, zip : File, manga : Manga, comicInfo: ComicInfo, pastas: MutableList<File>, comic : MutableMap<String, File>, linguagem: Linguagem,
                   isCompactar : Boolean, isGerarCapitulos: Boolean, isAtualizarComic: Boolean = true, callback: Callback<Triple<Long, Long, String>, Boolean>) : Boolean {
         if (callback.call(Triple(0 ,0, "Gerando o comic info..")))

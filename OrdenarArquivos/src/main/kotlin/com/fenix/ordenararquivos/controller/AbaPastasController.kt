@@ -201,7 +201,7 @@ class AbaPastasController : Initializable {
             this.controller = controller
         }
 
-    private var mComicInfo by Delegates.observable(ComicInfo()) { _, _, newValue -> carregaComicInfo(newValue) }
+    internal var mComicInfo by Delegates.observable(ComicInfo()) { _, _, newValue -> carregaComicInfo(newValue) }
     private var mObsListaProcessar: ObservableList<Pasta> = FXCollections.observableArrayList()
     private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
 
@@ -297,6 +297,7 @@ class AbaPastasController : Initializable {
 
     @FXML
     private fun onBtnAmazonConsultar() {
+        tbTabRootPastas.selectionModel.select(tbTabPastas_ComicInfo)
         val callback: Callback<ComicInfo, Boolean> = Callback<ComicInfo, Boolean> { param ->
             mComicInfo = param
             null
@@ -475,7 +476,7 @@ class AbaPastasController : Initializable {
         btnCompactar.text = "Compactar"
     }
 
-    private fun carregaComicInfo(comic: ComicInfo) {
+    internal fun carregaComicInfo(comic: ComicInfo) {
         txtIdMal.text = if (comic.idMal != null) comic.idMal.toString() else ""
         cbAgeRating.selectionModel.select(comic.ageRating)
         val lingua = Linguagem.getEnum(comic.languageISO) ?: cbLinguagem.value
@@ -492,6 +493,19 @@ class AbaPastasController : Initializable {
 
         txtMalId.text = comic.idMal?.toString() ?: ""
         txtMalNome.text = comic.comic
+        atualizaCorETituloTabComicInfo()
+        consultarMal()
+    }
+
+    private fun atualizaCorETituloTabComicInfo() {
+        val selecionado = when {
+            mComicInfo.idMal != null -> Selecionado.SELECIONADO
+            mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
+            else -> Selecionado.VAZIO
+        }
+        Selecionado.setTabColor(tbTabPastas_ComicInfo, selecionado)
+        val sufixo = if (selecionado == Selecionado.SELECIONADO && mComicInfo.comic.isNotEmpty()) " (${mComicInfo.comic})" else ""
+        tbTabPastas_ComicInfo.text = "Comic Info$sufixo"
     }
 
     fun atualizaComicInfo(comic: ComicInfo) {
@@ -514,13 +528,15 @@ class AbaPastasController : Initializable {
         mServiceComicInfo.updateMal(comic, mal, cbLinguagem.value ?: Linguagem.JAPANESE)
 
         Platform.runLater {
-            mComicInfo = comic
-            val selecionado = when {
-                mComicInfo.idMal != null -> Selecionado.SELECIONADO
-                mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
-                else -> Selecionado.VAZIO
+            if (mComicInfo.comic.isEmpty()) {
+                mComicInfo = comic
+                atualizaCorETituloTabComicInfo()
+            } else {
+                if (AlertasPopup.confirmacaoModal("Aviso", "Deseja substituir os dados do ComicInfo?")) {
+                    mComicInfo = comic
+                    atualizaCorETituloTabComicInfo()
+                }
             }
-            Selecionado.setTabColor(tbTabPastas_ComicInfo, selecionado)
         }
     }
 
@@ -544,12 +560,7 @@ class AbaPastasController : Initializable {
                             if (lista.isEmpty())
                                 Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
 
-                            val selecionado = when {
-                                mComicInfo.idMal != null -> Selecionado.SELECIONADO
-                                mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
-                                else -> Selecionado.VAZIO
-                            }
-                            Selecionado.setTabColor(tbTabPastas_ComicInfo, selecionado)
+                            atualizaCorETituloTabComicInfo()
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
@@ -794,6 +805,17 @@ class AbaPastasController : Initializable {
             }
         }
 
+        cbAgeRating.focusedProperty().addListener { _, _, newPropertyValue ->
+            if (newPropertyValue)
+                cbAgeRating.setUnFocusColor(Color.web("#4059a9"))
+            else {
+                if (cbAgeRating.value == null)
+                    cbAgeRating.setUnFocusColor(Color.RED)
+                else
+                    cbAgeRating.setUnFocusColor(Color.web("#4059a9"))
+            }
+        }
+
         try {
             cbManga.items.setAll(mServiceManga.listar())
         } catch (e: Exception) {
@@ -823,7 +845,14 @@ class AbaPastasController : Initializable {
                 mComicInfo = if (cbManga.value.isNullOrEmpty())
                     ComicInfo(null, null, cbManga.value, cbManga.value)
                 else {
-                    val comic = mServiceComicInfo.find(cbManga.value, cbLinguagem.value.sigla) ?: mServiceComicInfo.find(cbManga.value) ?: ComicInfo(null, null, cbManga.value, cbManga.value)
+                    var nome = cbManga.value
+                    if (nome.contains("]"))
+                        nome = nome.substring(nome.indexOf("]")).replace("]", "").trim { it <= ' ' }
+
+                    if (nome.isNotEmpty() && nome.endsWith("-", ignoreCase = true))
+                        nome = nome.substring(0, nome.length - 1).trim { it <= ' ' }
+
+                    val comic = mServiceComicInfo.find(nome, cbLinguagem.value.sigla) ?: mServiceComicInfo.find(nome) ?: ComicInfo(null, null, nome, nome)
                     if (comic.languageISO != cbLinguagem.value.sigla) {
                         comic.id = null
                         comic.languageISO = cbLinguagem.value.sigla

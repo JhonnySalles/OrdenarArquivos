@@ -71,6 +71,23 @@
                   </VBox>
                </children>
             </VBox>
+            <AnchorPane fx:id="apDragOverlay" mouseTransparent="true" style="-fx-background-color: rgba(0,0,0,0.6);" visible="false">
+               <children>
+                  <VBox alignment="CENTER" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                     <children>
+                        <StackPane fx:id="spDragDropZone" maxHeight="200.0" maxWidth="400.0" prefHeight="200.0" prefWidth="400.0">
+                           <children>
+                              <Label fx:id="lblDragDrop" alignment="CENTER" text="Arraste o arquivo aqui" textFill="WHITE">
+                                 <font>
+                                    <Font size="20.0" />
+                                 </font>
+                              </Label>
+                           </children>
+                        </StackPane>
+                     </children>
+                  </VBox>
+               </children>
+            </AnchorPane>
          </children>
       </StackPane>
    </children>

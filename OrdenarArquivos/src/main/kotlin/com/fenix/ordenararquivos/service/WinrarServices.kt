@@ -18,6 +18,8 @@ open class WinrarServices {
 
     open fun extraiComicInfo(arquivo: File): File? = Winrar.extrairArquivo(arquivo, Utils.COMICINFO)
 
+    open fun extrairTudo(arquivo: File, destino: File): Boolean = Winrar.extrairTudo(arquivo, destino)
+
     open fun insereSumario(arquivo: File, sumario: File) = insereArquivo(arquivo, listOf(sumario))
 
     open fun extraiSumario(arquivo: File, pasta: File): File? {

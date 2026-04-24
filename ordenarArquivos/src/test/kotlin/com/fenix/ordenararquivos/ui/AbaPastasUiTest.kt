@@ -27,6 +27,7 @@ import javafx.fxml.FXMLLoader
 import javafx.scene.Node
 import javafx.scene.Parent
 import javafx.scene.Scene
+import javafx.scene.control.Tab
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.input.KeyCode
@@ -145,7 +146,10 @@ class AbaPastasUiTest : BaseTest() {
                 .thenReturn(javafx.scene.control.ProgressBar())
         whenever(mockTelaInicialController.rootMessage).thenReturn(javafx.scene.control.Label())
         whenever(mockTelaInicialController.rootStack).thenReturn(rootStack)
-        whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
+        val tabPane = JFXTabPane().apply {
+            tabs.addAll(Tab("Pastas"), Tab("Comic Info"))
+        }
+        whenever(mockTelaInicialController.rootTab).thenReturn(tabPane)
     }
 
     @Test
@@ -621,5 +625,27 @@ class AbaPastasUiTest : BaseTest() {
         } finally {
             mockWinrar.close()
         }
+    }
+
+    @Test
+    @Order(20)
+    fun testTabComicInfoTitleUpdate(robot: FxRobot) {
+        val comicInfo = ComicInfo().apply {
+            comic = "Manga Pastas Title"
+            idMal = 456
+        }
+
+        robot.interact {
+            pastasController.mComicInfo = comicInfo
+        }
+
+        WaitForAsyncUtils.waitForFxEvents()
+
+        val tabPane = robot.lookup("#tbTabRootPastas").queryAs(JFXTabPane::class.java)
+        val tabComic = tabPane.tabs[1]
+        assertTrue(
+                tabComic.text.contains("Manga Pastas Title"),
+                "O título da aba deveria conter o nome do comic. Atual: ${tabComic.text}"
+        )
     }
 }

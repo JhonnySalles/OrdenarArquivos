@@ -52,6 +52,15 @@ class TelaInicialController : Initializable {
     private lateinit var pbProgresso: ProgressBar
 
     @FXML
+    lateinit var apDragOverlay: AnchorPane
+
+    @FXML
+    lateinit var spDragDropZone: StackPane
+
+    @FXML
+    lateinit var lblDragDrop: Label
+
+    @FXML
     private lateinit var arquivoController: AbaArquivoController
 
     @FXML

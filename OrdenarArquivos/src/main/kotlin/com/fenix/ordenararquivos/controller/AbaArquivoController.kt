@@ -47,6 +47,7 @@ import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.control.cell.TextFieldTableCell
 import javafx.scene.image.Image
 import javafx.scene.image.ImageView
+import javafx.scene.effect.BoxBlur
 import javafx.scene.input.*
 import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
@@ -62,8 +63,8 @@ import java.io.FileOutputStream
 import java.io.FilenameFilter
 import java.io.IOException
 import java.math.RoundingMode
-import java.net.URL
 import java.nio.file.Files
+import java.net.URL
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.sql.SQLException
@@ -79,6 +80,8 @@ import kotlin.properties.Delegates
 class AbaArquivoController : Initializable {
 
     private val mLOG = LoggerFactory.getLogger(AbaArquivoController::class.java)
+    private var insetCapitulo = false
+    private var lastCaretPos = 0
 
     //<--------------------------  PRINCIPAL   -------------------------->
 
@@ -332,7 +335,6 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private lateinit var clMalSite: TableColumn<Mal, JFXButton?>
-
     @FXML
     private lateinit var clMalImagem: TableColumn<Mal, ImageView?>
 
@@ -796,7 +798,7 @@ class AbaArquivoController : Initializable {
         return valida
     }
 
-    private fun carregaComicInfo(comic: ComicInfo) {
+    internal fun carregaComicInfo(comic: ComicInfo) {
         txtIdMal.text = if (comic.idMal != null) comic.idMal.toString() else ""
         cbAgeRating.selectionModel.select(comic.ageRating)
         val lingua = Linguagem.getEnum(comic.languageISO) ?: cbLinguagem.value
@@ -810,6 +812,18 @@ class AbaArquivoController : Initializable {
         txtImprint.text = comic.imprint
         txtGenre.text = comic.genre
         txtNotes.text = comic.notes
+        atualizaCorETituloTabComicInfo()
+    }
+
+    private fun atualizaCorETituloTabComicInfo() {
+        val selecionado = when {
+            mComicInfo.idMal != null -> Selecionado.SELECIONADO
+            mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
+            else -> Selecionado.VAZIO
+        }
+        Selecionado.setTabColor(tbTabArquivo_ComicInfo, selecionado)
+        val sufixo = if (selecionado == Selecionado.SELECIONADO && mComicInfo.comic.isNotEmpty()) " (${mComicInfo.comic})" else ""
+        tbTabArquivo_ComicInfo.text = "Comic Info$sufixo"
     }
 
     fun atualizaComicInfo(comic: ComicInfo) {
@@ -830,15 +844,15 @@ class AbaArquivoController : Initializable {
     private fun carregaMal(mal: Mal) {
         val comic = ComicInfo(mComicInfo)
         mServiceComicInfo.updateMal(comic, mal, cbLinguagem.value ?: Linguagem.JAPANESE)
-        mComicInfo = comic
-
-        val selecionado = when {
-            mComicInfo.idMal != null -> Selecionado.SELECIONADO
-            mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
-            else -> Selecionado.VAZIO
+        if (mComicInfo.comic.isEmpty()) {
+            mComicInfo = comic
+            atualizaCorETituloTabComicInfo()
+        } else {
+            if (AlertasPopup.confirmacaoModal("Aviso", "Deseja substituir os dados do ComicInfo?")) {
+                mComicInfo = comic
+                atualizaCorETituloTabComicInfo()
+            }
         }
-        Selecionado.setTabColor(tbTabArquivo_ComicInfo, selecionado)
-        tbTabArquivo_ComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + mComicInfo.comic + ")" else "")
     }
 
     private fun ocrSumario(sumario : File) {
@@ -925,16 +939,13 @@ class AbaArquivoController : Initializable {
 
                     if (listaResults.isEmpty())
                         Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
-                    else if (atualizado)
-                        mComicInfo = comicInfoCapture
-
-                    val selecionado = when {
-                        atualizado || (mComicInfo.idMal != null && listaResults.isNotEmpty()) -> Selecionado.SELECIONADO
-                        listaResults.isNotEmpty() -> Selecionado.SELECIONAR
-                        else -> Selecionado.VAZIO
+                    else if (atualizado) {
+                        if (mComicInfo.comic.isEmpty() || AlertasPopup.confirmacaoModal("Aviso", "Deseja substituir os dados do ComicInfo?")) {
+                            mComicInfo = comicInfoCapture
+                        }
                     }
-                    Selecionado.setTabColor(tbTabArquivo_ComicInfo, selecionado)
-                    tbTabArquivo_ComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + mComicInfo.comic + ")" else "")
+
+                    atualizaCorETituloTabComicInfo()
                     btnMalConsultar.isDisable = false
                 }
 
@@ -1084,12 +1095,12 @@ class AbaArquivoController : Initializable {
         }
     }
 
-    private fun carregaComicInfo() {
+    internal fun carregaComicInfo() {
         var nome = txtNomePastaManga.text
         if (nome.contains("]"))
             nome = nome.substring(nome.indexOf("]")).replace("]", "").trim { it <= ' ' }
 
-        if (nome.substring(nome.length - 1).equals("-", ignoreCase = true))
+        if (nome.isNotEmpty() && nome.endsWith("-", ignoreCase = true))
             nome = nome.substring(0, nome.length - 1).trim { it <= ' ' }
 
         mComicInfo = mServiceComicInfo.find(nome, cbLinguagem.value.sigla) ?: ComicInfo(null, null, nome, nome)
@@ -1109,6 +1120,7 @@ class AbaArquivoController : Initializable {
             mComicInfo.series = nome
 
         txtMalNome.text = mComicInfo.comic
+        atualizaCorETituloTabComicInfo()
         consultarMal()
     }
 
@@ -2253,6 +2265,9 @@ class AbaArquivoController : Initializable {
                 if (item != null) {
                     txtPastaOrigem.text = item.pastaOrigem
                     txtPastaDestino.text = item.pastaDestino
+                    mCaminhoOrigem = if (item.pastaOrigem.isNotEmpty()) File(item.pastaOrigem) else null
+                    mCaminhoDestino = if (item.pastaDestino.isNotEmpty()) File(item.pastaDestino) else null
+
                     txtNomePastaManga.text = item.nomeManga
                     txtVolume.text = item.volume
                     txtNomePastaCapitulo.text = item.pastaCapitulo
@@ -2262,6 +2277,7 @@ class AbaArquivoController : Initializable {
                     txtAreaImportar.text = item.importar
                     mManga = item.manga?.apply { Manga.copy(this) }
                     mComicInfo = ComicInfo(item.comicInfo)
+                    carregaComicInfo(mComicInfo)
 
                     mListaCaminhos = ArrayList(item.caminhos.map { it.copy() })
                     mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
@@ -2279,12 +2295,31 @@ class AbaArquivoController : Initializable {
                     tbViewTabela.refresh()
                     tbViewMal.refresh()
 
+                    mSelecionado = if (item.selecionado.isNotEmpty() && mObsListaItens.contains(item.selecionado))
+                        item.selecionado
+                    else
+                        mObsListaItens.firstOrNull()
+
                     if (item.selecionado.isNotEmpty())
                         lsVwImagens.selectionModel.select(lsVwImagens.items.indexOf(item.selecionado))
                     else
                         lsVwImagens.selectionModel.selectFirst()
 
+                    simulaNome()
+                    atualizaCorETituloTabComicInfo()
                     acdArquivos.expandedPane = ttpArquivos
+
+                    val avisos = mutableListOf<String>()
+                    if (mCaminhoOrigem == null || !mCaminhoOrigem!!.exists())
+                        avisos.add("Pasta de origem não existe: ${item.pastaOrigem}")
+                    if (mCaminhoDestino == null || !mCaminhoDestino!!.exists())
+                        avisos.add("Pasta de destino não existe: ${item.pastaDestino}")
+                    if (mCaminhoOrigem?.exists() == true) {
+                        val inexistentes = mObsListaItens.filter { it.isNotEmpty() && !File(mCaminhoOrigem, it).exists() }
+                        if (inexistentes.isNotEmpty())
+                            avisos.add("${inexistentes.size} arquivo(s) da lista não encontrado(s).")
+                    }
+                    lblAviso.text = if (avisos.isNotEmpty()) avisos.joinToString(" | ") else "Histórico carregado."
                 }
             }
         }
@@ -2548,8 +2583,6 @@ class AbaArquivoController : Initializable {
             }
         }
 
-        var insetCapitulo = false
-        var lastCaretPos = 0
         txtAreaImportar.onKeyPressed = EventHandler { e: KeyEvent ->
             if (!e.isControlDown && !e.isShiftDown && !e.isAltDown)
                 insetCapitulo = false
@@ -2562,43 +2595,8 @@ class AbaArquivoController : Initializable {
                         if (mSugestao.suggestions.isNotEmpty())
                             mSugestao.show(txtAreaImportar)
                     }
-                    KeyCode.T -> {
-                        if (txtAreaImportar.text.isEmpty() || !txtAreaImportar.text.contains(Utils.SEPARADOR_CAPITULO))
-                            return@EventHandler
-
-                        val txt = txtAreaImportar.text
-                        val scroll = txtAreaImportar.scrollTopProperty().value
-
-                        val separador = Utils.SEPARADOR_CAPITULO
-                        val texto = mutableListOf<String>()
-                        for (linha in txt.split("\n"))
-                            texto.add(if (linha.contains(separador)) linha.substringBeforeLast(separador) else linha)
-
-                        val before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
-                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
-                        var line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
-                        line = if (line.contains(separador)) line.substringBeforeLast(separador) else line
-
-                        txtAreaImportar.replaceText(0, txtAreaImportar.length, texto.joinToString("\n"))
-                        txtAreaImportar.positionCaret(txtAreaImportar.text.indexOf(line) + line.length)
-                        txtAreaImportar.scrollTop = scroll
-                    }
-                    KeyCode.O -> {
-                        if (txtAreaImportar.text.isEmpty())
-                            return@EventHandler
-
-                        val scroll = txtAreaImportar.scrollTop
-                        val caretPos = txtAreaImportar.caretPosition
-
-                        val txt = txtAreaImportar.text.split("\n")
-                            .filter { it.isNotBlank() }
-                            .sorted()
-                            .joinToString("\n")
-
-                        txtAreaImportar.replaceText(0, txtAreaImportar.length, txt)
-                        txtAreaImportar.positionCaret(caretPos.coerceAtMost(txtAreaImportar.length))
-                        txtAreaImportar.scrollTop = scroll
-                    }
+                    KeyCode.T -> apagarTagsTodas()
+                    KeyCode.O -> ordenarLinhas()
                     KeyCode.D,
                     KeyCode.E,
                     in (KeyCode.NUMPAD0 .. KeyCode.NUMPAD9),
@@ -2739,58 +2737,7 @@ class AbaArquivoController : Initializable {
                     KeyCode.RIGHT,
                     KeyCode.LEFT -> {
                         insetCapitulo = false
-                        if (txtAreaImportar.text.isEmpty())
-                            return@EventHandler
-
-                        val txt = txtAreaImportar.text
-                        val scroll = txtAreaImportar.scrollTopProperty().value
-
-                        val pipe = Utils.SEPARADOR_PAGINA
-                        val separador = Utils.SEPARADOR_CAPITULO
-                        val fim = Utils.getNumber(txtGerarFim.text)?.toInt() ?: 0
-                        val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
-
-                        val moveCapitulo: (String) -> String = { linha ->
-                            var tag = ""
-                            val texto = if (linha.contains(separador)) {
-                                tag = separador + linha.substringAfter(separador)
-                                linha.substringBefore(separador)
-                            } else
-                                linha
-
-                            val itens = texto.split(pipe)
-                            if (itens.size == 2) {
-                                if (itens[1].trim().isNotEmpty() && Utils.ONLY_NUMBER_REGEX.containsMatchIn(itens[1]))
-                                    String.format(padding, itens[1].toInt()) + pipe + itens[0] + tag
-                                else
-                                    itens[1] + pipe + itens[0] + tag
-                            } else linha
-                        }
-
-                        val position: Int
-                        val newText: String
-
-                        if (e.isShiftDown && e.isAltDown) {
-                            val texto = mutableListOf<String>()
-                            for (linha in txt.split("\n"))
-                                texto.add(moveCapitulo(linha))
-                            newText = texto.joinToString("\n")
-                            position = newText.length
-                        } else {
-                            var before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
-                            val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
-                            val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
-                            before = before.substringBeforeLast(line)
-
-                            val newLine = moveCapitulo(line)
-                            newText = before + newLine + last
-                            position = before.length + if (newLine.contains(separador)) newLine.lastIndexOf(separador) else newLine.length
-                        }
-
-                        txtAreaImportar.replaceText(0, txtAreaImportar.length, newText)
-                        lastCaretPos = position
-                        txtAreaImportar.positionCaret(lastCaretPos)
-                        txtAreaImportar.scrollTop = scroll
+                        inverterCapituloPagina(e.isShiftDown && e.isAltDown)
                     }
                     in (KeyCode.NUMPAD0 .. KeyCode.NUMPAD9),
                     in (KeyCode.DIGIT0 .. KeyCode.DIGIT9) -> {
@@ -2938,9 +2885,9 @@ class AbaArquivoController : Initializable {
                     for ((index, capitulo) in capitulos.withIndex()) {
                         if (capitulo.contains(separador)) {
                             texto += if (index < importar.size)
-                                importar[index] + separador + capitulo.substringAfter(separador) + "\n"
+                                importar[index] + separador + capitulo.substringAfter(separador).trim() + "\n"
                             else
-                                separador + capitulo.substringAfter(separador) + "\n"
+                                separador + capitulo.substringAfter(separador).trim() + "\n"
                         }
                     }
                     if (importar.size > capitulos.size) {
@@ -2957,8 +2904,22 @@ class AbaArquivoController : Initializable {
                 }
             }
         }
-        menu.items.add(sugestao)
-        menu.items.add(capitulos)
+        val ordenar = MenuItem("Ordenar linhas (Ctrl + O)")
+        ordenar.setOnAction { ordenarLinhas() }
+        val apagarTags = MenuItem("Apagar todas as tags (Ctrl + T)")
+        apagarTags.setOnAction { apagarTagsTodas() }
+        val inverterTudo = MenuItem("Inverter Capítulos e Páginas (Tudo)")
+        inverterTudo.setOnAction { inverterCapituloPagina(true) }
+        val inverterLinha = MenuItem("Inverter Capítulo e Página (Linha atual)")
+        inverterLinha.setOnAction { inverterCapituloPagina(false) }
+        val formatarTag = MenuItem("Formatar Tag (Extrair cap. Japonês)")
+        formatarTag.setOnAction { formatarTagRemovendoJapones() }
+        val formatarCap = MenuItem("Formatar Capítulo (Remover letras Japonesas)")
+        formatarCap.setOnAction { formatarCapituloRemovendoJapones() }
+        val reprocessar = MenuItem("Reprocessar Capítulos (Início ao Fim)")
+        reprocessar.setOnAction { reprocessarCapitulos() }
+
+        menu.items.addAll(sugestao, capitulos, SeparatorMenuItem(), ordenar, apagarTags, inverterTudo, inverterLinha, SeparatorMenuItem(), formatarTag, formatarCap, reprocessar)
         txtAreaImportar.contextMenu = menu
 
         txtQuantidade.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> txtPastaDestino.unFocusColor = Color.GRAY }
@@ -3176,6 +3137,355 @@ class AbaArquivoController : Initializable {
         mSugestao.cellLimit = 1
         lsVwHistorico.items = FXCollections.observableArrayList()
         acdArquivos.expandedPane = ttpArquivos
+        configuraDragAndDrop()
+    }
+
+    private fun apagarTagsTodas() {
+        if (txtAreaImportar.text.isEmpty() || !txtAreaImportar.text.contains(Utils.SEPARADOR_CAPITULO))
+            return
+
+        val txt = txtAreaImportar.text
+        val scroll = txtAreaImportar.scrollTopProperty().value
+
+        val separador = Utils.SEPARADOR_CAPITULO
+        val texto = mutableListOf<String>()
+        for (linha in txt.split("\n"))
+            texto.add(if (linha.contains(separador)) linha.substringBeforeLast(separador) else linha)
+
+        val before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
+        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+        var line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
+        line = if (line.contains(separador)) line.substringBeforeLast(separador) else line
+
+        txtAreaImportar.replaceText(0, txtAreaImportar.length, texto.joinToString("\n"))
+        txtAreaImportar.positionCaret(txtAreaImportar.text.indexOf(line) + line.length)
+        txtAreaImportar.scrollTop = scroll
+    }
+
+    private fun ordenarLinhas() {
+        if (txtAreaImportar.text.isEmpty())
+            return
+
+        val scroll = txtAreaImportar.scrollTop
+        val caretPos = txtAreaImportar.caretPosition
+
+        val txt = txtAreaImportar.text.split("\n")
+            .filter { it.isNotBlank() }
+            .sorted()
+            .joinToString("\n")
+
+        txtAreaImportar.replaceText(0, txtAreaImportar.length, txt)
+        txtAreaImportar.positionCaret(caretPos.coerceAtMost(txtAreaImportar.length))
+        txtAreaImportar.scrollTop = scroll
+    }
+
+    private fun inverterCapituloPagina(all: Boolean) {
+        if (txtAreaImportar.text.isEmpty())
+            return
+
+        val txt = txtAreaImportar.text
+        val scroll = txtAreaImportar.scrollTopProperty().value
+
+        val pipe = Utils.SEPARADOR_PAGINA
+        val separador = Utils.SEPARADOR_CAPITULO
+        val fim = Utils.getNumber(txtGerarFim.text)?.toInt() ?: 0
+        val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
+
+        val moveCapitulo: (String) -> String = { linha ->
+            var tag = ""
+            val texto = if (linha.contains(separador)) {
+                tag = separador + linha.substringAfter(separador)
+                linha.substringBefore(separador)
+            } else
+                linha
+
+            val itens = texto.split(pipe)
+            if (itens.size == 2) {
+                if (itens[1].trim().isNotEmpty() && Utils.ONLY_NUMBER_REGEX.containsMatchIn(itens[1]))
+                    String.format(padding, itens[1].toInt()) + pipe + itens[0] + tag
+                else
+                    itens[1] + pipe + itens[0] + tag
+            } else linha
+        }
+
+        val position: Int
+        val newText: String
+
+        if (all) {
+            val texto = mutableListOf<String>()
+            for (linha in txt.split("\n"))
+                texto.add(moveCapitulo(linha))
+            newText = texto.joinToString("\n")
+            position = newText.length
+        } else {
+            var before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
+            val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+            val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
+            before = before.substringBeforeLast(line)
+
+            val newLine = moveCapitulo(line)
+            newText = before + newLine + last
+            position = before.length + if (newLine.contains(separador)) newLine.lastIndexOf(separador) else newLine.length
+        }
+
+        txtAreaImportar.replaceText(0, txtAreaImportar.length, newText)
+        lastCaretPos = position
+        txtAreaImportar.positionCaret(lastCaretPos)
+        txtAreaImportar.scrollTop = scroll
+    }
+
+    private fun formatarTagRemovendoJapones() {
+        if (txtAreaImportar.text.isEmpty()) return
+
+        val txt = txtAreaImportar.text
+        val lines = txt.split("\n")
+        val scroll = txtAreaImportar.scrollTop
+        val pipe = Utils.SEPARADOR_PAGINA
+        val separador = Utils.SEPARADOR_CAPITULO
+        val regexJapones = Regex("第([0-9０-９一二三四五六七八九十.]+)部")
+
+        val result = mutableListOf<String>()
+        for (line in lines) {
+            if (line.contains(separador)) {
+                var capitulo = line.substringBefore(separador)
+                var tag = line.substringAfter(separador)
+
+                val match = regexJapones.find(tag)
+                if (match != null) {
+                    val numeroJapones = match.groupValues[1]
+                    val numeroNormal = extractNumberFromJapanese(numeroJapones)
+
+                    // Formata o capítulo
+                    val capPart = if (capitulo.contains(pipe)) capitulo.substringBefore(pipe) else capitulo
+                    val pagPart = if (capitulo.contains(pipe)) pipe + capitulo.substringAfter(pipe) else ""
+
+                    val formattedCap = formatarCapituloComPadding(numeroNormal)
+                    capitulo = formattedCap + pagPart
+
+                    // Remove da tag e trim
+                    tag = tag.replace(match.value, "").trim()
+                    result.add(capitulo + separador + tag)
+                } else {
+                    result.add(line)
+                }
+            } else {
+                result.add(line)
+            }
+        }
+
+        txtAreaImportar.replaceText(0, txtAreaImportar.length, result.joinToString("\n"))
+        txtAreaImportar.scrollTop = scroll
+    }
+
+    private fun formatarCapituloRemovendoJapones() {
+        if (txtAreaImportar.text.isEmpty()) return
+
+        val txt = txtAreaImportar.text
+        val lines = txt.split("\n")
+        val scroll = txtAreaImportar.scrollTop
+        val pipe = Utils.SEPARADOR_PAGINA
+        val separador = Utils.SEPARADOR_CAPITULO
+
+        val result = mutableListOf<String>()
+        for (line in lines) {
+            val capituloCompleto = if (line.contains(separador)) line.substringBefore(separador) else line
+            val tagPart = if (line.contains(separador)) separador + line.substringAfter(separador) else ""
+
+            val capPart = if (capituloCompleto.contains(pipe)) capituloCompleto.substringBefore(pipe) else capituloCompleto
+            val pagPart = if (capituloCompleto.contains(pipe)) pipe + capituloCompleto.substringAfter(pipe) else ""
+
+            val numeroNormal = extractNumberFromJapanese(capPart)
+            if (numeroNormal.isNotEmpty()) {
+                val formattedCap = formatarCapituloComPadding(numeroNormal)
+                result.add(formattedCap + pagPart + tagPart)
+            } else {
+                result.add(line)
+            }
+        }
+
+        txtAreaImportar.replaceText(0, txtAreaImportar.length, result.joinToString("\n"))
+        txtAreaImportar.scrollTop = scroll
+    }
+
+    private fun reprocessarCapitulos() {
+        val inicio = Utils.getNumber(txtGerarInicio.text)?.toInt() ?: return
+        val fim = Utils.getNumber(txtGerarFim.text)?.toInt() ?: return
+        if (inicio > fim) return
+
+        val scroll = txtAreaImportar.scrollTop
+        val lines = txtAreaImportar.text.split("\n").filter { it.isNotBlank() }
+        val pipe = Utils.SEPARADOR_PAGINA
+        val separador = Utils.SEPARADOR_CAPITULO
+
+        val fimStr = fim.toString()
+        val padding = ("%0" + (if (fimStr.length > 3) fimStr.length.toString() else "3") + "d")
+
+        val result = mutableListOf<String>()
+        var currentIdx = 0
+        for (i in inicio..fim) {
+            val newCap = String.format(padding, i)
+            if (currentIdx < lines.size) {
+                val line = lines[currentIdx]
+                val contentAfterCap = if (line.contains(pipe)) pipe + line.substringAfter(pipe)
+                else if (line.contains(separador)) pipe + "000" + separador + line.substringAfter(separador)
+                else pipe + "000"
+
+                result.add(newCap + contentAfterCap)
+            } else {
+                result.add(newCap + pipe + "000")
+            }
+            currentIdx++
+        }
+
+        txtAreaImportar.replaceText(0, txtAreaImportar.length, result.joinToString("\n"))
+        txtAreaImportar.scrollTop = scroll
+    }
+
+    private fun extractNumberFromJapanese(texto: String): String {
+        val kanjiMap = mapOf(
+            '〇' to "0", '一' to "1", '二' to "2", '三' to "3", '四' to "4",
+            '五' to "5", '六' to "6", '七' to "7", '八' to "8", '九' to "9", '十' to "10"
+        )
+        val normalized = Utils.fromNumberJapanese(texto)
+        var result = ""
+        for (c in normalized) {
+            if (c.isDigit() || c == '.') {
+                result += c
+            } else if (kanjiMap.containsKey(c)) {
+                result += kanjiMap[c]
+            }
+        }
+        return result
+    }
+
+    private fun formatarCapituloComPadding(numero: String): String {
+        val fim = Utils.getNumber(txtGerarFim.text)?.toInt() ?: 0
+        val padSize = if (fim.toString().length > 3) fim.toString().length else 3
+
+        return if (numero.contains(".")) {
+            val parts = numero.split(".")
+            parts[0].padStart(padSize, '0') + "." + parts[1]
+        } else {
+            numero.padStart(padSize, '0')
+        }
+    }
+
+    private fun configuraDragAndDrop() {
+        apRoot.onDragOver = EventHandler { event ->
+            if (event.gestureSource != apRoot && event.dragboard.hasFiles()) {
+                event.acceptTransferModes(*TransferMode.COPY_OR_MOVE)
+            }
+            event.consume()
+        }
+
+        apRoot.onDragEntered = EventHandler { event ->
+            if (event.dragboard.hasFiles()) {
+                val file = event.dragboard.files[0]
+                mostrarOverlayDrag(file.extension.lowercase() in setOf("rar", "cbr"))
+            }
+            event.consume()
+        }
+
+        apRoot.onDragExited = EventHandler { event ->
+            esconderOverlayDrag()
+            event.consume()
+        }
+
+        apRoot.onDragDropped = EventHandler { event ->
+            val db = event.dragboard
+            var success = false
+            if (db.hasFiles()) {
+                val file = db.files[0]
+                if (file.extension.lowercase() in setOf("rar", "cbr")) {
+                    processarArquivoArrastado(file)
+                    success = true
+                }
+            }
+            event.isDropCompleted = success
+            esconderOverlayDrag()
+            event.consume()
+        }
+    }
+
+    private fun mostrarOverlayDrag(aceito: Boolean) {
+        val blur = BoxBlur(3.0, 3.0, 3)
+        controllerPai.rootTab.effect = blur
+
+        controllerPai.spDragDropZone.style = if (aceito)
+            "-fx-border-color: white; -fx-border-style: dashed; -fx-border-width: 3; -fx-border-radius: 10; -fx-background-color: rgba(0,0,0,0.3); -fx-background-radius: 10;"
+        else
+            "-fx-border-color: red; -fx-border-style: dashed; -fx-border-width: 3; -fx-border-radius: 10; -fx-background-color: rgba(255,0,0,0.1); -fx-background-radius: 10;"
+
+        controllerPai.lblDragDrop.text = if (aceito) "Arraste o arquivo aqui" else "Formato não aceito"
+        controllerPai.lblDragDrop.textFill = if (aceito) Color.WHITE else Color.RED
+        controllerPai.apDragOverlay.isVisible = true
+    }
+
+    private fun esconderOverlayDrag() {
+        controllerPai.rootTab.effect = null
+        controllerPai.apDragOverlay.isVisible = false
+    }
+
+    private fun processarArquivoArrastado(file: File) {
+        val tempDir = Files.createTempDirectory("ordenar_rar_").toFile()
+        try {
+            if (mRarService.extrairTudo(file, tempDir)) {
+                val folders = tempDir.listFiles { f -> f.isDirectory }
+                val folder = folders?.firstOrNull { !it.name.contains("Capa", true) }
+
+                if (folder != null) {
+                    val folderName = folder.name
+                    // Parse: [JPN] Name - Volume - Chapter
+                    val namePart = if (folderName.contains("-")) folderName.substringBeforeLast("-").trim() else folderName
+                    val chapterPart = if (folderName.contains("-")) folderName.substringAfterLast("-").trim() else "Capítulo"
+
+                    txtNomePastaCapitulo.text = chapterPart
+                    txtNomeArquivo.text = chapterPart
+
+                    val mangaNamePuro = if (namePart.contains("]")) namePart.substringAfter("]").trim() else namePart
+                    val sugestoes = mServiceManga.sugestao(mangaNamePuro)
+                    val mangaNomeFinal = if (sugestoes.isNotEmpty()) sugestoes.first() else mangaNamePuro
+
+                    txtNomePastaManga.text = "[JPN] $mangaNomeFinal -"
+
+                    // ComicInfo
+                    val comicFile = File(tempDir, "ComicInfo.xml").let { if (it.exists()) it else File(folder, "ComicInfo.xml") }
+                    if (comicFile.exists()) {
+                        try {
+                            val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
+                            val unmarshaller = jaxb.createUnmarshaller()
+                            val comicInfoRar = unmarshaller.unmarshal(comicFile) as ComicInfo
+                            
+                            // Atualiza mantendo o volume atual
+                            mComicInfo.apply {
+                                idMal = comicInfoRar.idMal
+                                title = comicInfoRar.title
+                                series = comicInfoRar.series
+                                publisher = comicInfoRar.publisher
+                                alternateSeries = comicInfoRar.alternateSeries
+                                seriesGroup = comicInfoRar.seriesGroup
+                                storyArc = comicInfoRar.storyArc
+                                imprint = comicInfoRar.imprint
+                                genre = comicInfoRar.genre
+                                ageRating = comicInfoRar.ageRating
+                                languageISO = comicInfoRar.languageISO
+                                notes = comicInfoRar.notes
+                                summary = comicInfoRar.summary
+                            }
+                            carregaComicInfo(mComicInfo)
+                        } catch (e: Exception) {
+                            mLOG.error("Erro ao carregar ComicInfo do RAR.", e)
+                        }
+                    } else {
+                        carregaComicInfo()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            mLOG.error("Erro ao processar arquivo arrastado.", e)
+        } finally {
+            tempDir.deleteRecursively()
+        }
     }
 
     companion object {
