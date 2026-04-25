@@ -1,8 +1,14 @@
 package com.fenix.ordenararquivos.controller
 
+import com.fenix.ordenararquivos.database.DataBase
+import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.notification.Notificacoes
+import com.fenix.ordenararquivos.service.UpdateService
+import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXTabPane
+import javafx.application.Platform
+import javafx.concurrent.Task
 import javafx.event.Event
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
@@ -16,6 +22,7 @@ import javafx.scene.layout.StackPane
 import org.slf4j.LoggerFactory
 import java.net.URL
 import java.util.*
+import kotlin.system.exitProcess
 
 
 class TelaInicialController : Initializable {
@@ -50,6 +57,9 @@ class TelaInicialController : Initializable {
 
     @FXML
     private lateinit var pbProgresso: ProgressBar
+
+    @FXML
+    private lateinit var btnAtualizar: JFXButton
 
     @FXML
     lateinit var apDragOverlay: AnchorPane
@@ -102,6 +112,67 @@ class TelaInicialController : Initializable {
     fun configurarAtalhos(scene: Scene) {
         arquivoController.configurarAtalhos(scene)
         pastasController.configurarAtalhos(scene)
+    }
+
+    @FXML
+    private fun onBtnAtualizar() {
+        if (!AlertasPopup.confirmacaoModal("Atualização", "Deseja verificar e aplicar atualizações do aplicativo?"))
+            return
+
+        btnAtualizar.isDisable = true
+        setCursor(Cursor.WAIT)
+
+        val updateService = UpdateService()
+        val task = object : Task<Void>() {
+            private var updateResult: UpdateService.UpdateResult? = null
+
+            override fun call(): Void? {
+                updateResult = updateService.performUpdate { message, progress ->
+                    updateMessage(message)
+                    if (progress >= 0) updateProgress(progress, 1.0)
+                }
+                return null
+            }
+
+            override fun succeeded() {
+                pbProgresso.progressProperty().unbind()
+                lblProgresso.textProperty().unbind()
+                clearProgress()
+                setCursor(null)
+                btnAtualizar.isDisable = false
+
+                val result = updateResult
+                if (result != null && result.updated) {
+                    Notificacoes.notificacao(Notificacao.SUCESSO, "Atualização", result.message)
+                    // Schedule restart
+                    Platform.runLater {
+                        if (AlertasPopup.confirmacaoModal("Reiniciar", "Atualização aplicada com sucesso! Deseja reiniciar o aplicativo agora?")) {
+                            updateService.restartApplication()
+                            DataBase.closeConnection()
+                            exitProcess(0)
+                        }
+                    }
+                } else {
+                    Notificacoes.notificacao(Notificacao.ALERTA, "Atualização", result?.message ?: "Nenhuma atualização encontrada.")
+                }
+            }
+
+            override fun failed() {
+                pbProgresso.progressProperty().unbind()
+                lblProgresso.textProperty().unbind()
+                clearProgress()
+                setCursor(null)
+                btnAtualizar.isDisable = false
+
+                val errorMsg = exception?.message ?: "Erro desconhecido"
+                mLOG.error("Erro na atualização: $errorMsg", exception)
+                Notificacoes.notificacao(Notificacao.ERRO, "Atualização", "Erro ao atualizar: $errorMsg")
+            }
+        }
+
+        pbProgresso.progressProperty().bind(task.progressProperty())
+        lblProgresso.textProperty().bind(task.messageProperty())
+        Thread(task).start()
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {

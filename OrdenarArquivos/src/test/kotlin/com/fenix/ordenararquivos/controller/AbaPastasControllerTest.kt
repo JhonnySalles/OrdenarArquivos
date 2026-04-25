@@ -9,6 +9,9 @@ import javafx.scene.control.Label
 import javafx.scene.control.ProgressBar
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
+import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
+import jakarta.xml.bind.JAXBContext
+import jakarta.xml.bind.Marshaller
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
@@ -183,5 +186,46 @@ class AbaPastasControllerTest {
             }
             assertEquals(esperado, cbManga.value, "Erro no nome do mangá para: $nomeArquivo")
         }
+    }
+
+    @Test
+    fun testCarregarPastasComComicInfo(robot: FxRobot) {
+        val pastaManga = File(origemDir, "Manga Teste")
+        pastaManga.mkdirs()
+        val pastaCapitulo = File(pastaManga, "Chapter 65.2")
+        pastaCapitulo.mkdirs()
+
+        // Criar ComicInfo.xml
+        val comicInfo = ComicInfo().apply {
+            title = "Chapter 65.2: Vou tirá-lo do meu caminho (parte 2)"
+            number = 65.2f
+            volume = 1
+        }
+        val comicFile = File(pastaCapitulo, "ComicInfo.xml")
+        val context = JAXBContext.newInstance(ComicInfo::class.java)
+        val marshaller = context.createMarshaller()
+        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
+        FileOutputStream(comicFile).use { fos ->
+            marshaller.marshal(comicInfo, fos)
+        }
+
+        robot.interact {
+            robot.lookup("#txtPasta").queryAs(javafx.scene.control.TextField::class.java).text = pastaManga.absolutePath
+        }
+
+        robot.clickOn("#btnCarregar")
+        
+        // Esperar carregamento
+        Thread.sleep(1500) 
+        WaitForAsyncUtils.waitForFxEvents()
+
+        val tbView = robot.lookup("#tbViewProcessar").queryAs(javafx.scene.control.TableView::class.java)
+        val items = tbView.items
+        assertTrue(items.size > 0, "Deveria ter carregado o item")
+        
+        val item = items[0] as com.fenix.ordenararquivos.model.entities.Pasta
+        assertEquals(65.2f, item.capitulo, "Capítulo deveria vir do XML")
+        assertEquals(1f, item.volume, "Volume deveria vir do XML")
+        assertEquals("Vou tirá-lo do meu caminho (parte 2)", item.titulo, "Título deveria vir do XML sem o prefixo")
     }
 }

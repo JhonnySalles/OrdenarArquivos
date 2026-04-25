@@ -762,15 +762,64 @@ class AbaPastasController : Initializable {
 
                             val result = parsingService.parse(file.name)
 
+                            var volume = result.volume.toFloatOrNull() ?: 0f
+                            var capitulo = result.capitulo.toFloatOrNull() ?: 0f
+                            var titulo = result.titulo
+
+                            val comicFile = File(file, "ComicInfo.xml")
+                            if (comicFile.exists()) {
+                                try {
+                                    val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
+                                    val unmarshaller = jaxb.createUnmarshaller()
+                                    val comicInfo = unmarshaller.unmarshal(comicFile) as ComicInfo
+                                    
+                                    if (comicInfo.number > 0)
+                                        capitulo = comicInfo.number
+                                    
+                                    if (comicInfo.volume > 0)
+                                        volume = comicInfo.volume.toFloat()
+                                    
+                                    if (comicInfo.title.isNotEmpty()) {
+                                        val cTitle = comicInfo.title
+
+                                        // Se ainda não temos volume/capítulo do XML, tenta extrair do Title (conforme sugestão do usuário)
+                                        if (capitulo == 0f || volume == 0f) {
+                                            val parsingInfo = parsingService.parse(cTitle)
+                                            if (capitulo == 0f && parsingInfo.capitulo.toFloatOrNull() ?: 0f > 0f)
+                                                capitulo = parsingInfo.capitulo.toFloat()
+                                            if (volume == 0f && parsingInfo.volume.toFloatOrNull() ?: 0f > 0f)
+                                                volume = parsingInfo.volume.toFloat()
+                                        }
+
+                                        // Tenta identificar subtítulo (Tag) após delimitadores :, - ou afins após marcadores
+                                        val regexSub = "(?i).*?\\b(chapter|capitulo|capítulo|ch|cap|c|volume|vol|v)\\b.*?[:\\- ]+\\s*(.*)".toRegex()
+                                        val match = regexSub.find(cTitle)
+                                        titulo = if (match != null && match.groups.size > 2) {
+                                            match.groups[2]?.value?.trim() ?: cTitle
+                                        } else if (cTitle.contains(":")) {
+                                            cTitle.substringAfter(":").trim()
+                                        } else if (cTitle.contains("-")) {
+                                            cTitle.substringAfter("-").trim()
+                                        } else {
+                                            cTitle
+                                        }
+                                        
+                                        if (titulo.isEmpty()) titulo = cTitle
+                                    }
+                                } catch (e: Exception) {
+                                    mLOG.error("Erro ao carregar ComicInfo da pasta ${file.name}", e)
+                                }
+                            }
+
                             lista.add(
                                 Pasta(
                                     pasta = file,
                                     arquivo = file.name,
                                     nome = cbManga.editor.text,
-                                    volume = result.volume.toFloatOrNull() ?: 0f,
-                                    capitulo = result.capitulo.toFloatOrNull() ?: 0f,
+                                    volume = volume,
+                                    capitulo = capitulo,
                                     scan = result.scan,
-                                    titulo = result.titulo,
+                                    titulo = titulo,
                                     isCapa = result.isCapa,
                                     isSelecionado = true
                                 )

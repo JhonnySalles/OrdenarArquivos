@@ -35,6 +35,7 @@ object Configuracao {
             FileOutputStream("app.properties").use { os ->
                 properties.clear()
                 properties.setProperty("caminho.commictagger", "")
+                properties.setProperty("app.update_link", "")
                 properties.store(os, "")
             }
         } catch (e: IOException) {
@@ -72,6 +73,13 @@ object Configuracao {
         }
         get() = properties.getProperty("mal.registros_consulta", "50").toInt()
 
+    var updateLink: String = ""
+        set(value) {
+            properties["app.update_link"] = value
+            field = value
+        }
+        get() = properties.getProperty("app.update_link", "")
+
     // -------------------------------------------------------------------------------------------------
     private fun loadSecrets(): Properties {
         val f = File("secrets.properties")
@@ -83,6 +91,7 @@ object Configuracao {
                     secrets.setProperty("gemini_api_key_2", "")
                     secrets.setProperty("sentry_dns", "")
                     secrets.setProperty("sentry_environment", "")
+                    secrets.setProperty("google_drive_api_key", "")
                     secrets.store(os, "")
                 }
             } catch (e: IOException) {
@@ -104,4 +113,5 @@ object Configuracao {
     val geminiModel: String get() = secrets.getProperty("gemini_model", "gemini-2.0-flash")
     val geminiKey1: String get() = secrets.getProperty("gemini_api_key_1", "")
     val geminiKey2: String get() = secrets.getProperty("gemini_api_key_2", "")
+    val googleDriveApiKey: String get() = secrets.getProperty("google_drive_api_key", "")
 }
