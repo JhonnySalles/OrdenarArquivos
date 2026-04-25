@@ -160,4 +160,28 @@ class AbaPastasControllerTest {
         val tbView = robot.lookup("#tbViewProcessar").queryAs(javafx.scene.control.TableView::class.java)
         assertTrue(tbView.items.size > 0, "Table should have at least one item")
     }
+
+    @Test
+    fun testProcessaArquivoRar(robot: FxRobot) {
+        val method = controller.javaClass.getDeclaredMethod("processaArquivoRar", File::class.java)
+        method.isAccessible = true
+
+        val cbManga = robot.lookup("#cbManga").queryAs(com.jfoenix.controls.JFXComboBox::class.java)
+
+        val cenarios = listOf(
+            "Manga Teste Volume 01.rar" to "Manga Teste",
+            "MANGA TESTE VOLUME 01.rar" to "MANGA TESTE",
+            "Outro Manga Capítulo 05.rar" to "Outro Manga",
+            "Manga Chapter 10.rar" to "Manga",
+            "Manga capitulo 15.rar" to "Manga",
+            "Manga - 01.rar" to "Manga"
+        )
+
+        cenarios.forEach { (nomeArquivo, esperado) ->
+            robot.interact {
+                method.invoke(controller, File(nomeArquivo))
+            }
+            assertEquals(esperado, cbManga.value, "Erro no nome do mangá para: $nomeArquivo")
+        }
+    }
 }

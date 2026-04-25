@@ -74,6 +74,7 @@ import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.regex.Pattern
 import javax.imageio.ImageIO
+import kotlin.jvm.optionals.getOrNull
 import kotlin.math.max
 import kotlin.properties.Delegates
 
@@ -194,19 +195,13 @@ class AbaArquivoController : Initializable {
     private lateinit var txtAreaImportar: JFXTextArea
 
     @FXML
+    private lateinit var btnOcr: JFXButton
+
+    @FXML
     private lateinit var btnLimpar: JFXButton
 
     @FXML
     private lateinit var btnImportar: JFXButton
-
-    @FXML
-    private lateinit var txtQuantidade: JFXTextField
-
-    @FXML
-    private lateinit var btnSubtrair: JFXButton
-
-    @FXML
-    private lateinit var btnSomar: JFXButton
 
     @FXML
     private lateinit var tbViewTabela: TableView<Caminhos>
@@ -710,6 +705,7 @@ class AbaArquivoController : Initializable {
         txtNomePastaManga.isDisable = true
         txtVolume.isDisable = true
         btnImportar.isDisable = true
+        btnOcr.isDisable = true
         btnLimpar.isDisable = true
         btnImportar.isDisable = true
         tbViewTabela.isDisable = true
@@ -729,6 +725,7 @@ class AbaArquivoController : Initializable {
         txtNomePastaManga.isDisable = false
         txtVolume.isDisable = false
         btnImportar.isDisable = false
+        btnOcr.isDisable = false
         btnLimpar.isDisable = false
         btnImportar.isDisable = false
         tbViewTabela.isDisable = false
@@ -1916,33 +1913,21 @@ class AbaArquivoController : Initializable {
     }
 
     @FXML
+    private fun onBtnOcr() {
+        val sumario = mObsListaImagesSelected.stream().filter { it.tipo == TipoCapa.SUMARIO  }.findFirst().getOrNull() ?: return
+        val img = File(txtPastaOrigem.text + "\\" + sumario.arquivo)
+
+        if (!img.exists())
+            return
+
+        ocrSumario(copiaItem(img, mPASTA_TEMPORARIA))
+    }
+
+    @FXML
     private fun onBtnLimpar() {
         mListaCaminhos = ArrayList()
         mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
         tbViewTabela.items = mObsListaCaminhos
-    }
-
-    @FXML
-    private fun onBtnSubtrair() {
-        if (txtQuantidade.text.isNotEmpty())
-            modificaNumeroPaginas(Integer.valueOf(txtQuantidade.text) * -1)
-    }
-
-    @FXML
-    private fun onBtnSomar() {
-        if (txtQuantidade.text.isNotEmpty())
-            modificaNumeroPaginas(Integer.valueOf(txtQuantidade.text))
-    }
-
-    private fun modificaNumeroPaginas(quantidade: Int) {
-        for (caminho in mListaCaminhos) {
-            var qtde = caminho.numero + quantidade
-            if (qtde < 1) qtde = 1
-            caminho.numero = qtde
-        }
-        mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
-        tbViewTabela.items = mObsListaCaminhos
-        txtQuantidade.text = ""
     }
 
     private fun limpaCampo() {
@@ -2595,7 +2580,7 @@ class AbaArquivoController : Initializable {
                         if (mSugestao.suggestions.isNotEmpty())
                             mSugestao.show(txtAreaImportar)
                     }
-                    KeyCode.T -> apagarTagsTodas()
+                    KeyCode.T -> apagarTags()
                     KeyCode.O -> ordenarLinhas()
                     KeyCode.D,
                     KeyCode.E,
@@ -2907,26 +2892,20 @@ class AbaArquivoController : Initializable {
         val ordenar = MenuItem("Ordenar linhas (Ctrl + O)")
         ordenar.setOnAction { ordenarLinhas() }
         val apagarTags = MenuItem("Apagar todas as tags (Ctrl + T)")
-        apagarTags.setOnAction { apagarTagsTodas() }
+        apagarTags.setOnAction { apagarTags() }
         val inverterTudo = MenuItem("Inverter Capítulos e Páginas (Tudo)")
         inverterTudo.setOnAction { inverterCapituloPagina(true) }
         val inverterLinha = MenuItem("Inverter Capítulo e Página (Linha atual)")
         inverterLinha.setOnAction { inverterCapituloPagina(false) }
         val formatarTag = MenuItem("Formatar Tag (Extrair cap. Japonês)")
-        formatarTag.setOnAction { formatarTagRemovendoJapones() }
+        formatarTag.setOnAction { formatarTag() }
         val formatarCap = MenuItem("Formatar Capítulo (Remover letras Japonesas)")
-        formatarCap.setOnAction { formatarCapituloRemovendoJapones() }
+        formatarCap.setOnAction { formatarCapitulo() }
         val reprocessar = MenuItem("Reprocessar Capítulos (Início ao Fim)")
         reprocessar.setOnAction { reprocessarCapitulos() }
 
         menu.items.addAll(sugestao, capitulos, SeparatorMenuItem(), ordenar, apagarTags, inverterTudo, inverterLinha, SeparatorMenuItem(), formatarTag, formatarCap, reprocessar)
         txtAreaImportar.contextMenu = menu
-
-        txtQuantidade.focusedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> txtPastaDestino.unFocusColor = Color.GRAY }
-        txtQuantidade.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
-            if (newValue != null && !newValue.matches(Utils.NUMBER_REGEX))
-                txtGerarFim.text = oldValue
-        }
 
         cbMesclarCapaTudo.selectedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> reloadCapa() }
         cbAjustarMargemCapa.selectedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> reloadCapa() }
@@ -3140,7 +3119,7 @@ class AbaArquivoController : Initializable {
         configuraDragAndDrop()
     }
 
-    private fun apagarTagsTodas() {
+    private fun apagarTags() {
         if (txtAreaImportar.text.isEmpty() || !txtAreaImportar.text.contains(Utils.SEPARADOR_CAPITULO))
             return
 
@@ -3234,8 +3213,9 @@ class AbaArquivoController : Initializable {
         txtAreaImportar.scrollTop = scroll
     }
 
-    private fun formatarTagRemovendoJapones() {
-        if (txtAreaImportar.text.isEmpty()) return
+    private fun formatarTag() {
+        if (txtAreaImportar.text.isEmpty())
+            return
 
         val txt = txtAreaImportar.text
         val lines = txt.split("\n")
@@ -3277,8 +3257,9 @@ class AbaArquivoController : Initializable {
         txtAreaImportar.scrollTop = scroll
     }
 
-    private fun formatarCapituloRemovendoJapones() {
-        if (txtAreaImportar.text.isEmpty()) return
+    private fun formatarCapitulo() {
+        if (txtAreaImportar.text.isEmpty())
+            return
 
         val txt = txtAreaImportar.text
         val lines = txt.split("\n")
@@ -3397,7 +3378,7 @@ class AbaArquivoController : Initializable {
             if (db.hasFiles()) {
                 val file = db.files[0]
                 if (file.extension.lowercase() in setOf("rar", "cbr")) {
-                    processarArquivoArrastado(file)
+                    processaArquivoRar(file)
                     success = true
                 }
             }
@@ -3426,7 +3407,7 @@ class AbaArquivoController : Initializable {
         controllerPai.apDragOverlay.isVisible = false
     }
 
-    private fun processarArquivoArrastado(file: File) {
+    private fun processaArquivoRar(file: File) {
         if (!mPASTA_TEMPORARIA.exists())
             mPASTA_TEMPORARIA.mkdirs()
         val tempDir = File(mPASTA_TEMPORARIA, "process_arquivo_" + System.currentTimeMillis())
@@ -3437,52 +3418,78 @@ class AbaArquivoController : Initializable {
                 val folder = folders?.firstOrNull { !it.name.contains("Capa", true) }
 
                 if (folder != null) {
-                    val folderName = folder.name
-                    // Parse: [JPN] Name - Volume - Chapter
-                    val namePart = if (folderName.contains("-")) folderName.substringBeforeLast("-").trim() else folderName
-                    val chapterPart = if (folderName.contains("-")) folderName.substringAfterLast("-").trim() else "Capítulo"
+                    val regexDelimitadores = Regex("(?i)\\s*(volume|capítulo|capitulo|chapter|-).*")
+                    val nomeOriginal = folder.name
+                    var nomeManga = nomeOriginal
 
-                    txtNomePastaCapitulo.text = chapterPart
-                    txtNomeArquivo.text = chapterPart
+                    if (nomeManga.contains("]"))
+                        nomeManga = nomeManga.substringAfter("]").trim()
 
-                    val mangaNamePuro = if (namePart.contains("]")) namePart.substringAfter("]").trim() else namePart
-                    val sugestoes = mServiceManga.sugestao(mangaNamePuro)
-                    val mangaNomeFinal = if (sugestoes.isNotEmpty()) sugestoes.first() else mangaNamePuro
+                    // Extrai o nome do mangá removendo tudo a partir do primeiro delimitador encontrado
+                    nomeManga = nomeManga.replace(regexDelimitadores, "").trim()
 
-                    txtNomePastaManga.text = "[JPN] $mangaNomeFinal -"
+                    // Tenta identificar o termo de capítulo (Capítulo, Chapter, etc) na parte removida
+                    var capituloManga = nomeOriginal.replace(nomeManga, "", ignoreCase = true).trim()
 
-                    // ComicInfo
+                    val regexTermoCapitulo = Regex("(?i)(capítulo|capitulo|chapter)")
+                    val matchCapitulo = regexTermoCapitulo.find(capituloManga)
+
+                    capituloManga = if (matchCapitulo != null) {
+                        // Se encontrou o termo, mantém como o usuário escreveu (ex: "Chapter")
+                        matchCapitulo.value.trim()
+                    } else {
+                        // Fallback: limpa números e volume para tentar pegar o que sobrar
+                        capituloManga.replace(Regex("(?i)volume|vol|\\d+|\\s+"), "").trim()
+                    }
+
+                    capituloManga = if (capituloManga.isEmpty())
+                        "Capítulo"
+                    else
+                        capituloManga.replace("\\d".toRegex(), "")
+
+                    nomeManga = if (nomeManga.contains("]")) nomeManga.substringAfter("]").trim() else nomeManga
+                    val sugestoes = mServiceManga.sugestao(nomeManga)
+                    nomeManga = if (sugestoes.isNotEmpty()) sugestoes.first() else nomeManga
+                    val scan = if (txtNomePastaManga.text != null && txtNomePastaManga.text.contains("]")) nomeManga.substringBefore("]").trim() else ""
+
+                    txtNomePastaCapitulo.text = capituloManga
+                    txtNomePastaManga.text = "$scan $nomeManga -"
+                    simulaNome()
+
                     val comicFile = File(tempDir, "ComicInfo.xml").let { if (it.exists()) it else File(folder, "ComicInfo.xml") }
                     if (comicFile.exists()) {
                         try {
                             val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
                             val unmarshaller = jaxb.createUnmarshaller()
-                            val comicInfoRar = unmarshaller.unmarshal(comicFile) as ComicInfo
-                            
-                            // Atualiza mantendo o volume atual
+                            val comicInfo = unmarshaller.unmarshal(comicFile) as ComicInfo
+
                             mComicInfo.apply {
-                                idMal = comicInfoRar.idMal
-                                title = comicInfoRar.title
-                                series = comicInfoRar.series
-                                publisher = comicInfoRar.publisher
-                                alternateSeries = comicInfoRar.alternateSeries
-                                seriesGroup = comicInfoRar.seriesGroup
-                                storyArc = comicInfoRar.storyArc
-                                imprint = comicInfoRar.imprint
-                                genre = comicInfoRar.genre
-                                ageRating = comicInfoRar.ageRating
-                                languageISO = comicInfoRar.languageISO
-                                notes = comicInfoRar.notes
-                                summary = comicInfoRar.summary
+                                idMal = comicInfo.idMal
+                                title = comicInfo.title
+                                series = comicInfo.series
+                                publisher = comicInfo.publisher
+                                alternateSeries = comicInfo.alternateSeries
+                                seriesGroup = comicInfo.seriesGroup
+                                storyArc = comicInfo.storyArc
+                                imprint = comicInfo.imprint
+                                genre = comicInfo.genre
+                                ageRating = comicInfo.ageRating
+                                languageISO = comicInfo.languageISO
+                                notes = comicInfo.notes
+                                summary = comicInfo.summary
                             }
+
+                            txtMalId.text  = comicInfo.idMal?.toString() ?: ""
+                            txtMalNome.text  = comicInfo.series
                             carregaComicInfo(mComicInfo)
-                            consultarMal()
+
+                            if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty())
+                                consultarMal()
                         } catch (e: Exception) {
                             mLOG.error("Erro ao carregar ComicInfo do RAR.", e)
                         }
-                    } else {
+                    } else
                         carregaComicInfo()
-                    }
                 }
             }
         } catch (e: Exception) {

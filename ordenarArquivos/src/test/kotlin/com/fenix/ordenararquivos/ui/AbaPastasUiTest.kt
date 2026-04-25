@@ -31,6 +31,8 @@ import javafx.scene.control.Tab
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.input.KeyCode
+import javafx.scene.input.DragEvent
+import javafx.scene.input.TransferMode
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.StackPane
 import javafx.stage.Stage
@@ -54,6 +56,7 @@ class AbaPastasUiTest : BaseTest() {
     private lateinit var pastasController: AbaPastasController
     private lateinit var mockMangaService: MangaServices
     private lateinit var mockComicInfoService: ComicInfoServices
+    private lateinit var mockRarService: WinrarServices
 
     @TempDir lateinit var tempDir: Path
     private lateinit var mockPopupAmazon: MockedStatic<PopupAmazon>
@@ -91,19 +94,21 @@ class AbaPastasUiTest : BaseTest() {
         mockTelaInicialController = mock<TelaInicialController>()
         mockMangaService = mock()
         mockComicInfoService = mock()
+        mockRarService = mock()
 
         val loader = FXMLLoader(AbaPastasController.fxmlLocate)
         loader.setControllerFactory { controllerClass ->
             if (controllerClass == AbaPastasController::class.java) {
                 AbaPastasController().apply {
                     // Injeção de dependências via reflection
-                    listOf("mServiceManga", "mServiceComicInfo").forEach { fieldName ->
+                    listOf("mServiceManga", "mServiceComicInfo", "mRarService").forEach { fieldName ->
                         try {
                             val field = AbaPastasController::class.java.getDeclaredField(fieldName)
                             field.isAccessible = true
                             when (fieldName) {
                                 "mServiceManga" -> field.set(this, mockMangaService)
                                 "mServiceComicInfo" -> field.set(this, mockComicInfoService)
+                                "mRarService" -> field.set(this, mockRarService)
                             }
                         } catch (e: Exception) {
                             e.printStackTrace()
@@ -138,7 +143,7 @@ class AbaPastasUiTest : BaseTest() {
 
         mockPopupAmazon = Mockito.mockStatic(PopupAmazon::class.java)
 
-        Mockito.reset(mockMangaService, mockComicInfoService, mockTelaInicialController)
+        Mockito.reset(mockMangaService, mockComicInfoService, mockTelaInicialController, mockRarService)
 
         // Injeta o controller pai e mocks de progresso
         pastasController.controllerPai = mockTelaInicialController
@@ -647,5 +652,38 @@ class AbaPastasUiTest : BaseTest() {
                 tabComic.text.contains("Manga Pastas Title"),
                 "O título da aba deveria conter o nome do comic. Atual: ${tabComic.text}"
         )
+    }
+
+    @Test
+    @Order(21)
+    fun testDragAndDropFile(robot: FxRobot) {
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val file = File("Chapter 10 Manga Teste.rar")
+
+        val dragboard = mock<Dragboard>()
+        whenever(dragboard.hasFiles()).thenReturn(true)
+        whenever(dragboard.files).thenReturn(listOf(file))
+
+        val dragEvent = mock<DragEvent>()
+        whenever(dragEvent.dragboard).thenReturn(dragboard)
+        whenever(dragEvent.eventType).thenReturn(DragEvent.DRAG_DROPPED)
+        whenever(dragEvent.transferMode).thenReturn(TransferMode.MOVE)
+
+        whenever(mockRarService.extrairTudo(any(), any())).thenAnswer {
+            val dest = it.arguments[1] as File
+            val mangaDir = File(dest, "Chapter 10 Manga Teste")
+            mangaDir.mkdirs()
+            true
+        }
+
+        robot.interact {
+            // Em vez de startDragAndDrop, chamamos o handler diretamente com o evento mockado
+            root.onDragDropped.handle(dragEvent)
+        }
+
+        WaitForAsyncUtils.waitForFxEvents()
+
+        val cbManga = robot.lookup("#cbManga").queryAs(JFXComboBox::class.java)
+        assertEquals("Manga Teste", cbManga.value)
     }
 }

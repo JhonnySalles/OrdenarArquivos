@@ -43,7 +43,6 @@ import javafx.util.Callback
 import javafx.util.converter.NumberStringConverter
 import org.slf4j.LoggerFactory
 import jakarta.xml.bind.JAXBContext
-import jakarta.xml.bind.Unmarshaller
 import javafx.scene.effect.BoxBlur
 import java.io.File
 import java.net.URL
@@ -1192,7 +1191,7 @@ class AbaPastasController : Initializable {
             if (db.hasFiles()) {
                 val file = db.files.firstOrNull { it.extension.lowercase() in listOf("rar", "cbr") }
                 if (file != null) {
-                    processarArquivoArrastado(file)
+                    processaArquivoRar(file)
                     success = true
                 }
             }
@@ -1221,7 +1220,7 @@ class AbaPastasController : Initializable {
         controllerPai.apDragOverlay.isVisible = false
     }
 
-    private fun processarArquivoArrastado(file: File) {
+    private fun processaArquivoRar(file: File) {
         if (!mPASTA_TEMPORARIA.exists())
             mPASTA_TEMPORARIA.mkdirs()
         val tempDir = File(mPASTA_TEMPORARIA, "process_arquivo_" + System.currentTimeMillis())
@@ -1233,58 +1232,56 @@ class AbaPastasController : Initializable {
                 val folder = folders?.firstOrNull { !it.name.contains("Capa", true) }
 
                 if (folder != null) {
-                    val folderName = folder.name
+                    var mangaNome = folder.name
+                    val regexDelimitadores = Regex("(?i)\\s*(volume|capítulo|capitulo|chapter|-).*")
+                    if (mangaNome.contains("]"))
+                        mangaNome = mangaNome.substringAfter("]").trim()
 
-                    // Robust Parse: [scan] manga - volume xx capítulo yyy
-                    var mangaName = folderName
-                    if (mangaName.startsWith("[")) {
-                        mangaName = mangaName.substringAfter("]").trim()
-                    }
+                    mangaNome = mangaNome.replace(regexDelimitadores, "").trim()
 
-                    if (mangaName.contains("-")) {
-                        mangaName = mangaName.substringBefore("-").trim()
-                    }
+                    if (mangaNome.endsWith("-"))
+                        mangaNome = mangaNome.substringBeforeLast("-").trim()
 
-                    // Metadata update: only populate fields, don't change directory or load items
-                    cbManga.value = mangaName
+                    val sugestoes = mServiceManga.sugestao(mangaNome)
+                    mangaNome = if (sugestoes.isNotEmpty()) sugestoes.first() else mangaNome
+                    cbManga.value = mangaNome
 
-                    val sugestoes = mServiceManga.sugestao(mangaName)
-                    val mangaNomeFinal = if (sugestoes.isNotEmpty()) sugestoes.first() else mangaName
-
-                    // Set ComicInfo data
                     val comicFile = File(tempDir, "ComicInfo.xml").let { if (it.exists()) it else File(folder, "ComicInfo.xml") }
                     if (comicFile.exists()) {
                         try {
                             val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
                             val unmarshaller = jaxb.createUnmarshaller()
-                            val comicInfoRar = unmarshaller.unmarshal(comicFile) as ComicInfo
+                            val comicInfo = unmarshaller.unmarshal(comicFile) as ComicInfo
 
                             val newComic = ComicInfo().apply {
-                                idMal = comicInfoRar.idMal
-                                title = comicInfoRar.title
-                                series = comicInfoRar.series
-                                publisher = comicInfoRar.publisher
-                                alternateSeries = comicInfoRar.alternateSeries
-                                seriesGroup = comicInfoRar.seriesGroup
-                                storyArc = comicInfoRar.storyArc
-                                imprint = comicInfoRar.imprint
-                                genre = comicInfoRar.genre
-                                ageRating = comicInfoRar.ageRating
-                                languageISO = comicInfoRar.languageISO
-                                notes = comicInfoRar.notes
-                                summary = comicInfoRar.summary
-                                comic = comicInfoRar.comic
+                                idMal = comicInfo.idMal
+                                title = comicInfo.title
+                                series = comicInfo.series
+                                publisher = comicInfo.publisher
+                                alternateSeries = comicInfo.alternateSeries
+                                seriesGroup = comicInfo.seriesGroup
+                                storyArc = comicInfo.storyArc
+                                imprint = comicInfo.imprint
+                                genre = comicInfo.genre
+                                ageRating = comicInfo.ageRating
+                                languageISO = comicInfo.languageISO
+                                notes = comicInfo.notes
+                                summary = comicInfo.summary
+                                comic = comicInfo.comic
                             }
                             mComicInfo = newComic
-                            consultarMal()
+
+                            txtMalId.text  = comicInfo.idMal?.toString() ?: ""
+                            txtMalNome.text  = comicInfo.series
+
+                            if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty())
+                                consultarMal()
                         } catch (e: Exception) {
                             mLOG.error("Erro ao carregar ComicInfo do arquivo arrastado.", e)
                         }
-                    } else {
+                    } else
                         carregaComicInfo()
-                    }
 
-                    // Switch to ComicInfo tab
                     tbTabRootPastas.selectionModel.select(tbTabPastas_ComicInfo)
                 }
             }

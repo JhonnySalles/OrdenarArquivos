@@ -269,7 +269,7 @@ class AbaArquivoControllerTest {
     @Test
     @Order(11)
     @DisplayName("Deve formatar tag removendo japonês e extraindo o número")
-    fun testFormatarTagRemovendoJapones(robot: FxRobot) {
+    fun testFormatarTag(robot: FxRobot) {
         val txtArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         val txtFim = robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java)
         
@@ -308,5 +308,32 @@ class AbaArquivoControllerTest {
         assertEquals("001-01|Tag1", lines[0])
         assertEquals("002-02|Tag2", lines[1])
         assertEquals("003-000", lines[2])
+    }
+
+    @Test
+    @Order(13)
+    @DisplayName("Deve validar o preenchimento dos campos via processaArquivoRar com variações de case")
+    fun testProcessaArquivoRar(robot: FxRobot) {
+        val method = arquivoController.javaClass.getDeclaredMethod("processaArquivoRar", File::class.java)
+        method.isAccessible = true
+
+        val txtNomePastaManga = robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
+        val txtNomePastaCapitulo = robot.lookup("#txtNomePastaCapitulo").queryAs(JFXTextField::class.java)
+
+        val cenarios = listOf(
+            Triple("Manga Teste Volume 01.rar", "[JPN] Manga Teste -", "Capítulo"),
+            Triple("MANGA TESTE VOLUME 01.rar", "[JPN] MANGA TESTE -", "Capítulo"),
+            Triple("Outro Manga Capítulo 05.rar", "[JPN] Outro Manga -", "Capítulo"),
+            Triple("Manga Chapter 10.rar", "[JPN] Manga -", "Chapter"),
+            Triple("Manga capitulo 15.rar", "[JPN] Manga -", "capitulo")
+        )
+
+        cenarios.forEach { (nomeArquivo, mangaEsperado, capituloEsperado) ->
+            robot.interact {
+                method.invoke(arquivoController, File(nomeArquivo))
+            }
+            assertEquals(mangaEsperado, txtNomePastaManga.text, "Erro no nome do mangá para: $nomeArquivo")
+            assertEquals(capituloEsperado, txtNomePastaCapitulo.text, "Erro no capítulo para: $nomeArquivo")
+        }
     }
 }

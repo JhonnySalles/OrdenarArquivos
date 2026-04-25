@@ -30,6 +30,8 @@ import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
+import javafx.scene.input.DragEvent
+import javafx.scene.input.TransferMode
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.StackPane
 import javafx.stage.Stage
@@ -512,32 +514,6 @@ class AbaArquivoUiTest : BaseTest() {
         assertTrue(textArea.text.contains("012-"))
     }
 
-    @Test
-    @Order(6)
-    fun testTabelaOperacoes(robot: FxRobot) {
-        robot.interact {
-            robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java).text =
-                    "001-001\n002-002"
-        }
-        robot.clickOn("#btnImportar")
-
-        val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java)
-        assertEquals(2, tbViewTabela.items.size)
-
-        robot.interact {
-            robot.lookup("#txtQuantidade").queryAs(JFXTextField::class.java).text = "10"
-        }
-        robot.clickOn("#btnSomar")
-
-        val firstItem = tbViewTabela.items[0] as com.fenix.ordenararquivos.model.entities.Caminhos
-        assertEquals(11, firstItem.numero)
-
-        robot.interact {
-            robot.lookup("#txtQuantidade").queryAs(JFXTextField::class.java).text = "5"
-        }
-        robot.clickOn("#btnSubtrair")
-        assertEquals(6, firstItem.numero)
-    }
 
     @Test
     @Order(8)
@@ -706,6 +682,10 @@ class AbaArquivoUiTest : BaseTest() {
                 fDestino.isAccessible = true
                 fDestino.set(controller, tempDir)
 
+                robot.lookup("#txtPastaOrigem").queryAs(JFXTextField::class.java).text =
+                        tempDir.absolutePath
+                robot.lookup("#txtPastaDestino").queryAs(JFXTextField::class.java).text =
+                        tempDir.absolutePath
                 robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text =
                         "Hist Manga"
                 robot.lookup("#txtVolume").queryAs(JFXTextField::class.java).text = "01"
@@ -961,6 +941,7 @@ class AbaArquivoUiTest : BaseTest() {
     fun testContextMenuJapaneseFormatting(robot: FxRobot) {
         val textArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         robot.interact {
+            robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java).text = "001"
             textArea.text = "xxx-01| 第3部 Teste"
         }
         
@@ -971,7 +952,7 @@ class AbaArquivoUiTest : BaseTest() {
         }
         
         WaitForAsyncUtils.waitForFxEvents()
-        assertEquals("003-01| Teste", textArea.text.trim())
+        assertEquals("003-01|Teste", textArea.text.trim())
     }
 
     @Test
@@ -994,7 +975,35 @@ class AbaArquivoUiTest : BaseTest() {
         val tabComic = tabPane.tabs[1]
         assertTrue(
                 tabComic.text.contains("Manga Teste Title"),
-                "O título da aba deveria conter o nome do comic. Atual: ${tabComic.text}"
         )
+    }
+
+    @Test
+    @Order(20)
+    fun testDragAndDropFile(robot: FxRobot) {
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val file = File("[Scan] Manga Teste Volume 01.rar")
+
+        val dragboard = mock<Dragboard>()
+        whenever(dragboard.hasFiles()).thenReturn(true)
+        whenever(dragboard.files).thenReturn(listOf(file))
+
+        val dragEvent = mock<DragEvent>()
+        whenever(dragEvent.dragboard).thenReturn(dragboard)
+        whenever(dragEvent.eventType).thenReturn(DragEvent.DRAG_DROPPED)
+        whenever(dragEvent.transferMode).thenReturn(TransferMode.MOVE)
+
+        robot.interact {
+            // Em vez de startDragAndDrop, chamamos o handler diretamente com o evento mockado
+            root.onDragDropped.handle(dragEvent)
+        }
+
+        WaitForAsyncUtils.waitForFxEvents()
+
+        val txtNomePastaManga = robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
+        val txtNomePastaCapitulo = robot.lookup("#txtNomePastaCapitulo").queryAs(JFXTextField::class.java)
+
+        assertEquals("[JPN] Manga Teste -", txtNomePastaManga.text)
+        assertEquals("Capítulo", txtNomePastaCapitulo.text)
     }
 }
