@@ -71,11 +71,12 @@ class UpdateService {
     fun getCurrentVersion(): String? {
         val currentDir = File(System.getProperty("user.dir"))
         val jarFile = currentDir.listFiles()
-            ?.filter { it.name.matches(Regex("""ordenarArquivos-.+-jar-with-dependencies\.jar""")) }
+            ?.filter { it.name.matches(Regex("""ordenarArquivos-.+?\.jar""")) }
+            ?.filter { !it.name.endsWith(".old") }
             ?.maxByOrNull { it.lastModified() }
 
         if (jarFile != null) {
-            val regex = Regex("""ordenarArquivos-(.+?)-jar-with-dependencies\.jar""")
+            val regex = Regex("""ordenarArquivos-(.+?)(?:-jar-with-dependencies)?\.jar""")
             val match = regex.find(jarFile.name)
             return match?.groupValues?.get(1)
         }
@@ -97,14 +98,41 @@ class UpdateService {
             if (responseCode == 200) {
                 val contentType = connection.contentType ?: ""
                 if (contentType.contains("text/html")) {
-                    val html = connection.inputStream.bufferedReader().readText()
+                    val html = connection.inputStream.bufferedReader().use { it.readText() }
                     connection.disconnect()
 
-                    val confirmRegex = Regex("""confirm=([a-zA-Z0-9_-]+)""")
-                    val confirmMatch = confirmRegex.find(html)
-                    if (confirmMatch != null) {
-                        val confirmToken = confirmMatch.groupValues[1]
-                        val confirmUrl = "$url&confirm=$confirmToken"
+                    // Tenta encontrar o token ou o link usando padrões variados (URL ou Campos de Formulário)
+                    val confirmToken = Regex("""confirm=([^&"'\s>]+)""").find(html)?.groupValues?.get(1)
+                        ?: Regex("""name=["']confirm["']\s+value=["']([^"']+)["']""").find(html)?.groupValues?.get(1)
+
+                    val uuid = Regex("""uuid=([^&"'\s>]+)""").find(html)?.groupValues?.get(1)
+                        ?: Regex("""name=["']uuid["']\s+value=["']([^"']+)["']""").find(html)?.groupValues?.get(1)
+
+                    var confirmUrl: String? = when {
+                        confirmToken != null && uuid != null -> {
+                            "https://drive.usercontent.google.com/download?id=$fileId&export=download&confirm=$confirmToken&uuid=$uuid"
+                        }
+                        confirmToken != null -> {
+                            val cleanToken = confirmToken.replace("&amp;", "&")
+                            if (cleanToken.startsWith("/uc?")) "https://drive.google.com$cleanToken"
+                            else "$url&confirm=$cleanToken"
+                        }
+                        uuid != null -> {
+                            "https://drive.usercontent.google.com/download?id=$fileId&export=download&confirm=t&uuid=$uuid"
+                        }
+                        else -> {
+                            // Tenta encontrar qualquer link que contenha /uc? e confirm= (mais permissivo)
+                            val manualLink = Regex("""(/uc\?[^"'\s>]*confirm=[^"'\s>]*)""").find(html)?.groupValues?.get(1)
+                                ?.replace("&amp;", "&")
+                            if (manualLink != null) {
+                                if (manualLink.startsWith("http")) manualLink
+                                else "https://drive.google.com$manualLink"
+                            } else null
+                        }
+                    }
+
+                    if (confirmUrl != null) {
+                        mLOG.info("Link de confirmação encontrado: $confirmUrl")
                         connection = URI(confirmUrl).toURL().openConnection() as HttpURLConnection
                         connection.instanceFollowRedirects = true
                         connection.connectTimeout = 30000
@@ -112,19 +140,11 @@ class UpdateService {
                         connection.connect()
                         responseCode = connection.responseCode
                     } else {
-                        // Try the "download anyway" approach with uuid
-                        val uuidRegex = Regex("""uuid=([a-zA-Z0-9_-]+)""")
-                        val uuidMatch = uuidRegex.find(html)
-                        if (uuidMatch != null) {
-                            val uuid = uuidMatch.groupValues[1]
-                            val confirmUrl = "https://drive.usercontent.google.com/download?id=$fileId&export=download&confirm=t&uuid=$uuid"
-                            connection = URI(confirmUrl).toURL().openConnection() as HttpURLConnection
-                            connection.instanceFollowRedirects = true
-                            connection.connectTimeout = 30000
-                            connection.readTimeout = 60000
-                            connection.connect()
-                            responseCode = connection.responseCode
-                        }
+                        // Log mais detalhado para identificar o problema na estrutura do HTML
+                        val bodySnippet = if (html.contains("<body")) html.substring(html.indexOf("<body")) else html
+                        val finalSnippet = if (bodySnippet.length > 2000) bodySnippet.substring(0, 2000) else bodySnippet
+                        mLOG.error("Google Drive: Falha ao extrair confirmação. Título: ${Regex("<title>(.*?)</title>").find(html)?.groupValues?.get(1)}. Snippet do Body: $finalSnippet")
+                        throw RuntimeException("Erro ao baixar arquivo: Google Drive retornou um aviso ou página de erro (HTML) sem link de confirmação detectável.")
                     }
                 }
             }
@@ -182,7 +202,6 @@ class UpdateService {
         val tempDir = File(currentDir, "temp/update")
         tempDir.mkdirs()
 
-        // Download new JARs
         val totalFiles = filesToDownload.size
         for ((index, driveFile) in filesToDownload.withIndex()) {
             onProgress("Baixando ${driveFile.name} (${index + 1}/$totalFiles)...", index.toDouble() / totalFiles)
@@ -197,14 +216,11 @@ class UpdateService {
             mLOG.info("Download concluído: ${driveFile.name}")
         }
 
-        // Rename old JARs and copy new ones
         onProgress("Substituindo arquivos...", 0.9)
         val downloadedFiles = tempDir.listFiles()?.filter { it.name.endsWith(".jar") } ?: emptyList()
 
         for (newJar in downloadedFiles) {
             val existingJar = File(currentDir, newJar.name)
-
-            // Rename old JARs matching the same pattern (different version)
             val isWithDeps = newJar.name.contains("jar-with-dependencies")
             val oldPattern = if (isWithDeps) {
                 Regex("""ordenarArquivos-.+-jar-with-dependencies\.jar""")
@@ -221,7 +237,6 @@ class UpdateService {
                     mLOG.info("Arquivo antigo renomeado: ${oldFile.name} -> ${backupFile.name}")
                 }
 
-            // Also rename if same name exists
             if (existingJar.exists()) {
                 val backupFile = File(currentDir, "${existingJar.name}.old")
                 if (backupFile.exists()) backupFile.delete()
@@ -232,11 +247,9 @@ class UpdateService {
             mLOG.info("Novo arquivo copiado: ${newJar.name}")
         }
 
-        // Update .bat file
         onProgress("Atualizando ExecutarOrdenaArquivo.bat...", 0.95)
         updateBatFile(currentDir, remoteVersion)
 
-        // Clean temp
         tempDir.listFiles()?.forEach { it.delete() }
         tempDir.delete()
 
@@ -261,16 +274,19 @@ class UpdateService {
             return
         }
 
-        val command = listOf(
-            "cmd", "/c",
-            "timeout /t 2 /nobreak >nul && \"${batFile.absolutePath}\""
-        )
+        val command = listOf("cmd", "/c", "start", "", batFile.absolutePath)
 
-        mLOG.info("Agendando reinicialização: $command")
-        val processBuilder = ProcessBuilder(command)
-        processBuilder.directory(currentDir)
-        processBuilder.redirectErrorStream(true)
-        processBuilder.start()
+        mLOG.info("Reiniciando aplicativo: $command")
+        try {
+            ProcessBuilder(command)
+                .directory(currentDir)
+                .start()
+            
+            // Fecha a instância atual imediatamente
+            System.exit(0)
+        } catch (e: Exception) {
+            mLOG.error("Erro ao tentar reiniciar o aplicativo", e)
+        }
     }
 
     private fun compareVersions(v1: String, v2: String): Int {
