@@ -393,7 +393,8 @@ class AbaPastasController : Initializable {
                             val volume = volumeFormat.format(vol)
                             val tudo = if (comicMap.contains("000")) {
                                 comicMap["000"]?.listFiles()?.any { it.name.contains("tudo", true) } == true
-                            } else false
+                            } else
+                                false
                             val semCapa = if (!tudo) " (Sem capa)" else ""
                             val nome = "$mangaProcessar - Volume $volume$semCapa.rar"
                             val arquivoZip = File(destino, nome)
@@ -415,12 +416,6 @@ class AbaPastasController : Initializable {
                                 destino, arquivoZip, manga, mComicInfo, compactar, comicMap, cbLinguagem.value ?: Linguagem.PORTUGUESE,
                                 isCompactar = true, isGerarCapitulos = true, isAtualizarComic = false, callback
                             )
-
-                            val generatedXml = File(destino, "ComicInfo.xml")
-                            if (generatedXml.exists()) {
-                                val newXmlName = "$mangaProcessar - Volume $volume - comicinfo.xml"
-                                generatedXml.renameTo(File(destino, newXmlName))
-                            }
                         }
 
                         mServiceComicInfo.save(mComicInfo)
@@ -1376,15 +1371,13 @@ class AbaPastasController : Initializable {
 
         apRoot.onDragDropped = EventHandler { event ->
             val db = event.dragboard
-            var success = false
             if (db.hasFiles()) {
-                val file = db.files.firstOrNull { it.extension.lowercase() in listOf("rar", "cbr") }
-                if (file != null) {
-                    processaArquivoRar(file)
-                    success = true
+                val files = db.files.filter { it.extension.lowercase() in listOf("rar", "cbr") }
+                if (files.isNotEmpty()) {
+                    processaArquivosRar(files)
+                    event.isDropCompleted = true
                 }
             }
-            event.isDropCompleted = success
             esconderOverlayDrag()
             event.consume()
         }
@@ -1409,80 +1402,93 @@ class AbaPastasController : Initializable {
         controllerPai.apDragOverlay.isVisible = false
     }
 
-    private fun processaArquivoRar(file: File) {
+    private fun processaArquivosRar(files: List<File>) {
+        if (txtPasta.text.isNullOrEmpty()) {
+            txtPasta.unFocusColor = Color.RED
+            AlertasPopup.alertaModal("Alerta", "Não informado a pasta para processamento.")
+            return
+        }
+
+        val diretorio = txtPasta.text
         if (!mPASTA_TEMPORARIA.exists())
             mPASTA_TEMPORARIA.mkdirs()
-        val tempDir = File(mPASTA_TEMPORARIA, "process_arquivo_" + System.currentTimeMillis())
-        tempDir.mkdirs()
 
-        try {
-            if (mRarService.extrairTudo(file, tempDir)) {
-                val folders = tempDir.listFiles { f -> f.isDirectory }
-                val folder = folders?.firstOrNull { !it.name.contains("Capa", true) }
+        val task = object : Task<Void>() {
+            override fun call(): Void? {
+                var atualizado = false
+                val regexVol = "(?i)Volume\\s*(\\d+[,.]?\\d*)".toRegex()
+                val regexDelimitadores = Regex("(?i)\\s*(volume|capítulo|capitulo|chapter|-).*")
 
-                if (folder != null) {
-                    var mangaNome = folder.name
-                    val regexDelimitadores = Regex("(?i)\\s*(volume|capítulo|capitulo|chapter|-).*")
-                    if (mangaNome.contains("]"))
-                        mangaNome = mangaNome.substringAfter("]").trim()
+                files.forEach { file ->
+                    val tempDir = File(mPASTA_TEMPORARIA, "process_arrastado_" + System.currentTimeMillis())
+                    tempDir.mkdirs()
 
-                    mangaNome = mangaNome.replace(regexDelimitadores, "").trim()
+                    try {
+                        mRarService.extrairTudo(file, tempDir)
+                        val capa = tempDir.walk().filter { it.isDirectory && it.name.contains("Capa", true) }.firstOrNull()
+                        if (capa != null) {
+                            val pasta = capa.name
+                            var mangaNome = pasta
+                            if (mangaNome.contains("]"))
+                                mangaNome = mangaNome.substringAfter("]").trim()
 
-                    if (mangaNome.endsWith("-"))
-                        mangaNome = mangaNome.substringBeforeLast("-").trim()
+                            mangaNome = mangaNome.replace(regexDelimitadores, "").trim()
+                            if (mangaNome.endsWith("-"))
+                                mangaNome = mangaNome.substringBeforeLast("-").trim()
 
-                    val sugestoes = mServiceManga.sugestao(mangaNome)
-                    mangaNome = if (sugestoes.isNotEmpty()) sugestoes.first() else mangaNome
-                    cbManga.value = mangaNome
+                            val sugestoes = mServiceManga.sugestao(mangaNome)
+                            mangaNome = if (sugestoes.isNotEmpty()) sugestoes.first() else mangaNome
 
-                    for (item in mObsListaProcessar)
-                        item.nome = mangaNome
-
-                    tbViewProcessar.refresh()
-                    val comicFile = File(tempDir, "ComicInfo.xml").let { if (it.exists()) it else File(folder, "ComicInfo.xml") }
-                    if (comicFile.exists()) {
-                        try {
-                            val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
-                            val unmarshaller = jaxb.createUnmarshaller()
-                            val comicInfo = unmarshaller.unmarshal(comicFile) as ComicInfo
-
-                            val newComic = ComicInfo().apply {
-                                idMal = comicInfo.idMal
-                                title = comicInfo.title
-                                series = comicInfo.series
-                                publisher = comicInfo.publisher
-                                alternateSeries = comicInfo.alternateSeries
-                                seriesGroup = comicInfo.seriesGroup
-                                storyArc = comicInfo.storyArc
-                                imprint = comicInfo.imprint
-                                genre = comicInfo.genre
-                                ageRating = comicInfo.ageRating
-                                languageISO = comicInfo.languageISO
-                                notes = comicInfo.notes
-                                summary = comicInfo.summary
-                                comic = comicInfo.comic
+                            if (!atualizado) {
+                                Platform.runLater {
+                                    cbManga.value = mangaNome
+                                    txtMalNome.text = mangaNome
+                                    consultarMal()
+                                    tbTabRootPastas.selectionModel.select(tbTabPastas_ComicInfo)
+                                }
+                                atualizado = true
                             }
-                            mComicInfo = newComic
 
-                            txtMalId.text = comicInfo.idMal?.toString() ?: ""
-                            txtMalNome.text = comicInfo.series
+                            val pastaDestino = File(diretorio, pasta)
+                            if (!pastaDestino.exists())
+                                pastaDestino.mkdirs()
 
-                            if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty())
-                                consultarMal()
-                        } catch (e: Exception) {
-                            mLOG.error("Erro ao carregar ComicInfo do arquivo arrastado.", e)
+                            val volume = (regexVol.find(pasta)?.groups?.get(1)?.value?.replace(",", ".") ?: "0").toFloatOrNull() ?: 0f
+
+                            capa.copyRecursively(pastaDestino, overwrite = true)
+                            Platform.runLater {
+                                val itemExistente = mObsListaProcessar.find { it.volume == volume && it.isCapa }
+                                if (itemExistente == null) {
+                                    mObsListaProcessar.add(
+                                        Pasta(
+                                            pasta = pastaDestino,
+                                            arquivo = pasta,
+                                            nome = mangaNome,
+                                            volume = volume,
+                                            isCapa = true,
+                                            isSelecionado = true
+                                        )
+                                    )
+                                    mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
+                                }
+                                tbViewProcessar.refresh()
+                            }
+
                         }
-                    } else
-                        carregaComicInfo()
-
-                    tbTabRootPastas.selectionModel.select(tbTabPastas_ComicInfo)
+                    } catch (e: Exception) {
+                        mLOG.error("Erro ao processar arquivo arrastado: ${file.name}", e)
+                    } finally {
+                        tempDir.deleteRecursively()
+                    }
                 }
+                return null
             }
-        } catch (e: Exception) {
-            mLOG.error("Erro ao processar arquivo arrastado.", e)
-        } finally {
-            tempDir.deleteRecursively()
+
+            override fun succeeded() {
+                Notificacoes.notificacao(Notificacao.SUCESSO, "Drag & Drop", "Processamento de capas concluído.")
+            }
         }
+        Thread(task).start()
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
