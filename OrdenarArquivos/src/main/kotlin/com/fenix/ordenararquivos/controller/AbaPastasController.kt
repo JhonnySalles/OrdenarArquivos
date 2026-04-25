@@ -19,6 +19,7 @@ import com.fenix.ordenararquivos.service.PastaParsingService
 import com.fenix.ordenararquivos.service.WinrarServices
 import com.fenix.ordenararquivos.util.Utils
 import com.jfoenix.controls.*
+import jakarta.xml.bind.JAXBContext
 import javafx.application.Platform
 import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleStringProperty
@@ -35,6 +36,7 @@ import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.control.cell.TextFieldTableCell
+import javafx.scene.effect.BoxBlur
 import javafx.scene.image.ImageView
 import javafx.scene.input.*
 import javafx.scene.layout.AnchorPane
@@ -42,8 +44,6 @@ import javafx.scene.paint.Color
 import javafx.util.Callback
 import javafx.util.converter.NumberStringConverter
 import org.slf4j.LoggerFactory
-import jakarta.xml.bind.JAXBContext
-import javafx.scene.effect.BoxBlur
 import java.io.File
 import java.net.URL
 import java.nio.file.Files
@@ -215,6 +215,7 @@ class AbaPastasController : Initializable {
     internal val mServiceComicInfo = ComicInfoServices()
     internal var mRarService = WinrarServices()
     private val mPASTA_TEMPORARIA = File(System.getProperty("user.dir"), "temp/")
+    private var isConsultandoMal = false
 
     @FXML
     private fun onBtnSelecionarTodos() {
@@ -369,6 +370,9 @@ class AbaPastasController : Initializable {
 
                             var sequencia = 1
                             for (item in itensOrdenados) {
+                                if (!item.pasta.exists())
+                                    continue
+
                                 compactar.add(item.pasta)
                                 val key = if (item.isCapa) "000" else capituloFormat.format(item.capitulo)
                                 comicMap[key] = item.pasta
@@ -642,7 +646,9 @@ class AbaPastasController : Initializable {
 
         txtMalNome.text = mComicInfo.comic
         atualizaCorETituloTabComicInfo()
-        consultarMal()
+
+        if (!cbManga.value.isNullOrEmpty() && mComicInfo.id != null)
+            consultarMal()
     }
 
     private fun atualizaCorETituloTabComicInfo() {
@@ -676,7 +682,7 @@ class AbaPastasController : Initializable {
         mServiceComicInfo.updateMal(comic, mal, cbLinguagem.value ?: Linguagem.JAPANESE)
 
         Platform.runLater {
-            if (mComicInfo.comic.isEmpty() ||AlertasPopup.confirmacaoModal("Aviso", "Deseja substituir os dados do ComicInfo?")) {
+            if (mComicInfo.comic.isEmpty() || AlertasPopup.confirmacaoModal("Aviso", "Deseja substituir os dados do ComicInfo?")) {
                 mComicInfo = comic
                 atualizaCorETituloTabComicInfo()
             }
@@ -684,8 +690,12 @@ class AbaPastasController : Initializable {
     }
 
     private fun consultarMal() {
+        if (isConsultandoMal)
+            return
+        isConsultandoMal = true
+
         if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
-            val id : Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
+            val id: Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
             val nome = txtMalNome.text
             val linguagem = cbLinguagem.value ?: Linguagem.JAPANESE
             val comicInfo = ComicInfo(mComicInfo)
@@ -725,16 +735,24 @@ class AbaPastasController : Initializable {
 
                     atualizaCorETituloTabComicInfo()
                     btnMalConsultar.isDisable = false
+                    isConsultandoMal = false
                 }
 
                 override fun failed() {
                     btnMalConsultar.isDisable = false
+                    isConsultandoMal = false
+                }
+
+                override fun cancelled() {
+                    btnMalConsultar.isDisable = false
+                    isConsultandoMal = false
                 }
             }
             Thread(consulta).start()
         } else {
             AlertasPopup.alertaModal("Alerta", "Necessário informar um id ou nome.")
             txtMalNome.requestFocus()
+            isConsultandoMal = false
         }
     }
 
@@ -772,13 +790,13 @@ class AbaPastasController : Initializable {
                                     val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
                                     val unmarshaller = jaxb.createUnmarshaller()
                                     val comicInfo = unmarshaller.unmarshal(comicFile) as ComicInfo
-                                    
+
                                     if (comicInfo.number > 0)
                                         capitulo = comicInfo.number
-                                    
+
                                     if (comicInfo.volume > 0)
                                         volume = comicInfo.volume.toFloat()
-                                    
+
                                     if (comicInfo.title.isNotEmpty()) {
                                         val cTitle = comicInfo.title
 
@@ -803,7 +821,7 @@ class AbaPastasController : Initializable {
                                         } else {
                                             cTitle
                                         }
-                                        
+
                                         if (titulo.isEmpty()) titulo = cTitle
                                     }
                                 } catch (e: Exception) {
@@ -892,12 +910,14 @@ class AbaPastasController : Initializable {
                         val path = item.pasta.toPath()
                         val target = path.resolveSibling(pasta)
 
-                        if (path != target)
-                            Files.move(path, target, StandardCopyOption.REPLACE_EXISTING).toFile()
+                        if (path != target) {
+                            item.pasta = Files.move(path, target, StandardCopyOption.REPLACE_EXISTING).toFile()
+                            item.arquivo = item.pasta.name
+                        }
                     }
 
                     Platform.runLater {
-                        carregarItens()
+                        tbViewProcessar.refresh()
                         Notificacoes.notificacao(Notificacao.SUCESSO, "Renomear Pastas", "Pastas renomeadas com sucesso.")
                     }
                 } catch (e: Exception) {
@@ -1033,7 +1053,31 @@ class AbaPastasController : Initializable {
         var oldManga = ""
         val autoCompletePopup: JFXAutoCompletePopup<String> = JFXAutoCompletePopup()
         autoCompletePopup.suggestions.addAll(cbManga.items)
-        autoCompletePopup.setSelectionHandler { event -> cbManga.setValue(event.getObject()) }
+        autoCompletePopup.setSelectionHandler { event ->
+            cbManga.setValue(event.getObject())
+            oldManga = event.getObject()
+
+            if (!event.getObject().isNullOrEmpty()) {
+                val mangas = mServiceManga.findAll(event.getObject(), isCaminho = true)
+                val volumesMap = mutableMapOf<String, Float>()
+                val decimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
+                mangas.forEach { m ->
+                    m.caminhos.forEach { c -> volumesMap[c.capitulo] = m.volume.replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "").toFloatOrNull() ?: 0f }
+                }
+
+                for (item in mObsListaProcessar) {
+                    if (item.volume == 0f && item.capitulo > 0f) {
+                        val capStr = decimal.format(item.capitulo)
+                        if (volumesMap.containsKey(capStr))
+                            item.volume = volumesMap[capStr]!!
+                    }
+                }
+
+                mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
+                tbViewProcessar.refresh()
+                carregaComicInfo()
+            }
+        }
         cbManga.editor.textProperty().addListener { _, _, _ ->
             autoCompletePopup.filter { item -> item.lowercase(Locale.getDefault()).contains(cbManga.editor.text.lowercase(Locale.getDefault())) }
             if (autoCompletePopup.filteredSuggestions.isEmpty() || cbManga.showingProperty().get() || cbManga.editor.text.isEmpty())
@@ -1055,8 +1099,7 @@ class AbaPastasController : Initializable {
                     val volumesMap = mutableMapOf<String, Float>()
                     val decimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
                     mangas.forEach { m ->
-                        val volFloat = m.volume.replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "").toFloatOrNull() ?: 0f
-                        m.caminhos.forEach { c -> volumesMap[c.capitulo] = volFloat }
+                        m.caminhos.forEach { c -> volumesMap[c.capitulo] = m.volume.replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "").toFloatOrNull() ?: 0f }
                     }
 
                     for (item in mObsListaProcessar) {
@@ -1068,9 +1111,9 @@ class AbaPastasController : Initializable {
                     }
 
                     mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
+                    tbViewProcessar.refresh()
+                    carregaComicInfo()
                 }
-                tbViewProcessar.refresh()
-                carregaComicInfo()
             }
 
             cbManga.unFocusColor = Color.web("#4059a9")
@@ -1167,6 +1210,55 @@ class AbaPastasController : Initializable {
         val volumesImportar = MenuItem("Importar volumes")
         volumesImportar.setOnAction { importarVolumes() }
 
+        val volumeProximos = MenuItem("Aplicar volume nos arquivos próximos")
+        volumeProximos.setOnAction {
+            tbViewProcessar.selectionModel.selectedItem?.run {
+                val volumeItem = this.volume
+                val index = mObsListaProcessar.indexOf(this)
+                if (index != -1 && index < tbViewProcessar.items.size - 1) {
+                    for (i in index + 1 until tbViewProcessar.items.size)
+                        mObsListaProcessar[i].volume = volumeItem
+                    tbViewProcessar.refresh()
+                }
+            }
+        }
+        val volumeAnteriores = MenuItem("Aplicar volume nos arquivos anteriores")
+        volumeAnteriores.setOnAction {
+            tbViewProcessar.selectionModel.selectedItem?.run {
+                val volumeItem = this.volume
+                val index = mObsListaProcessar.indexOf(this)
+                if (index != -1 && index > 0) {
+                    for (i in index - 1 downTo 0)
+                        mObsListaProcessar[i].volume = volumeItem
+                    tbViewProcessar.refresh()
+                }
+            }
+        }
+        val volumeFaltantes = MenuItem("Aplicar volume nos arquivos faltantes")
+        volumeFaltantes.setOnAction {
+            tbViewProcessar.selectionModel.selectedItem?.run {
+                val volumeItem = this.volume
+                for (item in mObsListaProcessar)
+                    if (item.volume == 0f) item.volume = volumeItem
+                tbViewProcessar.refresh()
+            }
+        }
+
+        val apagarTitulo = MenuItem("Apagar titulo")
+        apagarTitulo.setOnAction {
+            val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
+                tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
+            }
+
+            if (lista.isEmpty()) {
+                AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado.")
+                return@setOnAction
+            }
+
+            for (item in lista) item.titulo = ""
+            tbViewProcessar.refresh()
+        }
+
         val apagarTituloProximos = MenuItem("Apagar titulos nos arquivos proximos")
         apagarTituloProximos.setOnAction {
             tbViewProcessar.selectionModel.selectedItem?.run {
@@ -1190,6 +1282,43 @@ class AbaPastasController : Initializable {
             }
         }
 
+        val ajustarTitulos = MenuItem("Ajustar títulos")
+        ajustarTitulos.setOnAction {
+            val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
+                tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
+            }
+
+            if (lista.isEmpty()) {
+                AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado.")
+                return@setOnAction
+            }
+
+            val regex = "(?i)^((ch|chapter|cap|capitulo|c|v|volume|vol)\\.?\\s*\\d+|\\d+)\\s*[:\\- ]+\\s*".toRegex()
+            for (item in lista) {
+                item.titulo = item.titulo.replace(regex, "").trim()
+            }
+            tbViewProcessar.refresh()
+        }
+
+        val normalizarTitulo = MenuItem("Normalizar título")
+        normalizarTitulo.setOnAction {
+            val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
+                tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
+            }
+
+            if (lista.isEmpty()) {
+                AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado.")
+                return@setOnAction
+            }
+
+            for (item in lista) {
+                if (item.titulo.isNotEmpty()) {
+                    item.titulo = item.titulo.lowercase(Locale.getDefault()).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                }
+            }
+            tbViewProcessar.refresh()
+        }
+
         val remover = MenuItem("Remover registro")
         remover.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null)
@@ -1198,13 +1327,24 @@ class AbaPastasController : Initializable {
                     tbViewProcessar.refresh()
                 }
         }
-        menu.items.add(scanProximos)
-        menu.items.add(scanAnterior)
-        menu.items.add(volumesZerar)
-        menu.items.add(volumesImportar)
-        menu.items.add(apagarTituloProximos)
-        menu.items.add(apagarTituloAnteriores)
-        menu.items.add(remover)
+        menu.items.addAll(
+            scanProximos,
+            scanAnterior,
+            SeparatorMenuItem(),
+            volumesZerar,
+            volumesImportar,
+            volumeProximos,
+            volumeAnteriores,
+            volumeFaltantes,
+            SeparatorMenuItem(),
+            apagarTitulo,
+            ajustarTitulos,
+            normalizarTitulo,
+            apagarTituloProximos,
+            apagarTituloAnteriores,
+            SeparatorMenuItem(),
+            remover
+        )
 
         tbViewProcessar.contextMenu = menu
 
@@ -1295,6 +1435,10 @@ class AbaPastasController : Initializable {
                     mangaNome = if (sugestoes.isNotEmpty()) sugestoes.first() else mangaNome
                     cbManga.value = mangaNome
 
+                    for (item in mObsListaProcessar)
+                        item.nome = mangaNome
+
+                    tbViewProcessar.refresh()
                     val comicFile = File(tempDir, "ComicInfo.xml").let { if (it.exists()) it else File(folder, "ComicInfo.xml") }
                     if (comicFile.exists()) {
                         try {
@@ -1320,8 +1464,8 @@ class AbaPastasController : Initializable {
                             }
                             mComicInfo = newComic
 
-                            txtMalId.text  = comicInfo.idMal?.toString() ?: ""
-                            txtMalNome.text  = comicInfo.series
+                            txtMalId.text = comicInfo.idMal?.toString() ?: ""
+                            txtMalNome.text = comicInfo.series
 
                             if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty())
                                 consultarMal()

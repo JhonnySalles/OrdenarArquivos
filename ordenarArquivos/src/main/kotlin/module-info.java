@@ -15,6 +15,7 @@ module com.fenix.ordenararquivos {
     requires javafx.base;
     requires transitive com.jfoenix;
     requires java.desktop;
+    requires java.logging;
     requires org.flywaydb.core;
     requires org.xerial.sqlitejdbc;
     requires org.slf4j;

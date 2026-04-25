@@ -17,16 +17,16 @@
                   <JFXComboBox fx:id="cbManga" editable="true" focusColor="#0cff00" labelFloat="true" minWidth="100.0" prefWidth="200.0" promptText="Manga" styleClass="comboBox-stilo" unFocusColor="#4059a9" />
                   <HBox alignment="CENTER" minWidth="200.0" spacing="2.0" HBox.hgrow="ALWAYS">
                      <children>
-                        <JFXTextField fx:id="txtPasta" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta para carregar itens" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
-                        <JFXButton fx:id="btnPesquisarPasta" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPasta" styleClass="background-Black3">
-                           <graphic>
-                              <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
-                                 <image>
-                                    <Image url="@../images/icoAbrir_48.png" />
-                                 </image>
-                              </ImageView>
-                           </graphic>
-                        </JFXButton>
+                         <JFXTextField fx:id="txtPasta" focusColor="#0cff00" labelFloat="true" prefHeight="25.0" prefWidth="344.0" promptText="Pasta para carregar itens" styleClass="texto-stilo-1" unFocusColor="#4059a9" HBox.hgrow="ALWAYS" />
+                         <JFXButton fx:id="btnPesquisarPasta" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnCarregarPasta" styleClass="background-Black3">
+                            <graphic>
+                               <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
+                                  <image>
+                                     <Image url="@../images/icoAbrir_48.png" />
+                                  </image>
+                               </ImageView>
+                            </graphic>
+                         </JFXButton>
                      </children>
                   </HBox>
                   <HBox alignment="CENTER_LEFT" spacing="10.0">
