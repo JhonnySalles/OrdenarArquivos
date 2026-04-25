@@ -16,6 +16,7 @@ import com.fenix.ordenararquivos.process.Winrar
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.PastaParsingService
+import com.fenix.ordenararquivos.service.WinrarServices
 import com.fenix.ordenararquivos.util.Utils
 import com.jfoenix.controls.*
 import javafx.application.Platform
@@ -41,6 +42,9 @@ import javafx.scene.paint.Color
 import javafx.util.Callback
 import javafx.util.converter.NumberStringConverter
 import org.slf4j.LoggerFactory
+import jakarta.xml.bind.JAXBContext
+import jakarta.xml.bind.Unmarshaller
+import javafx.scene.effect.BoxBlur
 import java.io.File
 import java.net.URL
 import java.nio.file.Files
@@ -92,6 +96,9 @@ class AbaPastasController : Initializable {
 
     @FXML
     private lateinit var btnCompactar: JFXButton
+
+    @FXML
+    private lateinit var btnAjustarPastas: JFXButton
 
     //<--------------------------  Arquivos   -------------------------->
 
@@ -207,6 +214,8 @@ class AbaPastasController : Initializable {
 
     internal val mServiceManga = MangaServices()
     internal val mServiceComicInfo = ComicInfoServices()
+    internal var mRarService = WinrarServices()
+    private val mPASTA_TEMPORARIA = File(System.getProperty("user.dir"), "temp/")
 
     @FXML
     private fun onBtnSelecionarTodos() {
@@ -245,7 +254,7 @@ class AbaPastasController : Initializable {
         var volume = 0f
         val lista = mutableListOf<Pasta>()
         for (item in mObsListaProcessar) {
-            if (item.volume.compareTo(volume) != 0 && mObsListaProcessar.none { it.isCapa && it.volume.compareTo(volume) == 0} && !item.isCapa) {
+            if (item.volume.compareTo(volume) != 0 && mObsListaProcessar.none { it.isCapa && it.volume.compareTo(volume) == 0 } && !item.isCapa) {
                 volume = item.volume
                 val pasta = File(item.pasta.parent, "[${item.scan}] ${item.nome} - Volume ${decimal.format(item.volume)} Capa")
                 if (!pasta.exists())
@@ -379,7 +388,9 @@ class AbaPastasController : Initializable {
                             manga.caminhos = caminhos
 
                             val volume = volumeFormat.format(vol)
-                            val tudo = if (comicMap.contains("000")) { comicMap["000"]?.listFiles()?.any { it.name.contains("tudo", true) } == true } else false
+                            val tudo = if (comicMap.contains("000")) {
+                                comicMap["000"]?.listFiles()?.any { it.name.contains("tudo", true) } == true
+                            } else false
                             val semCapa = if (!tudo) " (Sem capa)" else ""
                             val nome = "$mangaProcessar - Volume $volume$semCapa.rar"
                             val arquivoZip = File(destino, nome)
@@ -446,13 +457,113 @@ class AbaPastasController : Initializable {
 
     private var mCANCELAR = false
 
-    private fun desabilita(isCompactar : Boolean = false) {
+    @FXML
+    private fun onBtnAjustarPastas() {
+        val selecionados = mObsListaProcessar.filter { it.isSelecionado }
+        if (selecionados.isEmpty()) {
+            AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado.")
+            return
+        }
+
+        if (!AlertasPopup.confirmacaoModal("Confirmação", "Deseja mover todos os arquivos internos para a primeira pasta de cada item selecionado?")) {
+            return
+        }
+
+        desabilita()
+        controllerPai.setCursor(Cursor.WAIT)
+
+        val task = object : Task<Void>() {
+            override fun call(): Void? {
+                try {
+                    val total = selecionados.size.toLong()
+                    var atual = 0L
+
+                    for (item in selecionados) {
+                        atual++
+                        updateProgress(atual, total)
+                        updateMessage("Movendo arquivos em: ${item.arquivo}")
+
+                        val raizItem = item.pasta
+                        processaMoverRecursivo(raizItem, raizItem)
+                        removePastasVazias(raizItem)
+                    }
+
+                    Platform.runLater {
+                        carregarItens()
+                        Notificacoes.notificacao(Notificacao.SUCESSO, "Ajustar Pastas", "Arquivos ajustados com sucesso.")
+                    }
+                } catch (e: Exception) {
+                    mLOG.error("Erro ao ajustar pastas.", e)
+                    Platform.runLater {
+                        Notificacoes.notificacao(Notificacao.ERRO, "Ajustar Pastas", "Erro: ${e.message}")
+                    }
+                }
+                return null
+            }
+
+            override fun succeeded() {
+                controllerPai.rootProgress.progressProperty().unbind()
+                controllerPai.rootMessage.textProperty().unbind()
+                habilita()
+                controllerPai.clearProgress()
+            }
+
+            override fun failed() {
+                controllerPai.rootProgress.progressProperty().unbind()
+                controllerPai.rootMessage.textProperty().unbind()
+                habilita()
+                controllerPai.clearProgress()
+            }
+
+            private fun processaMoverRecursivo(diretorio: File, raizDestino: File) {
+                val files = diretorio.listFiles() ?: return
+                for (f in files) {
+                    if (f.isDirectory) {
+                        processaMoverRecursivo(f, raizDestino)
+                    } else {
+                        if (f.parentFile != raizDestino) {
+                            var destino = File(raizDestino, f.name)
+                            if (destino.exists()) {
+                                var count = 1
+                                val name = f.nameWithoutExtension
+                                val ext = f.extension
+                                while (destino.exists()) {
+                                    destino = File(raizDestino, "$name ($count).$ext")
+                                    count++
+                                }
+                            }
+                            Files.move(f.toPath(), destino.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                        }
+                    }
+                }
+            }
+
+            private fun removePastasVazias(diretorio: File) {
+                val files = diretorio.listFiles() ?: return
+                for (f in files) {
+                    if (f.isDirectory) {
+                        removePastasVazias(f)
+                        if (f.listFiles()?.isEmpty() == true) {
+                            f.delete()
+                        }
+                    }
+                }
+            }
+        }
+
+        controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
+        controllerPai.rootMessage.textProperty().bind(task.messageProperty())
+        Thread(task).start()
+    }
+
+    private fun desabilita(isCompactar: Boolean = false) {
         btnPesquisarPasta.isDisable = true
         txtPasta.isDisable = true
         cbManga.isDisable = true
         btnCarregar.isDisable = true
         btnGerarCapas.isDisable = true
         btnRenomear.isDisable = true
+        btnAjustarPastas.isDisable = true
         tbViewProcessar.isDisable = true
         ckbSelecionarTodos.isDisable = true
 
@@ -467,6 +578,7 @@ class AbaPastasController : Initializable {
         btnCarregar.isDisable = false
         btnGerarCapas.isDisable = false
         btnRenomear.isDisable = false
+        btnAjustarPastas.isDisable = false
         btnCompactar.isDisable = false
         tbViewProcessar.isDisable = false
         ckbSelecionarTodos.isDisable = false
@@ -493,6 +605,43 @@ class AbaPastasController : Initializable {
 
         txtMalId.text = comic.idMal?.toString() ?: ""
         txtMalNome.text = comic.comic
+        atualizaCorETituloTabComicInfo()
+    }
+
+    internal fun carregaComicInfo() {
+        mComicInfo = if (cbManga.value.isNullOrEmpty())
+            ComicInfo(null, null, cbManga.value, cbManga.value)
+        else {
+            var nome = cbManga.value
+            if (nome.contains("]"))
+                nome = nome.substring(nome.indexOf("]")).replace("]", "").trim { it <= ' ' }
+
+            if (nome.isNotEmpty() && nome.endsWith("-", ignoreCase = true))
+                nome = nome.substring(0, nome.length - 1).trim { it <= ' ' }
+
+            val comic = mServiceComicInfo.find(nome, cbLinguagem.value?.sigla ?: "ja") ?: mServiceComicInfo.find(nome) ?: ComicInfo(null, null, nome, nome)
+            if (comic.languageISO != cbLinguagem.value.sigla) {
+                comic.id = null
+                comic.languageISO = cbLinguagem.value.sigla
+            }
+            comic
+        }
+
+        if (mComicInfo.id == null) {
+            mLOG.info("Gerando novo ComicInfo.")
+            txtMalId.text = ""
+        } else {
+            mLOG.info("ComicInfo localizado: " + mComicInfo.title)
+            txtMalId.text = mComicInfo.idMal.toString()
+        }
+
+        if (mComicInfo.comic.isEmpty())
+            mComicInfo.comic = cbManga.value
+
+        if (mComicInfo.series.isEmpty())
+            mComicInfo.series = cbManga.value
+
+        txtMalNome.text = mComicInfo.comic
         atualizaCorETituloTabComicInfo()
         consultarMal()
     }
@@ -528,14 +677,9 @@ class AbaPastasController : Initializable {
         mServiceComicInfo.updateMal(comic, mal, cbLinguagem.value ?: Linguagem.JAPANESE)
 
         Platform.runLater {
-            if (mComicInfo.comic.isEmpty()) {
+            if (mComicInfo.comic.isEmpty() ||AlertasPopup.confirmacaoModal("Aviso", "Deseja substituir os dados do ComicInfo?")) {
                 mComicInfo = comic
                 atualizaCorETituloTabComicInfo()
-            } else {
-                if (AlertasPopup.confirmacaoModal("Aviso", "Deseja substituir os dados do ComicInfo?")) {
-                    mComicInfo = comic
-                    atualizaCorETituloTabComicInfo()
-                }
             }
         }
     }
@@ -544,23 +688,20 @@ class AbaPastasController : Initializable {
         if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
             val id : Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
             val nome = txtMalNome.text
+            val linguagem = cbLinguagem.value ?: Linguagem.JAPANESE
+            val comicInfo = ComicInfo(mComicInfo)
 
             btnMalConsultar.isDisable = true
             val consulta: Task<Void> = object : Task<Void>() {
+                private var listaResults = listOf<Mal>()
+                private var atualizado = false
+
                 override fun call(): Void? {
                     try {
-                        val lista = mServiceComicInfo.getMal(id, nome)
-                        mObsListaMal = FXCollections.observableArrayList(lista)
-                        if (id != null && lista.size == 1) {
-                            carregaMal(lista.first())
-                        }
-
-                        Platform.runLater {
-                            tbViewMal.items = mObsListaMal
-                            if (lista.isEmpty())
-                                Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
-
-                            atualizaCorETituloTabComicInfo()
+                        listaResults = mServiceComicInfo.getMal(id, nome)
+                        if (id != null && listaResults.size == 1) {
+                            mServiceComicInfo.updateMal(comicInfo, listaResults.first(), linguagem)
+                            atualizado = true
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
@@ -570,13 +711,27 @@ class AbaPastasController : Initializable {
                     }
                     return null
                 }
+
                 override fun succeeded() {
-                    Platform.runLater {
-                        btnMalConsultar.isDisable = false
+                    mObsListaMal = FXCollections.observableArrayList(listaResults)
+                    tbViewMal.items = mObsListaMal
+
+                    if (listaResults.isEmpty())
+                        Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
+                    else if (atualizado) {
+                        if (mComicInfo.comic.isEmpty() || AlertasPopup.confirmacaoModal("Aviso", "Deseja substituir os dados do ComicInfo?")) {
+                            mComicInfo = comicInfo
+                        }
                     }
+
+                    atualizaCorETituloTabComicInfo()
+                    btnMalConsultar.isDisable = false
+                }
+
+                override fun failed() {
+                    btnMalConsultar.isDisable = false
                 }
             }
-
             Thread(consulta).start()
         } else {
             AlertasPopup.alertaModal("Alerta", "Necessário informar um id ou nome.")
@@ -608,17 +763,19 @@ class AbaPastasController : Initializable {
 
                             val result = parsingService.parse(file.name)
 
-                            lista.add(Pasta(
-                                pasta = file, 
-                                arquivo = file.name, 
-                                nome = cbManga.editor.text, 
-                                volume = result.volume.toFloatOrNull() ?: 0f, 
-                                capitulo = result.capitulo.toFloatOrNull() ?: 0f, 
-                                scan = result.scan, 
-                                titulo = result.titulo, 
-                                isCapa = result.isCapa,
-                                isSelecionado = true
-                            ))
+                            lista.add(
+                                Pasta(
+                                    pasta = file,
+                                    arquivo = file.name,
+                                    nome = cbManga.editor.text,
+                                    volume = result.volume.toFloatOrNull() ?: 0f,
+                                    capitulo = result.capitulo.toFloatOrNull() ?: 0f,
+                                    scan = result.scan,
+                                    titulo = result.titulo,
+                                    isCapa = result.isCapa,
+                                    isSelecionado = true
+                                )
+                            )
                         }
 
 
@@ -636,6 +793,7 @@ class AbaPastasController : Initializable {
                     }
                     return null
                 }
+
                 override fun succeeded() {
                     updateMessage("Pastas carregadas com sucesso.")
                     controllerPai.rootProgress.progressProperty().unbind()
@@ -681,10 +839,11 @@ class AbaPastasController : Initializable {
                         updateProgress(++i, max)
                         updateMessage("Renomeando item $i de $max.")
 
-                        val pasta = "[${item.scan}] ${item.nome} - Volume ${volume.format(item.volume)} ${if (item.isCapa) "Capa" else "Capítulo " + capitulo.format(item.capitulo)}"
+                        val pasta =
+                            "[${item.scan}] ${item.nome} - Volume ${volume.format(item.volume)} ${if (item.isCapa) "Capa" else "Capítulo " + capitulo.format(item.capitulo)}"
                         val path = item.pasta.toPath()
                         val target = path.resolveSibling(pasta)
-                        
+
                         if (path != target)
                             Files.move(path, target, StandardCopyOption.REPLACE_EXISTING).toFile()
                     }
@@ -701,6 +860,7 @@ class AbaPastasController : Initializable {
                 }
                 return null
             }
+
             override fun succeeded() {
                 controllerPai.rootProgress.progressProperty().unbind()
                 controllerPai.rootMessage.textProperty().unbind()
@@ -723,7 +883,7 @@ class AbaPastasController : Initializable {
         val formater = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
         val letras = Utils.NOT_NUMBER_PATTERN.toRegex()
         for (item in mObsListaProcessar)
-            item.volume = if (item.capitulo > 0) volumes[formater.format(item.capitulo)]?.replace(letras,"")?.toFloatOrNull() ?: 0f else 0f
+            item.volume = if (item.capitulo > 0) volumes[formater.format(item.capitulo)]?.replace(letras, "")?.toFloatOrNull() ?: 0f else 0f
         mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
         tbViewProcessar.refresh()
     }
@@ -842,24 +1002,6 @@ class AbaPastasController : Initializable {
                 for (item in mObsListaProcessar)
                     item.nome = cbManga.value
 
-                mComicInfo = if (cbManga.value.isNullOrEmpty())
-                    ComicInfo(null, null, cbManga.value, cbManga.value)
-                else {
-                    var nome = cbManga.value
-                    if (nome.contains("]"))
-                        nome = nome.substring(nome.indexOf("]")).replace("]", "").trim { it <= ' ' }
-
-                    if (nome.isNotEmpty() && nome.endsWith("-", ignoreCase = true))
-                        nome = nome.substring(0, nome.length - 1).trim { it <= ' ' }
-
-                    val comic = mServiceComicInfo.find(nome, cbLinguagem.value.sigla) ?: mServiceComicInfo.find(nome) ?: ComicInfo(null, null, nome, nome)
-                    if (comic.languageISO != cbLinguagem.value.sigla) {
-                        comic.id = null
-                        comic.languageISO = cbLinguagem.value.sigla
-                    }
-                    comic
-                }
-
                 if (!cbManga.value.isNullOrEmpty()) {
                     val mangas = mServiceManga.findAll(cbManga.value, isCaminho = true)
                     val volumesMap = mutableMapOf<String, Float>()
@@ -880,6 +1022,7 @@ class AbaPastasController : Initializable {
                     mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
                 }
                 tbViewProcessar.refresh()
+                carregaComicInfo()
             }
 
             cbManga.unFocusColor = Color.web("#4059a9")
@@ -933,7 +1076,15 @@ class AbaPastasController : Initializable {
         val volume = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
         val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
 
-        clFormatado.setCellValueFactory { param -> SimpleStringProperty("[${param.value.scan}] ${param.value.nome} - Volume ${volume.format(param.value.volume)} ${if (param.value.isCapa) "Capa" else "Capítulo " + capitulo.format(param.value.capitulo)}") }
+        clFormatado.setCellValueFactory { param ->
+            SimpleStringProperty(
+                "[${param.value.scan}] ${param.value.nome} - Volume ${volume.format(param.value.volume)} ${
+                    if (param.value.isCapa) "Capa" else "Capítulo " + capitulo.format(
+                        param.value.capitulo
+                    )
+                }"
+            )
+        }
 
         val menu = ContextMenu()
         val scanProximos = MenuItem("Aplicar scan nos arquivos próximos")
@@ -1020,6 +1171,128 @@ class AbaPastasController : Initializable {
         }
 
         editaColunas()
+        configurarDragAndDrop()
+    }
+
+    private fun configurarDragAndDrop() {
+        apRoot.onDragOver = EventHandler { event ->
+            if (event.gestureSource !== apRoot && event.dragboard.hasFiles()) {
+                val aceito = event.dragboard.files.any { it.extension.lowercase() in listOf("rar", "cbr") }
+                event.acceptTransferModes(if (aceito) TransferMode.COPY else null)
+                mostrarOverlayDrag(aceito)
+            }
+            event.consume()
+        }
+
+        apRoot.onDragExited = EventHandler { esconderOverlayDrag() }
+
+        apRoot.onDragDropped = EventHandler { event ->
+            val db = event.dragboard
+            var success = false
+            if (db.hasFiles()) {
+                val file = db.files.firstOrNull { it.extension.lowercase() in listOf("rar", "cbr") }
+                if (file != null) {
+                    processarArquivoArrastado(file)
+                    success = true
+                }
+            }
+            event.isDropCompleted = success
+            esconderOverlayDrag()
+            event.consume()
+        }
+    }
+
+    private fun mostrarOverlayDrag(aceito: Boolean) {
+        val blur = BoxBlur(3.0, 3.0, 3)
+        controllerPai.rootTab.effect = blur
+
+        controllerPai.spDragDropZone.style = if (aceito)
+            "-fx-border-color: white; -fx-border-style: dashed; -fx-border-width: 3; -fx-border-radius: 10; -fx-background-color: rgba(0,0,0,0.3); -fx-background-radius: 10;"
+        else
+            "-fx-border-color: red; -fx-border-style: dashed; -fx-border-width: 3; -fx-border-radius: 10; -fx-background-color: rgba(255,0,0,0.1); -fx-background-radius: 10;"
+
+        controllerPai.lblDragDrop.text = if (aceito) "Arraste o arquivo aqui" else "Formato não aceito"
+        controllerPai.lblDragDrop.textFill = if (aceito) Color.WHITE else Color.RED
+        controllerPai.apDragOverlay.isVisible = true
+    }
+
+    private fun esconderOverlayDrag() {
+        controllerPai.rootTab.effect = null
+        controllerPai.apDragOverlay.isVisible = false
+    }
+
+    private fun processarArquivoArrastado(file: File) {
+        if (!mPASTA_TEMPORARIA.exists())
+            mPASTA_TEMPORARIA.mkdirs()
+        val tempDir = File(mPASTA_TEMPORARIA, "process_arquivo_" + System.currentTimeMillis())
+        tempDir.mkdirs()
+
+        try {
+            if (mRarService.extrairTudo(file, tempDir)) {
+                val folders = tempDir.listFiles { f -> f.isDirectory }
+                val folder = folders?.firstOrNull { !it.name.contains("Capa", true) }
+
+                if (folder != null) {
+                    val folderName = folder.name
+
+                    // Robust Parse: [scan] manga - volume xx capítulo yyy
+                    var mangaName = folderName
+                    if (mangaName.startsWith("[")) {
+                        mangaName = mangaName.substringAfter("]").trim()
+                    }
+
+                    if (mangaName.contains("-")) {
+                        mangaName = mangaName.substringBefore("-").trim()
+                    }
+
+                    // Metadata update: only populate fields, don't change directory or load items
+                    cbManga.value = mangaName
+
+                    val sugestoes = mServiceManga.sugestao(mangaName)
+                    val mangaNomeFinal = if (sugestoes.isNotEmpty()) sugestoes.first() else mangaName
+
+                    // Set ComicInfo data
+                    val comicFile = File(tempDir, "ComicInfo.xml").let { if (it.exists()) it else File(folder, "ComicInfo.xml") }
+                    if (comicFile.exists()) {
+                        try {
+                            val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
+                            val unmarshaller = jaxb.createUnmarshaller()
+                            val comicInfoRar = unmarshaller.unmarshal(comicFile) as ComicInfo
+
+                            val newComic = ComicInfo().apply {
+                                idMal = comicInfoRar.idMal
+                                title = comicInfoRar.title
+                                series = comicInfoRar.series
+                                publisher = comicInfoRar.publisher
+                                alternateSeries = comicInfoRar.alternateSeries
+                                seriesGroup = comicInfoRar.seriesGroup
+                                storyArc = comicInfoRar.storyArc
+                                imprint = comicInfoRar.imprint
+                                genre = comicInfoRar.genre
+                                ageRating = comicInfoRar.ageRating
+                                languageISO = comicInfoRar.languageISO
+                                notes = comicInfoRar.notes
+                                summary = comicInfoRar.summary
+                                comic = comicInfoRar.comic
+                            }
+                            mComicInfo = newComic
+                            consultarMal()
+                        } catch (e: Exception) {
+                            mLOG.error("Erro ao carregar ComicInfo do arquivo arrastado.", e)
+                        }
+                    } else {
+                        carregaComicInfo()
+                    }
+
+                    // Switch to ComicInfo tab
+                    tbTabRootPastas.selectionModel.select(tbTabPastas_ComicInfo)
+                }
+            }
+        } catch (e: Exception) {
+            mLOG.error("Erro ao processar arquivo arrastado.", e)
+        } finally {
+            tempDir.deleteRecursively()
+        }
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {

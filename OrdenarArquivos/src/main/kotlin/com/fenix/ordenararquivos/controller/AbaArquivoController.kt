@@ -592,20 +592,20 @@ class AbaArquivoController : Initializable {
     private fun onBtnMalAplicar() {
         if (tbViewMal.selectionModel.selectedItem != null) {
             val mal = tbViewMal.selectionModel.selectedItem
-            val linguagemCapture = cbLinguagem.value ?: Linguagem.JAPANESE
-            val comicInfoCapture = ComicInfo(mComicInfo)
+            val linguagem = cbLinguagem.value ?: Linguagem.JAPANESE
+            val comicInfo = ComicInfo(mComicInfo)
 
             btnMalAplicar.isDisable = true
             controllerPai.setCursor(Cursor.WAIT)
 
             val task = object : Task<Void>() {
                 override fun call(): Void? {
-                    mServiceComicInfo.updateMal(comicInfoCapture, mal, linguagemCapture)
+                    mServiceComicInfo.updateMal(comicInfo, mal, linguagem)
                     return null
                 }
 
                 override fun succeeded() {
-                    mComicInfo = comicInfoCapture
+                    mComicInfo = comicInfo
 
                     val selecionado = if (mComicInfo.idMal != null) Selecionado.SELECIONADO else Selecionado.SELECIONAR
                     Selecionado.setTabColor(tbTabArquivo_ComicInfo, selecionado)
@@ -907,10 +907,10 @@ class AbaArquivoController : Initializable {
 
     private fun consultarMal() {
         if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
-            val idCapture : Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
-            val nomeCapture = txtMalNome.text
-            val linguagemCapture = cbLinguagem.value ?: Linguagem.JAPANESE
-            val comicInfoCapture = ComicInfo(mComicInfo)
+            val id : Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
+            val nome = txtMalNome.text
+            val linguagem = cbLinguagem.value ?: Linguagem.JAPANESE
+            val comicInfo = ComicInfo(mComicInfo)
 
             btnMalConsultar.isDisable = true
             val consulta: Task<Void> = object : Task<Void>() {
@@ -919,9 +919,9 @@ class AbaArquivoController : Initializable {
 
                 override fun call(): Void? {
                     try {
-                        listaResults = mServiceComicInfo.getMal(idCapture, nomeCapture)
-                        if (idCapture != null && listaResults.size == 1) {
-                            mServiceComicInfo.updateMal(comicInfoCapture, listaResults.first(), linguagemCapture)
+                        listaResults = mServiceComicInfo.getMal(id, nome)
+                        if (id != null && listaResults.size == 1) {
+                            mServiceComicInfo.updateMal(comicInfo, listaResults.first(), linguagem)
                             atualizado = true
                         }
                     } catch (e: Exception) {
@@ -941,7 +941,7 @@ class AbaArquivoController : Initializable {
                         Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
                     else if (atualizado) {
                         if (mComicInfo.comic.isEmpty() || AlertasPopup.confirmacaoModal("Aviso", "Deseja substituir os dados do ComicInfo?")) {
-                            mComicInfo = comicInfoCapture
+                            mComicInfo = comicInfo
                         }
                     }
 
@@ -3427,7 +3427,10 @@ class AbaArquivoController : Initializable {
     }
 
     private fun processarArquivoArrastado(file: File) {
-        val tempDir = Files.createTempDirectory("ordenar_rar_").toFile()
+        if (!mPASTA_TEMPORARIA.exists())
+            mPASTA_TEMPORARIA.mkdirs()
+        val tempDir = File(mPASTA_TEMPORARIA, "process_arquivo_" + System.currentTimeMillis())
+        tempDir.mkdirs()
         try {
             if (mRarService.extrairTudo(file, tempDir)) {
                 val folders = tempDir.listFiles { f -> f.isDirectory }
@@ -3473,6 +3476,7 @@ class AbaArquivoController : Initializable {
                                 summary = comicInfoRar.summary
                             }
                             carregaComicInfo(mComicInfo)
+                            consultarMal()
                         } catch (e: Exception) {
                             mLOG.error("Erro ao carregar ComicInfo do RAR.", e)
                         }

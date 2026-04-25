@@ -34,6 +34,7 @@
                         <JFXButton fx:id="btnCarregar" minWidth="80.0" onAction="#onBtnCarregar" prefHeight="30.0" prefWidth="120.0" styleClass="background-Blue3" text="Carregar" textFill="WHITE" />
                         <JFXButton fx:id="btnGerarCapas" minWidth="90.0" onAction="#onBtnGerarCapas" prefHeight="30.0" prefWidth="120.0" styleClass="background-Purple2" text="Gerar Capas" textFill="WHITE" />
                         <JFXButton fx:id="btnImportarVolumes" minWidth="120.0" onAction="#onBtnImportarVolumes" prefHeight="30.0" prefWidth="120.0" styleClass="background-Orange1" text="Importar Volumes" textFill="WHITE" />
+                        <JFXButton fx:id="btnAjustarPastas" minWidth="120.0" onAction="#onBtnAjustarPastas" prefHeight="30.0" prefWidth="120.0" styleClass="background-Yellow1" text="Ajustar Pastas" />
                         <JFXButton fx:id="btnRenomear" minWidth="80.0" onAction="#onBtnRenomear" prefHeight="30.0" prefWidth="120.0" styleClass="background-Green2" text="Renomear" textFill="WHITE" />
                         <JFXButton fx:id="btnCompactar" accessibleText="COMPACTAR" minWidth="80.0" onAction="#onBtnCompactar" prefHeight="30.0" prefWidth="120.0" styleClass="background-White1" text="Compactar" />
                      </children>
