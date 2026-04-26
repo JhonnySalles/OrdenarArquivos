@@ -273,18 +273,27 @@ class AbaPastasController : Initializable {
     private fun onBtnMalAplicar() {
         if (tbViewMal.selectionModel.selectedItem != null) {
             val mal = tbViewMal.selectionModel.selectedItem
+            val linguagem = cbLinguagem.value ?: Linguagem.JAPANESE
+            val comicInfo = ComicInfo(mComicInfo)
+
             controllerPai.setCursor(Cursor.WAIT)
             btnMalAplicar.isDisable = true
 
             val task = object : Task<Void>() {
                 override fun call(): Void? {
-                    carregaMal(mal)
+                    mServiceComicInfo.updateMal(comicInfo, mal, linguagem)
                     return null
                 }
 
                 override fun succeeded() {
-                    controllerPai.setCursor(null)
+                    mComicInfo = comicInfo
+
+                    val selecionado = if (mComicInfo.idMal != null) Selecionado.SELECIONADO else Selecionado.SELECIONAR
+                    Selecionado.setTabColor(tbTabPastas_ComicInfo, selecionado)
+                    tbTabPastas_ComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + comicInfo.comic + ")" else "")
+
                     btnMalAplicar.isDisable = false
+                    controllerPai.setCursor(null)
                 }
 
                 override fun failed() {
@@ -602,12 +611,12 @@ class AbaPastasController : Initializable {
 
         txtMalId.text = comic.idMal?.toString() ?: ""
         txtMalNome.text = comic.comic
-        atualizaCorETituloTabComicInfo()
+        atualizaTituloComicInfo(comic)
     }
 
     internal fun carregaComicInfo() {
         val mangaNome = cbManga.editor.text ?: ""
-        mComicInfo = if (mangaNome.isEmpty())
+        val comic = if (mangaNome.isEmpty())
             ComicInfo(null, null, mangaNome, mangaNome)
         else {
             var nome = mangaNome
@@ -625,35 +634,35 @@ class AbaPastasController : Initializable {
             comic
         }
 
-        if (mComicInfo.id == null) {
+        if (comic.id == null) {
             mLOG.info("Gerando novo ComicInfo.")
             txtMalId.text = ""
         } else {
-            mLOG.info("ComicInfo localizado: " + mComicInfo.title)
-            txtMalId.text = mComicInfo.idMal.toString()
+            mLOG.info("ComicInfo localizado: " + comic.title)
+            txtMalId.text = comic.idMal.toString()
         }
 
-        if (mComicInfo.comic.isEmpty())
-            mComicInfo.comic = mangaNome
+        if (comic.comic.isEmpty())
+            comic.comic = mangaNome
 
-        if (mComicInfo.series.isEmpty())
-            mComicInfo.series = mangaNome
+        if (comic.series.isEmpty())
+            comic.series = mangaNome
 
-        txtMalNome.text = mComicInfo.comic
-        atualizaCorETituloTabComicInfo()
+        txtMalNome.text = comic.comic
+        mComicInfo = comic
 
         if (mangaNome.isNotEmpty() && mComicInfo.id != null)
             consultarMal()
     }
 
-    private fun atualizaCorETituloTabComicInfo() {
+    private fun atualizaTituloComicInfo(comic: ComicInfo) {
         val selecionado = when {
-            mComicInfo.idMal != null -> Selecionado.SELECIONADO
+            comic.idMal != null -> Selecionado.SELECIONADO
             mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
             else -> Selecionado.VAZIO
         }
         Selecionado.setTabColor(tbTabPastas_ComicInfo, selecionado)
-        val sufixo = if (selecionado == Selecionado.SELECIONADO && mComicInfo.comic.isNotEmpty()) " (${mComicInfo.comic})" else ""
+        val sufixo = if (selecionado == Selecionado.SELECIONADO && comic.comic.isNotEmpty()) " (${comic.comic})" else ""
         tbTabPastas_ComicInfo.text = "Comic Info$sufixo"
     }
 
@@ -676,7 +685,6 @@ class AbaPastasController : Initializable {
         val comic = ComicInfo(mComicInfo)
         mServiceComicInfo.updateMal(comic, mal, cbLinguagem.value ?: Linguagem.JAPANESE)
         mComicInfo = comic
-        atualizaCorETituloTabComicInfo()
     }
 
     private fun consultarMal() {
@@ -720,7 +728,6 @@ class AbaPastasController : Initializable {
                     else if (atualizado)
                         mComicInfo = comicInfo
 
-                    atualizaCorETituloTabComicInfo()
                     btnMalConsultar.isDisable = false
                     isConsultandoMal = false
                 }

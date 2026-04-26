@@ -605,7 +605,7 @@ class AbaArquivoController : Initializable {
 
                     val selecionado = if (mComicInfo.idMal != null) Selecionado.SELECIONADO else Selecionado.SELECIONAR
                     Selecionado.setTabColor(tbTabArquivo_ComicInfo, selecionado)
-                    tbTabArquivo_ComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + mComicInfo.comic + ")" else "")
+                    tbTabArquivo_ComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + comicInfo.comic + ")" else "")
 
                     btnMalAplicar.isDisable = false
                     controllerPai.setCursor(null)
@@ -813,17 +813,17 @@ class AbaArquivoController : Initializable {
         txtImprint.text = comic.imprint
         txtGenre.text = comic.genre
         txtNotes.text = comic.notes
-        atualizaCorETituloTabComicInfo()
+        atualizaTituloComicInfo(comic)
     }
 
-    private fun atualizaCorETituloTabComicInfo() {
+    private fun atualizaTituloComicInfo(comic: ComicInfo) {
         val selecionado = when {
-            mComicInfo.idMal != null -> Selecionado.SELECIONADO
+            comic.idMal != null -> Selecionado.SELECIONADO
             mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
             else -> Selecionado.VAZIO
         }
         Selecionado.setTabColor(tbTabArquivo_ComicInfo, selecionado)
-        val sufixo = if (selecionado == Selecionado.SELECIONADO && mComicInfo.comic.isNotEmpty()) " (${mComicInfo.comic})" else ""
+        val sufixo = if (selecionado == Selecionado.SELECIONADO && comic.comic.isNotEmpty()) " (${comic.comic})" else ""
         tbTabArquivo_ComicInfo.text = "Comic Info$sufixo"
     }
 
@@ -846,7 +846,6 @@ class AbaArquivoController : Initializable {
         val comic = ComicInfo(mComicInfo)
         mServiceComicInfo.updateMal(comic, mal, cbLinguagem.value ?: Linguagem.JAPANESE)
         mComicInfo = comic
-        atualizaCorETituloTabComicInfo()
     }
 
     private fun ocrSumario(sumario: File) {
@@ -942,7 +941,6 @@ class AbaArquivoController : Initializable {
                     else if (atualizado)
                         mComicInfo = comicInfo
 
-                    atualizaCorETituloTabComicInfo()
                     btnMalConsultar.isDisable = false
                     isConsultandoMal = false
                 }
@@ -1108,24 +1106,24 @@ class AbaArquivoController : Initializable {
         if (nome.isNotEmpty() && nome.endsWith("-", ignoreCase = true))
             nome = nome.substring(0, nome.length - 1).trim { it <= ' ' }
 
-        mComicInfo = mServiceComicInfo.find(nome, cbLinguagem.value.sigla) ?: ComicInfo(null, null, nome, nome)
+        val comic = mServiceComicInfo.find(nome, cbLinguagem.value.sigla) ?: ComicInfo(null, null, nome, nome)
 
-        if (mComicInfo.id == null) {
+        if (comic.id == null) {
             mLOG.info("Gerando novo ComicInfo.")
             txtMalId.text = ""
         } else {
-            mLOG.info("ComicInfo localizado: " + mComicInfo.title)
-            txtMalId.text = mComicInfo.idMal.toString()
+            mLOG.info("ComicInfo localizado: " + comic.title)
+            txtMalId.text = comic.idMal.toString()
         }
 
-        if (mComicInfo.comic.isEmpty())
-            mComicInfo.comic = nome
+        if (comic.comic.isEmpty())
+            comic.comic = nome
 
-        if (mComicInfo.series.isEmpty())
-            mComicInfo.series = nome
+        if (comic.series.isEmpty())
+            comic.series = nome
 
-        txtMalNome.text = mComicInfo.comic
-        atualizaCorETituloTabComicInfo()
+        txtMalNome.text = comic.comic
+        mComicInfo = comic
         consultarMal()
     }
 
