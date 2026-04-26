@@ -45,9 +45,9 @@ import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.control.cell.TextFieldTableCell
+import javafx.scene.effect.BoxBlur
 import javafx.scene.image.Image
 import javafx.scene.image.ImageView
-import javafx.scene.effect.BoxBlur
 import javafx.scene.input.*
 import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
@@ -63,8 +63,8 @@ import java.io.FileOutputStream
 import java.io.FilenameFilter
 import java.io.IOException
 import java.math.RoundingMode
-import java.nio.file.Files
 import java.net.URL
+import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.sql.SQLException
@@ -91,13 +91,13 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private lateinit var tbTabRootArquivo: JFXTabPane
- 
+
     @FXML
     private lateinit var tbTabArquivo_Arquivos: Tab
- 
+
     @FXML
     private lateinit var tbTabArquivo_Capa: Tab
- 
+
     @FXML
     private lateinit var tbTabArquivo_ComicInfo: Tab
 
@@ -330,6 +330,7 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private lateinit var clMalSite: TableColumn<Mal, JFXButton?>
+
     @FXML
     private lateinit var clMalImagem: TableColumn<Mal, ImageView?>
 
@@ -787,7 +788,10 @@ class AbaArquivoController : Initializable {
             }
 
             if (itens.isNotEmpty()) {
-                AlertasPopup.alertaModal("Alerta", "Alguns arquivos selecionados não foram encontrados, verifique os arquivos na pasta de origem.\n" + itens.substringBeforeLast(", ") + ".")
+                AlertasPopup.alertaModal(
+                    "Alerta",
+                    "Alguns arquivos selecionados não foram encontrados, verifique os arquivos na pasta de origem.\n" + itens.substringBeforeLast(", ") + "."
+                )
                 valida = false
             }
         }
@@ -841,18 +845,11 @@ class AbaArquivoController : Initializable {
     private fun carregaMal(mal: Mal) {
         val comic = ComicInfo(mComicInfo)
         mServiceComicInfo.updateMal(comic, mal, cbLinguagem.value ?: Linguagem.JAPANESE)
-        if (mComicInfo.comic.isEmpty()) {
-            mComicInfo = comic
-            atualizaCorETituloTabComicInfo()
-        } else {
-            if (AlertasPopup.confirmacaoModal("Aviso", "Deseja substituir os dados do ComicInfo?")) {
-                mComicInfo = comic
-                atualizaCorETituloTabComicInfo()
-            }
-        }
+        mComicInfo = comic
+        atualizaCorETituloTabComicInfo()
     }
 
-    private fun ocrSumario(sumario : File) {
+    private fun ocrSumario(sumario: File) {
         remSugestao()
         val isJapanese = txtNomePastaManga.text.contains("[JPN]", true)
         val ocr: Task<Void> = object : Task<Void>() {
@@ -878,13 +875,14 @@ class AbaArquivoController : Initializable {
                 }
                 return null
             }
-            override fun succeeded() { }
+
+            override fun succeeded() {}
         }
 
         Thread(ocr).start()
     }
 
-    private fun addSugestao(textos : String) {
+    private fun addSugestao(textos: String) {
         mLOG.info("Sugestão: $textos")
         if (textos.isNotEmpty()) {
             mSugestao.fixedCellSize = 24.0 + (if (textos.contains('\n')) ((textos.count { it == '\n' } - 1) * 18.0) else 0.0)
@@ -902,9 +900,14 @@ class AbaArquivoController : Initializable {
         mSugestao.hide()
     }
 
+    private var isConsultandoMal = false
     private fun consultarMal() {
+        if (isConsultandoMal)
+            return
+        isConsultandoMal = true
+
         if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
-            val id : Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
+            val id: Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
             val nome = txtMalNome.text
             val linguagem = cbLinguagem.value ?: Linguagem.JAPANESE
             val comicInfo = ComicInfo(mComicInfo)
@@ -936,24 +939,29 @@ class AbaArquivoController : Initializable {
 
                     if (listaResults.isEmpty())
                         Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
-                    else if (atualizado) {
-                        if (mComicInfo.comic.isEmpty() || AlertasPopup.confirmacaoModal("Aviso", "Deseja substituir os dados do ComicInfo?")) {
-                            mComicInfo = comicInfo
-                        }
-                    }
+                    else if (atualizado)
+                        mComicInfo = comicInfo
 
                     atualizaCorETituloTabComicInfo()
                     btnMalConsultar.isDisable = false
+                    isConsultandoMal = false
                 }
 
                 override fun failed() {
                     btnMalConsultar.isDisable = false
+                    isConsultandoMal = false
+                }
+
+                override fun cancelled() {
+                    btnMalConsultar.isDisable = false
+                    isConsultandoMal = false
                 }
             }
             Thread(consulta).start()
         } else {
             AlertasPopup.alertaModal("Alerta", "Necessário informar um id ou nome.")
             txtMalNome.requestFocus()
+            isConsultandoMal = false
         }
     }
 
@@ -1063,7 +1071,7 @@ class AbaArquivoController : Initializable {
             if (min > 0 && max > 0) {
                 val vol = try {
                     (Utils.getNumber(psq.volume) ?: 0).toInt() - (Utils.getNumber(it.volume) ?: 0).toInt()
-                } catch (e : Exception) {
+                } catch (e: Exception) {
                     0
                 }
 
@@ -1177,14 +1185,17 @@ class AbaArquivoController : Initializable {
                 mImagemFrente.image = imagem
                 imagem?.let { mGestureFrente.zoomTo(0.1, Point2D(it.width / 2, it.height / 2)) }
             }
+
             TipoCapa.TRAS -> {
                 mImagemTras.image = imagem
                 imagem?.let { mGestureTras.zoomTo(0.1, Point2D(it.width / 2, it.height / 2)) }
             }
+
             TipoCapa.CAPA_COMPLETA -> {
                 mImagemTudo.image = imagem
                 imagem?.let { mGestureTudo.zoomTo(0.1, Point2D(it.width / 2, it.height / 2)) }
             }
+
             else -> {}
         }
     }
@@ -1556,7 +1567,19 @@ class AbaArquivoController : Initializable {
                     val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + nomeArquivo
                     manga.caminhos = listaCaminhos
 
-                    if (mRarService.compactar(mCaminhoDestino!!, File(arquivoZip), manga, comicInfo, pastasCompactar, pastasComic, linguagem, compactarArquivo, gerarCapitulo, callback = callback))
+                    if (mRarService.compactar(
+                            mCaminhoDestino!!,
+                            File(arquivoZip),
+                            manga,
+                            comicInfo,
+                            pastasCompactar,
+                            pastasComic,
+                            linguagem,
+                            compactarArquivo,
+                            gerarCapitulo,
+                            callback = callback
+                        )
+                    )
                         LAST_PROCESS_FOLDERS = pastasCompactar
                 } catch (e: Exception) {
                     mLOG.error("Erro ao processar.", e)
@@ -1914,7 +1937,7 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private fun onBtnOcr() {
-        val sumario = mObsListaImagesSelected.stream().filter { it.tipo == TipoCapa.SUMARIO  }.findFirst().getOrNull() ?: return
+        val sumario = mObsListaImagesSelected.stream().filter { it.tipo == TipoCapa.SUMARIO }.findFirst().getOrNull() ?: return
         val img = File(txtPastaOrigem.text + "\\" + sumario.arquivo)
 
         if (!img.exists())
@@ -1994,9 +2017,17 @@ class AbaArquivoController : Initializable {
                     if (it.tipo == TipoCapa.CAPA_COMPLETA)
                         CompletableFuture.runAsync {
                             try {
-                                if (it.direita != null || mObsListaImagesSelected.none { ls -> ls.tipo == TipoCapa.CAPA_COMPLETA && !ls.arquivo.equals(it.arquivo, ignoreCase = true) }) {
+                                if (it.direita != null || mObsListaImagesSelected.none { ls ->
+                                        ls.tipo == TipoCapa.CAPA_COMPLETA && !ls.arquivo.equals(
+                                            it.arquivo,
+                                            ignoreCase = true
+                                        )
+                                    }) {
                                     if (it.direita != null)
-                                        simularCapa(it.tipo, carregaImagem(File(mPASTA_TEMPORARIA.toString() + "\\" + it.nome), File(mPASTA_TEMPORARIA.toString() + "\\" + it.direita!!.nome)))
+                                        simularCapa(
+                                            it.tipo,
+                                            carregaImagem(File(mPASTA_TEMPORARIA.toString() + "\\" + it.nome), File(mPASTA_TEMPORARIA.toString() + "\\" + it.direita!!.nome))
+                                        )
                                     else
                                         simularCapa(it.tipo, carregaImagem(File(mPASTA_TEMPORARIA.toString() + "\\" + it.nome)))
                                     if (mObsListaImagesSelected.none { ls -> ls.tipo == TipoCapa.CAPA })
@@ -2019,7 +2050,7 @@ class AbaArquivoController : Initializable {
         }
     }
 
-    fun setLog(texto: String, isError : Boolean = false) {
+    fun setLog(texto: String, isError: Boolean = false) {
         if (isError) {
             lblAlerta.text = texto
             lblAviso.text = ""
@@ -2310,14 +2341,14 @@ class AbaArquivoController : Initializable {
         }
     }
 
-    private fun addCapitulo(capitulo: String) : String {
+    private fun addCapitulo(capitulo: String): String {
         if (capitulo.isEmpty())
             return ""
         val numero = Utils.getNumber(capitulo) ?: return ""
         return numero.plus(1).toInt().toString()
     }
 
-    private fun minCapitulo(capitulo: String) : String {
+    private fun minCapitulo(capitulo: String): String {
         if (capitulo.isEmpty())
             return ""
         var numero = Utils.getNumber(capitulo) ?: return ""
@@ -2356,11 +2387,13 @@ class AbaArquivoController : Initializable {
                         e.consume()
                     }
                 }
+
                 KeyCode.R -> {
                     if (e.isControlDown)
                         carregaPastaOrigem()
                 }
-                else -> { }
+
+                else -> {}
             }
         }
 
@@ -2475,7 +2508,7 @@ class AbaArquivoController : Initializable {
         }
 
         txtVolume.onKeyPressed = EventHandler { e: KeyEvent ->
-            when(e.code) {
+            when (e.code) {
                 KeyCode.ENTER -> txtGerarInicio.requestFocus()
                 KeyCode.TAB -> {
                     if (!e.isControlDown && !e.isAltDown && !e.isShiftDown) {
@@ -2483,9 +2516,10 @@ class AbaArquivoController : Initializable {
                         e.consume()
                     }
                 }
+
                 KeyCode.UP -> onBtnVolumeMais()
                 KeyCode.DOWN -> onBtnVolumeMenos()
-                else -> { }
+                else -> {}
             }
 
             if (e.code == KeyCode.UP || e.code == KeyCode.DOWN) {
@@ -2512,22 +2546,25 @@ class AbaArquivoController : Initializable {
                 txtGerarInicio.text = oldValue
         }
         txtGerarInicio.onKeyPressed = EventHandler { e: KeyEvent ->
-            when(e.code) {
+            when (e.code) {
                 KeyCode.ENTER -> {
                     Utils.clickTab()
                     e.consume()
                 }
+
                 KeyCode.UP -> {
                     txtGerarInicio.text = addCapitulo(txtGerarInicio.text)
                     txtGerarInicio.positionCaret(txtGerarInicio.text.length)
                     e.consume()
                 }
+
                 KeyCode.DOWN -> {
                     txtGerarInicio.text = minCapitulo(txtGerarInicio.text)
                     txtGerarInicio.positionCaret(txtGerarInicio.text.length)
                     e.consume()
                 }
-                else -> { }
+
+                else -> {}
             }
 
         }
@@ -2540,7 +2577,7 @@ class AbaArquivoController : Initializable {
                 txtGerarFim.text = oldValue
         }
         txtGerarFim.onKeyPressed = EventHandler { e: KeyEvent ->
-            when(e.code) {
+            when (e.code) {
                 KeyCode.ENTER -> {
                     onBtnGerarCapitulos()
                     txtAreaImportar.requestFocus()
@@ -2548,23 +2585,27 @@ class AbaArquivoController : Initializable {
                     txtAreaImportar.positionCaret(position)
                     e.consume()
                 }
-                KeyCode.TAB  -> {
+
+                KeyCode.TAB -> {
                     if (!e.isShiftDown) {
                         txtAreaImportar.requestFocus()
                         e.consume()
                     }
                 }
+
                 KeyCode.UP -> {
                     txtGerarFim.text = addCapitulo(txtGerarFim.text)
                     txtGerarFim.positionCaret(txtGerarFim.text.length)
                     e.consume()
                 }
+
                 KeyCode.DOWN -> {
                     txtGerarFim.text = minCapitulo(txtGerarFim.text)
                     txtGerarFim.positionCaret(txtGerarFim.text.length)
                     e.consume()
                 }
-                else -> { }
+
+                else -> {}
             }
         }
 
@@ -2580,12 +2621,13 @@ class AbaArquivoController : Initializable {
                         if (mSugestao.suggestions.isNotEmpty())
                             mSugestao.show(txtAreaImportar)
                     }
+
                     KeyCode.T -> apagarTags()
                     KeyCode.O -> ordenarLinhas()
                     KeyCode.D,
                     KeyCode.E,
-                    in (KeyCode.NUMPAD0 .. KeyCode.NUMPAD9),
-                    in (KeyCode.DIGIT0 .. KeyCode.DIGIT9) -> {
+                    in (KeyCode.NUMPAD0..KeyCode.NUMPAD9),
+                    in (KeyCode.DIGIT0..KeyCode.DIGIT9) -> {
                         if (txtAreaImportar.text.isEmpty())
                             return@EventHandler
 
@@ -2614,21 +2656,23 @@ class AbaArquivoController : Initializable {
                                     val padding = ("%0" + (if (fim.toString().length > 3) fim.toString().length.toString() else "3") + "d")
                                     var sequence = txt.split("\n").last { !it.contains("extra", ignoreCase = true) }
                                     sequence = if (sequence.contains(pipe)) sequence.substringBefore(pipe) else sequence
-                                    (Utils.getNumber(sequence)?.toInt()?.let { "${String.format(padding, it+1)}$pipe$page" } ?: sequence) + tag
+                                    (Utils.getNumber(sequence)?.toInt()?.let { "${String.format(padding, it + 1)}$pipe$page" } ?: sequence) + tag
                                 } else {
                                     val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
                                     "Extra ${String.format("%02d", count + 1)}$pipe$page$tag"
                                 }
                             }
-                            KeyCode.D ->  {
+
+                            KeyCode.D -> {
                                 if (line.contains("extra", true) && last.isEmpty()) {
                                     val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
                                     line + "\n" + "Extra ${String.format("%02d", count + 1)}$pipe$page$tag"
                                 } else
                                     line + "\n" + line
                             }
-                            in (KeyCode.NUMPAD0 .. KeyCode.NUMPAD9),
-                            in (KeyCode.DIGIT0 .. KeyCode.DIGIT9) -> {
+
+                            in (KeyCode.NUMPAD0..KeyCode.NUMPAD9),
+                            in (KeyCode.DIGIT0..KeyCode.DIGIT9) -> {
                                 if (texto.contains("extra", true)) {
                                     val count = txt.split("\n").sumOf { if (it.contains("extra", ignoreCase = true)) 1 else 0 as Int }
                                     val number = if (e.code == KeyCode.DIGIT0 || e.code == KeyCode.NUMPAD0) count else e.text.toInt()
@@ -2644,6 +2688,7 @@ class AbaArquivoController : Initializable {
                                     "$chapter$number$pipe$page$tag"
                                 }
                             }
+
                             else -> line
                         }
 
@@ -2655,6 +2700,7 @@ class AbaArquivoController : Initializable {
                         txtAreaImportar.positionCaret(lastCaretPos)
                         txtAreaImportar.scrollTop = scroll
                     }
+
                     else -> {}
                 }
             } else if (e.isControlDown && (e.isShiftDown || e.isAltDown)) {
@@ -2719,13 +2765,15 @@ class AbaArquivoController : Initializable {
                         txtAreaImportar.positionCaret(txtAreaImportar.text.indexOf(line))
                         txtAreaImportar.scrollTop = scroll
                     }
+
                     KeyCode.RIGHT,
                     KeyCode.LEFT -> {
                         insetCapitulo = false
                         inverterCapituloPagina(e.isShiftDown && e.isAltDown)
                     }
-                    in (KeyCode.NUMPAD0 .. KeyCode.NUMPAD9),
-                    in (KeyCode.DIGIT0 .. KeyCode.DIGIT9) -> {
+
+                    in (KeyCode.NUMPAD0..KeyCode.NUMPAD9),
+                    in (KeyCode.DIGIT0..KeyCode.DIGIT9) -> {
                         if (txtAreaImportar.text.isEmpty())
                             return@EventHandler
 
@@ -2764,6 +2812,7 @@ class AbaArquivoController : Initializable {
                         txtAreaImportar.scrollTop = scroll
                         e.consume()
                     }
+
                     else -> {}
                 }
             } else if (e.isShiftDown && e.isAltDown) {
@@ -2813,7 +2862,7 @@ class AbaArquivoController : Initializable {
                                     inicio = spaco + 1
 
                                 for (i in inicio until index + 1) {
-                                    lines[i-1] = lines[i-1] + if (lines[i].contains(separador)) separador + lines[i].substringAfterLast(separador) else ""
+                                    lines[i - 1] = lines[i - 1] + if (lines[i].contains(separador)) separador + lines[i].substringAfterLast(separador) else ""
                                     lines[i] = lines[i].substringBeforeLast(separador)
                                 }
                             }
@@ -2828,11 +2877,11 @@ class AbaArquivoController : Initializable {
                                 }
 
                                 var inicio = lines.size - 2
-                                if (spaco > 0 && spaco < lines.size -1)
+                                if (spaco > 0 && spaco < lines.size - 1)
                                     inicio = spaco - 1
 
                                 for (i in inicio downTo index) {
-                                    lines[i+1] = lines[i+1] + if (lines[i].contains(separador)) separador + lines[i].substringAfterLast(separador) else ""
+                                    lines[i + 1] = lines[i + 1] + if (lines[i].contains(separador)) separador + lines[i].substringAfterLast(separador) else ""
                                     lines[i] = lines[i].substringBeforeLast(separador)
                                 }
                             }
@@ -2848,6 +2897,7 @@ class AbaArquivoController : Initializable {
                         txtAreaImportar.positionCaret(caret)
                         txtAreaImportar.scrollTop = scroll
                     }
+
                     else -> {}
                 }
             }
@@ -3093,7 +3143,7 @@ class AbaArquivoController : Initializable {
             if (!mSincronizacao.isSincronizando()) {
                 var sinc = ""
                 for (item in observable.list)
-                    sinc += observable.list.size.toString() + " ${if(item.first == Tipo.MANGA) "(Manga)" else "(ComicInfo)"} "
+                    sinc += observable.list.size.toString() + " ${if (item.first == Tipo.MANGA) "(Manga)" else "(ComicInfo)"} "
 
                 Platform.runLater {
                     if (sinc.isNotEmpty()) {
@@ -3354,15 +3404,16 @@ class AbaArquivoController : Initializable {
     private fun configuraDragAndDrop() {
         apRoot.onDragOver = EventHandler { event ->
             if (event.gestureSource != apRoot && event.dragboard.hasFiles()) {
-                event.acceptTransferModes(*TransferMode.COPY_OR_MOVE)
+                val aceito = event.dragboard.files.any { it.extension.lowercase() in setOf("rar", "cbr", "xml") }
+                event.acceptTransferModes(if (aceito) TransferMode.COPY else null)
             }
             event.consume()
         }
 
         apRoot.onDragEntered = EventHandler { event ->
             if (event.dragboard.hasFiles()) {
-                val file = event.dragboard.files[0]
-                mostrarOverlayDrag(file.extension.lowercase() in setOf("rar", "cbr"))
+                val aceito = event.dragboard.files.any { it.extension.lowercase() in setOf("rar", "cbr", "xml") }
+                mostrarOverlayDrag(aceito)
             }
             event.consume()
         }
@@ -3376,9 +3427,17 @@ class AbaArquivoController : Initializable {
             val db = event.dragboard
             var success = false
             if (db.hasFiles()) {
-                val file = db.files[0]
-                if (file.extension.lowercase() in setOf("rar", "cbr")) {
-                    processaArquivoRar(file)
+                val files = db.files ?: emptyList<File>()
+                val archives = files.filter { it.extension.lowercase() in setOf("rar", "cbr") }
+                val xmls = files.filter { it.extension.lowercase() == "xml" }
+
+                if (archives.isNotEmpty()) {
+                    processaArquivoRar(archives.first()) // Mantém comportamento original de pegar apenas o primeiro se houver múltiplos rars
+                    success = true
+                }
+
+                if (xmls.isNotEmpty()) {
+                    processaArquivoXml(xmls.first())
                     success = true
                 }
             }
@@ -3407,90 +3466,132 @@ class AbaArquivoController : Initializable {
         controllerPai.apDragOverlay.isVisible = false
     }
 
+    private fun processaArquivoXml(file: File) {
+        if (file.name.equals("ComicInfo.xml", ignoreCase = true)) {
+            try {
+                val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
+                val unmarshaller = jaxb.createUnmarshaller()
+                val comicInfo = unmarshaller.unmarshal(file) as ComicInfo
+
+                Platform.runLater {
+                    mComicInfo = comicInfo
+                    Notificacoes.notificacao(Notificacao.SUCESSO, "ComicInfo", "Metadados carregados do arquivo XML.")
+                }
+            } catch (e: Exception) {
+                mLOG.error("Erro ao carregar ComicInfo.xml arrastado", e)
+                Platform.runLater {
+                    Notificacoes.notificacao(Notificacao.ERRO, "Erro XML", "Não foi possível carregar os metadados: ${e.message}")
+                }
+            }
+        } else {
+            mLOG.info("Arquivo XML ignorado por não ser 'ComicInfo.xml': ${file.name}")
+        }
+    }
+
     private fun processaArquivoRar(file: File) {
         if (!mPASTA_TEMPORARIA.exists())
             mPASTA_TEMPORARIA.mkdirs()
+
         val tempDir = File(mPASTA_TEMPORARIA, "process_arquivo_" + System.currentTimeMillis())
         tempDir.mkdirs()
+
         try {
-            if (mRarService.extrairTudo(file, tempDir)) {
-                val folders = tempDir.listFiles { f -> f.isDirectory }
-                val folder = folders?.firstOrNull { !it.name.contains("Capa", true) }
+            val conteudo = mRarService.listarConteudo(file)
+            if (conteudo.isEmpty()) return
 
-                if (folder != null) {
-                    val regexDelimitadores = Regex("(?i)\\s*(volume|capítulo|capitulo|chapter|-).*")
-                    val nomeOriginal = folder.name
-                    var nomeManga = nomeOriginal
+            val foldersAtRoot = conteudo.filter { it.contains("/") || it.contains("\\") }
+                .map { it.split("/", "\\")[0] }
+                .distinct()
 
-                    if (nomeManga.contains("]"))
-                        nomeManga = nomeManga.substringAfter("]").trim()
+            val targetFolderName = foldersAtRoot.firstOrNull { !it.contains("Capa", true) }
 
-                    // Extrai o nome do mangá removendo tudo a partir do primeiro delimitador encontrado
-                    nomeManga = nomeManga.replace(regexDelimitadores, "").trim()
-
-                    // Tenta identificar o termo de capítulo (Capítulo, Chapter, etc) na parte removida
-                    var capituloManga = nomeOriginal.replace(nomeManga, "", ignoreCase = true).trim()
-
-                    val regexTermoCapitulo = Regex("(?i)(capítulo|capitulo|chapter)")
-                    val matchCapitulo = regexTermoCapitulo.find(capituloManga)
-
-                    capituloManga = if (matchCapitulo != null) {
-                        // Se encontrou o termo, mantém como o usuário escreveu (ex: "Chapter")
-                        matchCapitulo.value.trim()
-                    } else {
-                        // Fallback: limpa números e volume para tentar pegar o que sobrar
-                        capituloManga.replace(Regex("(?i)volume|vol|\\d+|\\s+"), "").trim()
-                    }
-
-                    capituloManga = if (capituloManga.isEmpty())
-                        "Capítulo"
-                    else
-                        capituloManga.replace("\\d".toRegex(), "")
-
-                    nomeManga = if (nomeManga.contains("]")) nomeManga.substringAfter("]").trim() else nomeManga
-                    val sugestoes = mServiceManga.sugestao(nomeManga)
-                    nomeManga = if (sugestoes.isNotEmpty()) sugestoes.first() else nomeManga
-                    val scan = if (txtNomePastaManga.text != null && txtNomePastaManga.text.contains("]")) nomeManga.substringBefore("]").trim() else ""
-
-                    txtNomePastaCapitulo.text = capituloManga
-                    txtNomePastaManga.text = "$scan $nomeManga -"
-                    simulaNome()
-
-                    val comicFile = File(tempDir, "ComicInfo.xml").let { if (it.exists()) it else File(folder, "ComicInfo.xml") }
-                    if (comicFile.exists()) {
-                        try {
-                            val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
-                            val unmarshaller = jaxb.createUnmarshaller()
-                            val comicInfo = unmarshaller.unmarshal(comicFile) as ComicInfo
-
-                            mComicInfo.apply {
-                                idMal = comicInfo.idMal
-                                title = comicInfo.title
-                                series = comicInfo.series
-                                publisher = comicInfo.publisher
-                                alternateSeries = comicInfo.alternateSeries
-                                seriesGroup = comicInfo.seriesGroup
-                                storyArc = comicInfo.storyArc
-                                imprint = comicInfo.imprint
-                                genre = comicInfo.genre
-                                ageRating = comicInfo.ageRating
-                                languageISO = comicInfo.languageISO
-                                notes = comicInfo.notes
-                                summary = comicInfo.summary
-                            }
-
-                            txtMalId.text  = comicInfo.idMal?.toString() ?: ""
-                            txtMalNome.text  = comicInfo.series
-                            carregaComicInfo(mComicInfo)
-
-                            if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty())
-                                consultarMal()
-                        } catch (e: Exception) {
-                            mLOG.error("Erro ao carregar ComicInfo do RAR.", e)
-                        }
-                    } else
-                        carregaComicInfo()
+            if (targetFolderName != null) {
+                val itensParaExtrair = mutableListOf<String>()
+                val comicInfoPath = conteudo.firstOrNull {
+                    it.equals("ComicInfo.xml", true) ||
+                            it.equals("$targetFolderName/ComicInfo.xml", true) ||
+                            it.equals("$targetFolderName\\ComicInfo.xml", true)
                 }
+
+                if (comicInfoPath != null) itensParaExtrair.add(comicInfoPath)
+
+                // Extrai apenas o necessário (ComicInfo.xml)
+                if (itensParaExtrair.isNotEmpty())
+                    mRarService.extrairItens(file, itensParaExtrair, tempDir)
+
+                val folder = File(tempDir, targetFolderName)
+                val regexDelimitadores = Regex("(?i)\\s*(volume|capítulo|capitulo|chapter|-).*")
+                val nomeOriginal = targetFolderName
+                var nomeManga = nomeOriginal
+
+                if (nomeManga.contains("]"))
+                    nomeManga = nomeManga.substringAfter("]").trim()
+
+                // Extrai o nome do mangá removendo tudo a partir do primeiro delimitador encontrado
+                nomeManga = nomeManga.replace(regexDelimitadores, "").trim()
+
+                // Tenta identificar o termo de capítulo (Capítulo, Chapter, etc) na parte removida
+                var capituloManga = nomeOriginal.replace(nomeManga, "", ignoreCase = true).trim()
+
+                val regexTermoCapitulo = Regex("(?i)(capítulo|capitulo|chapter)")
+                val matchCapitulo = regexTermoCapitulo.find(capituloManga)
+
+                capituloManga = if (matchCapitulo != null) {
+                    // Se encontrou o termo, mantém como o usuário escreveu (ex: "Chapter")
+                    matchCapitulo.value.trim()
+                } else {
+                    // Fallback: limpa números e volume para tentar pegar o que sobrar
+                    capituloManga.replace(Regex("(?i)volume|vol|\\d+|\\s+"), "").trim()
+                }
+
+                capituloManga = if (capituloManga.isEmpty())
+                    "Capítulo"
+                else
+                    capituloManga.replace("\\d".toRegex(), "")
+
+                nomeManga = if (nomeManga.contains("]")) nomeManga.substringAfter("]").trim() else nomeManga
+                val sugestoes = mServiceManga.sugestao(nomeManga)
+                nomeManga = if (sugestoes.isNotEmpty()) sugestoes.first() else nomeManga
+                val scan = if (txtNomePastaManga.text != null && txtNomePastaManga.text.contains("]")) nomeManga.substringBefore("]").trim() else ""
+
+                txtNomePastaCapitulo.text = capituloManga
+                txtNomePastaManga.text = "$scan $nomeManga -"
+                simulaNome()
+
+                val comicFile = File(tempDir, "ComicInfo.xml").let { if (it.exists()) it else File(folder, "ComicInfo.xml") }
+                if (comicFile.exists()) {
+                    try {
+                        val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
+                        val unmarshaller = jaxb.createUnmarshaller()
+                        val comicInfo = unmarshaller.unmarshal(comicFile) as ComicInfo
+
+                        mComicInfo.apply {
+                            idMal = comicInfo.idMal
+                            title = comicInfo.title
+                            series = comicInfo.series
+                            publisher = comicInfo.publisher
+                            alternateSeries = comicInfo.alternateSeries
+                            seriesGroup = comicInfo.seriesGroup
+                            storyArc = comicInfo.storyArc
+                            imprint = comicInfo.imprint
+                            genre = comicInfo.genre
+                            ageRating = comicInfo.ageRating
+                            languageISO = comicInfo.languageISO
+                            notes = comicInfo.notes
+                            summary = comicInfo.summary
+                        }
+
+                        txtMalId.text = comicInfo.idMal?.toString() ?: ""
+                        txtMalNome.text = comicInfo.series
+                        carregaComicInfo(mComicInfo)
+
+                        if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty())
+                            consultarMal()
+                    } catch (e: Exception) {
+                        mLOG.error("Erro ao carregar ComicInfo do RAR.", e)
+                    }
+                } else
+                    carregaComicInfo()
             }
         } catch (e: Exception) {
             mLOG.error("Erro ao processar arquivo arrastado.", e)

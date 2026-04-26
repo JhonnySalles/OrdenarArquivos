@@ -53,7 +53,6 @@ import java.text.DecimalFormatSymbols
 import java.util.*
 import kotlin.properties.Delegates
 
-
 class AbaPastasController : Initializable {
 
     private val mLOG = LoggerFactory.getLogger(AbaComicInfoController::class.java)
@@ -607,10 +606,11 @@ class AbaPastasController : Initializable {
     }
 
     internal fun carregaComicInfo() {
-        mComicInfo = if (cbManga.value.isNullOrEmpty())
-            ComicInfo(null, null, cbManga.value, cbManga.value)
+        val mangaNome = cbManga.editor.text ?: ""
+        mComicInfo = if (mangaNome.isEmpty())
+            ComicInfo(null, null, mangaNome, mangaNome)
         else {
-            var nome = cbManga.value
+            var nome = mangaNome
             if (nome.contains("]"))
                 nome = nome.substring(nome.indexOf("]")).replace("]", "").trim { it <= ' ' }
 
@@ -634,15 +634,15 @@ class AbaPastasController : Initializable {
         }
 
         if (mComicInfo.comic.isEmpty())
-            mComicInfo.comic = cbManga.value
+            mComicInfo.comic = mangaNome
 
         if (mComicInfo.series.isEmpty())
-            mComicInfo.series = cbManga.value
+            mComicInfo.series = mangaNome
 
         txtMalNome.text = mComicInfo.comic
         atualizaCorETituloTabComicInfo()
 
-        if (!cbManga.value.isNullOrEmpty() && mComicInfo.id != null)
+        if (mangaNome.isNotEmpty() && mComicInfo.id != null)
             consultarMal()
     }
 
@@ -675,13 +675,8 @@ class AbaPastasController : Initializable {
     private fun carregaMal(mal: Mal) {
         val comic = ComicInfo(mComicInfo)
         mServiceComicInfo.updateMal(comic, mal, cbLinguagem.value ?: Linguagem.JAPANESE)
-
-        Platform.runLater {
-            if (mComicInfo.comic.isEmpty() || AlertasPopup.confirmacaoModal("Aviso", "Deseja substituir os dados do ComicInfo?")) {
-                mComicInfo = comic
-                atualizaCorETituloTabComicInfo()
-            }
-        }
+        mComicInfo = comic
+        atualizaCorETituloTabComicInfo()
     }
 
     private fun consultarMal() {
@@ -722,11 +717,8 @@ class AbaPastasController : Initializable {
 
                     if (listaResults.isEmpty())
                         Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
-                    else if (atualizado) {
-                        if (mComicInfo.comic.isEmpty() || AlertasPopup.confirmacaoModal("Aviso", "Deseja substituir os dados do ComicInfo?")) {
-                            mComicInfo = comicInfo
-                        }
-                    }
+                    else if (atualizado)
+                        mComicInfo = comicInfo
 
                     atualizaCorETituloTabComicInfo()
                     btnMalConsultar.isDisable = false
@@ -1061,6 +1053,7 @@ class AbaPastasController : Initializable {
                 }
 
                 for (item in mObsListaProcessar) {
+                    item.nome = event.getObject()
                     if (item.volume == 0f && item.capitulo > 0f) {
                         val capStr = decimal.format(item.capitulo)
                         if (volumesMap.containsKey(capStr))
@@ -1083,14 +1076,15 @@ class AbaPastasController : Initializable {
         cbManga.setOnKeyPressed { ke -> if (ke.code.equals(KeyCode.ENTER)) Utils.clickTab() }
         cbManga.focusedProperty().addListener { _, oldValue, newValue ->
             if (newValue)
-                oldManga = cbManga.value ?: ""
+                oldManga = cbManga.editor.text ?: ""
 
-            if (oldValue && oldManga != cbManga.value) {
+            if (oldValue && oldManga != cbManga.editor.text) {
+                val novoNome = cbManga.editor.text
                 for (item in mObsListaProcessar)
-                    item.nome = cbManga.value
+                    item.nome = novoNome
 
-                if (!cbManga.value.isNullOrEmpty()) {
-                    val mangas = mServiceManga.findAll(cbManga.value, isCaminho = true)
+                if (!novoNome.isNullOrEmpty()) {
+                    val mangas = mServiceManga.findAll(novoNome, isCaminho = true)
                     val volumesMap = mutableMapOf<String, Float>()
                     val decimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
                     mangas.forEach { m ->
@@ -1360,7 +1354,7 @@ class AbaPastasController : Initializable {
     private fun configurarDragAndDrop() {
         apRoot.onDragOver = EventHandler { event ->
             if (event.gestureSource !== apRoot && event.dragboard.hasFiles()) {
-                val aceito = event.dragboard.files.any { it.extension.lowercase() in listOf("rar", "cbr") }
+                val aceito = event.dragboard.files.any { it.name.substringAfterLast('.', "").lowercase() in listOf("rar", "cbr", "xml") }
                 event.acceptTransferModes(if (aceito) TransferMode.COPY else null)
                 mostrarOverlayDrag(aceito)
             }
@@ -1372,9 +1366,28 @@ class AbaPastasController : Initializable {
         apRoot.onDragDropped = EventHandler { event ->
             val db = event.dragboard
             if (db.hasFiles()) {
-                val files = db.files.filter { it.extension.lowercase() in listOf("rar", "cbr") }
-                if (files.isNotEmpty()) {
-                    processaArquivosRar(files)
+                val archives = mutableListOf<File>()
+                val xmls = mutableListOf<File>()
+
+                val files = db.files ?: emptyList<File>()
+                for (file in files) {
+                    val ext = file.name.substringAfterLast('.', "").lowercase()
+                    if (ext == "rar" || ext == "cbr") {
+                        archives.add(file)
+                    } else if (ext == "xml") {
+                        xmls.add(file)
+                    }
+                }
+
+                if (archives.isNotEmpty()) {
+                    processaArquivosRar(archives)
+                }
+
+                if (xmls.isNotEmpty()) {
+                    processaArquivoXml(xmls.first())
+                }
+
+                if (archives.isNotEmpty() || xmls.isNotEmpty()) {
                     event.isDropCompleted = true
                 }
             }
@@ -1413,19 +1426,38 @@ class AbaPastasController : Initializable {
         if (!mPASTA_TEMPORARIA.exists())
             mPASTA_TEMPORARIA.mkdirs()
 
+        desabilita()
+        controllerPai.setCursor(Cursor.WAIT)
+
         val task = object : Task<Void>() {
             override fun call(): Void? {
                 var atualizado = false
                 val regexVol = "(?i)Volume\\s*(\\d+[,.]?\\d*)".toRegex()
                 val regexDelimitadores = Regex("(?i)\\s*(volume|capítulo|capitulo|chapter|-).*")
 
+                val total = files.size.toLong()
+                var atual = 0L
+
                 files.forEach { file ->
+                    atual++
+                    updateProgress(atual, total)
+                    updateMessage("Processando: ${file.name}")
+
                     val tempDir = File(mPASTA_TEMPORARIA, "process_arrastado_" + System.currentTimeMillis())
                     tempDir.mkdirs()
 
                     try {
-                        mRarService.extrairTudo(file, tempDir)
-                        val capa = tempDir.walk().filter { it.isDirectory && it.name.contains("Capa", true) }.firstOrNull()
+                        val conteudo = mRarService.listarConteudo(file)
+                        val itensCapa = conteudo.filter { it.contains("capa", ignoreCase = true) || it.contains("cover", ignoreCase = true) }
+
+                        if (itensCapa.isNotEmpty()) {
+                            mRarService.extrairItens(file, itensCapa, tempDir)
+                        } else {
+                            mLOG.info("Nenhuma pasta ou arquivo de capa encontrado no arquivo: ${file.name}")
+                            return@forEach
+                        }
+
+                        val capa = tempDir.walk().filter { it.isDirectory && (it.name.contains("Capa", true) || it.name.contains("Cover", true)) }.firstOrNull()
                         if (capa != null) {
                             val pasta = capa.name
                             var mangaNome = pasta
@@ -1456,6 +1488,7 @@ class AbaPastasController : Initializable {
                             val volume = (regexVol.find(pasta)?.groups?.get(1)?.value?.replace(",", ".") ?: "0").toFloatOrNull() ?: 0f
 
                             capa.copyRecursively(pastaDestino, overwrite = true)
+
                             Platform.runLater {
                                 val itemExistente = mObsListaProcessar.find { it.volume == volume && it.isCapa }
                                 if (itemExistente == null) {
@@ -1485,10 +1518,46 @@ class AbaPastasController : Initializable {
             }
 
             override fun succeeded() {
+                updateMessage("Processamento de capas concluído.")
+                controllerPai.rootProgress.progressProperty().unbind()
+                controllerPai.rootMessage.textProperty().unbind()
+                controllerPai.clearProgress()
+                habilita()
                 Notificacoes.notificacao(Notificacao.SUCESSO, "Drag & Drop", "Processamento de capas concluído.")
             }
+
+            override fun failed() {
+                controllerPai.rootProgress.progressProperty().unbind()
+                controllerPai.rootMessage.textProperty().unbind()
+                controllerPai.clearProgress()
+                habilita()
+            }
         }
+        controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
+        controllerPai.rootMessage.textProperty().bind(task.messageProperty())
         Thread(task).start()
+    }
+
+    private fun processaArquivoXml(file: File) {
+        if (file.name.equals("ComicInfo.xml", ignoreCase = true)) {
+            try {
+                val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
+                val unmarshaller = jaxb.createUnmarshaller()
+                val comicInfo = unmarshaller.unmarshal(file) as ComicInfo
+
+                Platform.runLater {
+                    mComicInfo = comicInfo
+                    Notificacoes.notificacao(Notificacao.SUCESSO, "ComicInfo", "Metadados carregados do arquivo XML.")
+                }
+            } catch (e: Exception) {
+                mLOG.error("Erro ao carregar ComicInfo.xml arrastado", e)
+                Platform.runLater {
+                    Notificacoes.notificacao(Notificacao.ERRO, "Erro XML", "Não foi possível carregar os metadados: ${e.message}")
+                }
+            }
+        } else {
+            mLOG.info("Arquivo XML ignorado por não ser 'ComicInfo.xml': ${file.name}")
+        }
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {

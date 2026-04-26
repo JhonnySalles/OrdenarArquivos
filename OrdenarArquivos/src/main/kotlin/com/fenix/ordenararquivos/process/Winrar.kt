@@ -24,6 +24,7 @@ object Winrar {
     private val mServiceComicInfo = ComicInfoServices()
 
     private var mProcess: Process? = null
+
     @JvmStatic
     fun compactarArquivo(rar: File, arquivos: List<File>): Boolean {
         var success = true
@@ -134,9 +135,70 @@ object Winrar {
     }
 
     @JvmStatic
-    fun compactar(destino : File, zip : File, manga : Manga, comicInfo: ComicInfo, pastas: MutableList<File>, comic : MutableMap<String, File>, linguagem: Linguagem,
-                  isCompactar : Boolean, isGerarCapitulos: Boolean, isAtualizarComic: Boolean = true, callback: Callback<Triple<Long, Long, String>, Boolean>) : Boolean {
-        if (callback.call(Triple(0 ,0, "Gerando o comic info..")))
+    fun listarConteudo(rar: File): List<String> {
+        val lista = mutableListOf<String>()
+        var proc: Process? = null
+        val comando = "rar lb " + '"' + rar.path + '"'
+        try {
+            val rt: Runtime = Runtime.getRuntime()
+            proc = rt.exec(comando)
+            val stdInput = BufferedReader(InputStreamReader(proc.inputStream))
+            var s: String?
+            while (stdInput.readLine().also { s = it } != null) {
+                if (s!!.isNotBlank()) {
+                    lista.add(s!!)
+                }
+            }
+            proc.waitFor()
+        } catch (e: Exception) {
+            mLOG.error("Erro ao listar conteúdo do RAR: ${rar.name}", e)
+        } finally {
+            proc?.destroy()
+        }
+        return lista
+    }
+
+    @JvmStatic
+    fun extrairItens(rar: File, itens: List<String>, destino: File): Boolean {
+        if (itens.isEmpty()) return true
+        var proc: Process? = null
+        val listaItens = itens.joinToString(" ") { '"' + it + '"' }
+        val comando = "rar x -ma4 -y " + '"' + rar.path + '"' + " " + listaItens + " " + '"' + destino.path + '"'
+        mLOG.info(comando)
+        return try {
+            val rt: Runtime = Runtime.getRuntime()
+            proc = rt.exec(comando)
+
+            val stdInput = BufferedReader(InputStreamReader(proc.inputStream))
+            while (stdInput.readLine() != null) {
+            }
+
+            var error = ""
+            val stdError = BufferedReader(InputStreamReader(proc.errorStream))
+            var s: String?
+            while (stdError.readLine().also { s = it } != null)
+                error += "$s"
+
+            if (error.isNotEmpty()) {
+                mLOG.info("Error command: $error")
+                false
+            } else {
+                true
+            }
+        } catch (e: Exception) {
+            mLOG.error("Erro ao extrair itens do RAR: ${rar.name}", e)
+            false
+        } finally {
+            proc?.destroy()
+        }
+    }
+
+    @JvmStatic
+    fun compactar(
+        destino: File, zip: File, manga: Manga, comicInfo: ComicInfo, pastas: MutableList<File>, comic: MutableMap<String, File>, linguagem: Linguagem,
+        isCompactar: Boolean, isGerarCapitulos: Boolean, isAtualizarComic: Boolean = true, callback: Callback<Triple<Long, Long, String>, Boolean>
+    ): Boolean {
+        if (callback.call(Triple(0, 0, "Gerando o comic info..")))
             return false
 
         val imagens = ".*\\.(jpg|jpeg|bmp|gif|png|webp)$".toRegex()
@@ -161,7 +223,7 @@ object Winrar {
 
                     mLOG.info("Gerando pagina do ComicInfo: " + capa.name)
                     i++
-                    if (callback.call(Triple(i ,max, "Processando item " + i + " de " + max + ". Gerando ComicInfo - Capítulo $key | " + capa.name)))
+                    if (callback.call(Triple(i, max, "Processando item " + i + " de " + max + ". Gerando ComicInfo - Capítulo $key | " + capa.name)))
                         return false
 
                     val page = Pages()
@@ -220,7 +282,7 @@ object Winrar {
 
         max = 3
         i = 1
-        if (callback.call(Triple(i ,max, "Salvando xml do ComicInfo...")))
+        if (callback.call(Triple(i, max, "Salvando xml do ComicInfo...")))
             return false
         comicInfo.pages = pages
         comicInfo.pageCount = pages.size
@@ -285,7 +347,7 @@ object Winrar {
         }
 
         i++
-        if (callback.call(Triple(i ,max, "Salvando xml do CoMet...")))
+        if (callback.call(Triple(i, max, "Salvando xml do CoMet...")))
             return false
 
         val arquivoComet = File(destino.path.trim { it <= ' ' }, "CoMet.xml")
@@ -317,12 +379,12 @@ object Winrar {
 
         return if (isCompactar) {
             i++
-            callback.call(Triple(i ,max, "Compactando arquivo: $zip"))
+            callback.call(Triple(i, max, "Compactando arquivo: $zip"))
             if (zip.exists())
                 zip.delete()
 
             if (!compactarArquivo(zip, pastas))
-                callback.call(Triple(-1,-1, "Erro ao gerar o arquivo, necessário compacta-lo manualmente."))
+                callback.call(Triple(-1, -1, "Erro ao gerar o arquivo, necessário compacta-lo manualmente."))
             true
         } else
             false

@@ -19,6 +19,10 @@ open class WinrarServices {
     open fun extraiComicInfo(arquivo: File): File? = Winrar.extrairArquivo(arquivo, Utils.COMICINFO)
 
     open fun extrairTudo(arquivo: File, destino: File): Boolean = Winrar.extrairTudo(arquivo, destino)
+    
+    open fun listarConteudo(arquivo: File): List<String> = Winrar.listarConteudo(arquivo)
+
+    open fun extrairItens(arquivo: File, itens: List<String>, destino: File): Boolean = Winrar.extrairItens(arquivo, itens, destino)
 
     open fun insereSumario(arquivo: File, sumario: File) = insereArquivo(arquivo, listOf(sumario))
 
