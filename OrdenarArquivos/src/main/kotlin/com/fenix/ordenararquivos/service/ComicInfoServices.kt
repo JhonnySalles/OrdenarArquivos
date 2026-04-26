@@ -29,7 +29,6 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 
-
 class ComicInfoServices {
 
     private val mLOG = LoggerFactory.getLogger(ComicInfoServices::class.java)

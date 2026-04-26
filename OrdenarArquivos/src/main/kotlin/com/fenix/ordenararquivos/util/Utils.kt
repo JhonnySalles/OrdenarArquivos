@@ -3,14 +3,24 @@ package com.fenix.ordenararquivos.util
 import javafx.scene.input.KeyCode
 import javafx.scene.robot.Robot
 import javafx.stage.DirectoryChooser
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
+import java.io.InputStream
+import java.math.BigInteger
+import java.security.MessageDigest
+import java.security.NoSuchAlgorithmException
 import java.time.LocalDateTime
 import java.util.*
-
+import java.util.regex.Pattern
 
 class Utils {
 
     companion object {
+        private val mLOG: Logger = LoggerFactory.getLogger(Utils::class.java)
+
         const val COMICINFO = "ComicInfo.xml"
         const val SEPARADOR_IMAGEM = ";"
         const val SEPARADOR_IMPORTACAO = "$#"
@@ -36,6 +46,29 @@ class Utils {
 
         fun isRar(filename: String): Boolean = filename.lowercase(Locale.getDefault()).matches(".*\\.(rar|cbr)$".toRegex())
 
+        fun isImage(filename: String): Boolean = filename.lowercase(Locale.getDefault()).matches(".*\\.(jpg|jpeg|bmp|gif|png|webp)$".toRegex())
+
+        fun isZip(filename: String): Boolean = filename.lowercase(Locale.getDefault()).matches(".*\\.(zip|cbz)$".toRegex())
+        
+        fun isTarball(filename: String): Boolean = filename.lowercase(Locale.getDefault()).matches(".*\\.(cbt)$".toRegex())
+
+        fun isSevenZ(filename: String): Boolean = filename.lowercase(Locale.getDefault()).matches(".*\\.(cb7|7z)$".toRegex())
+
+        fun getPasta(path: String): String {
+            var pasta = path
+            if (pasta.contains("/"))
+                pasta = pasta.substring(0, pasta.lastIndexOf("/"))
+            else if (pasta.contains("\\"))
+                pasta = pasta.substring(0, pasta.lastIndexOf("\\"))
+
+            if (pasta.contains("/"))
+                pasta = pasta.substring(pasta.lastIndexOf("/") + 1)
+            else if (pasta.contains("\\"))
+                pasta = pasta.substring(pasta.lastIndexOf("\\") + 1)
+
+            return pasta
+        }
+
         fun getCaminho(path: String): String {
             var pasta = path
             if (pasta.contains("/"))
@@ -56,6 +89,27 @@ class Utils {
 
         fun getExtenssao(path: String): String {
             return if (path.contains(".")) path.substring(path.lastIndexOf(".")) else path
+        }
+
+        fun getNomeNormalizadoOrdenacao(path: String): String {
+            var nome = path
+            if (nome.contains("/"))
+                nome = nome.substring(nome.lastIndexOf("/") + 1)
+            else if (nome.contains("\\"))
+                nome = nome.substring(nome.lastIndexOf("\\") + 1)
+
+            if (nome.contains("."))
+                nome = nome.substring(0, nome.lastIndexOf("."))
+
+            var numeros = ""
+            val m = Pattern.compile("\\d+$").matcher(nome)
+            while (m.find())
+                numeros = m.group()
+
+            return if (numeros.isEmpty())
+                getNome(path)
+            else
+                (nome.substring(0, nome.lastIndexOf(numeros)) + String.format("%10s", numeros).replace(' ', '0') + getExtenssao(path))
         }
 
         fun getNumber(texto: String): Double? {
@@ -142,6 +196,58 @@ class Utils {
                 }
             }
             return sb.toString()
+        }
+
+        fun MD5(string: String): String {
+            return try {
+                val digest = MessageDigest.getInstance("MD5")
+                digest.update(string.toByteArray(), 0, string.length)
+                BigInteger(1, digest.digest()).toString(16)
+            } catch (e: NoSuchAlgorithmException) {
+                string.replace("/", ".")
+            }
+        }
+
+        fun MD5(image: InputStream): String {
+            return try {
+                val buffer = ByteArray(1024)
+                val digest = MessageDigest.getInstance("MD5")
+                var numRead = 0
+                while (numRead != -1) {
+                    numRead = image.read(buffer)
+                    if (numRead > 0) digest.update(buffer, 0, numRead)
+                }
+                val md5Bytes = digest.digest()
+                var md5 = ""
+                for (i in md5Bytes.indices)
+                    md5 += Integer.toString((md5Bytes[i].toInt() and 0xff) + 0x100, 16).substring(1)
+
+                md5
+            } catch (e: Exception) {
+                mLOG.error(e.message, e)
+                throw e
+            } finally {
+                try {
+                    image.close()
+                } catch (e: IOException) {
+                    mLOG.error(e.message, e)
+                }
+            }
+        }
+
+        @Throws(IOException::class)
+        fun toByteArray(`is`: InputStream): ByteArray {
+            val output = ByteArrayOutputStream()
+            return try {
+                val b = ByteArray(4096)
+                var n = 0
+                while (`is`.read(b).also { n = it } != -1)
+                    output.write(b, 0, n)
+
+                output.toByteArray()
+            } finally {
+                output.close()
+            }
         }
     }
 

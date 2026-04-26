@@ -12,7 +12,8 @@ data class Pasta(
     var scan: String = "",
     var titulo: String = "",
     var isCapa : Boolean = false,
-    var isSelecionado: Boolean = false
+    var isSelecionado: Boolean = false,
+    var isAlerta: Boolean = false
 ) {
 
     override fun toString(): String {
