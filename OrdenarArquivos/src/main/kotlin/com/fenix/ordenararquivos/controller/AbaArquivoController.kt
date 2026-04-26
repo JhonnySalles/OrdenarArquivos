@@ -81,8 +81,6 @@ import kotlin.properties.Delegates
 class AbaArquivoController : Initializable {
 
     private val mLOG = LoggerFactory.getLogger(AbaArquivoController::class.java)
-    private var insetCapitulo = false
-    private var lastCaretPos = 0
 
     //<--------------------------  PRINCIPAL   -------------------------->
 
@@ -2361,6 +2359,8 @@ class AbaArquivoController : Initializable {
     private var mCarregaSugestao: Job? = null
     private var mPastaAnterior = ""
     private var mNomePastaAnterior = ""
+    private var mInsetCapitulo = false
+    private var mLastCaretPos = 0
     private fun configuraTextEdit() {
         txtSeparadorPagina.isDisable = true
         txtSeparadorCapitulo.isDisable = true
@@ -2609,10 +2609,10 @@ class AbaArquivoController : Initializable {
 
         txtAreaImportar.onKeyPressed = EventHandler { e: KeyEvent ->
             if (!e.isControlDown && !e.isShiftDown && !e.isAltDown)
-                insetCapitulo = false
+                mInsetCapitulo = false
 
             if (e.isControlDown && !e.isShiftDown && !e.isAltDown) {
-                insetCapitulo = false
+                mInsetCapitulo = false
                 when (e.code) {
                     KeyCode.ENTER -> onBtnImporta()
                     KeyCode.S -> {
@@ -2632,8 +2632,8 @@ class AbaArquivoController : Initializable {
                         val txt = txtAreaImportar.text
                         val scroll = txtAreaImportar.scrollTopProperty().value
 
-                        var before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
-                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+                        var before = if (txt.indexOf('\n', mLastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', mLastCaretPos)) else txt
+                        val last = if (txt.indexOf('\n', mLastCaretPos) > 0) txt.substring(txt.indexOf('\n', mLastCaretPos)) else ""
                         val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
                         before = before.substringBeforeLast(line)
 
@@ -2694,8 +2694,8 @@ class AbaArquivoController : Initializable {
                         val position = if (newLine.contains(separador)) newLine.lastIndexOf(separador) else newLine.length
 
                         txtAreaImportar.replaceText(0, txtAreaImportar.length, newText)
-                        lastCaretPos = before.length + position
-                        txtAreaImportar.positionCaret(lastCaretPos)
+                        mLastCaretPos = before.length + position
+                        txtAreaImportar.positionCaret(mLastCaretPos)
                         txtAreaImportar.scrollTop = scroll
                     }
 
@@ -2705,7 +2705,7 @@ class AbaArquivoController : Initializable {
                 when (e.code) {
                     KeyCode.UP,
                     KeyCode.DOWN -> {
-                        insetCapitulo = false
+                        mInsetCapitulo = false
                         if (txtAreaImportar.text.isEmpty() || !txtAreaImportar.text.contains("\n"))
                             return@EventHandler
 
@@ -2713,8 +2713,8 @@ class AbaArquivoController : Initializable {
                         val lines = txt.split("\n")
                         val scroll = txtAreaImportar.scrollTopProperty().value
 
-                        val before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
-                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+                        val before = if (txt.indexOf('\n', mLastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', mLastCaretPos)) else txt
+                        val last = if (txt.indexOf('\n', mLastCaretPos) > 0) txt.substring(txt.indexOf('\n', mLastCaretPos)) else ""
                         val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
                         var newText = ""
 
@@ -2766,7 +2766,7 @@ class AbaArquivoController : Initializable {
 
                     KeyCode.RIGHT,
                     KeyCode.LEFT -> {
-                        insetCapitulo = false
+                        mInsetCapitulo = false
                         inverterCapituloPagina(e.isShiftDown && e.isAltDown)
                     }
 
@@ -2796,9 +2796,9 @@ class AbaArquivoController : Initializable {
                         val subCapitulo = if (capituloCompleto.contains(".")) "." + capituloCompleto.substringAfter(".") else ""
                         var capitulo = capituloCompleto.substringBefore(".")
 
-                        if (!insetCapitulo) {
+                        if (!mInsetCapitulo) {
                             capitulo = digito.toString()
-                            insetCapitulo = true
+                            mInsetCapitulo = true
                         } else
                             capitulo += digito
 
@@ -2814,7 +2814,7 @@ class AbaArquivoController : Initializable {
                     else -> {}
                 }
             } else if (e.isShiftDown && e.isAltDown) {
-                insetCapitulo = false
+                mInsetCapitulo = false
                 when (e.code) {
                     KeyCode.UP,
                     KeyCode.DOWN -> {
@@ -2825,8 +2825,8 @@ class AbaArquivoController : Initializable {
                         val lines = txt.split("\n").toMutableList()
                         val scroll = txtAreaImportar.scrollTopProperty().value
 
-                        val before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
-                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+                        val before = if (txt.indexOf('\n', mLastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', mLastCaretPos)) else txt
+                        val last = if (txt.indexOf('\n', mLastCaretPos) > 0) txt.substring(txt.indexOf('\n', mLastCaretPos)) else ""
                         val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
 
                         if (!line.contains(Utils.SEPARADOR_CAPITULO))
@@ -2888,9 +2888,9 @@ class AbaArquivoController : Initializable {
                         txtAreaImportar.replaceText(0, txtAreaImportar.length, lines.joinToString(separator = "\n"))
 
                         val caret = if (e.code == KeyCode.UP)
-                            txtAreaImportar.text.substring(0, lastCaretPos).lastIndexOf(separador)
+                            txtAreaImportar.text.substring(0, mLastCaretPos).lastIndexOf(separador)
                         else
-                            txtAreaImportar.text.indexOf(separador, lastCaretPos)
+                            txtAreaImportar.text.indexOf(separador, mLastCaretPos)
 
                         txtAreaImportar.positionCaret(caret)
                         txtAreaImportar.scrollTop = scroll
@@ -2899,7 +2899,7 @@ class AbaArquivoController : Initializable {
                     else -> {}
                 }
             }
-            lastCaretPos = txtAreaImportar.caretPosition
+            mLastCaretPos = txtAreaImportar.caretPosition
         }
         val menu = ContextMenu()
         val sugestao = MenuItem("Abrir menu sugestão")
@@ -2933,7 +2933,7 @@ class AbaArquivoController : Initializable {
                     txtAreaImportar.replaceText(0, txtAreaImportar.length, texto.substringBeforeLast("\n"))
                     txtAreaImportar.positionCaret(caret)
                     txtAreaImportar.scrollTop = scroll
-                    lastCaretPos = txtAreaImportar.caretPosition
+                    mLastCaretPos = txtAreaImportar.caretPosition
                 }
             }
         }
@@ -3179,8 +3179,8 @@ class AbaArquivoController : Initializable {
         for (linha in txt.split("\n"))
             texto.add(if (linha.contains(separador)) linha.substringBeforeLast(separador) else linha)
 
-        val before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
-        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+        val before = if (txt.indexOf('\n', mLastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', mLastCaretPos)) else txt
+        val last = if (txt.indexOf('\n', mLastCaretPos) > 0) txt.substring(txt.indexOf('\n', mLastCaretPos)) else ""
         var line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
         line = if (line.contains(separador)) line.substringBeforeLast(separador) else line
 
@@ -3245,8 +3245,8 @@ class AbaArquivoController : Initializable {
             newText = texto.joinToString("\n")
             position = newText.length
         } else {
-            var before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
-            val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+            var before = if (txt.indexOf('\n', mLastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', mLastCaretPos)) else txt
+            val last = if (txt.indexOf('\n', mLastCaretPos) > 0) txt.substring(txt.indexOf('\n', mLastCaretPos)) else ""
             val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
             before = before.substringBeforeLast(line)
 
@@ -3256,8 +3256,8 @@ class AbaArquivoController : Initializable {
         }
 
         txtAreaImportar.replaceText(0, txtAreaImportar.length, newText)
-        lastCaretPos = position
-        txtAreaImportar.positionCaret(lastCaretPos)
+        mLastCaretPos = position
+        txtAreaImportar.positionCaret(mLastCaretPos)
         txtAreaImportar.scrollTop = scroll
     }
 

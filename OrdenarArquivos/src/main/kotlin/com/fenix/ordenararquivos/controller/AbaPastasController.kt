@@ -51,11 +51,13 @@ import java.nio.file.StandardCopyOption
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.*
+import javafx.css.PseudoClass
 import kotlin.properties.Delegates
 
 class AbaPastasController : Initializable {
 
     private val mLOG = LoggerFactory.getLogger(AbaComicInfoController::class.java)
+    private val ALERTA_PSEUDO_CLASS = PseudoClass.getPseudoClass("alerta")
 
     //<--------------------------  PRINCIPAL   -------------------------->
 
@@ -82,6 +84,9 @@ class AbaPastasController : Initializable {
 
     @FXML
     private lateinit var btnCarregar: JFXButton
+
+    @FXML
+    private lateinit var btnValidar: JFXButton
 
     @FXML
     private lateinit var btnRenomear: JFXButton
@@ -228,6 +233,11 @@ class AbaPastasController : Initializable {
     }
 
     @FXML
+    private fun onBtnValidar() {
+        validarRegistros()
+    }
+
+    @FXML
     private fun onBtnCarregarPasta() {
         val caminho = Utils.selecionaPasta(txtPasta.text)
         if (caminho != null)
@@ -267,6 +277,7 @@ class AbaPastasController : Initializable {
         mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
         tbViewProcessar.items = mObsListaProcessar
         tbViewProcessar.refresh()
+        validarRegistros()
     }
 
     @FXML
@@ -417,11 +428,28 @@ class AbaPastasController : Initializable {
                                 mCANCELAR
                             }
 
-                            mComicInfo.volume = vol.toInt()
-                            mComicInfo.number = vol
-                            mComicInfo.count = vol.toInt()
+                            var summary = mComicInfo.summary ?: ""
+                            val hasChapter = summary.lowercase().indexOf("*chapter titles")
+                            val sbChapters = StringBuilder()
+                            if (hasChapter != -1)
+                                sbChapters.append("*Chapter Titles Manual*\n")
+                            else
+                                sbChapters.append("*Chapter Titles*\n")
+
+                            itensOrdenados.forEach { item ->
+                                sbChapters.append("Chapter ${capituloFormat.format(item.capitulo)}: ${item.titulo}\n")
+                            }
+
+                            summary += sbChapters.toString().trimEnd()
+
+                            val comicInfoEnvio = ComicInfo(mComicInfo)
+                            comicInfoEnvio.volume = vol.toInt()
+                            comicInfoEnvio.number = vol
+                            comicInfoEnvio.count = vol.toInt()
+                            comicInfoEnvio.summary = summary.trim()
+
                             Winrar.compactar(
-                                destino, arquivoZip, manga, mComicInfo, compactar, comicMap, cbLinguagem.value ?: Linguagem.PORTUGUESE,
+                                destino, arquivoZip, manga, comicInfoEnvio, compactar, comicMap, cbLinguagem.value ?: Linguagem.PORTUGUESE,
                                 isCompactar = true, isGerarCapitulos = true, isAtualizarComic = false, callback
                             )
                         }
@@ -844,6 +872,7 @@ class AbaPastasController : Initializable {
                             mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
                             tbViewProcessar.items = mObsListaProcessar
                             ckbSelecionarTodos.isSelected = true
+                            validarRegistros()
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao carregar pastas.", e)
@@ -1578,9 +1607,55 @@ class AbaPastasController : Initializable {
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
+        tbViewProcessar.setRowFactory {
+            object : TableRow<Pasta>() {
+                override fun updateItem(item: Pasta?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    pseudoClassStateChanged(ALERTA_PSEUDO_CLASS, item?.isAlerta ?: false)
+                }
+            }
+        }
+
         linkaCelulas()
         configuraTextEdit()
         configuraComboBox()
+    }
+
+    private fun validarRegistros() {
+        if (mObsListaProcessar.isEmpty()) return
+
+        // Limpa alertas anteriores
+        mObsListaProcessar.forEach { it.isAlerta = false }
+
+        // Ordena apenas por capítulo para a validação (conforme feedback)
+        val listaOrdenada = mObsListaProcessar.filter { !it.isCapa }.sortedBy { it.capitulo }
+        val faltantes = mutableListOf<Int>()
+
+        for (i in 0 until listaOrdenada.size - 1) {
+            val atual = listaOrdenada[i]
+            val proximo = listaOrdenada[i + 1]
+
+            // Ignora capítulos de meia entrada (decimais) na validação
+            val capAtual = Math.floor(atual.capitulo.toDouble()).toInt()
+            val capProximo = Math.floor(proximo.capitulo.toDouble()).toInt()
+
+            if (capProximo - capAtual > 1) {
+                // Existe um buraco
+                atual.isAlerta = true
+                proximo.isAlerta = true
+
+                for (f in (capAtual + 1) until capProximo) {
+                    faltantes.add(f)
+                }
+            }
+        }
+
+        if (faltantes.isNotEmpty()) {
+            val msg = "Capítulos não encontrados: ${faltantes.distinct().sorted().joinToString(", ")}"
+            Notificacoes.notificacao(Notificacao.ALERTA, "Validação de Capítulos", msg)
+        }
+
+        tbViewProcessar.refresh()
     }
 
     companion object {

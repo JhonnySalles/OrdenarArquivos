@@ -32,6 +32,7 @@
                      <children>
                         <JFXButton fx:id="btnCarregar" buttonType="RAISED" minWidth="70.0" onAction="#onBtnCarregar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Blue3" text="Carregar" textFill="WHITE" />
                         <JFXButton fx:id="btnCapitulos" buttonType="RAISED" minWidth="70.0" onAction="#onBtnCapitulos" prefHeight="30.0" prefWidth="150.0" styleClass="background-White1" text="Capítulos" />
+                        <JFXButton fx:id="btnProcessar" accessibleText="PROCESSA" buttonType="RAISED" minWidth="120.0" onAction="#onBtnProcessar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Black2" text="Processar ComicInfo" textFill="WHITE" />
                      </children>
                   </HBox>
                </children>

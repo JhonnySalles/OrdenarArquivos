@@ -201,6 +201,14 @@
     -fx-background-color: -fx-table-cell-border-color, #212121;
 }
 
+.table-row-cell:alerta {
+    -fx-background-color: -fx-table-cell-border-color, #ca5010;
+}
+
+.table-row-cell:alerta:odd {
+    -fx-background-color: -fx-table-cell-border-color, #a6420d;
+}
+
 .table-row-cell:selected {
     -fx-background-color: #4052ab;
     -fx-background-radius: 1;

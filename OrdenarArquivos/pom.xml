@@ -37,6 +37,8 @@
         <ocr.tess4j.version>5.15.0</ocr.tess4j.version>
         <ocr.opencv.version>3.2.0-1</ocr.opencv.version>
         <ocr.libsvm.version>3.35</ocr.libsvm.version>
+        <junrar.version>7.5.2</junrar.version>
+        <apache-commons.version>1.21</apache-commons.version>
         <ocr.colt.version>1.2.0</ocr.colt.version>
         <ocr.okhttp.version>2.7.5</ocr.okhttp.version>
         <ocr.json.version>20240303</ocr.json.version>
@@ -369,9 +371,24 @@
             <artifactId>ikonli-materialdesign2-pack</artifactId>
             <version>${ikonli.version}</version>
         </dependency>
+
+        <!-- Winrar -->
+        <dependency>
+            <groupId>com.github.junrar</groupId>
+            <artifactId>junrar</artifactId>
+            <version>${junrar.version}</version>
+        </dependency>
+
+        <!-- 7zip e Tar -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>${apache-commons.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
+        <sourceDirectory>src/main/kotlin</sourceDirectory>
         <testSourceDirectory>src/test/kotlin</testSourceDirectory>
         <plugins>
             <plugin>
@@ -466,7 +483,6 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>src/main/kotlin</source>
                                 <source>src/main/java</source>
                             </sources>
                         </configuration>

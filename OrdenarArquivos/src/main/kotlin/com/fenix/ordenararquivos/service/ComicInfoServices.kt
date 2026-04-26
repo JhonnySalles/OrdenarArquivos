@@ -58,7 +58,8 @@ class ComicInfoServices {
             if (isSendCloud)
                 SincronizacaoServices.enviar(comic)
         } catch (e: Exception) {
-            mLOG.warn("Erro ao salvar o manga.")
+            mLOG.error("Erro ao salvar o ComicInfo no banco de dados: ${e.message}", e)
+            throw e
         }
     }
 

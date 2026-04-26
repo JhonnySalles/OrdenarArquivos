@@ -80,6 +80,9 @@ class AbaComicInfoController : Initializable {
     private lateinit var btnCapitulos: JFXButton
 
     @FXML
+    private lateinit var btnProcessar: JFXButton
+
+    @FXML
     private lateinit var tbViewProcessar: TableView<Processar>
 
     @FXML
@@ -178,10 +181,73 @@ class AbaComicInfoController : Initializable {
                 btnOcrProcessar.accessibleTextProperty().set("CANCELA")
                 btnOcrProcessar.text = "Cancelar"
                 controllerPai.setCursor(Cursor.WAIT)
-                desabilita()
+                desabilita(btnOcrProcessar)
                 processaOCR()
             } else
                 mCANCELAR = true
+        }
+    }
+
+    @FXML
+    private fun onBtnProcessar() {
+        if (btnProcessar.accessibleTextProperty().value.equals("PROCESSA", ignoreCase = true)) {
+            if (txtPastaProcessar.text.isEmpty()) {
+                AlertasPopup.alertaModal("Alerta", "Necessário informar uma pasta para processar.")
+                txtPastaProcessar.requestFocus()
+                return
+            }
+
+            btnProcessar.accessibleTextProperty().set("CANCELA")
+            btnProcessar.text = "Cancelar"
+            controllerPai.setCursor(Cursor.WAIT)
+            mObsListaProcessar.clear()
+            desabilita(btnProcessar)
+
+            val marcaCapitulo = when (cbLinguagem.value) {
+                Linguagem.PORTUGUESE -> "Capítulo"
+                Linguagem.ENGLISH -> "Chapter"
+                Linguagem.JAPANESE -> "第%s話"
+                else -> ""
+            }
+
+            val processa: Task<Boolean> = object : Task<Boolean>() {
+                override fun call(): Boolean {
+                    updateMessage("Processando ComicInfo...")
+                    com.fenix.ordenararquivos.process.ComicInfo.processa(cbLinguagem.value, txtPastaProcessar.text, marcaCapitulo) { param ->
+                        updateProgress(param[0], param[1])
+                        updateMessage("Processando item ${param[0]} de ${param[1]}")
+                        null
+                    }
+                    return true
+                }
+
+                override fun succeeded() {
+                    updateMessage("Processamento finalizado com sucesso.")
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    controllerPai.clearProgress()
+                    habilita()
+                    carregarItens()
+                    Notificacoes.notificacao(Notificacao.SUCESSO, "Processamento ComicInfo", "ComicInfo processado com sucesso.")
+                }
+
+                override fun failed() {
+                    super.failed()
+                    mLOG.error("Erro na Task de processamento de ComicInfo", exception)
+                    updateMessage("Erro ao processar o ComicInfo.")
+                    AlertasPopup.erroModal("Erro ao processar o ComicInfo", exception?.message ?: "Erro desconhecido")
+                    habilita()
+                }
+            }
+
+            controllerPai.rootProgress.progressProperty().bind(processa.progressProperty())
+            controllerPai.rootMessage.textProperty().bind(processa.messageProperty())
+            val t = Thread(processa)
+            t.isDaemon = true
+            t.start()
+
+        } else {
+            com.fenix.ordenararquivos.process.ComicInfo.cancelar()
         }
     }
 
@@ -245,21 +311,26 @@ class AbaComicInfoController : Initializable {
         carregarItens()
     }
 
-    private fun desabilita() {
+    private fun desabilita(botaoAtivo: JFXButton? = null) {
         txtPastaProcessar.isDisable = true
         btnPesquisarPastaProcessar.isDisable = true
-        btnCarregar.isDisable = false
-        btnTagsProcessar.isDisable = false
-        btnTagsNormaliza.isDisable = false
-        btnTagsAplicar.isDisable = false
-        btnSalvarTodos.isDisable = false
-        btnCapitulos.isDisable = false
-        tbViewProcessar.isDisable = false
+        cbLinguagem.isDisable = true
+        btnCarregar.isDisable = true
+        btnTagsProcessar.isDisable = true
+        btnTagsNormaliza.isDisable = true
+        btnTagsAplicar.isDisable = true
+        btnSalvarTodos.isDisable = true
+        btnCapitulos.isDisable = true
+        tbViewProcessar.isDisable = true
+
+        btnOcrProcessar.isDisable = botaoAtivo != btnOcrProcessar
+        btnProcessar.isDisable = botaoAtivo != btnProcessar
     }
 
     private fun habilita() {
         txtPastaProcessar.isDisable = false
         btnPesquisarPastaProcessar.isDisable = false
+        cbLinguagem.isDisable = false
         btnCarregar.isDisable = false
         btnTagsProcessar.isDisable = false
         btnTagsNormaliza.isDisable = false
@@ -267,8 +338,15 @@ class AbaComicInfoController : Initializable {
         btnSalvarTodos.isDisable = false
         btnCapitulos.isDisable = false
         tbViewProcessar.isDisable = false
+        btnOcrProcessar.isDisable = false
+        btnProcessar.isDisable = false
+
         btnOcrProcessar.accessibleTextProperty().set("PROCESSA")
         btnOcrProcessar.text = "OCR proximos 10"
+
+        btnProcessar.accessibleTextProperty().set("PROCESSA")
+        btnProcessar.text = "Processar ComicInfo"
+
         controllerPai.setCursor(null)
     }
 
@@ -501,7 +579,7 @@ class AbaComicInfoController : Initializable {
 
     private fun salvarItens(startIndex: Int = 0, endIndex : Int = 0) {
         controllerPai.setCursor(Cursor.WAIT)
-        desabilita()
+        desabilita(btnSalvarTodos)
         val list = mObsListaProcessar.toList()
         val processar: Task<Void> = object : Task<Void>() {
             override fun call(): Void? {
