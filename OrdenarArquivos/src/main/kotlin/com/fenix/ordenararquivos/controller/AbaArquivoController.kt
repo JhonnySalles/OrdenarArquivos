@@ -2290,8 +2290,9 @@ class AbaArquivoController : Initializable {
                     txtNomeArquivo.text = item.nomeArquivo
                     txtAreaImportar.text = item.importar
                     mManga = item.manga?.apply { Manga.copy(this) }
-                    mComicInfo = ComicInfo(item.comicInfo)
-                    carregaComicInfo(mComicInfo)
+                    val comic = ComicInfo(item.comicInfo)
+                    carregaComicInfo(comic)
+                    mComicInfo = comic
 
                     mListaCaminhos = ArrayList(item.caminhos.map { it.copy() })
                     mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
@@ -2320,7 +2321,6 @@ class AbaArquivoController : Initializable {
                         lsVwImagens.selectionModel.selectFirst()
 
                     simulaNome()
-                    atualizaCorETituloTabComicInfo()
                     acdArquivos.expandedPane = ttpArquivos
 
                     val avisos = mutableListOf<String>()
