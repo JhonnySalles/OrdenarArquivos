@@ -207,11 +207,11 @@ class AbaPastasController : Initializable {
         }
 
     internal var mComicInfo by Delegates.observable(ComicInfo()) { _, _, newValue -> carregaComicInfo(newValue) }
-    private var mObsListaProcessar: ObservableList<Pasta> = FXCollections.observableArrayList()
+    internal var mObsListaProcessar: ObservableList<Pasta> = FXCollections.observableArrayList()
     private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
 
-    internal val mServiceManga = MangaServices()
-    internal val mServiceComicInfo = ComicInfoServices()
+    internal var mServiceManga = MangaServices()
+    internal var mServiceComicInfo = ComicInfoServices()
     internal var mRarService = WinrarServices()
     private val mPASTA_TEMPORARIA = File(System.getProperty("user.dir"), "temp/")
     private var isConsultandoMal = false
@@ -1082,36 +1082,46 @@ class AbaPastasController : Initializable {
         }
         cbManga.setOnKeyPressed { ke -> if (ke.code.equals(KeyCode.ENTER)) Utils.clickTab() }
         cbManga.focusedProperty().addListener { _, oldValue, newValue ->
-            if (newValue)
-                oldManga = cbManga.editor.text ?: ""
-
-            if (oldValue && oldManga != cbManga.editor.text) {
-                val novoNome = cbManga.editor.text
-                for (item in mObsListaProcessar)
-                    item.nome = novoNome
-
-                if (!novoNome.isNullOrEmpty()) {
-                    val mangas = mServiceManga.findAll(novoNome, isCaminho = true)
-                    val volumesMap = mutableMapOf<String, Float>()
-                    val decimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
-                    mangas.forEach { m ->
-                        m.caminhos.forEach { c -> volumesMap[c.capitulo] = m.volume.replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "").toFloatOrNull() ?: 0f }
-                    }
-
+            if (newValue) {
+                oldManga = cbManga.editor.text?.trim() ?: ""
+            } else if (oldValue) {
+                // Focus lost
+                val novoNome = cbManga.editor.text?.trim() ?: ""
+                
+                if (oldManga != novoNome) {
+                    oldManga = novoNome
+                    
                     for (item in mObsListaProcessar) {
-                        if (item.volume == 0f && item.capitulo > 0f) {
-                            val capStr = decimal.format(item.capitulo)
-                            if (volumesMap.containsKey(capStr))
-                                item.volume = volumesMap[capStr]!!
-                        }
+                        item.nome = novoNome
                     }
 
-                    mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
-                    tbViewProcessar.refresh()
-                    carregaComicInfo()
+                    if (novoNome.isNotEmpty()) {
+                        val mangas = mServiceManga.findAll(novoNome, isCaminho = true)
+                        val volumesMap = mutableMapOf<String, Float>()
+                        val decimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
+                        
+                        mangas.forEach { m ->
+                            m.caminhos.forEach { c -> 
+                                volumesMap[c.capitulo] = m.volume.replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "").toFloatOrNull() ?: 0f 
+                            }
+                        }
+
+                        for (item in mObsListaProcessar) {
+                            if (item.volume == 0f && item.capitulo > 0f) {
+                                val capStr = decimal.format(item.capitulo)
+                                if (volumesMap.containsKey(capStr))
+                                    item.volume = volumesMap[capStr]!!
+                            }
+                        }
+
+                        mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
+                        tbViewProcessar.refresh()
+                        carregaComicInfo()
+                    } else {
+                        tbViewProcessar.refresh()
+                    }
                 }
             }
-
             cbManga.unFocusColor = Color.web("#4059a9")
         }
     }

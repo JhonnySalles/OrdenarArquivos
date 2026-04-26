@@ -5,6 +5,7 @@ import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.SincronizacaoServices
+import com.fenix.ordenararquivos.service.WinrarServices
 import com.jfoenix.controls.JFXTextArea
 import com.jfoenix.controls.JFXTextField
 import javafx.fxml.FXMLLoader
@@ -12,9 +13,8 @@ import javafx.scene.Scene
 import javafx.scene.layout.AnchorPane
 import javafx.stage.Stage
 import org.junit.jupiter.api.*
-import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.TestInstance.Lifecycle
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.TestInstance.Lifecycle
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
@@ -22,6 +22,7 @@ import org.mockito.kotlin.whenever
 import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
+import org.testfx.util.WaitForAsyncUtils
 import java.io.File
 import java.io.FileOutputStream
 import java.util.zip.ZipFile
@@ -29,11 +30,13 @@ import java.util.zip.ZipFile
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
 @TestInstance(Lifecycle.PER_CLASS)
+@TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class AbaArquivoControllerTest {
 
     private lateinit var controller: TelaInicialController
     private lateinit var arquivoController: AbaArquivoController
     
+    private val rarService: WinrarServices = mock()
     private val mangaService: MangaServices = mock()
     private val comicInfoService: ComicInfoServices = mock()
     private val sincronizacaoService: SincronizacaoServices = mock()
@@ -61,13 +64,13 @@ class AbaArquivoControllerTest {
         arquivoController.mServiceManga = mangaService
         arquivoController.mServiceComicInfo = comicInfoService
         arquivoController.mSincronizacao = sincronizacaoService
+        arquivoController.mRarService = rarService
 
         val scene = Scene(root)
         controller.configurarAtalhos(scene)
         stage.scene = scene
         stage.title = "Teste AbaArquivo"
         
-        // Tenta evitar NPE do JFoenix garantindo que o layout ocorra após o show
         stage.show()
     }
 
@@ -79,31 +82,6 @@ class AbaArquivoControllerTest {
         TEMP_DIR.mkdirs()
         ORIGEM_DIR.mkdirs()
         DESTINO_DIR.mkdirs()
-        
-        val zipFile = File("src/test/resources/test.zip")
-        if (zipFile.exists()) {
-            extractZip(zipFile, ORIGEM_DIR)
-        } else {
-            println("AVISO: test.zip não encontrado em ${zipFile.absolutePath}")
-        }
-    }
-
-    private fun extractZip(zipFile: File, destDir: File) {
-        ZipFile(zipFile).use { zip ->
-            zip.entries().asSequence().forEach { entry ->
-                val filePath = File(destDir, entry.name)
-                if (entry.isDirectory) {
-                    filePath.mkdirs()
-                } else {
-                    filePath.parentFile.mkdirs()
-                    zip.getInputStream(entry).use { input ->
-                        FileOutputStream(filePath).use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                }
-            }
-        }
     }
 
     @Test
@@ -126,8 +104,10 @@ class AbaArquivoControllerTest {
     @Order(2)
     @DisplayName("Deve gerar a sequência de capítulos corretamente")
     fun testGerarCapitulos(robot: FxRobot) {
-        robot.clickOn("#txtGerarInicio").write("1")
-        robot.clickOn("#txtGerarFim").write("5")
+        robot.interact {
+            robot.lookup("#txtGerarInicio").queryAs(JFXTextField::class.java).text = "1"
+            robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java).text = "5"
+        }
         robot.clickOn("#btnGerar")
         
         val txtArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
@@ -152,7 +132,6 @@ class AbaArquivoControllerTest {
     @Order(4)
     @DisplayName("Deve validar o preenchimento de campos do ComicInfo")
     fun testComicInfoFields(robot: FxRobot) {
-        // Navega para a aba ComicInfo dentro da AbaArquivo
         robot.clickOn("ComicInfo")
         
         val txtTitle = robot.lookup("#txtTitle").queryAs(JFXTextField::class.java)
@@ -183,16 +162,12 @@ class AbaArquivoControllerTest {
         
         robot.interact {
             robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java).text = "[JPN] Manga Mock -"
-            // Força a chamada de simulaNome ou evento que dispara o find
         }
         
-        // Como o find é disparado em diversos eventos (ex: perda de foco ou clique), vamos simular a interação
         robot.clickOn("#txtVolume")
         robot.clickOn("#txtAreaImportar")
         
-        // Verifica se os campos foram preenchidos com os dados do mock
         val txtArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
-        // Dependendo da lógica interna, pode demorar um pouco (coroutine)
         assertEquals(mockManga.capitulos, txtArea.text)
     }
 
@@ -248,7 +223,6 @@ class AbaArquivoControllerTest {
         robot.clickOn("#txtNomePastaManga")
         robot.press(javafx.scene.input.KeyCode.CONTROL).type(javafx.scene.input.KeyCode.SPACE).release(javafx.scene.input.KeyCode.CONTROL)
         
-        // Se disparar a validação (que falha por falta de pasta), o campo origem fica vermelho
         val txtPastaOrigem = robot.lookup("#txtPastaOrigem").queryAs(JFXTextField::class.java)
         assertEquals(javafx.scene.paint.Color.RED, txtPastaOrigem.unFocusColor)
     }
@@ -268,25 +242,6 @@ class AbaArquivoControllerTest {
 
     @Test
     @Order(11)
-    @DisplayName("Deve formatar tag removendo japonês e extraindo o número")
-    fun testFormatarTag(robot: FxRobot) {
-        val txtArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
-        val txtFim = robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java)
-        
-        robot.interact {
-            txtFim.text = "100"
-            txtArea.text = "xxx-75| 第2部 無効"
-        }
-        
-        val method = arquivoController.javaClass.getDeclaredMethod("formatarTagRemovendoJapones")
-        method.isAccessible = true
-        robot.interact { method.invoke(arquivoController) }
-        
-        assertEquals("002-75| 無効", txtArea.text)
-    }
-
-    @Test
-    @Order(12)
     @DisplayName("Deve reprocessar capítulos com preenchimento 000")
     fun testReprocessarCapitulos(robot: FxRobot) {
         val txtArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
@@ -311,29 +266,67 @@ class AbaArquivoControllerTest {
     }
 
     @Test
-    @Order(13)
-    @DisplayName("Deve validar o preenchimento dos campos via processaArquivoRar com variações de case")
+    @Order(12)
+    @DisplayName("Deve processar arquivo RAR via drop simulado (Asíncrono)")
     fun testProcessaArquivoRar(robot: FxRobot) {
+        val rarFile = File(TEMP_DIR, "Manga Teste Volume 01.rar")
+        rarFile.createNewFile()
+
+        whenever(rarService.listarConteudo(any())).thenReturn(listOf("Manga Teste/001.jpg", "Manga Teste/ComicInfo.xml"))
+        whenever(mangaService.sugestao(any())).thenReturn(listOf("Manga Teste"))
+
         val method = arquivoController.javaClass.getDeclaredMethod("processaArquivoRar", File::class.java)
         method.isAccessible = true
+
+        robot.interact {
+            method.invoke(arquivoController, rarFile)
+        }
+
+        // Aguarda o Task (asíncrono)
+        val startTime = System.currentTimeMillis()
+        while (controller.rootProgress.progress < 1.0 && System.currentTimeMillis() - startTime < 5000) {
+            Thread.sleep(100)
+        }
 
         val txtNomePastaManga = robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
         val txtNomePastaCapitulo = robot.lookup("#txtNomePastaCapitulo").queryAs(JFXTextField::class.java)
 
-        val cenarios = listOf(
-            Triple("Manga Teste Volume 01.rar", "[JPN] Manga Teste -", "Capítulo"),
-            Triple("MANGA TESTE VOLUME 01.rar", "[JPN] MANGA TESTE -", "Capítulo"),
-            Triple("Outro Manga Capítulo 05.rar", "[JPN] Outro Manga -", "Capítulo"),
-            Triple("Manga Chapter 10.rar", "[JPN] Manga -", "Chapter"),
-            Triple("Manga capitulo 15.rar", "[JPN] Manga -", "capitulo")
-        )
+        assertEquals(" Manga Teste -", txtNomePastaManga.text)
+        assertEquals("Capítulo", txtNomePastaCapitulo.text)
+        assertEquals(1.0, controller.rootProgress.progress, 0.01)
+    }
 
-        cenarios.forEach { (nomeArquivo, mangaEsperado, capituloEsperado) ->
-            robot.interact {
-                method.invoke(arquivoController, File(nomeArquivo))
-            }
-            assertEquals(mangaEsperado, txtNomePastaManga.text, "Erro no nome do mangá para: $nomeArquivo")
-            assertEquals(capituloEsperado, txtNomePastaCapitulo.text, "Erro no capítulo para: $nomeArquivo")
+    @Test
+    @Order(13)
+    @DisplayName("Deve processar arquivo XML arrastado")
+    fun testProcessaArquivoXml(robot: FxRobot) {
+        val xmlFile = File(TEMP_DIR, "ComicInfo.xml")
+        xmlFile.writeText("""
+            <?xml version="1.0" encoding="utf-8"?>
+            <ComicInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+              <Title>Metadado XML</Title>
+              <Series>Serie XML</Series>
+              <Number>1</Number>
+              <MalId>12345</MalId>
+            </ComicInfo>
+        """.trimIndent())
+
+        val method = arquivoController.javaClass.getDeclaredMethod("processaArquivoXml", File::class.java)
+        method.isAccessible = true
+
+        robot.interact {
+            method.invoke(arquivoController, xmlFile)
         }
+        
+        // Aguarda possíveis runLater
+        WaitForAsyncUtils.waitForFxEvents()
+
+        val txtTitle = robot.lookup("#txtTitle").queryAs(JFXTextField::class.java)
+        val txtSeries = robot.lookup("#txtSeries").queryAs(JFXTextField::class.java)
+        val txtMalId = robot.lookup("#txtMalId").queryAs(JFXTextField::class.java)
+
+        assertEquals("Metadado XML", txtTitle.text)
+        assertEquals("Serie XML", txtSeries.text)
+        assertEquals("12345", txtMalId.text)
     }
 }

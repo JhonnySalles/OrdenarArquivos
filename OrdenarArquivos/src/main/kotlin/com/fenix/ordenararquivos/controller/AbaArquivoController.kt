@@ -3473,6 +3473,13 @@ class AbaArquivoController : Initializable {
 
                 Platform.runLater {
                     mComicInfo = comicInfo
+                    txtMalId.text = comicInfo.idMal?.toString() ?: ""
+                    txtMalNome.text = comicInfo.series
+                    carregaComicInfo(mComicInfo)
+                    
+                    if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty())
+                        consultarMal()
+                        
                     Notificacoes.notificacao(Notificacao.SUCESSO, "ComicInfo", "Metadados carregados do arquivo XML.")
                 }
             } catch (e: Exception) {
@@ -3493,109 +3500,133 @@ class AbaArquivoController : Initializable {
         val tempDir = File(mPASTA_TEMPORARIA, "process_arquivo_" + System.currentTimeMillis())
         tempDir.mkdirs()
 
-        try {
-            val conteudo = mRarService.listarConteudo(file)
-            if (conteudo.isEmpty()) return
+        val task = object : Task<Void>() {
+            override fun call(): Void? {
+                try {
+                    updateProgress(0.1, 1.0)
+                    updateMessage("Listando conteúdo do RAR...")
+                    val conteudo = mRarService.listarConteudo(file)
+                    if (conteudo.isEmpty()) return null
 
-            val foldersAtRoot = conteudo.filter { it.contains("/") || it.contains("\\") }
-                .map { it.split("/", "\\")[0] }
-                .distinct()
+                    val foldersAtRoot = conteudo.filter { it.contains("/") || it.contains("\\") }
+                        .map { it.split("/", "\\")[0] }
+                        .distinct()
 
-            val targetFolderName = foldersAtRoot.firstOrNull { !it.contains("Capa", true) }
+                    val targetFolderName = foldersAtRoot.firstOrNull { !it.contains("Capa", true) }
 
-            if (targetFolderName != null) {
-                val itensParaExtrair = mutableListOf<String>()
-                val comicInfoPath = conteudo.firstOrNull {
-                    it.equals("ComicInfo.xml", true) ||
-                            it.equals("$targetFolderName/ComicInfo.xml", true) ||
-                            it.equals("$targetFolderName\\ComicInfo.xml", true)
-                }
-
-                if (comicInfoPath != null) itensParaExtrair.add(comicInfoPath)
-
-                // Extrai apenas o necessário (ComicInfo.xml)
-                if (itensParaExtrair.isNotEmpty())
-                    mRarService.extrairItens(file, itensParaExtrair, tempDir)
-
-                val folder = File(tempDir, targetFolderName)
-                val regexDelimitadores = Regex("(?i)\\s*(volume|capítulo|capitulo|chapter|-).*")
-                val nomeOriginal = targetFolderName
-                var nomeManga = nomeOriginal
-
-                if (nomeManga.contains("]"))
-                    nomeManga = nomeManga.substringAfter("]").trim()
-
-                // Extrai o nome do mangá removendo tudo a partir do primeiro delimitador encontrado
-                nomeManga = nomeManga.replace(regexDelimitadores, "").trim()
-
-                // Tenta identificar o termo de capítulo (Capítulo, Chapter, etc) na parte removida
-                var capituloManga = nomeOriginal.replace(nomeManga, "", ignoreCase = true).trim()
-
-                val regexTermoCapitulo = Regex("(?i)(capítulo|capitulo|chapter)")
-                val matchCapitulo = regexTermoCapitulo.find(capituloManga)
-
-                capituloManga = if (matchCapitulo != null) {
-                    // Se encontrou o termo, mantém como o usuário escreveu (ex: "Chapter")
-                    matchCapitulo.value.trim()
-                } else {
-                    // Fallback: limpa números e volume para tentar pegar o que sobrar
-                    capituloManga.replace(Regex("(?i)volume|vol|\\d+|\\s+"), "").trim()
-                }
-
-                capituloManga = if (capituloManga.isEmpty())
-                    "Capítulo"
-                else
-                    capituloManga.replace("\\d".toRegex(), "")
-
-                nomeManga = if (nomeManga.contains("]")) nomeManga.substringAfter("]").trim() else nomeManga
-                val sugestoes = mServiceManga.sugestao(nomeManga)
-                nomeManga = if (sugestoes.isNotEmpty()) sugestoes.first() else nomeManga
-                val scan = if (txtNomePastaManga.text != null && txtNomePastaManga.text.contains("]")) nomeManga.substringBefore("]").trim() else ""
-
-                txtNomePastaCapitulo.text = capituloManga
-                txtNomePastaManga.text = "$scan $nomeManga -"
-                simulaNome()
-
-                val comicFile = File(tempDir, "ComicInfo.xml").let { if (it.exists()) it else File(folder, "ComicInfo.xml") }
-                if (comicFile.exists()) {
-                    try {
-                        val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
-                        val unmarshaller = jaxb.createUnmarshaller()
-                        val comicInfo = unmarshaller.unmarshal(comicFile) as ComicInfo
-
-                        mComicInfo.apply {
-                            idMal = comicInfo.idMal
-                            title = comicInfo.title
-                            series = comicInfo.series
-                            publisher = comicInfo.publisher
-                            alternateSeries = comicInfo.alternateSeries
-                            seriesGroup = comicInfo.seriesGroup
-                            storyArc = comicInfo.storyArc
-                            imprint = comicInfo.imprint
-                            genre = comicInfo.genre
-                            ageRating = comicInfo.ageRating
-                            languageISO = comicInfo.languageISO
-                            notes = comicInfo.notes
-                            summary = comicInfo.summary
+                    if (targetFolderName != null) {
+                        updateProgress(0.3, 1.0)
+                        updateMessage("Extraindo metadados...")
+                        val itensParaExtrair = mutableListOf<String>()
+                        val comicInfoPath = conteudo.firstOrNull {
+                            it.equals("ComicInfo.xml", true) ||
+                                    it.equals("$targetFolderName/ComicInfo.xml", true) ||
+                                    it.equals("$targetFolderName\\ComicInfo.xml", true)
                         }
 
-                        txtMalId.text = comicInfo.idMal?.toString() ?: ""
-                        txtMalNome.text = comicInfo.series
-                        carregaComicInfo(mComicInfo)
+                        if (comicInfoPath != null) itensParaExtrair.add(comicInfoPath)
 
-                        if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty())
-                            consultarMal()
-                    } catch (e: Exception) {
-                        mLOG.error("Erro ao carregar ComicInfo do RAR.", e)
+                        // Extrai apenas o necessário (ComicInfo.xml)
+                        if (itensParaExtrair.isNotEmpty())
+                            mRarService.extrairItens(file, itensParaExtrair, tempDir)
+
+                        updateProgress(0.7, 1.0)
+                        updateMessage("Analisando nome do mangá...")
+                        val folder = File(tempDir, targetFolderName)
+                        val regexDelimitadores = Regex("(?i)\\s*(volume|capítulo|capitulo|chapter|-).*")
+                        val nomeOriginal = targetFolderName
+                        var nomeManga = nomeOriginal
+
+                        if (nomeManga.contains("]"))
+                            nomeManga = nomeManga.substringAfter("]").trim()
+
+                        // Extrai o nome do mangá removendo tudo a partir do primeiro delimitador encontrado
+                        nomeManga = nomeManga.replace(regexDelimitadores, "").trim()
+
+                        // Tenta identificar o termo de capítulo (Capítulo, Chapter, etc) na parte removida
+                        var capituloManga = nomeOriginal.replace(nomeManga, "", ignoreCase = true).trim()
+
+                        val regexTermoCapitulo = Regex("(?i)(capítulo|capitulo|chapter)")
+                        val matchCapitulo = regexTermoCapitulo.find(capituloManga)
+
+                        capituloManga = if (matchCapitulo != null) {
+                            // Se encontrou o termo, mantém como o usuário escreveu (ex: "Chapter")
+                            matchCapitulo.value.trim()
+                        } else {
+                            // Fallback: limpa números e volume para tentar pegar o que sobrar
+                            capituloManga.replace(Regex("(?i)volume|vol|\\d+|\\s+"), "").trim()
+                        }
+
+                        capituloManga = if (capituloManga.isEmpty())
+                            "Capítulo"
+                        else
+                            capituloManga.replace("\\d".toRegex(), "")
+
+                        nomeManga = if (nomeManga.contains("]")) nomeManga.substringAfter("]").trim() else nomeManga
+                        val sugestoes = mServiceManga.sugestao(nomeManga)
+                        nomeManga = if (sugestoes.isNotEmpty()) sugestoes.first() else nomeManga
+                        val scan = if (txtNomePastaManga.text != null && txtNomePastaManga.text.contains("]")) nomeManga.substringBefore("]").trim() else ""
+
+                        updateProgress(1.0, 1.0)
+                        Platform.runLater {
+                            txtNomePastaCapitulo.text = capituloManga
+                            txtNomePastaManga.text = "$scan $nomeManga -"
+                            simulaNome()
+
+                            val comicFile = File(tempDir, "ComicInfo.xml").let { if (it.exists()) it else File(folder, "ComicInfo.xml") }
+                            if (comicFile.exists()) {
+                                try {
+                                    val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
+                                    val unmarshaller = jaxb.createUnmarshaller()
+                                    val comicInfo = unmarshaller.unmarshal(comicFile) as ComicInfo
+
+                                    mComicInfo.apply {
+                                        idMal = comicInfo.idMal
+                                        title = comicInfo.title
+                                        series = comicInfo.series
+                                        publisher = comicInfo.publisher
+                                        alternateSeries = comicInfo.alternateSeries
+                                        seriesGroup = comicInfo.seriesGroup
+                                        storyArc = comicInfo.storyArc
+                                        imprint = comicInfo.imprint
+                                        genre = comicInfo.genre
+                                        ageRating = comicInfo.ageRating
+                                        languageISO = comicInfo.languageISO
+                                        notes = comicInfo.notes
+                                        summary = comicInfo.summary
+                                    }
+
+                                    txtMalId.text = comicInfo.idMal?.toString() ?: ""
+                                    txtMalNome.text = comicInfo.series
+                                    carregaComicInfo(mComicInfo)
+
+                                    if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty())
+                                        consultarMal()
+                                } catch (e: Exception) {
+                                    mLOG.error("Erro ao carregar ComicInfo do RAR.", e)
+                                }
+                            } else
+                                carregaComicInfo()
+                        }
                     }
-                } else
-                    carregaComicInfo()
+                } catch (e: Exception) {
+                    mLOG.error("Erro ao processar arquivo arrastado.", e)
+                } finally {
+                    tempDir.deleteRecursively()
+                }
+                return null
             }
-        } catch (e: Exception) {
-            mLOG.error("Erro ao processar arquivo arrastado.", e)
-        } finally {
-            tempDir.deleteRecursively()
+
+            override fun succeeded() {
+                controllerPai.rootProgress.progressProperty().unbind()
+                controllerPai.rootMessage.textProperty().unbind()
+                controllerPai.clearProgress()
+            }
         }
+
+        controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
+        controllerPai.rootMessage.textProperty().bind(task.messageProperty())
+        Thread(task).start()
     }
 
     companion object {

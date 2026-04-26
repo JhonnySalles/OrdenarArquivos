@@ -83,9 +83,9 @@ class AbaPastasControllerTest {
         `when`(mockTelaInicial.rootMessage).thenReturn(lbl)
 
         // Inject mocks
-        //controller.mServiceWinrar = mockServiceWinrar
-        //controller.mServiceManga = mockServiceManga
-        //controller.mServiceComicInfo = mockServiceComicInfo
+        controller.mServiceWinrar = mockServiceWinrar
+        controller.mServiceManga = mockServiceManga
+        controller.mServiceComicInfo = mockServiceComicInfo
         controller.controllerPai = mockTelaInicial
 
         val scene = Scene(root)
@@ -127,9 +127,6 @@ class AbaPastasControllerTest {
 
     @Test
     fun testCarregarPastas(robot: FxRobot) {
-        // Mock the folder selection
-        //`when`(mockServiceWinrar.selecionaPasta(null, "Selecione a pasta de origem")).thenReturn(origemDir)
-
         // Click on search button
         robot.clickOn("#btnPesquisarPasta")
 
@@ -140,14 +137,6 @@ class AbaPastasControllerTest {
         val txtPasta = robot.lookup("#txtPasta").queryAs(javafx.scene.control.TextField::class.java)
         assertEquals(origemDir.absolutePath, txtPasta.text)
         
-        // Mock loading folders
-        /*val pastaTest = Pasta().apply {
-            arquivo = "Volume 01"
-            caminhoBase = origemDir.absolutePath
-            isProcessar = true
-        }*/
-        //`when`(mockServiceWinrar.listarPastas(origemDir)).thenReturn(listOf(pastaTest))
-
         // Click on Load button
         robot.clickOn("#btnCarregar")
         
@@ -155,7 +144,6 @@ class AbaPastasControllerTest {
         WaitForAsyncUtils.waitForFxEvents()
         
         // We might need to wait for the background task to finish.
-        // In the controller, btnCarregar starts a Thread.
         Thread.sleep(1000) 
         WaitForAsyncUtils.waitForFxEvents()
 
@@ -165,8 +153,8 @@ class AbaPastasControllerTest {
     }
 
     @Test
-    fun testProcessaArquivoRar(robot: FxRobot) {
-        val method = controller.javaClass.getDeclaredMethod("processaArquivoRar", File::class.java)
+    fun testProcessaArquivosRar(robot: FxRobot) {
+        val method = controller.javaClass.getDeclaredMethod("processaArquivosRar", List::class.java)
         method.isAccessible = true
 
         val cbManga = robot.lookup("#cbManga").queryAs(com.jfoenix.controls.JFXComboBox::class.java)
@@ -182,9 +170,13 @@ class AbaPastasControllerTest {
 
         cenarios.forEach { (nomeArquivo, esperado) ->
             robot.interact {
-                method.invoke(controller, File(nomeArquivo))
+                method.invoke(controller, listOf(File(nomeArquivo)))
             }
-            assertEquals(esperado, cbManga.value, "Erro no nome do mangá para: $nomeArquivo")
+            // Espera a Task terminar
+            Thread.sleep(500)
+            WaitForAsyncUtils.waitForFxEvents()
+            
+            assertEquals(esperado, cbManga.editor.text, "Erro no nome do mangá para: $nomeArquivo")
         }
     }
 
@@ -228,4 +220,80 @@ class AbaPastasControllerTest {
         assertEquals(1f, item.volume, "Volume deveria vir do XML")
         assertEquals("Vou tirá-lo do meu caminho (parte 2)", item.titulo, "Título deveria vir do XML sem o prefixo")
     }
+
+    @Test
+    fun testProgressBarUpdates(robot: FxRobot) {
+        val method = controller.javaClass.getDeclaredMethod("processaArquivosRar", List::class.java)
+        method.isAccessible = true
+
+        val rarFile = File(origemDir, "teste.rar")
+        rarFile.createNewFile()
+
+        robot.interact {
+            method.invoke(controller, listOf(rarFile))
+        }
+
+        // Verifica estados intermediários (aproximadamente)
+        // Como o processamento é rápido no mock, talvez precisemos de um delay no mock se quisermos pegar 0.5
+        // Mas podemos validar o início e o fim.
+        val progress = mockTelaInicial.rootProgress.progress
+        assertTrue(progress >= 0.0, "Progresso deve começar em >= 0")
+        
+        Thread.sleep(1000)
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        assertEquals(1.0, mockTelaInicial.rootProgress.progress, 0.01, "Progresso deve terminar em 1.0")
+    }
+
+    @Test
+    fun testProcessaArquivoXml(robot: FxRobot) {
+        val method = controller.javaClass.getDeclaredMethod("processaArquivoXml", File::class.java)
+        method.isAccessible = true
+
+        val comicInfo = ComicInfo().apply {
+            series = "Serie XML"
+            volume = 10
+        }
+        val xmlFile = File(tempDir, "ComicInfo.xml")
+        val context = JAXBContext.newInstance(ComicInfo::class.java)
+        val marshaller = context.createMarshaller()
+        marshaller.marshal(comicInfo, xmlFile)
+
+        robot.interact {
+            method.invoke(controller, xmlFile)
+        }
+
+        val cbManga = robot.lookup("#cbManga").queryAs(com.jfoenix.controls.JFXComboBox::class.java)
+        assertEquals("Serie XML", cbManga.editor.text)
+        
+        val txtVolume = robot.lookup("#txtVolume").queryAs(com.jfoenix.controls.JFXTextField::class.java) // Na verdade o campo de volume fica em outro lugar?
+        // Na AbaPastas, volume/capitulo vêm do ComicInfo carregado
+        assertEquals(10, controller.mComicInfo.volume)
+    }
+
+    @Test
+    fun testCbMangaChangeUpdatesList(robot: FxRobot) {
+        // Prepare some items in the list
+        robot.interact {
+            controller.mObsListaProcessar.add(com.fenix.ordenararquivos.model.entities.Pasta(pasta = File("pasta1")).apply { arquivo = "arquivo1" })
+            controller.mObsListaProcessar.add(com.fenix.ordenararquivos.model.entities.Pasta(pasta = File("pasta2")).apply { arquivo = "arquivo2" })
+        }
+
+        val cbManga = robot.lookup("#cbManga").queryAs(com.jfoenix.controls.JFXComboBox::class.java)
+        
+        // Simular foco e alteração de texto
+        robot.clickOn(cbManga.editor)
+        robot.write("Novo Nome Manga")
+        
+        // Tirar o foco para disparar o listener
+        robot.clickOn("#btnCarregar") 
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        // Verificar se os itens na lista foram atualizados
+        controller.mObsListaProcessar.forEach { item ->
+            assertEquals("Novo Nome Manga", item.nome, "Item ${item.arquivo.name} não foi atualizado")
+        }
+    }
 }
+
