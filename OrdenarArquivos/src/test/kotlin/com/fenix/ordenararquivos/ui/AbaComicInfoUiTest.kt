@@ -16,6 +16,10 @@ import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXComboBox
 import com.jfoenix.controls.JFXTabPane
 import com.jfoenix.controls.JFXTextField
+import java.io.File
+import java.nio.file.Path
+import java.sql.DriverManager
+import java.util.concurrent.TimeUnit
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
 import javafx.scene.Scene
@@ -31,16 +35,13 @@ import org.junit.jupiter.api.io.TempDir
 import org.mockito.MockedStatic
 import org.mockito.Mockito
 import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
-import java.io.File
-import java.nio.file.Path
-import java.sql.DriverManager
-import java.util.concurrent.TimeUnit
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
@@ -94,7 +95,8 @@ class AbaComicInfoUiTest : BaseTest() {
                     // Injeção de dependências via reflection
                     listOf("mRarService", "mOcrService").forEach { fieldName ->
                         try {
-                            val field = AbaComicInfoController::class.java.getDeclaredField(fieldName)
+                            val field =
+                                    AbaComicInfoController::class.java.getDeclaredField(fieldName)
                             field.isAccessible = true
                             when (fieldName) {
                                 "mRarService" -> field.set(this, mockWinrar)
@@ -118,6 +120,7 @@ class AbaComicInfoUiTest : BaseTest() {
 
         stage.scene = scene
         stage.show()
+        stage.toFront()
     }
 
     @BeforeEach
@@ -127,11 +130,12 @@ class AbaComicInfoUiTest : BaseTest() {
         AlertasPopup.testResult = true
         AlertasPopup.lastAlertTitle = null
         AlertasPopup.lastAlertText = null
-        
-        // Inicialização de componentes estáticos de UI para evitar UninitializedPropertyAccessException
+
+        // Inicialização de componentes estáticos de UI para evitar
+        // UninitializedPropertyAccessException
         AlertasPopup.rootStackPane = rootStack
         AlertasPopup.nodeBlur = rootNode
-        
+
         if (rootNode is AnchorPane) {
             Notificacoes.rootAnchorPane = rootNode as AnchorPane
         } else {
@@ -148,7 +152,8 @@ class AbaComicInfoUiTest : BaseTest() {
         // Injeta o controller pai e mocks de progresso
         mainController = mockTelaInicialController
         comicinfoController.controllerPai = mockTelaInicialController
-        whenever(mockTelaInicialController.rootProgress).thenReturn(javafx.scene.control.ProgressBar())
+        whenever(mockTelaInicialController.rootProgress)
+                .thenReturn(javafx.scene.control.ProgressBar())
         whenever(mockTelaInicialController.rootMessage).thenReturn(javafx.scene.control.Label())
         whenever(mockTelaInicialController.rootStack).thenReturn(rootStack)
         whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
@@ -177,7 +182,7 @@ class AbaComicInfoUiTest : BaseTest() {
 
         val dummyComicInfoXml = File(tempDirFile, "ComicInfo.xml")
         dummyComicInfoXml.writeText(
-                "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><ComicInfo><Series>Test Series</Series><Title>Test Title</Title><Pages><Page Image=\"0\" Bookmark=\"Test\"/></Pages></ComicInfo>"
+                "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><ComicInfo><Series>Test Series</Series><Title>Test Title</Title><Pages><Page Image=\"0\" Bookmark=\"Capítulo 1\"/></Pages></ComicInfo>"
         )
 
         whenever(mockWinrar.extraiComicInfo(any())).thenReturn(dummyComicInfoXml)
@@ -200,7 +205,8 @@ class AbaComicInfoUiTest : BaseTest() {
 
         // Injetar também na lista privada do controller para consistência absoluta
         robot.interact {
-            val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<*>
+            val table =
+                    robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<*>
             val field = comicinfoController.javaClass.getDeclaredField("mObsListaProcessar")
             field.isAccessible = true
             field.set(comicinfoController, table.items)
@@ -223,7 +229,9 @@ class AbaComicInfoUiTest : BaseTest() {
     @Order(1)
     fun testCarregarItens(robot: FxRobot) {
         helperCarregarItens(robot)
-        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
+        val table =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as
+                        TableView<Processar>
         assertEquals(1, table.items.size)
     }
 
@@ -231,7 +239,9 @@ class AbaComicInfoUiTest : BaseTest() {
     @Order(2)
     fun testNormalizarTags(robot: FxRobot) {
         helperCarregarItens(robot)
-        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
+        val table =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as
+                        TableView<Processar>
         val item = table.items[0]
 
         // Setup initial tags
@@ -240,11 +250,13 @@ class AbaComicInfoUiTest : BaseTest() {
         }
 
         val btnNormaliza = robot.lookup("#btnTagsNormaliza").queryAs(JFXButton::class.java)
-        val cbLinguagem = robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java) as JFXComboBox<Linguagem>
+        val cbLinguagem =
+                robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java) as
+                        JFXComboBox<Linguagem>
 
         robot.interact {
-            // Explicitly set language to PORTUGUESE for deterministic results
-            cbLinguagem.value = Linguagem.PORTUGUESE
+            // Seleciona PORTUGUESE explicitamente no combo
+            cbLinguagem.selectionModel.select(Linguagem.PORTUGUESE)
             btnNormaliza.fire()
         }
 
@@ -263,14 +275,12 @@ class AbaComicInfoUiTest : BaseTest() {
 
         val btnSalvar = robot.lookup("#btnSalvarTodos").queryAs(JFXButton::class.java)
 
-        robot.interact { 
-            btnSalvar.fire() 
-        }
+        robot.interact { btnSalvar.fire() }
 
         // Aumenta o timeout para o processamento assíncrono em headless
-        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { !btnSalvar.isDisable }
+        WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS) { !btnSalvar.isDisable }
         WaitForAsyncUtils.waitForFxEvents()
-        
+
         Mockito.verify(mockWinrar, Mockito.atLeastOnce()).insereComicInfo(any(), any())
     }
 
@@ -279,20 +289,38 @@ class AbaComicInfoUiTest : BaseTest() {
     fun testGerarTags(robot: FxRobot) {
         helperCarregarItens(robot)
         val btnGerar = robot.lookup("#btnTagsProcessar").queryAs(JFXButton::class.java)
-        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
+        val cbLinguagem =
+                robot.lookup("#cbLinguagem").queryAs(JFXComboBox::class.java) as
+                        JFXComboBox<Linguagem>
+        val table =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as
+                        TableView<Processar>
         val item = table.items[0]
 
-        robot.interact { btnGerar.fire() }
+        robot.interact {
+            cbLinguagem.selectionModel.select(Linguagem.PORTUGUESE)
+            btnGerar.fire()
+        }
 
         WaitForAsyncUtils.waitForFxEvents()
-        assertTrue(item.tags.isNotEmpty())
+        assertTrue(item.tags.isNotEmpty(), "As tags não deveriam estar vazias após a geração.")
+        assertTrue(
+                item.tags.contains("Capítulo 001"),
+                "Deveria conter o capítulo normalizado. Atual: ${item.tags}"
+        )
+        assertTrue(
+                item.tags.contains("Test Title"),
+                "As tags deveriam conter o título vindo do ComicInfo. Atual: ${item.tags}"
+        )
     }
 
     @Test
     @Order(5)
     fun testAplicarTags(robot: FxRobot) {
         helperCarregarItens(robot)
-        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
+        val table =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as
+                        TableView<Processar>
         val item = table.items[0]
 
         // Definir uma tag no formato "imagem|Capítulo 001 # Titulo" para testar o Split de
@@ -322,7 +350,9 @@ class AbaComicInfoUiTest : BaseTest() {
     fun testMenuContextoRemover(robot: FxRobot) {
         // Carregar 3 itens para o teste
         helperCarregarItens(robot, 3)
-        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
+        val table =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as
+                        TableView<Processar>
 
         robot.interact {
             table.requestFocus()
@@ -357,9 +387,11 @@ class AbaComicInfoUiTest : BaseTest() {
 
         robot.interact { btnOcr.fire() }
 
-        val table = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
+        val table =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as
+                        TableView<Processar>
         // Aguarda a execução da Task de OCR com mais paciência
-        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
+        WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS) {
             !btnOcr.isDisable && table.items[0].isProcessado
         }
 
@@ -375,20 +407,65 @@ class AbaComicInfoUiTest : BaseTest() {
         helperCarregarItens(robot)
         val btnCapitulos = robot.lookup("#btnCapitulos").queryAs(JFXButton::class.java)
 
+        mockPopupCapitulos = Mockito.mockStatic(PopupCapitulos::class.java)
+        mockPopupCapitulos
+                ?.`when`<Any> {
+                    PopupCapitulos.abreTelaCapitulos(any(), any(), any(), any(), any())
+                }
+                ?.thenAnswer { null }
+
         robot.interact { btnCapitulos.fire() }
 
-        // Como o PopupCapitulos não está mais mockado estaticamente, ele deve abrir.
-        // Vamos apenas verificar se abriu verificando se o rootTab (nodeBlur) está com efeito.
         WaitForAsyncUtils.waitForFxEvents()
-        assertNotNull(
-                comicinfoController.controllerPai.rootTab.effect,
-                "O efeito de blur deveria estar aplicado ao rootTab ao abrir o popup."
-        )
+        mockPopupCapitulos?.verify {
+            PopupCapitulos.abreTelaCapitulos(any(), any(), any(), any(), any())
+        }
 
         // Simular fechar o dialog (o JFXDialog é adicionado ao rootStack)
         robot.interact {
             mainController.rootStack.children.filterIsInstance<com.jfoenix.controls.JFXDialog>()
                     .forEach { it.close() }
         }
+    }
+
+    @Test
+    @Order(9)
+    fun testIntegracaoPopupAmazon(robot: FxRobot) {
+        helperCarregarItens(robot)
+        // O botão é gerado dinamicamente com ID btnAmazon_1
+        val btnAmazon = robot.lookup("#btnAmazon_1").queryAs(JFXButton::class.java)
+
+        mockPopupAmazon = Mockito.mockStatic(PopupAmazon::class.java)
+        mockPopupAmazon
+                ?.`when`<Any> { PopupAmazon.abreTelaAmazon(any(), any(), any(), any(), any()) }
+                ?.thenAnswer { null }
+
+        robot.interact { btnAmazon.fire() }
+
+        mockPopupAmazon?.verify { PopupAmazon.abreTelaAmazon(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    @Order(10)
+    fun testMissingComicInfoXml(robot: FxRobot) {
+        // Simula carregamento onde um arquivo não tem ComicInfo.xml
+        val tempDirFile = tempDir.toFile()
+        val fileNoXml = File(tempDirFile, "no_xml.rar").apply { createNewFile() }
+
+        whenever(mockWinrar.extraiComicInfo(eq(fileNoXml))).thenReturn(null)
+
+        val txtPasta = robot.lookup("#txtPastaProcessar").queryAs(JFXTextField::class.java)
+        robot.interact { txtPasta.text = tempDirFile.absolutePath }
+        robot.clickOn("#btnCarregar")
+
+        WaitForAsyncUtils.waitForFxEvents()
+        val table =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as
+                        TableView<Processar>
+
+        assertTrue(
+                table.items.any { it.arquivo == fileNoXml.name },
+                "O arquivo sem XML deveria estar na lista."
+        )
     }
 }

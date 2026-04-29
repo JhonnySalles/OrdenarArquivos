@@ -103,6 +103,9 @@ class AbaPastasController : Initializable {
     @FXML
     private lateinit var btnAjustarPastas: JFXButton
 
+    @FXML
+    private lateinit var cbApagarArquivo: JFXCheckBox
+
     //<--------------------------  Arquivos   -------------------------->
 
     @FXML
@@ -218,6 +221,7 @@ class AbaPastasController : Initializable {
     internal var mServiceManga = MangaServices()
     internal var mServiceComicInfo = ComicInfoServices()
     internal var mRarService = WinrarServices()
+    internal var contextMenu: ContextMenu? = null
     private val mPASTA_TEMPORARIA = File(System.getProperty("user.dir"), "temp/")
     private var isConsultandoMal = false
 
@@ -448,10 +452,14 @@ class AbaPastasController : Initializable {
                             comicInfoEnvio.count = vol.toInt()
                             comicInfoEnvio.summary = summary.trim()
 
-                            Winrar.compactar(
+                            mRarService.compactar(
                                 destino, arquivoZip, manga, comicInfoEnvio, compactar, comicMap, cbLinguagem.value ?: Linguagem.PORTUGUESE,
                                 isCompactar = true, isGerarCapitulos = true, isAtualizarComic = false, callback
                             )
+
+                            if (cbApagarArquivo.isSelected) {
+                                compactar.forEach { it.deleteRecursively() }
+                            }
                         }
 
                         mServiceComicInfo.save(mComicInfo)
@@ -600,6 +608,7 @@ class AbaPastasController : Initializable {
         btnAjustarPastas.isDisable = true
         tbViewProcessar.isDisable = true
         ckbSelecionarTodos.isDisable = true
+        cbApagarArquivo.isDisable = true
 
         if (!isCompactar)
             btnCompactar.isDisable = true
@@ -616,6 +625,7 @@ class AbaPastasController : Initializable {
         btnCompactar.isDisable = false
         tbViewProcessar.isDisable = false
         ckbSelecionarTodos.isDisable = false
+        cbApagarArquivo.isDisable = false
         controllerPai.setCursor(null)
 
         btnCompactar.accessibleTextProperty().set("COMPACTAR")
@@ -1122,6 +1132,11 @@ class AbaPastasController : Initializable {
                     
                     for (item in mObsListaProcessar) {
                         item.nome = novoNome
+                        if (item.volume == 0f) {
+                            val onlyNumbers = item.arquivo.replace(Utils.NOT_NUMBER_PATTERN.toRegex(), "")
+                            if (onlyNumbers.isNotEmpty())
+                                item.volume = onlyNumbers.toFloatOrNull() ?: 0f
+                        }
                     }
 
                     if (novoNome.isNotEmpty()) {
@@ -1382,6 +1397,7 @@ class AbaPastasController : Initializable {
         )
 
         tbViewProcessar.contextMenu = menu
+        this.contextMenu = menu
 
         clMalId.cellValueFactory = PropertyValueFactory("idVisual")
         clMalNome.cellValueFactory = PropertyValueFactory("nome")

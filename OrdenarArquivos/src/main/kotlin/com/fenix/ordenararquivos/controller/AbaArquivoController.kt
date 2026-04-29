@@ -3543,8 +3543,9 @@ class AbaArquivoController : Initializable {
                         // Extrai o nome do mangá removendo tudo a partir do primeiro delimitador encontrado
                         nomeManga = nomeManga.replace(regexDelimitadores, "").trim()
 
-                        // Tenta identificar o termo de capítulo (Capítulo, Chapter, etc) na parte removida
-                        var capituloManga = nomeOriginal.replace(nomeManga, "", ignoreCase = true).trim()
+                        // Tenta identificar o termo de capítulo (Capítulo, Chapter, etc) na parte removida (ignorando a scan)
+                        var capituloManga = (if (nomeOriginal.contains("]")) nomeOriginal.substringAfter("]") else nomeOriginal)
+                            .replace(nomeManga, "", ignoreCase = true).trim()
 
                         val regexTermoCapitulo = Regex("(?i)(capítulo|capitulo|chapter)")
                         val matchCapitulo = regexTermoCapitulo.find(capituloManga)
@@ -3553,8 +3554,8 @@ class AbaArquivoController : Initializable {
                             // Se encontrou o termo, mantém como o usuário escreveu (ex: "Chapter")
                             matchCapitulo.value.trim()
                         } else {
-                            // Fallback: limpa números e volume para tentar pegar o que sobrar
-                            capituloManga.replace(Regex("(?i)volume|vol|\\d+|\\s+"), "").trim()
+                            // Fallback: limpa números, volume e hífens para tentar pegar o que sobrar
+                            capituloManga.replace(Regex("(?i)volume|vol|\\d+|\\s+|-"), "").trim()
                         }
 
                         capituloManga = if (capituloManga.isEmpty())
@@ -3565,7 +3566,7 @@ class AbaArquivoController : Initializable {
                         nomeManga = if (nomeManga.contains("]")) nomeManga.substringAfter("]").trim() else nomeManga
                         val sugestoes = mServiceManga.sugestao(nomeManga)
                         nomeManga = if (sugestoes.isNotEmpty()) sugestoes.first() else nomeManga
-                        val scan = if (txtNomePastaManga.text != null && txtNomePastaManga.text.contains("]")) nomeManga.substringBefore("]").trim() else ""
+                        val scan = if (nomeOriginal.contains("]")) nomeOriginal.substringBefore("]").trim() + "]" else ""
 
                         updateProgress(1.0, 1.0)
                         Platform.runLater {

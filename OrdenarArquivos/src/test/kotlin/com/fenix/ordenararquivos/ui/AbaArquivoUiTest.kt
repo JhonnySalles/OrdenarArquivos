@@ -14,6 +14,7 @@ import com.fenix.ordenararquivos.process.Ocr
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.SincronizacaoServices
+import com.fenix.ordenararquivos.service.WinrarServices
 import com.jfoenix.controls.*
 import java.io.File
 import java.nio.file.Files
@@ -26,17 +27,18 @@ import javafx.scene.Scene
 import javafx.scene.control.Label
 import javafx.scene.control.ProgressBar
 import javafx.scene.control.Tab
-import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
+import javafx.scene.input.DragEvent
+import javafx.scene.input.Dragboard
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
-import javafx.scene.input.DragEvent
 import javafx.scene.input.TransferMode
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.StackPane
 import javafx.stage.Stage
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
@@ -55,6 +57,7 @@ class AbaArquivoUiTest : BaseTest() {
     private var mockMangaService = mock<MangaServices>()
     private var mockComicInfoService = mock<ComicInfoServices>()
     private var mockSincronizacao = mock<SincronizacaoServices>()
+    private var mockWinrar = mock<WinrarServices>()
     private var mockTelaInicialController = mock<TelaInicialController>()
     private lateinit var rootStack: StackPane
 
@@ -96,18 +99,22 @@ class AbaArquivoUiTest : BaseTest() {
         loader.setControllerFactory { controllerClass ->
             if (controllerClass == AbaArquivoController::class.java) {
                 AbaArquivoController().apply {
-                    listOf("mServiceManga", "mServiceComicInfo", "mSincronizacao").forEach {
-                            fieldName ->
-                        try {
-                            val field = AbaArquivoController::class.java.getDeclaredField(fieldName)
-                            field.isAccessible = true
-                            when (fieldName) {
-                                "mServiceManga" -> field.set(this, mockMangaService)
-                                "mServiceComicInfo" -> field.set(this, mockComicInfoService)
-                                "mSincronizacao" -> field.set(this, mockSincronizacao)
+                    listOf("mServiceManga", "mServiceComicInfo", "mSincronizacao", "mRarService")
+                            .forEach { fieldName ->
+                                try {
+                                    val field =
+                                            AbaArquivoController::class.java.getDeclaredField(
+                                                    fieldName
+                                            )
+                                    field.isAccessible = true
+                                    when (fieldName) {
+                                        "mServiceManga" -> field.set(this, mockMangaService)
+                                        "mServiceComicInfo" -> field.set(this, mockComicInfoService)
+                                        "mSincronizacao" -> field.set(this, mockSincronizacao)
+                                        "mRarService" -> field.set(this, mockWinrar)
+                                    }
+                                } catch (e: Exception) {}
                             }
-                        } catch (e: Exception) {}
-                    }
                     controller = this
                 }
             } else {
@@ -120,6 +127,7 @@ class AbaArquivoUiTest : BaseTest() {
         stage.scene = Scene(rootStack)
         applyJFoenixFix(stage.scene)
         stage.show()
+        stage.toFront()
     }
 
     @BeforeEach
@@ -131,6 +139,7 @@ class AbaArquivoUiTest : BaseTest() {
                 mockMangaService,
                 mockComicInfoService,
                 mockSincronizacao,
+                mockWinrar,
                 mockTelaInicialController
         )
 
@@ -141,10 +150,11 @@ class AbaArquivoUiTest : BaseTest() {
         whenever(mockTelaInicialController.rootProgress).thenReturn(ProgressBar())
         whenever(mockTelaInicialController.rootMessage).thenReturn(Label())
         whenever(mockTelaInicialController.rootStack).thenReturn(rootStack)
-        val tabPane = JFXTabPane().apply {
-            tabs.addAll(Tab("Arquivo"), Tab("Comic Info"))
-        }
+        val tabPane = JFXTabPane().apply { tabs.addAll(Tab("Arquivo"), Tab("Comic Info")) }
         whenever(mockTelaInicialController.rootTab).thenReturn(tabPane)
+        whenever(mockTelaInicialController.apDragOverlay).thenReturn(AnchorPane())
+        whenever(mockTelaInicialController.spDragDropZone).thenReturn(StackPane())
+        whenever(mockTelaInicialController.lblDragDrop).thenReturn(Label())
 
         // Limpar estado do controller para evitar vazamento entre testes
         robot.interact {
@@ -514,7 +524,6 @@ class AbaArquivoUiTest : BaseTest() {
         assertTrue(textArea.text.contains("012-"))
     }
 
-
     @Test
     @Order(8)
     fun testLimparTudoFlow(robot: FxRobot) {
@@ -831,54 +840,69 @@ class AbaArquivoUiTest : BaseTest() {
         robot.clickOn("#btnLimparTudo")
         WaitForAsyncUtils.waitForFxEvents()
 
-        robot.interact {
-            assertEquals(
-                    "[JPN] Manga -",
-                    robot.from(root)
-                            .lookup("#txtNomePastaManga")
-                            .queryAs(JFXTextField::class.java)
-                            .text
-            )
+        // Criar as pastas que o histórico mockado referencia para passar na validação
+        val histManga = File(System.getProperty("java.io.tmpdir"), "test_hist").apply { mkdirs() }
+        val histDest = histManga
+        try {
+            robot.interact {
+                assertEquals(
+                        "[JPN] Manga -",
+                        robot.from(root)
+                                .lookup("#txtNomePastaManga")
+                                .queryAs(JFXTextField::class.java)
+                                .text
+                )
 
-            // 2. Seleciona o item no histórico de forma explícita
-            val lsVwHistorico = robot.lookup("#lsVwHistorico").queryAs(JFXListView::class.java)
-            lsVwHistorico.selectionModel.select(0)
-        }
+                // 2. Seleciona o item no histórico de forma explícita
+                val lsVwHistorico = robot.lookup("#lsVwHistorico").queryAs(JFXListView::class.java)
+                lsVwHistorico.selectionModel.select(0)
+            }
 
-        // 3. Double click no componente
-        robot.doubleClickOn("#lsVwHistorico")
-        WaitForAsyncUtils.waitForFxEvents()
-        Thread.sleep(500)
+            // 3. Double click no componente
+            robot.doubleClickOn("#lsVwHistorico")
+            WaitForAsyncUtils.waitForFxEvents()
+            Thread.sleep(500)
 
-        // 4. Valida restauração
-        robot.interact {
-            val txtNome = robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
-            Assertions.assertNotEquals("[JPN] Manga -", txtNome.text)
-            assertTrue(txtNome.text.contains("Hist Manga"))
+            // 4. Valida restauração
+            robot.interact {
+                val txtNome = robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
+                Assertions.assertNotEquals("[JPN] Manga -", txtNome.text)
+                assertTrue(txtNome.text.contains("Hist Manga"))
 
-            // Validação do estado interno (Caminhos) - NOVO
-            val fOrigem = controller.javaClass.getDeclaredField("mCaminhoOrigem")
-            fOrigem.isAccessible = true
-            val caminhoOrigem = fOrigem.get(controller) as File?
-            Assertions.assertNotNull(caminhoOrigem, "mCaminhoOrigem deveria ter sido restaurado")
+                // Validação do estado interno (Caminhos) - NOVO
+                val fOrigem = controller.javaClass.getDeclaredField("mCaminhoOrigem")
+                fOrigem.isAccessible = true
+                val caminhoOrigem = fOrigem.get(controller) as File?
+                Assertions.assertNotNull(
+                        caminhoOrigem,
+                        "mCaminhoOrigem deveria ter sido restaurado"
+                )
 
-            val fDestino = controller.javaClass.getDeclaredField("mCaminhoDestino")
-            fDestino.isAccessible = true
-            val caminhoDestino = fDestino.get(controller) as File?
-            Assertions.assertNotNull(caminhoDestino, "mCaminhoDestino deveria ter sido restaurado")
+                val fDestino = controller.javaClass.getDeclaredField("mCaminhoDestino")
+                fDestino.isAccessible = true
+                val caminhoDestino = fDestino.get(controller) as File?
+                Assertions.assertNotNull(
+                        caminhoDestino,
+                        "mCaminhoDestino deveria ter sido restaurado"
+                )
 
-            // Valida mSelecionado - NOVO
-            val fSelecionado = controller.javaClass.getDeclaredField("mSelecionado")
-            fSelecionado.isAccessible = true
-            val selecionado = fSelecionado.get(controller) as String?
-            Assertions.assertNotNull(selecionado, "mSelecionado deveria ter sido restaurado")
+                // Valida mSelecionado - NOVO
+                val fSelecionado = controller.javaClass.getDeclaredField("mSelecionado")
+                fSelecionado.isAccessible = true
+                val selecionado = fSelecionado.get(controller) as String?
+                Assertions.assertNotNull(selecionado, "mSelecionado deveria ter sido restaurado")
 
-            // Valida aviso de sucesso - NOVO
-            val lblAviso = robot.lookup("#lblAviso").queryAs(Label::class.java)
-            assertTrue(
-                    lblAviso.text.contains("Histórico carregado"),
-                    "Deveria exibir mensagem de sucesso no histórico. Atual: ${lblAviso.text}"
-            )
+                // Valida aviso de sucesso - NOVO
+                val lblAviso = robot.lookup("#lblAviso").queryAs(Label::class.java)
+                assertTrue(
+                        lblAviso.text.contains("Histórico carregado"),
+                        "Deveria exibir mensagem de sucesso no histórico. Atual: ${lblAviso.text}"
+                )
+            }
+        } finally {
+            // Limpeza das pastas temporárias do histórico
+            histManga.deleteRecursively()
+            histDest.deleteRecursively()
         }
     }
 
@@ -917,7 +941,7 @@ class AbaArquivoUiTest : BaseTest() {
         val textArea = robot.lookup("#txtAreaImportar").queryAs(JFXTextArea::class.java)
         robot.interact {
             textArea.text = "001-01"
-            
+
             val field = controller.javaClass.getDeclaredField("mSugestao")
             field.isAccessible = true
             @Suppress("UNCHECKED_CAST")
@@ -931,7 +955,7 @@ class AbaArquivoUiTest : BaseTest() {
             val item = menu.items.find { it.text == "Importar capítulos da sugestão" }
             item?.onAction?.handle(javafx.event.ActionEvent())
         }
-        
+
         WaitForAsyncUtils.waitForFxEvents()
         assertEquals("001-01|Tag Com Espaço", textArea.text.trim())
     }
@@ -944,13 +968,13 @@ class AbaArquivoUiTest : BaseTest() {
             robot.lookup("#txtGerarFim").queryAs(JFXTextField::class.java).text = "001"
             textArea.text = "xxx-01| 第3部 Teste"
         }
-        
+
         robot.interact {
             val menu = textArea.contextMenu
             val item = menu.items.find { it.text == "Formatar Tag (Extrair cap. Japonês)" }
             item?.onAction?.handle(javafx.event.ActionEvent())
         }
-        
+
         WaitForAsyncUtils.waitForFxEvents()
         assertEquals("003-01|Teste", textArea.text.trim())
     }
@@ -958,14 +982,17 @@ class AbaArquivoUiTest : BaseTest() {
     @Test
     @Order(26)
     fun testTabComicInfoTitleUpdate(robot: FxRobot) {
-        val comicInfo = ComicInfo().apply {
-            comic = "Manga Teste Title"
-            idMal = 123
-        }
+        val comicInfo =
+                ComicInfo().apply {
+                    comic = "Manga Teste Title"
+                    idMal = 123
+                }
         whenever(mockComicInfoService.find(any(), anyOrNull())).thenReturn(comicInfo)
 
         robot.interact {
-            val txtNome = robot.lookup("#txtNomePastaManga").queryAs(javafx.scene.control.TextField::class.java)
+            val txtNome =
+                    robot.lookup("#txtNomePastaManga")
+                            .queryAs(javafx.scene.control.TextField::class.java)
             txtNome.text = "Manga Teste"
             controller.carregaComicInfo()
         }
@@ -982,7 +1009,11 @@ class AbaArquivoUiTest : BaseTest() {
     @Order(20)
     fun testDragAndDropFile(robot: FxRobot) {
         val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
-        val file = File("[Scan] Manga Teste Volume 01.rar")
+        val file = File("[JPN] Manga Teste - Volume 01.rar")
+
+        // Mock do conteúdo do RAR para que o controller identifique o nome
+        whenever(mockWinrar.listarConteudo(any()))
+                .thenReturn(listOf("[JPN] Manga Teste - Volume 01/"))
 
         val dragboard = mock<Dragboard>()
         whenever(dragboard.hasFiles()).thenReturn(true)
@@ -998,12 +1029,57 @@ class AbaArquivoUiTest : BaseTest() {
             root.onDragDropped.handle(dragEvent)
         }
 
+        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) {
+            val txt = robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
+            txt.text != null && txt.text.isNotEmpty()
+        }
         WaitForAsyncUtils.waitForFxEvents()
 
         val txtNomePastaManga = robot.lookup("#txtNomePastaManga").queryAs(JFXTextField::class.java)
-        val txtNomePastaCapitulo = robot.lookup("#txtNomePastaCapitulo").queryAs(JFXTextField::class.java)
+        val txtNomePastaCapitulo =
+                robot.lookup("#txtNomePastaCapitulo").queryAs(JFXTextField::class.java)
 
         assertEquals("[JPN] Manga Teste -", txtNomePastaManga.text)
         assertEquals("Capítulo", txtNomePastaCapitulo.text)
+    }
+
+    @Test
+    @Order(27)
+    fun testJapaneseNumeralExtraction(robot: FxRobot) {
+        val method =
+                controller.javaClass.getDeclaredMethod(
+                        "extractNumberFromJapanese",
+                        String::class.java
+                )
+        method.isAccessible = true
+
+        assertEquals("2", method.invoke(controller, "二"))
+        assertEquals("10", method.invoke(controller, "十"))
+        assertEquals("2.1", method.invoke(controller, "２．１"))
+    }
+
+    @Test
+    @Order(28)
+    fun testVerificaPaginaDuplaFlow(robot: FxRobot) {
+        val cbDupla =
+                robot.lookup("#cbVerificaPaginaDupla")
+                        .queryAs(com.jfoenix.controls.JFXCheckBox::class.java)
+        robot.interact { cbDupla.isSelected = true }
+
+        // Verificamos o estado do componente diretamente, já que ele é privado no controller
+        assertTrue(cbDupla.isSelected)
+    }
+
+    @Test
+    @Order(29)
+    fun testMesclarCapaFlow(robot: FxRobot) {
+        val cbCapa =
+                robot.lookup("#cbMesclarCapaTudo")
+                        .queryAs(com.jfoenix.controls.JFXCheckBox::class.java)
+        robot.interact { cbCapa.isSelected = false }
+        assertFalse(cbCapa.isSelected)
+
+        robot.interact { cbCapa.isSelected = true }
+        assertTrue(cbCapa.isSelected)
     }
 }

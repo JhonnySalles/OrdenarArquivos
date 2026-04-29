@@ -24,6 +24,15 @@ abstract class BaseTest {
         init {
             // Identifica ambiente de teste para desabilitar serviços externos (ex: Sentry)
             System.setProperty("is.test", "true")
+
+            // Configuração de ambiente Headless para CI/CD (Monocle)
+            if (System.getProperty("os.name").contains("Windows").not() || System.getProperty("testfx.headless") == "true") {
+                System.setProperty("testfx.robot", "glass")
+                System.setProperty("testfx.headless", "true")
+                System.setProperty("prism.order", "sw")
+                System.setProperty("glass.platform", "Monocle")
+                System.setProperty("monocle.platform", "Headless")
+            }
             
             // Silenciando logs verbosos do JavaFX/JFoenix antes do primeiro teste
             System.setProperty("glass.accessible.force", "false")

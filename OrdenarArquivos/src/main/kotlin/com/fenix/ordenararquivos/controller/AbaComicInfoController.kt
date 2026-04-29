@@ -463,19 +463,23 @@ class AbaComicInfoController : Initializable {
                             if (!Utils.isRar(arquivo.name))
                                 continue
 
-                            val info: File = mRarService.extraiComicInfo(arquivo) ?: continue
-                            val comic: ComicInfo = try {
-                                val unmarshaller = jaxb.createUnmarshaller()
-                                unmarshaller.unmarshal(info) as ComicInfo
-                            } catch (e: Exception) {
-                                mLOG.error(e.message, e)
-                                continue
+                            val info: File? = mRarService.extraiComicInfo(arquivo)
+                            val comic: ComicInfo = if (info != null && info.exists()) {
+                                try {
+                                    val unmarshaller = jaxb.createUnmarshaller()
+                                    unmarshaller.unmarshal(info) as ComicInfo
+                                } catch (e: Exception) {
+                                    mLOG.error(e.message, e)
+                                    ComicInfo()
+                                }
+                            } else {
+                                ComicInfo()
                             }
 
                             val bookMarks = comic.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toSet() ?: emptySet()
-                            val processar = JFXButton("Processar")
-                            val amazon = JFXButton("Amazon")
-                            val salvar = JFXButton("Salvar")
+                            val processar = JFXButton("Processar").apply { id = "btnProcessar_${i}" }
+                            val amazon = JFXButton("Amazon").apply { id = "btnAmazon_${i}" }
+                            val salvar = JFXButton("Salvar").apply { id = "btnSalvar_${i}" }
                             val tags = bookMarks.joinToString(separator = "\n")
                             val item = Processar(arquivo.name, tags, arquivo, comic, processar, amazon, salvar)
 
@@ -638,19 +642,24 @@ class AbaComicInfoController : Initializable {
         tbViewProcessar.refresh()
     }
 
-    private fun gerarTagItem(item: Processar, language: Linguagem, isAjustar : Boolean = false) {
-        val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { p ->
-            p.image.toString() + Utils.SEPARADOR_IMAGEM + p.bookmark!!.substringBefore("-", p.bookmark!!).trim()
-                .let { b ->
-                    val mark = b.lowercase()
-                    if (mark.contains("第") || mark.contains("capítulo") || mark.contains("capitulo") || mark.contains("chapter")) {
-                    val capitulo = Utils.getNumber(if (mark.contains("第")) Utils.fromNumberJapanese(b) else b) ?: 0.0
-                    when (language) {
-                        Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(mDecimal.format(capitulo))}話"
-                        Linguagem.PORTUGUESE -> "Capítulo ${mDecimal.format(capitulo)}"
-                        else -> "Chapter ${mDecimal.format(capitulo)}"
-                    } + if (isAjustar) " - " + p.bookmark!!.substringAfterLast("-").trim() else ""
-                } else b }
+    private fun gerarTagItem(item: Processar, language: Linguagem, isAjustar: Boolean = false) {
+        val series = item.comicInfo?.series ?: ""
+        val title = item.comicInfo?.title ?: ""
+        val header = if (series.isNotEmpty()) "$series - $title" else title
+
+        val tags = item.comicInfo?.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { p ->
+            val b = p.bookmark!!.substringBefore("-", p.bookmark!!).trim()
+            val mark = b.lowercase()
+            val prefix = if (mark.contains("第") || mark.contains("capítulo") || mark.contains("capitulo") || mark.contains("chapter")) {
+                val capitulo = Utils.getNumber(if (mark.contains("第")) Utils.fromNumberJapanese(b) else b) ?: 0.0
+                when (language) {
+                    Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(mDecimal.format(capitulo))}話"
+                    Linguagem.PORTUGUESE -> "Capítulo ${mDecimal.format(capitulo)}"
+                    else -> "Chapter ${mDecimal.format(capitulo)}"
+                } + if (isAjustar) " - " + p.bookmark!!.substringAfterLast("-").trim() else ""
+            } else b
+
+            p.image.toString() + Utils.SEPARADOR_IMAGEM + prefix + if (header.isNotEmpty()) " " + Utils.SEPARADOR_IMPORTACAO + " " + header else ""
         }?.toList() ?: emptyList()
         item.tags = tags.joinToString(separator = "\n")
     }

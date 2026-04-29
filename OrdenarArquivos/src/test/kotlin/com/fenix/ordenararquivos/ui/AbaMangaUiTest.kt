@@ -10,6 +10,7 @@ import com.fenix.ordenararquivos.service.MangaServices
 import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXTabPane
 import com.jfoenix.controls.JFXTextField
+import java.util.concurrent.TimeUnit
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
 import javafx.scene.Scene
@@ -27,7 +28,6 @@ import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
-import java.util.concurrent.TimeUnit
 
 @Tag("UI")
 @ExtendWith(ApplicationExtension::class)
@@ -83,6 +83,7 @@ class AbaMangaUiTest : BaseTest() {
         applyJFoenixFix(scene)
         stage.scene = scene
         stage.show()
+        stage.toFront()
     }
 
     @BeforeEach
@@ -93,13 +94,14 @@ class AbaMangaUiTest : BaseTest() {
 
         // Injeta o controller pai e mocks de progresso
         controller.controllerPai = mockTelaInicialController
-        
+
         // Inicializa containers estáticos para notificações e alertas
         AlertasPopup.rootStackPane = rootStack
         AlertasPopup.nodeBlur = rootNode
         com.fenix.ordenararquivos.notification.Notificacoes.rootAnchorPane = rootNode as AnchorPane
 
-        whenever(mockTelaInicialController.rootProgress).thenReturn(javafx.scene.control.ProgressBar())
+        whenever(mockTelaInicialController.rootProgress)
+                .thenReturn(javafx.scene.control.ProgressBar())
         whenever(mockTelaInicialController.rootMessage).thenReturn(javafx.scene.control.Label())
         whenever(mockTelaInicialController.rootStack).thenReturn(rootStack)
         whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
@@ -109,11 +111,12 @@ class AbaMangaUiTest : BaseTest() {
 
         // Força recarregamento e aguarda a conclusão da Task
         robot.interact {
-            val method = controller.javaClass.getDeclaredMethod("carregarDados", Boolean::class.java)
+            val method =
+                    controller.javaClass.getDeclaredMethod("carregarDados", Boolean::class.java)
             method.isAccessible = true
             method.invoke(controller, false)
         }
-        
+
         // Sincronização robusta: espera até que a lista seja populada (o que indica fim da Task)
         val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java)
         WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) { tbViewManga.items.size == 2 }
@@ -123,29 +126,38 @@ class AbaMangaUiTest : BaseTest() {
     @Test
     @Order(1)
     fun testMangaTablePopulation(robot: FxRobot) {
-        val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
+        val tbViewManga =
+                robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
         assertEquals(2, tbViewManga.items.size)
     }
-
 
     @Test
     @Order(3)
     fun testFiltroManga(robot: FxRobot) {
         val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
         val txtFiltro = robot.lookup("#txtFiltro").queryAs(JFXTextField::class.java)
-        val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
+        val tbViewManga =
+                robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
 
         // Mock para o filtro específico
-        whenever(mockMangaService.findAll(eq("One"), any(), any(), any())).thenReturn(listOf(mangaList[1]))
+        whenever(mockMangaService.findAll(eq("One"), any(), any(), any()))
+                .thenReturn(listOf(mangaList[1]))
 
         // Usa interact para definir o texto e disparar o evento de filtro de forma atômica
-        robot.interact { 
+        robot.interact {
             txtFiltro.text = "One"
             // Dispara o evento que o controller ouve (onKeyFiltro)
-            val event = javafx.scene.input.KeyEvent(
-                javafx.scene.input.KeyEvent.KEY_RELEASED,
-                "", "", javafx.scene.input.KeyCode.ENTER, false, false, false, false
-            )
+            val event =
+                    javafx.scene.input.KeyEvent(
+                            javafx.scene.input.KeyEvent.KEY_RELEASED,
+                            "",
+                            "",
+                            javafx.scene.input.KeyCode.ENTER,
+                            false,
+                            false,
+                            false,
+                            false
+                    )
             txtFiltro.fireEvent(event)
         }
 
@@ -174,20 +186,23 @@ class AbaMangaUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
 
         // Localiza o TextField gerado pela célula em edição
-        val textField = robot.lookup(".table-cell .text-field").queryAs(javafx.scene.control.TextField::class.java)
-        
+        val textField =
+                robot.lookup(".table-cell .text-field")
+                        .queryAs(javafx.scene.control.TextField::class.java)
+
         robot.interact {
             textField.requestFocus()
             textField.text = "Naruto Uzumaki"
-            
+
             // Em ambiente headless, o ENTER as vezes não propaga o commit da célula.
             // Forçamos o commit programaticamente para garantir a atualização do modelo.
-            val event = TableColumn.CellEditEvent(
-                tbViewManga,
-                javafx.scene.control.TablePosition(tbViewManga, 0, clNome),
-                TableColumn.editCommitEvent(),
-                "Naruto Uzumaki"
-            )
+            val event =
+                    TableColumn.CellEditEvent(
+                            tbViewManga,
+                            javafx.scene.control.TablePosition(tbViewManga, 0, clNome),
+                            TableColumn.editCommitEvent(),
+                            "Naruto Uzumaki"
+                    )
             clNome.onEditCommit.handle(event)
         }
         WaitForAsyncUtils.waitForFxEvents()
@@ -203,8 +218,9 @@ class AbaMangaUiTest : BaseTest() {
     @Test
     @Order(4)
     fun testSaveAction(robot: FxRobot) {
-        val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
-        
+        val tbViewManga =
+                robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
+
         robot.interact {
             tbViewManga.scrollTo(0)
             tbViewManga.selectionModel.select(0)
@@ -216,7 +232,7 @@ class AbaMangaUiTest : BaseTest() {
         // Localiza o botão salvar dentro da tabela de forma mais direta
         val btnSalvar = robot.lookup(".background-Green2").queryAs(JFXButton::class.java)
         assertNotNull(btnSalvar, "Botão Salvar não encontrado na linha selecionada")
-        
+
         robot.interact { btnSalvar.fire() }
         verify(mockMangaService, timeout(2000)).save(any(), any(), any())
     }
@@ -224,8 +240,9 @@ class AbaMangaUiTest : BaseTest() {
     @Test
     @Order(5)
     fun testDeleteAction(robot: FxRobot) {
-        val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
-        
+        val tbViewManga =
+                robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
+
         robot.interact {
             tbViewManga.scrollTo(0)
             tbViewManga.selectionModel.select(0)
@@ -236,7 +253,7 @@ class AbaMangaUiTest : BaseTest() {
 
         val btnExcluir = robot.lookup(".background-Red2").queryAs(JFXButton::class.java)
         assertNotNull(btnExcluir, "Botão Excluir não encontrado na linha selecionada")
-        
+
         robot.interact { btnExcluir.fire() }
         WaitForAsyncUtils.waitForFxEvents()
 
@@ -246,7 +263,8 @@ class AbaMangaUiTest : BaseTest() {
     @Test
     @Order(6)
     fun testOpenPopupComicInfo(robot: FxRobot) {
-        val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
+        val tbViewManga =
+                robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
 
         robot.interact {
             tbViewManga.scrollTo(0)
@@ -261,7 +279,7 @@ class AbaMangaUiTest : BaseTest() {
             val manga = tbViewManga.items[0]
             controller.abrirPopupComicInfo(manga)
         }
-        
+
         // Aguardar o JFXDialog aparecer com paciência (animação do JFoenix)
         WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
             robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent
@@ -271,14 +289,18 @@ class AbaMangaUiTest : BaseTest() {
         val dialogLayout = robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>()
         assertTrue(dialogLayout.isPresent, "JFXDialog (.jfx-dialog-layout) não foi detectado")
 
-        val btnCancelar = robot.from(dialogLayout.get()).lookup("#btnCancelar").queryAs(JFXButton::class.java)
+        val btnCancelar =
+                robot.from(dialogLayout.get()).lookup("#btnCancelar").queryAs(JFXButton::class.java)
         robot.interact { btnCancelar.fire() }
-        
+
         // Aguardar o JFXDialog sumir (considerando animação de fechamento)
         WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) {
             !robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent
         }
-        assertFalse(robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent, "JFXDialog não fechou")
+        assertFalse(
+                robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent,
+                "JFXDialog não fechou"
+        )
     }
 
     @AfterEach

@@ -38,6 +38,7 @@
                         <JFXButton fx:id="btnAjustarPastas" minWidth="120.0" onAction="#onBtnAjustarPastas" prefHeight="30.0" prefWidth="120.0" styleClass="background-Yellow1" text="Ajustar Pastas" />
                         <JFXButton fx:id="btnRenomear" minWidth="80.0" onAction="#onBtnRenomear" prefHeight="30.0" prefWidth="120.0" styleClass="background-Green2" text="Renomear" textFill="WHITE" />
                         <JFXButton fx:id="btnCompactar" accessibleText="COMPACTAR" minWidth="80.0" onAction="#onBtnCompactar" prefHeight="30.0" prefWidth="120.0" styleClass="background-White1" text="Compactar" />
+                        <JFXCheckBox fx:id="cbApagarArquivo" checkedColor="#0cff00" text="Apagar após" textFill="WHITE" unCheckedColor="WHITE" />
                      </children>
                   </HBox>
                </children>
