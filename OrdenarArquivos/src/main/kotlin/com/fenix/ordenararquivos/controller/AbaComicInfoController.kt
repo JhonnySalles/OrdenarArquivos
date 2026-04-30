@@ -456,12 +456,12 @@ class AbaComicInfoController : Initializable {
 
                         val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
                         for (arquivo in pasta.listFiles()!!) {
+                            if (!Utils.isRar(arquivo.name))
+                                continue
+
                             i++
                             updateProgress(i.toLong(), max.toLong())
                             updateMessage("Carregando item $i de $max.")
-
-                            if (!Utils.isRar(arquivo.name))
-                                continue
 
                             val info: File? = mRarService.extraiComicInfo(arquivo)
                             val comic: ComicInfo = if (info != null && info.exists()) {

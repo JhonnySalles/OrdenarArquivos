@@ -2,8 +2,6 @@ package com.fenix.ordenararquivos.ui
 
 import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.controller.AbaComicInfoController
-import com.fenix.ordenararquivos.controller.PopupAmazon
-import com.fenix.ordenararquivos.controller.PopupCapitulos
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.enums.Linguagem
@@ -56,8 +54,6 @@ class AbaComicInfoUiTest : BaseTest() {
     private lateinit var mockWinrar: WinrarServices
     private lateinit var mockOcrServices: OcrServices
     private var mockOcr: MockedStatic<Ocr>? = null
-    private var mockPopupAmazon: MockedStatic<PopupAmazon>? = null
-    private var mockPopupCapitulos: MockedStatic<PopupCapitulos>? = null
 
     companion object {
         private var staticKeepAlive: java.sql.Connection? = null
@@ -162,8 +158,7 @@ class AbaComicInfoUiTest : BaseTest() {
     @AfterEach
     fun tearDown() {
         mockOcr?.close()
-        mockPopupAmazon?.close()
-        mockPopupCapitulos?.close()
+        mockOcr = null
         AlertasPopup.isTeste = false
         AlertasPopup.lastAlertTitle = null
         AlertasPopup.lastAlertText = null
@@ -407,24 +402,17 @@ class AbaComicInfoUiTest : BaseTest() {
         helperCarregarItens(robot)
         val btnCapitulos = robot.lookup("#btnCapitulos").queryAs(JFXButton::class.java)
 
-        mockPopupCapitulos = Mockito.mockStatic(PopupCapitulos::class.java)
-        mockPopupCapitulos
-                ?.`when`<Any> {
-                    PopupCapitulos.abreTelaCapitulos(any(), any(), any(), any(), any())
-                }
-                ?.thenAnswer { null }
-
         robot.interact { btnCapitulos.fire() }
 
         WaitForAsyncUtils.waitForFxEvents()
-        mockPopupCapitulos?.verify {
-            PopupCapitulos.abreTelaCapitulos(any(), any(), any(), any(), any())
-        }
+        
+        // Verificar se o popup abriu (JFXDialog é adicionado ao rootStack)
+        val dialogs = rootStack.children.filterIsInstance<com.jfoenix.controls.JFXDialog>()
+        assertTrue(dialogs.isNotEmpty(), "O popup de capítulos deveria ter sido aberto")
 
-        // Simular fechar o dialog (o JFXDialog é adicionado ao rootStack)
+        // Fechar o dialog
         robot.interact {
-            mainController.rootStack.children.filterIsInstance<com.jfoenix.controls.JFXDialog>()
-                    .forEach { it.close() }
+            dialogs.forEach { it.close() }
         }
     }
 
@@ -432,17 +420,22 @@ class AbaComicInfoUiTest : BaseTest() {
     @Order(9)
     fun testIntegracaoPopupAmazon(robot: FxRobot) {
         helperCarregarItens(robot)
-        // O botão é gerado dinamicamente com ID btnAmazon_1
-        val btnAmazon = robot.lookup("#btnAmazon_1").queryAs(JFXButton::class.java)
-
-        mockPopupAmazon = Mockito.mockStatic(PopupAmazon::class.java)
-        mockPopupAmazon
-                ?.`when`<Any> { PopupAmazon.abreTelaAmazon(any(), any(), any(), any(), any()) }
-                ?.thenAnswer { null }
+        val table =
+                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Processar>
+        val btnAmazon = table.items[0].amazon!!
 
         robot.interact { btnAmazon.fire() }
 
-        mockPopupAmazon?.verify { PopupAmazon.abreTelaAmazon(any(), any(), any(), any(), any()) }
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        // Verificar se o popup abriu
+        val dialogs = rootStack.children.filterIsInstance<com.jfoenix.controls.JFXDialog>()
+        assertTrue(dialogs.isNotEmpty(), "O popup da Amazon deveria ter sido aberto")
+
+        // Fechar o dialog
+        robot.interact {
+            dialogs.forEach { it.close() }
+        }
     }
 
     @Test
