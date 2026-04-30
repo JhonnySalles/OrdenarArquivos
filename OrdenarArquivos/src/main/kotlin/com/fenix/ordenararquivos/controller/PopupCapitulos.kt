@@ -78,6 +78,9 @@ class PopupCapitulos : Initializable {
     private lateinit var hplZBato : Hyperlink
 
     @FXML
+    private lateinit var hplMangaPark : Hyperlink
+
+    @FXML
     private lateinit var cbLinguagem: JFXComboBox<Linguagem>
 
     @FXML
@@ -218,7 +221,8 @@ class PopupCapitulos : Initializable {
                         .referrer("http://www.google.com")
                         .get()
                 else {
-                    val pagina = Jsoup.parse(File(txtEndereco.text))
+                    val file = File(txtEndereco.text)
+                    val pagina = Jsoup.parse(file)
                     for (node in pagina.childNodes())
                         if (node is Comment) {
                             val commentData = node.data.trim()
@@ -227,6 +231,20 @@ class PopupCapitulos : Initializable {
                                 break
                             }
                         }
+
+                    // Se não encontrou o comentário, tenta inferir pelo nome do arquivo (útil para testes)
+                    if (!site.startsWith("http")) {
+                        val fileName = file.name.lowercase()
+                        if (fileName.contains("mangaplanet")) site = "https://mangaplanet.com"
+                        else if (fileName.contains("comick")) site = "https://comick.io"
+                        else if (fileName.contains("mangafire")) site = "https://mangafire.to"
+                        else if (fileName.contains("taiyo")) site = "https://taiyo.moe"
+                        else if (fileName.contains("mangapark")) site = "https://mangapark.net"
+                        else if (fileName.contains("mangaforest")) site = "https://mangaforest.me"
+                        else if (fileName.contains("mangaread")) site = "https://mangaread.org"
+                        else if (fileName.contains("mangadex")) site = "https://mangadex.org"
+                        else if (fileName.contains("zbato")) site = "https://zbato.org"
+                    }
 
                     pagina
                 }
@@ -249,6 +267,8 @@ class PopupCapitulos : Initializable {
                     extractMangaFire(pagina)
                 else if (it.contains("taiyo.moe"))
                     extractTayo(pagina)
+                else if (it.contains("mangapark"))
+                    extractMangaPark(pagina)
                 else if (it.contains("mangaforest.me"))
                     extractMangaForest(pagina)
                 else if (it.contains("mangaread.org"))
@@ -546,77 +566,62 @@ class PopupCapitulos : Initializable {
     internal fun extractTayo(pagina: Document) : List<Volume> {
         val volumesList = mutableListOf<Volume>()
 
-        // Seleciona cada bloco de volume (que é um acordeão)
-        // Cada volume está em um `div` que é irmão de um `hr` e contém um `h2` para o título do volume
-        // e uma `section` para os capítulos.
-        val volumeSections = pagina.select("div[data-open=true]:has(h2 button span.text-foreground)")
+        // Seleciona cada bloco de volume
+        // Tenta o seletor antigo primeiro
+        var volumeSections = pagina.select("div[data-open=true]:has(h2 button span.text-foreground)")
+        if (volumeSections.isEmpty()) {
+            // Tenta um seletor mais genérico baseado no HTML fornecido (Wata - Tai.html)
+            // Onde o volume está em um span com data-open="true"
+            volumeSections = pagina.select("div:has(span[data-open=true].text-foreground)")
+        }
 
-        for (volumeSectionDiv in volumeSections) {
-            val volumeTitleElement = volumeSectionDiv.selectFirst("h2 button span.text-foreground")
-            val volumeTitleText = volumeTitleElement?.text()?.trim() // Ex: "Volume 34"
+        if (volumeSections.isEmpty()) {
+            // Se ainda assim não encontrar, tenta pegar todos os capítulos e colocar num volume genérico
+            val volume = Volume(volume = -1.0)
+            val chapterContainers = pagina.select("div.flex.flex-col.gap-1:has(p.line-clamp-1)")
+            for (container in chapterContainers) {
+                val pElement = container.selectFirst("p.line-clamp-1")
+                val fullText = pElement?.text()?.trim() ?: ""
+                
+                val chapNumSpan = pElement?.selectFirst("span.font-medium")
+                val chapNumStr = chapNumSpan?.text()?.trim()
+                val chapNum = chapNumStr?.toDoubleOrNull() ?: extractChapterNumber(fullText)
 
-            if (volumeTitleText != null) {
-                val volumeNumberString = volumeTitleText.replace("Volume", "", ignoreCase = true).trim()
-                val volumeNum = volumeNumberString.toDoubleOrNull()
+                if (chapNum != null) {
+                    val title = cleanTaiyoTitle(fullText, chapNum.toString())
+                    volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = title, japones = ""))
+                }
+            }
+            if (volume.capitulos.isNotEmpty()) {
+                volume.capitulos.sortBy { it.capitulo }
+                volumesList.add(volume)
+            }
+        } else {
+            for (volumeSectionDiv in volumeSections) {
+                val volumeTitleElement = volumeSectionDiv.selectFirst("h2 button span.text-foreground, span[data-open=true].text-foreground")
+                val volumeTitleText = volumeTitleElement?.text()?.trim()
 
-                if (volumeNum != null) {
+                if (volumeTitleText != null) {
+                    val volumeNumberString = volumeTitleText.replace("Volume", "", ignoreCase = true).trim()
+                    val volumeNum = volumeNumberString.toDoubleOrNull() ?: 0.0
+
                     val currentVolume = Volume(volume = volumeNum)
-
-                    // Capítulos estão dentro de uma 'section' > 'div.py-2' > 'div.flex.flex-col.gap-1'
-                    val chapterContainers = volumeSectionDiv.select("section > div.py-2 > div.flex.flex-col.gap-1")
+                    val chapterContainers = volumeSectionDiv.select("section > div.py-2 > div.flex.flex-col.gap-1, div.flex.flex-col.gap-1:has(p.line-clamp-1)")
 
                     for (chapterContainer in chapterContainers) {
-                        val chapterNumberElement = chapterContainer.selectFirst("h3.text-sm") // Ex: "Capítulo 139"
-                        var chapterTitle = ""
-                        var chapNumFromP: Double? = null
+                        val pElement = chapterContainer.selectFirst("p.line-clamp-1")
+                        val fullText = pElement?.text()?.trim() ?: ""
 
-                        val linkElement = chapterContainer.selectFirst("a.grid")
-                        if (linkElement != null) {
-                            val pElement = linkElement.selectFirst("div > p.line-clamp-1")
-                            val fullText = pElement?.text()?.trim() ?: "" // Ex: "Capítulo 139 — Em Direção a Árvore Naquela Colina"
+                        val chapNumSpan = pElement?.selectFirst("span.font-medium")
+                        val chapNumStr = chapNumSpan?.text()?.trim()
+                        val chapNum = chapNumStr?.toDoubleOrNull() ?: extractChapterNumber(fullText)
 
-                            val chapNumSpan = pElement?.selectFirst("span.font-medium")
-                            val chapNumStrFromSpan = chapNumSpan?.text()?.trim()
-                            chapNumFromP = chapNumStrFromSpan?.toDoubleOrNull()
-
-                            // Extrai o título
-                            if (chapNumStrFromSpan != null) {
-                                var titleCandidate = fullText.replaceFirst("Capítulo\\s*$chapNumStrFromSpan\\s*—\\s*", "", ignoreCase = true)
-                                if (titleCandidate == fullText) { // Se não houve "—"
-                                    titleCandidate = fullText.replaceFirst("Capítulo\\s*$chapNumStrFromSpan\\s*", "", ignoreCase = true)
-                                }
-                                // Se após a remoção ainda começar com "Capítulo X" (caso não tenha título), define como vazio
-                                if (titleCandidate.startsWith("Capítulo $chapNumStrFromSpan", ignoreCase = true) && titleCandidate.length == "Capítulo $chapNumStrFromSpan".length) {
-                                    chapterTitle = ""
-                                } else {
-                                    chapterTitle = titleCandidate.trim()
-                                }
-                            } else if (fullText.startsWith("Capítulo", ignoreCase = true)) {
-                                // Caso onde não há span.font-medium mas o texto começa com "Capítulo"
-                                val titleRegex = """^Capítulo\s*[\d.]+(?:\s*—\s*(.*)|\s+(.*))?""".toRegex(RegexOption.IGNORE_CASE)
-                                val match = titleRegex.find(fullText)
-                                chapterTitle = (match?.groups?.get(1)?.value ?: match?.groups?.get(2)?.value ?: "").trim()
-                            }
+                        if (chapNum != null) {
+                            val title = cleanTaiyoTitle(fullText, chapNum.toString())
+                            currentVolume.capitulos.add(Capitulo(capitulo = chapNum, ingles = title, japones = ""))
                         }
-
-                        // Usa o número do capítulo do h3 se o do P não for encontrado, ou para consistência
-                        val chapNumFromH3 = chapterNumberElement?.text()
-                            ?.replace("Capítulo", "", ignoreCase = true)
-                            ?.trim()?.toDoubleOrNull()
-
-                        val finalChapNum = chapNumFromP ?: chapNumFromH3
-
-                        if (finalChapNum != null)
-                            currentVolume.capitulos.add(
-                                Capitulo(
-                                    capitulo = finalChapNum,
-                                    ingles = chapterTitle.replace(mReplace, "").trim(), // Armazenando o título em pt-BR no campo 'ingles'
-                                    japones = ""
-                                )
-                            )
                     }
                     if (currentVolume.capitulos.isNotEmpty()) {
-                        // Ordena os capítulos dentro do volume antes de adicionar à lista de volumes
                         currentVolume.capitulos.sortBy { it.capitulo }
                         volumesList.add(currentVolume)
                     }
@@ -624,9 +629,25 @@ class PopupCapitulos : Initializable {
             }
         }
 
-        // Ordena a lista de volumes
         volumesList.sortBy { it.volume }
         return volumesList
+    }
+
+    private fun extractChapterNumber(text: String): Double? {
+        val regex = """(?:Capítulo|Chapter)\s*([\d.]+)""".toRegex(RegexOption.IGNORE_CASE)
+        return regex.find(text)?.groupValues?.get(1)?.toDoubleOrNull()
+    }
+
+    private fun cleanTaiyoTitle(fullText: String, chapNum: String): String {
+        var title = fullText.replaceFirst("""^(?:Capítulo|Chapter)\s*$chapNum\s*[—\-\:]\s*""".toRegex(RegexOption.IGNORE_CASE), "")
+        if (title == fullText) {
+            title = fullText.replaceFirst("""^(?:Capítulo|Chapter)\s*$chapNum\s*""".toRegex(RegexOption.IGNORE_CASE), "")
+        }
+        // Se o título resultante for igual ao número do capítulo ou apenas "Capítulo X", limpamos
+        if (title.trim().equals("Capítulo $chapNum", ignoreCase = true) || title.trim().isEmpty()) {
+            return ""
+        }
+        return title.trim().replace(mReplace, "").trim()
     }
 
     //<--------------------------  MangaForest -------------------------->
@@ -832,6 +853,53 @@ class PopupCapitulos : Initializable {
         return volumesMap.values.toList()
     }
 
+    //<--------------------------  MangaPark -------------------------->
+    internal fun extractMangaPark(pagina: Document) : List<Volume> {
+        val volume = Volume(volume = -1.0, capitulos = mutableListOf())
+
+        // MangaPark lists chapters in li.item elements under div.tab-content[data-name="chapter"]
+        val chapterItems = pagina.select("div.tab-content[data-name=chapter] li.item")
+        if (chapterItems.isEmpty()) {
+            chapterItems.addAll(pagina.select("li.item[data-number]"))
+        }
+
+        for (item in chapterItems) {
+            val linkElement = item.selectFirst("a")
+            if (linkElement != null) {
+                val titleAttr = linkElement.attr("title") // e.g. "Chapter 118"
+
+                // Regex para encontrar o número do capítulo
+                val chapterRegex = """(?:Chapter|Ch\.)\s*([\d.]+)""".toRegex(RegexOption.IGNORE_CASE)
+                val match = chapterRegex.find(titleAttr)
+                val chapNum = match?.groupValues?.get(1)?.toDoubleOrNull()
+
+                if (chapNum != null) {
+                    var description = ""
+                    // O título pode estar no span dentro do <a> (Ex: <span>Chapter 118: Title</span>)
+                    val span = linkElement.selectFirst("span")
+                    if (span != null) {
+                        val fullText = span.text().trim()
+                        if (fullText.contains(":")) {
+                            description = fullText.substringAfter(":").trim()
+                        }
+                    }
+
+                    if (description.isEmpty()) {
+                        description = titleAttr.replace(match?.value ?: "", "").trim()
+                        if (description.startsWith(":") || description.startsWith("-")) {
+                            description = description.substring(1).trim()
+                        }
+                    }
+
+                    volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = description.replace(mReplace, "").trim(), japones = ""))
+                }
+            }
+        }
+
+        volume.capitulos.sortBy { it.capitulo }
+        return if (volume.capitulos.isNotEmpty()) listOf(volume) else emptyList()
+    }
+
     private fun listeners() {
         txtEndereco.focusedProperty().addListener { _, oldVal, _ ->
             if (oldVal)
@@ -895,7 +963,7 @@ class PopupCapitulos : Initializable {
         listeners()
         tbViewTabela.items = mLista
 
-        for (button in arrayOf(hplMangaPlanet, hplTaiyo, hplComick, hplMangaFire, hplMangaForest, hplMangaRead, hplMangaDex, hplZBato))
+        for (button in arrayOf(hplMangaPlanet, hplTaiyo, hplComick, hplMangaFire, hplMangaForest, hplMangaRead, hplMangaDex, hplZBato, hplMangaPark))
             button.setOnAction { openSite(button.text) }
     }
 

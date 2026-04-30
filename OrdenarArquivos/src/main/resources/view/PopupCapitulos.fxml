@@ -31,6 +31,7 @@
                                           <Hyperlink fx:id="hplZBato" text="https://zbato.org/" />
                                           <Hyperlink fx:id="hplMangaPlanet" text="https://mangaplanet.com/" />
                                           <Hyperlink fx:id="hplTaiyo" text="https://taiyo.moe/" />
+                                          <Hyperlink fx:id="hplMangaPark" text="https://mangapark.net/" />
                                        </children>
                                     </HBox>
                                  </children>
