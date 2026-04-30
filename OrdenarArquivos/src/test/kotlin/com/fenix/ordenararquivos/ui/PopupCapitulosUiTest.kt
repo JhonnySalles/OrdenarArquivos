@@ -3,6 +3,7 @@ package com.fenix.ordenararquivos.ui
 import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.controller.PopupCapitulos
 import com.fenix.ordenararquivos.controller.TelaInicialController
+import com.fenix.ordenararquivos.model.entities.capitulos.Volume
 import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXTabPane
 import com.jfoenix.controls.JFXTextField
@@ -88,46 +89,112 @@ class PopupCapitulosUiTest : BaseTest() {
         assertNotNull(robot.lookup("#txtEndereco").queryAs(JFXTextField::class.java))
     }
 
+    private fun executaScraping(robot: FxRobot, fixturePath: String) {
+        val txtEndereco = robot.lookup("#txtEndereco").queryAs(JFXTextField::class.java)
+        val btnExecutar = robot.lookup("#btnExecutar").queryAs(JFXButton::class.java)
+        val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java) as TableView<Volume>
+
+        // Garantir que temos ao menos um arquivo para o mapeamento automático funcionar
+        robot.interact { popupController.setArquivos(listOf("Manga Chapter 01.zip")) }
+
+        val file = File(fixturePath)
+        assertTrue(file.exists(), "Fixture $fixturePath não encontrada")
+
+        robot.interact { txtEndereco.text = file.absolutePath }
+        robot.interact { btnExecutar.fire() }
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) {
+            tbViewTabela.items.isNotEmpty()
+        }
+
+        assertTrue(tbViewTabela.items.size > 0, "Tabela deve conter itens após scraping de $fixturePath")
+    }
+
     @Test
     fun testExecutarScrapingMangaPlanet(robot: FxRobot) {
         testAbriPopupCapitulos(robot)
-
-        val txtEndereco = robot.lookup("#txtEndereco").queryAs(JFXTextField::class.java)
-        val btnExecutar = robot.lookup("#btnExecutar").queryAs(JFXButton::class.java)
-        val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java)
-
-        val htmlFile = File("src/test/resources/fixtures/mangaplanet.html")
-        val doc = Jsoup.parse(htmlFile, "UTF-8")
-        whenever(mockConnection.get()).thenReturn(doc)
-
-        robot.interact { txtEndereco.text = "https://mangaplanet.com/comic/example" }
-        robot.clickOn(btnExecutar)
-        WaitForAsyncUtils.waitForFxEvents()
-
-        assertTrue(tbViewTabela.items.size > 0)
+        executaScraping(robot, "src/test/resources/fixtures/mangaplanet.html")
     }
 
     @Test
     fun testExecutarScrapingComick(robot: FxRobot) {
         testAbriPopupCapitulos(robot)
+        executaScraping(robot, "src/test/resources/fixtures/comick.html")
+    }
 
-        val txtEndereco = robot.lookup("#txtEndereco").queryAs(JFXTextField::class.java)
-        val btnExecutar = robot.lookup("#btnExecutar").queryAs(JFXButton::class.java)
-        val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java)
+    @Test
+    fun testExecutarScrapingMangaFire(robot: FxRobot) {
+        testAbriPopupCapitulos(robot)
+        executaScraping(robot, "src/test/resources/fixtures/mangafire.html")
+    }
 
-        val htmlFile = File("src/test/resources/fixtures/comick.html")
-        val doc = Jsoup.parse(htmlFile, "UTF-8")
-        whenever(mockConnection.get()).thenReturn(doc)
+    @Test
+    fun testExecutarScrapingTayo(robot: FxRobot) {
+        testAbriPopupCapitulos(robot)
+        executaScraping(robot, "src/test/resources/fixtures/taiyo.html")
+    }
 
-        robot.interact { txtEndereco.text = "https://comick.app/comic/example" }
-        robot.interact { btnExecutar.fire() }
-        
+    @Test
+    fun testExecutarScrapingMangaPark(robot: FxRobot) {
+        testAbriPopupCapitulos(robot)
+        executaScraping(robot, "src/test/resources/fixtures/mangapark.html")
+    }
+
+    @Test
+    fun testExecutarScrapingMangaForest(robot: FxRobot) {
+        testAbriPopupCapitulos(robot)
+        executaScraping(robot, "src/test/resources/fixtures/mangaforest.html")
+    }
+
+    @Test
+    fun testExecutarScrapingMangaRead(robot: FxRobot) {
+        testAbriPopupCapitulos(robot)
+        executaScraping(robot, "src/test/resources/fixtures/mangaread.html")
+    }
+
+    @Test
+    fun testExecutarScrapingMangaDex(robot: FxRobot) {
+        testAbriPopupCapitulos(robot)
+        executaScraping(robot, "src/test/resources/fixtures/mangadex.html")
+    }
+
+    @Test
+    fun testExecutarScrapingZBato(robot: FxRobot) {
+        testAbriPopupCapitulos(robot)
+        executaScraping(robot, "src/test/resources/fixtures/zbato.html")
+    }
+
+    @Test
+    fun testMarcarTodos(robot: FxRobot) {
+        testExecutarScrapingMangaPlanet(robot)
+        val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java) as TableView<Volume>
+        val cbMarcarTodos = robot.lookup("#cbMarcarTodos").queryAs(com.jfoenix.controls.JFXCheckBox::class.java)
+
+        // Marcar todos
+        robot.interact { cbMarcarTodos.isSelected = true }
         WaitForAsyncUtils.waitForFxEvents()
-        WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) {
-            tbViewTabela.items.isNotEmpty()
-        }
+        tbViewTabela.items.forEach { assertTrue(it.marcado, "Item deveria estar marcado") }
 
-        assertTrue(tbViewTabela.items.size > 0)
+        // Desmarcar todos
+        robot.interact { cbMarcarTodos.isSelected = false }
+        WaitForAsyncUtils.waitForFxEvents()
+        tbViewTabela.items.forEach { assertFalse(it.marcado, "Item deveria estar desmarcado") }
+    }
+
+    @Test
+    fun testMapeamentoArquivos(robot: FxRobot) {
+        testAbriPopupCapitulos(robot)
+        val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java) as TableView<Volume>
+
+        val arquivos = listOf("Manga Volume 01.zip", "Manga Volume 02.zip")
+        robot.interact { popupController.setArquivos(arquivos) }
+
+        executaScraping(robot, "src/test/resources/fixtures/mangaplanet.html")
+        
+        val vol1 = tbViewTabela.items.find { it.volume == 1.0 }
+        assertNotNull(vol1)
+        assertEquals("Manga Volume 01.zip", vol1?.arquivo)
     }
 
     @Test
