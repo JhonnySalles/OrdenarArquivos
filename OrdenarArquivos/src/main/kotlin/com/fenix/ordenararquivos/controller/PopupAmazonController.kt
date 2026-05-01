@@ -28,9 +28,9 @@ import java.time.LocalDate
 import java.util.*
 
 
-class PopupAmazon : Initializable {
+class PopupAmazonController : Initializable {
 
-    private val LOGGER: Logger = LoggerFactory.getLogger(PopupAmazon::class.java)
+    private val LOGGER: Logger = LoggerFactory.getLogger(PopupAmazonController::class.java)
 
     @FXML
     lateinit var txtSiteAmazon: JFXTextField
@@ -406,8 +406,8 @@ class PopupAmazon : Initializable {
     }
 
     companion object {
-        private val LOGGER: Logger = LoggerFactory.getLogger(PopupAmazon::class.java)
-        private val STYLE_SHEET: String = PopupAmazon::class.java.getResource("/css/Dark_TelaInicial.css").toExternalForm()
+        private val LOGGER: Logger = LoggerFactory.getLogger(PopupAmazonController::class.java)
+        private val STYLE_SHEET: String = PopupAmazonController::class.java.getResource("/css/Dark_TelaInicial.css").toExternalForm()
         private lateinit var btnConfirmar: JFXButton
         private lateinit var btnVoltar: JFXButton
         private lateinit var dialog: JFXDialog
@@ -421,7 +421,7 @@ class PopupAmazon : Initializable {
                 val loader = FXMLLoader()
                 loader.location = fxmlLocate
                 val newAnchorPane: Parent = loader.load()
-                val cnt: PopupAmazon = loader.getController()
+                val cnt: PopupAmazonController = loader.getController()
                 cnt.objeto = item ?: ComicInfo()
                 cnt.setLinguagem(linguagem)
                 val titulo = Label("Consulta de dados do site da amazon")
@@ -458,6 +458,6 @@ class PopupAmazon : Initializable {
             }
         }
 
-        val fxmlLocate: URL get() = PopupAmazon::class.java.getResource("/view/PopupAmazon.fxml") as URL
+        val fxmlLocate: URL get() = PopupAmazonController::class.java.getResource("/view/PopupAmazon.fxml") as URL
     }
 }

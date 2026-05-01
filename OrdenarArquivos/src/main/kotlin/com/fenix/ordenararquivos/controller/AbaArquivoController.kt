@@ -688,7 +688,7 @@ class AbaArquivoController : Initializable {
             mComicInfo = param
             null
         }
-        PopupAmazon.abreTelaAmazon(controllerPai.rootStack, controllerPai.rootTab, callback, mComicInfo, cbLinguagem.value)
+        PopupAmazonController.abreTelaAmazon(controllerPai.rootStack, controllerPai.rootTab, callback, mComicInfo, cbLinguagem.value)
     }
 
     private fun desabilita() {

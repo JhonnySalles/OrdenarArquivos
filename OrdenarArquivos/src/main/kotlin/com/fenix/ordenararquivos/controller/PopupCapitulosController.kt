@@ -51,7 +51,7 @@ import java.text.DecimalFormatSymbols
 import java.util.*
 
 
-class PopupCapitulos : Initializable {
+class PopupCapitulosController : Initializable {
 
     @FXML
     private lateinit var hplMangaPlanet : Hyperlink
@@ -968,8 +968,8 @@ class PopupCapitulos : Initializable {
     }
 
     companion object {
-        private val LOGGER: Logger = LoggerFactory.getLogger(PopupAmazon::class.java)
-        private val STYLE_SHEET: String = PopupCapitulos::class.java.getResource("/css/Dark_TelaInicial.css").toExternalForm()
+        private val LOGGER: Logger = LoggerFactory.getLogger(PopupAmazonController::class.java)
+        private val STYLE_SHEET: String = PopupCapitulosController::class.java.getResource("/css/Dark_TelaInicial.css").toExternalForm()
         private lateinit var btnConfirmar: JFXButton
         private lateinit var btnVoltar: JFXButton
         private lateinit var dialog: JFXDialog
@@ -983,7 +983,7 @@ class PopupCapitulos : Initializable {
                 val loader = FXMLLoader()
                 loader.location = fxmlLocate
                 val newAnchorPane: Parent = loader.load()
-                val cnt: PopupCapitulos = loader.getController()
+                val cnt: PopupCapitulosController = loader.getController()
                 cnt.setLinguagem(linguagem)
                 cnt.setArquivos(processar.map { it.arquivo })
                 cnt.setProcessar(processar)
@@ -1021,7 +1021,7 @@ class PopupCapitulos : Initializable {
             }
         }
 
-        val fxmlLocate: URL get() = PopupAmazon::class.java.getResource("/view/PopupCapitulos.fxml") as URL
+        val fxmlLocate: URL get() = PopupAmazonController::class.java.getResource("/view/PopupCapitulos.fxml") as URL
     }
 
 }

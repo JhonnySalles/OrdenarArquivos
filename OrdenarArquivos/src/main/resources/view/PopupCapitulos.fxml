@@ -7,7 +7,7 @@
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
 <?import java.net.URL?>
-<AnchorPane minWidth="700.0" onDragDropped="#handleDragDropped" onDragEntered="#handleDragEntered" onDragExited="#handleDragExited" onDragOver="#handleDragOver" prefWidth="700.0" styleClass="background-Black2" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.PopupCapitulos">
+<AnchorPane minWidth="700.0" onDragDropped="#handleDragDropped" onDragEntered="#handleDragEntered" onDragExited="#handleDragExited" onDragOver="#handleDragOver" prefWidth="700.0" styleClass="background-Black2" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.PopupCapitulosController">
    <children>
       <VBox alignment="CENTER" spacing="30.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>

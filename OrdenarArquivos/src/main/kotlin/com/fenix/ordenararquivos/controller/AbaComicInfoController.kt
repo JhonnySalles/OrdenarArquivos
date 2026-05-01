@@ -166,7 +166,7 @@ class AbaComicInfoController : Initializable {
             tbViewProcessar.refresh()
             null
         }
-        PopupCapitulos.abreTelaCapitulos(controllerPai.rootStack, controllerPai.rootTab, callback, cbLinguagem.value, mObsListaProcessar)
+        PopupCapitulosController.abreTelaCapitulos(controllerPai.rootStack, controllerPai.rootTab, callback, cbLinguagem.value, mObsListaProcessar)
     }
 
     @FXML
@@ -702,7 +702,7 @@ class AbaComicInfoController : Initializable {
             tbViewProcessar.refresh()
             null
         }
-        PopupAmazon.abreTelaAmazon(controllerPai.rootStack, controllerPai.rootTab, callback, item.comicInfo, cbLinguagem.value)
+        PopupAmazonController.abreTelaAmazon(controllerPai.rootStack, controllerPai.rootTab, callback, item.comicInfo, cbLinguagem.value)
     }
 
     private fun editaColunas() {

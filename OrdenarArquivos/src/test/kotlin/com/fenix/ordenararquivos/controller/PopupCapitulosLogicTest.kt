@@ -8,7 +8,7 @@ import java.io.File
 
 class PopupCapitulosLogicTest : BaseJfxTest() {
 
-    private val controller = PopupCapitulos()
+    private val controller = PopupCapitulosController()
 
     @Test
     fun testExtractMangaPlanet() {

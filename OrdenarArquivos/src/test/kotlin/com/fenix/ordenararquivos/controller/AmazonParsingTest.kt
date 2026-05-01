@@ -16,7 +16,7 @@ class AmazonParsingTest : BaseJfxTest() {
     fun testObtemData() {
         val latch = CountDownLatch(1)
         Platform.runLater {
-            val controller = PopupAmazon()
+            val controller = PopupAmazonController()
             
             // Japanese format
             assertEquals("2024-01-01", controller.obtemData("2024/01/01", Linguagem.JAPANESE))
@@ -33,9 +33,9 @@ class AmazonParsingTest : BaseJfxTest() {
     fun testParseAmazonEn() {
         val latch = CountDownLatch(1)
         Platform.runLater {
-            val loader = FXMLLoader(PopupAmazon.fxmlLocate)
+            val loader = FXMLLoader(PopupAmazonController.fxmlLocate)
             loader.load<Any>()
-            val controller = loader.getController<PopupAmazon>()
+            val controller = loader.getController<PopupAmazonController>()
             
             val htmlFile = File("src/test/resources/fixtures/amazon_en.html")
             val doc = Jsoup.parse(htmlFile, "UTF-8")
@@ -57,9 +57,9 @@ class AmazonParsingTest : BaseJfxTest() {
     fun testParseAmazonJp() {
         val latch = CountDownLatch(1)
         Platform.runLater {
-            val loader = FXMLLoader(PopupAmazon.fxmlLocate)
+            val loader = FXMLLoader(PopupAmazonController.fxmlLocate)
             loader.load<Any>()
-            val controller = loader.getController<PopupAmazon>()
+            val controller = loader.getController<PopupAmazonController>()
             
             val htmlFile = File("src/test/resources/fixtures/amazon_jp.html")
             val doc = Jsoup.parse(htmlFile, "UTF-8")

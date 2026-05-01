@@ -1,7 +1,7 @@
 package com.fenix.ordenararquivos.ui
 
 import com.fenix.ordenararquivos.BaseTest
-import com.fenix.ordenararquivos.controller.PopupAmazon
+import com.fenix.ordenararquivos.controller.PopupAmazonController
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.enums.Linguagem
@@ -9,7 +9,6 @@ import com.jfoenix.controls.JFXTabPane
 import com.jfoenix.controls.JFXTextField
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
-import javafx.scene.input.KeyCode
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.StackPane
 import javafx.stage.Stage
@@ -22,7 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.MockedStatic
 import org.mockito.Mockito
-import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.testfx.api.FxRobot
@@ -37,7 +35,7 @@ import java.util.concurrent.TimeUnit
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class PopupAmazonUiTest : BaseTest() {
 
-    private lateinit var popupController: PopupAmazon
+    private lateinit var popupController: PopupAmazonController
     private lateinit var mockTelaInicialController: TelaInicialController
     private var mockedJsoup: MockedStatic<Jsoup>? = null
 
@@ -47,10 +45,10 @@ class PopupAmazonUiTest : BaseTest() {
         whenever(mockTelaInicialController.rootStack).thenReturn(StackPane())
         whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
 
-        val loader = FXMLLoader(PopupAmazon.fxmlLocate)
+        val loader = FXMLLoader(PopupAmazonController.fxmlLocate)
         loader.setControllerFactory { controllerClass ->
-            if (controllerClass == PopupAmazon::class.java) {
-                PopupAmazon().also { popupController = it }
+            if (controllerClass == PopupAmazonController::class.java) {
+                PopupAmazonController().also { popupController = it }
             } else {
                 controllerClass.getDeclaredConstructor().newInstance()
             }

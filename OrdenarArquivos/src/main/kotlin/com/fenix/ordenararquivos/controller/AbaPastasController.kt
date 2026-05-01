@@ -12,7 +12,6 @@ import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.model.enums.Selecionado
 import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.notification.Notificacoes
-import com.fenix.ordenararquivos.process.Winrar
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.PastaParsingService
@@ -334,7 +333,7 @@ class AbaPastasController : Initializable {
             mComicInfo = param
             null
         }
-        PopupAmazon.abreTelaAmazon(controllerPai.rootStack, controllerPai.rootTab, callback, mComicInfo, cbLinguagem.value)
+        PopupAmazonController.abreTelaAmazon(controllerPai.rootStack, controllerPai.rootTab, callback, mComicInfo, cbLinguagem.value)
     }
 
     @FXML
