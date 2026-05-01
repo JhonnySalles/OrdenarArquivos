@@ -112,14 +112,17 @@ class GoogleDriveDownloadService {
                         confirmToken != null && uuid != null -> {
                             "https://drive.usercontent.google.com/download?id=$fileId&export=download&confirm=$confirmToken&uuid=$uuid"
                         }
+
                         confirmToken != null -> {
                             val cleanToken = confirmToken.replace("&amp;", "&")
                             if (cleanToken.startsWith("/uc?")) "https://drive.google.com$cleanToken"
                             else "$url&confirm=$cleanToken"
                         }
+
                         uuid != null -> {
                             "https://drive.usercontent.google.com/download?id=$fileId&export=download&confirm=t&uuid=$uuid"
                         }
+
                         else -> {
                             // Tenta encontrar qualquer link que contenha /uc? e confirm= (mais permissivo)
                             val manualLink = Regex("""(/uc\?[^"'\s>]*confirm=[^"'\s>]*)""").find(html)?.groupValues?.get(1)
@@ -281,7 +284,7 @@ class GoogleDriveDownloadService {
             ProcessBuilder(command)
                 .directory(currentDir)
                 .start()
-            
+
             // Fecha a instância atual imediatamente
             System.exit(0)
         } catch (e: Exception) {

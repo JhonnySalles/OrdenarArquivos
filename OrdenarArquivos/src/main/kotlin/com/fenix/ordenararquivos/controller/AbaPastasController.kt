@@ -223,6 +223,8 @@ class AbaPastasController : Initializable {
     internal var contextMenu: ContextMenu? = null
     private val mPASTA_TEMPORARIA = File(System.getProperty("user.dir"), "temp/")
     private var isConsultandoMal = false
+    private var volumeBuffer = ""
+    private var chapterBuffer = ""
 
     @FXML
     private fun onBtnSelecionarTodos() {
@@ -237,7 +239,12 @@ class AbaPastasController : Initializable {
 
     @FXML
     private fun onBtnValidar() {
-        validarRegistros()
+        if (btnValidar.accessibleTextProperty().value.equals("VALIDAR", ignoreCase = true)) {
+            desabilita(btnValidar)
+            controllerPai.setCursor(Cursor.WAIT)
+            validarRegistros()
+            habilita(btnValidar, "Validar")
+        }
     }
 
     @FXML
@@ -262,25 +269,70 @@ class AbaPastasController : Initializable {
 
     @FXML
     private fun onBtnGerarCapas() {
-        val decimal = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
-        var volume = 0f
-        val lista = mutableListOf<Pasta>()
-        for (item in mObsListaProcessar) {
-            if (item.volume.compareTo(volume) != 0 && mObsListaProcessar.none { it.isCapa && it.volume.compareTo(volume) == 0 } && !item.isCapa) {
-                volume = item.volume
-                val pasta = File(item.pasta.parent, "[${item.scan}] ${item.nome} - Volume ${decimal.format(item.volume)} Capa")
-                if (!pasta.exists())
-                    Files.createDirectories(pasta.toPath())
-                lista.add(Pasta(pasta, pasta.name, item.nome, item.volume, scan = item.scan, isCapa = true, isSelecionado = true))
-            }
+        if (btnGerarCapas.accessibleTextProperty().value.equals("GERAR", ignoreCase = true)) {
+            val decimal = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
+            val volumes = mObsListaProcessar.filter { !it.isCapa }.map { it.volume }.distinct()
+            val lista = mObsListaProcessar.toMutableList()
 
-            lista.add(item)
-        }
-        mObsListaProcessar = FXCollections.observableArrayList(lista)
-        mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
-        tbViewProcessar.items = mObsListaProcessar
-        tbViewProcessar.refresh()
-        validarRegistros()
+            desabilita(btnGerarCapas)
+            controllerPai.setCursor(Cursor.WAIT)
+
+            val task = object : Task<Void>() {
+                override fun call(): Void? {
+                    mCANCELAR = false
+                    val total = volumes.size.toLong()
+                    var atual = 0L
+
+                    for (vol in volumes) {
+                        if (mCANCELAR) break
+                        atual++
+                        updateProgress(atual, total)
+                        updateMessage("Gerando capa para o volume ${decimal.format(vol)}")
+
+                        val jaExiste = lista.any { it.isCapa && it.volume == vol }
+                        if (!jaExiste) {
+                            val primeiroDoVolume = lista.firstOrNull { !it.isCapa && it.volume == vol } ?: continue
+                            val nomePasta = "[${primeiroDoVolume.scan}] ${primeiroDoVolume.nome} - Volume ${decimal.format(vol)} Capa"
+                            val pasta = File(primeiroDoVolume.pasta.parent, nomePasta)
+
+                            if (!pasta.exists())
+                                Files.createDirectories(pasta.toPath())
+
+                            lista.add(Pasta(pasta, pasta.name, primeiroDoVolume.nome, vol, scan = primeiroDoVolume.scan, isCapa = true, isSelecionado = true))
+                        }
+                    }
+
+                    if (!mCANCELAR) {
+                        Platform.runLater {
+                            mObsListaProcessar = FXCollections.observableArrayList(lista)
+                            mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
+                            tbViewProcessar.items = mObsListaProcessar
+                            tbViewProcessar.refresh()
+                            validarRegistros()
+                        }
+                    }
+                    return null
+                }
+
+                override fun succeeded() {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    controllerPai.clearProgress()
+                    habilita(btnGerarCapas, "Gerar Capas")
+                }
+
+                override fun failed() {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    controllerPai.clearProgress()
+                    habilita(btnGerarCapas, "Gerar Capas")
+                }
+            }
+            controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
+            controllerPai.rootMessage.textProperty().bind(task.messageProperty())
+            Thread(task).start()
+        } else
+            mCANCELAR = true
     }
 
     @FXML
@@ -359,10 +411,8 @@ class AbaPastasController : Initializable {
                 return
             }
 
-            btnCompactar.accessibleTextProperty().set("CANCELA")
-            btnCompactar.text = "Cancelar"
             controllerPai.setCursor(Cursor.WAIT)
-            desabilita()
+            desabilita(btnCompactar)
 
             val task = object : Task<Void>() {
                 override fun call(): Void? {
@@ -479,14 +529,14 @@ class AbaPastasController : Initializable {
                     controllerPai.rootProgress.progressProperty().unbind()
                     controllerPai.rootMessage.textProperty().unbind()
                     controllerPai.clearProgress()
-                    habilita()
+                    habilita(btnCompactar, "Compactar")
                 }
 
                 override fun failed() {
                     controllerPai.rootProgress.progressProperty().unbind()
                     controllerPai.rootMessage.textProperty().unbind()
                     controllerPai.clearProgress()
-                    habilita()
+                    habilita(btnCompactar, "Compactar")
                 }
             }
             controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
@@ -510,94 +560,102 @@ class AbaPastasController : Initializable {
             return
         }
 
-        desabilita()
-        controllerPai.setCursor(Cursor.WAIT)
+        if (btnAjustarPastas.accessibleTextProperty().value.equals("AJUSTAR", ignoreCase = true)) {
+            desabilita(btnAjustarPastas)
+            controllerPai.setCursor(Cursor.WAIT)
 
-        val task = object : Task<Void>() {
-            override fun call(): Void? {
-                try {
-                    val total = selecionados.size.toLong()
-                    var atual = 0L
+            val task = object : Task<Void>() {
+                override fun call(): Void? {
+                    try {
+                        mCANCELAR = false
+                        val total = selecionados.size.toLong()
+                        var atual = 0L
 
-                    for (item in selecionados) {
-                        atual++
-                        updateProgress(atual, total)
-                        updateMessage("Movendo arquivos em: ${item.arquivo}")
+                        for (item in selecionados) {
+                            if (mCANCELAR) break
 
-                        val raizItem = item.pasta
-                        processaMoverRecursivo(raizItem, raizItem)
-                        removePastasVazias(raizItem)
-                    }
+                            atual++
+                            updateProgress(atual, total)
+                            updateMessage("Movendo arquivos em: ${item.arquivo}")
 
-                    Platform.runLater {
-                        carregarItens()
-                        Notificacoes.notificacao(Notificacao.SUCESSO, "Ajustar Pastas", "Arquivos ajustados com sucesso.")
-                    }
-                } catch (e: Exception) {
-                    mLOG.error("Erro ao ajustar pastas.", e)
-                    Platform.runLater {
-                        Notificacoes.notificacao(Notificacao.ERRO, "Ajustar Pastas", "Erro: ${e.message}")
-                    }
-                }
-                return null
-            }
+                            val raizItem = item.pasta
+                            processaMoverRecursivo(raizItem, raizItem)
+                            removePastasVazias(raizItem)
+                        }
 
-            override fun succeeded() {
-                controllerPai.rootProgress.progressProperty().unbind()
-                controllerPai.rootMessage.textProperty().unbind()
-                habilita()
-                controllerPai.clearProgress()
-            }
-
-            override fun failed() {
-                controllerPai.rootProgress.progressProperty().unbind()
-                controllerPai.rootMessage.textProperty().unbind()
-                habilita()
-                controllerPai.clearProgress()
-            }
-
-            private fun processaMoverRecursivo(diretorio: File, raizDestino: File) {
-                val files = diretorio.listFiles() ?: return
-                for (f in files) {
-                    if (f.isDirectory) {
-                        processaMoverRecursivo(f, raizDestino)
-                    } else {
-                        if (f.parentFile != raizDestino) {
-                            var destino = File(raizDestino, f.name)
-                            if (destino.exists()) {
-                                var count = 1
-                                val name = f.nameWithoutExtension
-                                val ext = f.extension
-                                while (destino.exists()) {
-                                    destino = File(raizDestino, "$name ($count).$ext")
-                                    count++
-                                }
+                        if (!mCANCELAR) {
+                            Platform.runLater {
+                                carregarItens()
+                                Notificacoes.notificacao(Notificacao.SUCESSO, "Ajustar Pastas", "Arquivos ajustados com sucesso.")
                             }
-                            Files.move(f.toPath(), destino.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                        }
+                    } catch (e: Exception) {
+                        mLOG.error("Erro ao ajustar pastas.", e)
+                        Platform.runLater {
+                            Notificacoes.notificacao(Notificacao.ERRO, "Ajustar Pastas", "Erro: ${e.message}")
                         }
                     }
+                    return null
+                }
+
+                override fun succeeded() {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    habilita(btnAjustarPastas, "Ajustar Pastas")
+                    controllerPai.clearProgress()
+                }
+
+                override fun failed() {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    habilita(btnAjustarPastas, "Ajustar Pastas")
+                    controllerPai.clearProgress()
                 }
             }
 
-            private fun removePastasVazias(diretorio: File) {
-                val files = diretorio.listFiles() ?: return
-                for (f in files) {
-                    if (f.isDirectory) {
-                        removePastasVazias(f)
-                        if (f.listFiles()?.isEmpty() == true) {
-                            f.delete()
+            controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
+            controllerPai.rootMessage.textProperty().bind(task.messageProperty())
+            Thread(task).start()
+        } else
+            mCANCELAR = true
+    }
+
+    private fun processaMoverRecursivo(diretorio: File, raizDestino: File) {
+        val files = diretorio.listFiles() ?: return
+        for (f in files) {
+            if (f.isDirectory) {
+                processaMoverRecursivo(f, raizDestino)
+            } else {
+                if (f.parentFile != raizDestino) {
+                    var destino = File(raizDestino, f.name)
+                    if (destino.exists()) {
+                        var count = 1
+                        val name = f.nameWithoutExtension
+                        val ext = f.extension
+                        while (destino.exists()) {
+                            destino = File(raizDestino, "$name ($count).$ext")
+                            count++
                         }
                     }
+                    Files.move(f.toPath(), destino.toPath(), StandardCopyOption.REPLACE_EXISTING)
                 }
             }
         }
-
-        controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
-        controllerPai.rootMessage.textProperty().bind(task.messageProperty())
-        Thread(task).start()
     }
 
-    private fun desabilita(isCompactar: Boolean = false) {
+    private fun removePastasVazias(diretorio: File) {
+        val files = diretorio.listFiles() ?: return
+        for (f in files) {
+            if (f.isDirectory) {
+                removePastasVazias(f)
+                if (f.listFiles()?.isEmpty() == true) {
+                    f.delete()
+                }
+            }
+        }
+    }
+
+    private fun desabilita(activeButton: JFXButton? = null) {
         btnPesquisarPasta.isDisable = true
         txtPasta.isDisable = true
         cbManga.isDisable = true
@@ -608,12 +666,18 @@ class AbaPastasController : Initializable {
         tbViewProcessar.isDisable = true
         ckbSelecionarTodos.isDisable = true
         cbApagarArquivo.isDisable = true
+        btnCompactar.isDisable = true
+        btnValidar.isDisable = true
+        btnImportarVolumes.isDisable = true
 
-        if (!isCompactar)
-            btnCompactar.isDisable = true
+        activeButton?.let {
+            it.isDisable = false
+            it.accessibleTextProperty().set("CANCELA")
+            it.text = "Cancelar"
+        }
     }
 
-    private fun habilita() {
+    private fun habilita(activeButton: JFXButton? = null, originalText: String = "") {
         btnPesquisarPasta.isDisable = false
         txtPasta.isDisable = false
         cbManga.isDisable = false
@@ -622,13 +686,17 @@ class AbaPastasController : Initializable {
         btnRenomear.isDisable = false
         btnAjustarPastas.isDisable = false
         btnCompactar.isDisable = false
+        btnValidar.isDisable = false
+        btnImportarVolumes.isDisable = false
         tbViewProcessar.isDisable = false
         ckbSelecionarTodos.isDisable = false
         cbApagarArquivo.isDisable = false
         controllerPai.setCursor(null)
 
-        btnCompactar.accessibleTextProperty().set("COMPACTAR")
-        btnCompactar.text = "Compactar"
+        activeButton?.let {
+            it.accessibleTextProperty().set(originalText.uppercase())
+            it.text = originalText
+        }
     }
 
     internal fun carregaComicInfo(comic: ComicInfo) {
@@ -790,11 +858,13 @@ class AbaPastasController : Initializable {
     private fun carregarItens() {
         val pasta = File(txtPasta.text)
         if (txtPasta.text.isNotEmpty() && pasta.exists()) {
-            btnCarregar.isDisable = true
+        if (btnCarregar.accessibleTextProperty().value.equals("CARREGAR", ignoreCase = true)) {
+            desabilita(btnCarregar)
 
             val processar: Task<Void> = object : Task<Void>() {
                 override fun call(): Void? {
                     try {
+                        mCANCELAR = false
                         val lista = mutableListOf<Pasta>()
 
                         val parsingService = PastaParsingService()
@@ -802,6 +872,8 @@ class AbaPastasController : Initializable {
                         var i = 0L
 
                         for (file in pasta.listFiles()!!) {
+                            if (mCANCELAR) break
+
                             i++
                             if (file.isFile)
                                 continue
@@ -876,12 +948,14 @@ class AbaPastasController : Initializable {
                         }
 
 
-                        Platform.runLater {
-                            mObsListaProcessar = FXCollections.observableArrayList(lista)
-                            mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
-                            tbViewProcessar.items = mObsListaProcessar
-                            ckbSelecionarTodos.isSelected = true
-                            validarRegistros()
+                        if (!mCANCELAR) {
+                            Platform.runLater {
+                                mObsListaProcessar = FXCollections.observableArrayList(lista)
+                                mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
+                                tbViewProcessar.items = mObsListaProcessar
+                                ckbSelecionarTodos.isSelected = true
+                                validarRegistros()
+                            }
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao carregar pastas.", e)
@@ -897,12 +971,21 @@ class AbaPastasController : Initializable {
                     controllerPai.rootProgress.progressProperty().unbind()
                     controllerPai.rootMessage.textProperty().unbind()
                     controllerPai.clearProgress()
-                    btnCarregar.isDisable = false
+                    habilita(btnCarregar, "Carregar")
+                }
+
+                override fun failed() {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    controllerPai.clearProgress()
+                    habilita(btnCarregar, "Carregar")
                 }
             }
             controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
             controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
             Thread(processar).start()
+        } else
+            mCANCELAR = true
         } else {
             AlertasPopup.alertaModal("Alerta", "Necessário informar uma pasta para carregar.")
             txtPasta.requestFocus()
@@ -923,54 +1006,69 @@ class AbaPastasController : Initializable {
             return
         }
 
-        desabilita()
-        val processar: Task<Void> = object : Task<Void>() {
-            override fun call(): Void? {
-                try {
-                    val volume = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
-                    val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
+        if (btnRenomear.accessibleTextProperty().value.equals("RENOMEAR", ignoreCase = true)) {
+            desabilita(btnRenomear)
+            val processar: Task<Void> = object : Task<Void>() {
+                override fun call(): Void? {
+                    try {
+                        mCANCELAR = false
+                        val volume = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
+                        val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
 
-                    var i = 0L
-                    val max = listaOriginal.size.toLong()
+                        var i = 0L
+                        val max = listaOriginal.size.toLong()
 
-                    for ((index, item) in listaOriginal.sortedBy { it.volume }.withIndex()) {
-                        updateProgress(++i, max)
-                        updateMessage("Renomeando item $i de $max.")
+                        for ((index, item) in listaOriginal.sortedBy { it.volume }.withIndex()) {
+                            if (mCANCELAR) break
 
-                        val pasta =
-                            "[${item.scan}] ${item.nome} - Volume ${volume.format(item.volume)} ${if (item.isCapa) "Capa" else "Capítulo " + capitulo.format(item.capitulo)}"
-                        val path = item.pasta.toPath()
-                        val target = path.resolveSibling(pasta)
+                            updateProgress(++i, max)
+                            updateMessage("Renomeando item $i de $max.")
 
-                        if (path != target) {
-                            item.pasta = Files.move(path, target, StandardCopyOption.REPLACE_EXISTING).toFile()
-                            item.arquivo = item.pasta.name
+                            val pasta =
+                                "[${item.scan}] ${item.nome} - Volume ${volume.format(item.volume)} ${if (item.isCapa) "Capa" else "Capítulo " + capitulo.format(item.capitulo)}"
+                            val path = item.pasta.toPath()
+                            val target = path.resolveSibling(pasta)
+
+                            if (path != target) {
+                                item.pasta = Files.move(path, target, StandardCopyOption.REPLACE_EXISTING).toFile()
+                                item.arquivo = item.pasta.name
+                            }
+                        }
+
+                        if (!mCANCELAR) {
+                            Platform.runLater {
+                                tbViewProcessar.refresh()
+                                Notificacoes.notificacao(Notificacao.SUCESSO, "Renomear Pastas", "Pastas renomeadas com sucesso.")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        mLOG.info("Erro ao processar pastas.", e)
+                        Platform.runLater {
+                            Notificacoes.notificacao(Notificacao.ERRO, "Renomear Pastas", "Erro ao renomear pastas. " + e.message)
                         }
                     }
-
-                    Platform.runLater {
-                        tbViewProcessar.refresh()
-                        Notificacoes.notificacao(Notificacao.SUCESSO, "Renomear Pastas", "Pastas renomeadas com sucesso.")
-                    }
-                } catch (e: Exception) {
-                    mLOG.info("Erro ao processar pastas.", e)
-                    Platform.runLater {
-                        Notificacoes.notificacao(Notificacao.ERRO, "Renomear Pastas", "Erro ao renomear pastas. " + e.message)
-                    }
+                    return null
                 }
-                return null
-            }
 
-            override fun succeeded() {
-                controllerPai.rootProgress.progressProperty().unbind()
-                controllerPai.rootMessage.textProperty().unbind()
-                controllerPai.clearProgress()
-                habilita()
+                override fun succeeded() {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    controllerPai.clearProgress()
+                    habilita(btnRenomear, "Renomear")
+                }
+
+                override fun failed() {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    controllerPai.clearProgress()
+                    habilita(btnRenomear, "Renomear")
+                }
             }
-        }
-        controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
-        controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
-        Thread(processar).start()
+            controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
+            controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
+            Thread(processar).start()
+        } else
+            mCANCELAR = true
     }
 
     private fun importarVolumes() {
@@ -1331,72 +1429,37 @@ class AbaPastasController : Initializable {
             }
         }
 
-        val ajustarTitulos = MenuItem("Ajustar títulos")
-        ajustarTitulos.setOnAction {
-            val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
-                tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
-            }
+        val ajustarTitulos = MenuItem("Ajustar títulos (Ctrl + T)")
+        ajustarTitulos.setOnAction { ajustarTitulos() }
 
-            if (lista.isEmpty()) {
-                AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado.")
-                return@setOnAction
-            }
+        val normalizarTitulo = MenuItem("Normalizar título (Ctrl + N)")
+        normalizarTitulo.setOnAction { normalizarTitulos() }
 
-            val regex = "(?i)^((ch|chapter|cap|capitulo|c|v|volume|vol)\\.?\\s*\\d+|\\d+)\\s*[:\\- ]+\\s*".toRegex()
-            for (item in lista) {
-                item.titulo = item.titulo.replace(regex, "").trim()
-            }
-            tbViewProcessar.refresh()
-        }
-
-        val normalizarTitulo = MenuItem("Normalizar título")
-        normalizarTitulo.setOnAction {
-            val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
-                tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
-            }
-
-            if (lista.isEmpty()) {
-                AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado.")
-                return@setOnAction
-            }
-
-            for (item in lista) {
-                if (item.titulo.isNotEmpty()) {
-                    item.titulo = item.titulo.lowercase(Locale.getDefault()).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-                }
-            }
-            tbViewProcessar.refresh()
-        }
-
-        val remover = MenuItem("Remover registro")
-        remover.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null)
-                if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover o registro?")) {
-                    mObsListaProcessar.remove(tbViewProcessar.selectionModel.selectedItem)
-                    tbViewProcessar.refresh()
-                }
-        }
+        val remover = MenuItem("Remover registro (Del)")
+        remover.setOnAction { removerRegistro() }
         menu.items.addAll(
-            scanProximos,
             scanAnterior,
+            scanProximos,
             SeparatorMenuItem(),
             volumesZerar,
             volumesImportar,
-            volumeProximos,
             volumeAnteriores,
+            volumeProximos,
             volumeFaltantes,
             SeparatorMenuItem(),
             apagarTitulo,
             ajustarTitulos,
             normalizarTitulo,
-            apagarTituloProximos,
             apagarTituloAnteriores,
+            apagarTituloProximos,
             SeparatorMenuItem(),
             remover
         )
 
         tbViewProcessar.contextMenu = menu
         this.contextMenu = menu
+
+        configurarAtalhosGrid()
 
         clMalId.cellValueFactory = PropertyValueFactory("idVisual")
         clMalNome.cellValueFactory = PropertyValueFactory("nome")
@@ -1410,6 +1473,115 @@ class AbaPastasController : Initializable {
 
         editaColunas()
         configurarDragAndDrop()
+    }
+
+    private fun ajustarTitulos() {
+        val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
+            tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
+        }
+
+        if (lista.isEmpty()) {
+            AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado.")
+            return
+        }
+
+        val regex = "(?i)^((ch|chapter|cap|capitulo|c|v|volume|vol)\\.?\\s*\\d+|\\d+)\\s*[:\\- ]+\\s*".toRegex()
+        for (item in lista) {
+            item.titulo = item.titulo.replace(regex, "").trim()
+        }
+        tbViewProcessar.refresh()
+    }
+
+    private fun normalizarTitulos() {
+        val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
+            tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
+        }
+
+        if (lista.isEmpty()) {
+            AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado.")
+            return
+        }
+
+        for (item in lista) {
+            if (item.titulo.isNotEmpty()) {
+                item.titulo = item.titulo.lowercase(Locale.getDefault()).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+            }
+        }
+        tbViewProcessar.refresh()
+    }
+
+    private fun removerRegistro() {
+        val selecionado = tbViewProcessar.selectionModel.selectedItem
+        if (selecionado != null) {
+            if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover o registro?")) {
+                mObsListaProcessar.remove(selecionado)
+                tbViewProcessar.refresh()
+            }
+        }
+    }
+
+    private fun configurarAtalhosGrid() {
+        tbViewProcessar.addEventFilter(KeyEvent.KEY_PRESSED) { e ->
+            when (e.code) {
+                KeyCode.DELETE -> {
+                    removerRegistro()
+                    e.consume()
+                }
+                KeyCode.T -> {
+                    if (e.isControlDown) {
+                        ajustarTitulos()
+                        e.consume()
+                    }
+                }
+                KeyCode.N -> {
+                    if (e.isControlDown) {
+                        normalizarTitulos()
+                        e.consume()
+                    }
+                }
+                in KeyCode.DIGIT0..KeyCode.DIGIT9, in KeyCode.NUMPAD0..KeyCode.NUMPAD9 -> {
+                    val digit = e.text
+                    if (digit.isNotEmpty()) {
+                        if (e.isControlDown) {
+                            volumeBuffer += digit
+                            e.consume()
+                        } else if (e.isAltDown) {
+                            chapterBuffer += digit
+                            e.consume()
+                        }
+                    }
+                }
+                else -> {}
+            }
+        }
+
+        tbViewProcessar.addEventFilter(KeyEvent.KEY_RELEASED) { e ->
+            if (volumeBuffer.isNotEmpty() && !e.isControlDown) {
+                val volumeValue = volumeBuffer.toFloatOrNull()
+                if (volumeValue != null) {
+                    val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
+                        tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
+                    }
+                    lista.forEach { it.volume = volumeValue }
+                    tbViewProcessar.refresh()
+                }
+                volumeBuffer = ""
+                e.consume()
+            }
+
+            if (chapterBuffer.isNotEmpty() && !e.isAltDown) {
+                val chapterValue = chapterBuffer.toFloatOrNull()
+                if (chapterValue != null) {
+                    val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
+                        tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
+                    }
+                    lista.forEach { it.capitulo = chapterValue }
+                    tbViewProcessar.refresh()
+                }
+                chapterBuffer = ""
+                e.consume()
+            }
+        }
     }
 
     private fun configurarDragAndDrop() {
@@ -1542,23 +1714,41 @@ class AbaPastasController : Initializable {
                                 atualizado = true
                             }
 
-                            val pastaDestino = File(diretorio, pasta)
+                            val volume = (regexVol.find(pasta)?.groups?.get(1)?.value?.replace(",", ".") ?: "0").toFloatOrNull() ?: 0f
+                            val decimal = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
+
+                            // 1. Tenta localizar uma capa já existente na grid para este volume
+                            var itemCapaExistente = mObsListaProcessar.find { it.isCapa && it.volume == volume }
+                            
+                            val pastaDestino: File
+                            if (itemCapaExistente != null) {
+                                pastaDestino = itemCapaExistente.pasta
+                            } else {
+                                // 2. Se não existir, gera o nome da pasta baseado no primeiro registro do volume na grid
+                                val primeiroDoVolume = mObsListaProcessar.firstOrNull { it.volume == volume }
+                                val nomePastaPadrao = if (primeiroDoVolume != null) {
+                                    "[${primeiroDoVolume.scan}] ${primeiroDoVolume.nome} - Volume ${decimal.format(volume)} Capa"
+                                } else {
+                                    pasta // Fallback para o nome do RAR
+                                }
+                                pastaDestino = File(diretorio, nomePastaPadrao)
+                            }
+
                             if (!pastaDestino.exists())
                                 pastaDestino.mkdirs()
-
-                            val volume = (regexVol.find(pasta)?.groups?.get(1)?.value?.replace(",", ".") ?: "0").toFloatOrNull() ?: 0f
 
                             capa.copyRecursively(pastaDestino, overwrite = true)
 
                             Platform.runLater {
-                                val itemExistente = mObsListaProcessar.find { it.volume == volume && it.isCapa }
-                                if (itemExistente == null) {
+                                if (itemCapaExistente == null) {
+                                    val primeiroDoVolume = mObsListaProcessar.firstOrNull { it.volume == volume }
                                     mObsListaProcessar.add(
                                         Pasta(
                                             pasta = pastaDestino,
-                                            arquivo = pasta,
-                                            nome = mangaNome,
+                                            arquivo = pastaDestino.name,
+                                            nome = primeiroDoVolume?.nome ?: mangaNome,
                                             volume = volume,
+                                            scan = primeiroDoVolume?.scan ?: "",
                                             isCapa = true,
                                             isSelecionado = true
                                         )
