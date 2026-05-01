@@ -4,7 +4,7 @@ import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.notification.Notificacoes
-import com.fenix.ordenararquivos.service.UpdateService
+import com.fenix.ordenararquivos.service.GoogleDriveDownloadService
 import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXTabPane
 import javafx.application.Platform
@@ -122,9 +122,9 @@ class TelaInicialController : Initializable {
         btnAtualizar.isDisable = true
         setCursor(Cursor.WAIT)
 
-        val updateService = UpdateService()
+        val updateService = GoogleDriveDownloadService()
         val task = object : Task<Void>() {
-            private var updateResult: UpdateService.UpdateResult? = null
+            private var updateResult: GoogleDriveDownloadService.UpdateResult? = null
 
             override fun call(): Void? {
                 updateResult = updateService.performUpdate { message, progress ->

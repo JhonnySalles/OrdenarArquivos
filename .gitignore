@@ -98,3 +98,4 @@ OrdenarArquivos/secrets.properties
 .agent/*
 OrdenarArquivos/.agent/*
 OrdenarArquivos/yarn.lock
+ordenarArquivos/secrets-drive.json

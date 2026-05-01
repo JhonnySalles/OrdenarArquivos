@@ -12,9 +12,9 @@ import java.net.URLEncoder
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
-class UpdateService {
+class GoogleDriveDownloadService {
 
-    private val mLOG = LoggerFactory.getLogger(UpdateService::class.java)
+    private val mLOG = LoggerFactory.getLogger(GoogleDriveDownloadService::class.java)
 
     fun extractFolderId(url: String): String {
         val regex = Regex("""folders/([a-zA-Z0-9_-]+)""")

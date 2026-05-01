@@ -92,6 +92,8 @@ object Configuracao {
                     secrets.setProperty("sentry_dns", "")
                     secrets.setProperty("sentry_environment", "")
                     secrets.setProperty("google_drive_api_key", "")
+                    secrets.setProperty("google_drive_refresh_token", "")
+                    secrets.setProperty("google_drive_folder_id", "")
                     secrets.store(os, "")
                 }
             } catch (e: IOException) {
@@ -114,4 +116,6 @@ object Configuracao {
     val geminiKey1: String get() = secrets.getProperty("gemini_api_key_1", "")
     val geminiKey2: String get() = secrets.getProperty("gemini_api_key_2", "")
     val googleDriveApiKey: String get() = secrets.getProperty("google_drive_api_key", "")
-}
+    val googleDriveRefreshToken: String get() = secrets.getProperty("google_drive_refresh_token", "")
+    val googleDriveFolderId: String get() = secrets.getProperty("google_drive_folder_id", "")
+}
