@@ -16,7 +16,10 @@ open class WinrarServices {
 
     open fun insereComicInfo(arquivo: File, info: File) = insereArquivo(arquivo, listOf(info))
 
-    open fun extraiComicInfo(arquivo: File): File? = Winrar.extrairArquivo(arquivo, Utils.COMICINFO)
+    open fun extraiComicInfo(arquivo: File, pasta: File = File(System.getProperty("user.dir"), "temp/")): File? {
+        if (!pasta.exists()) pasta.mkdirs()
+        return Winrar.extrairArquivo(arquivo, Utils.COMICINFO, pasta)
+    }
 
     open fun extrairTudo(arquivo: File, destino: File): Boolean = Winrar.extrairTudo(arquivo, destino)
     
@@ -32,7 +35,8 @@ open class WinrarServices {
                 arquivos.delete()
         }
 
-        return Winrar.extrairArquivo(arquivo, "*zSumário.*")
+        if (!pasta.exists()) pasta.mkdirs()
+        return Winrar.extrairArquivo(arquivo, "*zSumário.*", pasta)
     }
 
     open fun compactar(destino: File, zip: File, manga: Manga, comicInfo: ComicInfo, pastas: MutableList<File>, comic: MutableMap<String, File>, linguagem: Linguagem,

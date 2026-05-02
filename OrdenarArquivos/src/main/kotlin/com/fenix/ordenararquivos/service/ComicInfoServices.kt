@@ -258,10 +258,16 @@ class ComicInfoServices {
         buton.setOnAction { openSiteMal(manga.id) }
 
         var imageView : ImageView? = null
-        if (manga.mainPicture.mediumURL != null)
+        if (manga.mainPicture.largeURL != null)
+            imageView = ImageView(manga.mainPicture.largeURL)
+        else if (manga.mainPicture.mediumURL != null)
             imageView = ImageView(manga.mainPicture.mediumURL)
-        else if (manga.pictures.isNotEmpty() && manga.pictures[0].mediumURL != null)
-            imageView = ImageView(manga.pictures[0].mediumURL)
+        else if (manga.pictures.isNotEmpty()) {
+            if (manga.pictures[0].largeURL != null)
+                imageView = ImageView(manga.pictures[0].largeURL)
+            else if (manga.pictures[0].mediumURL != null)
+                imageView = ImageView(manga.pictures[0].mediumURL)
+        }
 
         if (imageView != null) {
             imageView.fitWidth = 170.0
