@@ -1,9 +1,5 @@
 package com.fenix.ordenararquivos.util
 
-import kotlin.also
-import kotlin.code
-import kotlin.text.substring
-
 /*
 NaturalOrderComparator.java -- Perform 'natural order' comparisons of strings in Java.
 Copyright (C) 2003 by Pierre-Luc Paour <natorder@paour.com>

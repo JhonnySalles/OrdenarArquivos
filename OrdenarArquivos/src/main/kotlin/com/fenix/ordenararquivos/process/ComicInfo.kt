@@ -2,15 +2,13 @@ package com.fenix.ordenararquivos.process
 
 import com.fenix.ordenararquivos.fileparse.ParseFactory
 import com.fenix.ordenararquivos.fileparse.RarParse
-import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo as Comic
+import com.fenix.ordenararquivos.model.entities.comicinfo.ComicPageType
 import com.fenix.ordenararquivos.model.entities.comicinfo.Manga
 import com.fenix.ordenararquivos.model.entities.comicinfo.Pages
-import com.fenix.ordenararquivos.model.entities.comicinfo.ComicPageType
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.util.Utils
 import jakarta.xml.bind.JAXBContext
-import jakarta.xml.bind.JAXBException
 import jakarta.xml.bind.Marshaller
 import javafx.scene.image.Image
 import javafx.util.Callback
@@ -18,30 +16,7 @@ import javafx.util.Pair
 import org.slf4j.LoggerFactory
 import java.io.*
 import java.util.*
-import kotlin.also
-import kotlin.collections.forEach
-import kotlin.collections.isNotEmpty
-import kotlin.jvm.java
-import kotlin.ranges.until
-import kotlin.text.contains
-import kotlin.text.endsWith
-import kotlin.text.equals
-import kotlin.text.indexOf
-import kotlin.text.isEmpty
-import kotlin.text.isNotEmpty
-import kotlin.text.lastIndexOf
-import kotlin.text.lowercase
-import kotlin.text.matches
-import kotlin.text.replace
-import kotlin.text.split
-import kotlin.text.substring
-import kotlin.text.substringAfterLast
-import kotlin.text.substringBefore
-import kotlin.text.substringBeforeLast
-import kotlin.text.toFloat
-import kotlin.text.toInt
-import kotlin.text.toRegex
-import kotlin.text.trim
+import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo as Comic
 
 object ComicInfo {
 

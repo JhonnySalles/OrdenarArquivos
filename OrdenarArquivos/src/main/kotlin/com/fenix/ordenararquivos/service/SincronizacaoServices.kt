@@ -36,7 +36,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.stream.Collectors
-import kotlin.String
 
 
 class SincronizacaoServices(private val controller: TelaInicialController) : TimerTask() {

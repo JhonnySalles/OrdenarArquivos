@@ -1,7 +1,5 @@
 package com.fenix.ordenararquivos.service
 
-import com.fenix.ordenararquivos.util.Utils
-
 class PastaParsingService {
 
     data class ParseResult(

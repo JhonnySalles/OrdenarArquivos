@@ -1,9 +1,9 @@
 package com.fenix.ordenararquivos.service
 
-import com.fenix.ordenararquivos.database.*
-import com.fenix.ordenararquivos.model.entities.*
-import com.fenix.ordenararquivos.service.ComicInfoServices
-import com.fenix.ordenararquivos.util.*
+import com.fenix.ordenararquivos.database.DataBase
+import com.fenix.ordenararquivos.model.entities.Caminhos
+import com.fenix.ordenararquivos.model.entities.Manga
+import com.fenix.ordenararquivos.util.Utils
 import org.slf4j.LoggerFactory
 import java.sql.*
 import java.time.LocalDateTime
