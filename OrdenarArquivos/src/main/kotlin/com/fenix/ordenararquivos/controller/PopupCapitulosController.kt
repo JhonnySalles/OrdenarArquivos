@@ -55,31 +55,31 @@ import java.util.*
 class PopupCapitulosController : Initializable {
 
     @FXML
-    private lateinit var hplMangaPlanet : Hyperlink
+    private lateinit var hplMangaPlanet: Hyperlink
 
     @FXML
-    private lateinit var hplComick : Hyperlink
+    private lateinit var hplComick: Hyperlink
 
     @FXML
-    private lateinit var hplTaiyo : Hyperlink
+    private lateinit var hplTaiyo: Hyperlink
 
     @FXML
-    private lateinit var hplMangaFire : Hyperlink
+    private lateinit var hplMangaFire: Hyperlink
 
     @FXML
-    private lateinit var hplMangaForest : Hyperlink
+    private lateinit var hplMangaForest: Hyperlink
 
     @FXML
-    private lateinit var hplMangaRead : Hyperlink
+    private lateinit var hplMangaRead: Hyperlink
 
     @FXML
-    private lateinit var hplMangaDex : Hyperlink
+    private lateinit var hplMangaDex: Hyperlink
 
     @FXML
-    private lateinit var hplZBato : Hyperlink
+    private lateinit var hplZBato: Hyperlink
 
     @FXML
-    private lateinit var hplMangaPark : Hyperlink
+    private lateinit var hplMangaPark: Hyperlink
 
     @FXML
     private lateinit var cbLinguagem: JFXComboBox<Linguagem>
@@ -195,7 +195,7 @@ class PopupCapitulosController : Initializable {
             if (match != null) {
                 val (chapterStr, title) = match.destructured
                 val chapterNumber = chapterStr.toDoubleOrNull() ?: 0.0
-                
+
                 val volumeNumber = 0.0
                 val volume = volumesMap.getOrPut(volumeNumber) { Volume(volume = volumeNumber) }
 
@@ -231,15 +231,15 @@ class PopupCapitulosController : Initializable {
         return fileChooser.showOpenDialog(null)
     }
 
-    fun setArquivos(arquivos : List<String>) {
+    fun setArquivos(arquivos: List<String>) {
         mArquivos = arquivos
         clArquivo.cellFactory = ComboBoxTableCell.forTableColumn(FXCollections.observableArrayList(arquivos))
         clArquivo.cellValueFactory = PropertyValueFactory("arquivo")
     }
 
-    fun setLinguagem(linguagem : Linguagem) = cbLinguagem.selectionModel.select(linguagem)
+    fun setLinguagem(linguagem: Linguagem) = cbLinguagem.selectionModel.select(linguagem)
 
-    fun setProcessar(processar : List<Processar>) {
+    fun setProcessar(processar: List<Processar>) {
         mProcessar = processar
     }
 
@@ -328,7 +328,7 @@ class PopupCapitulosController : Initializable {
     }
 
     private val mFormater = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
-    private fun formatar(valor : Double) : String = mFormater.format(valor)
+    private fun formatar(valor: Double): String = mFormater.format(valor)
 
     //Regex case insentive, no qual pode começar com capítulo, numero ou formato japoneas.
     private val mReplace = "(?i)^(ch|chapter|episode|第|[0-9])[0-9０-９ .]+(話|:)?".toRegex()
@@ -365,13 +365,15 @@ class PopupCapitulosController : Initializable {
                     }
                 }
 
-                val tags = capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + Utils.SEPARADOR_CAPITULO + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles }
+                val tags =
+                    capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + Utils.SEPARADOR_CAPITULO + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles }
                 volumes.add(Volume(arquivo = processar.arquivo, volume = processar.comicInfo?.volume?.toDouble() ?: 0.0, capitulos = capitulos, tags = tags))
             }
             volumes
         } else {
             for (item in lista) {
-                item.tags = item.capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + Utils.SEPARADOR_CAPITULO + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles }
+                item.tags =
+                    item.capitulos.joinToString(separator = "\n") { formatar(it.capitulo) + Utils.SEPARADOR_CAPITULO + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles }
                 item.arquivo = mArquivos.find { it.lowercase().contains("volume " + formatar(item.volume)) } ?: ""
             }
             lista
@@ -393,7 +395,7 @@ class PopupCapitulosController : Initializable {
     }
 
     //<--------------------------  Manga Planet  -------------------------->
-    internal fun extractMangaPlanet(pagina: Document) : List<Volume> {
+    internal fun extractMangaPlanet(pagina: Document): List<Volume> {
         val volumes = mutableListOf<Volume>()
 
         // Select each accordion item, which groups chapters under a volume title
@@ -417,14 +419,20 @@ class PopupCapitulosController : Initializable {
                     if (chapterNumber != null) {
                         val listItem = ulElement.selectFirst("li.list-group-item")
                         if (listItem != null) {
-                            val inglesTitulo = listItem.selectFirst("h3")?.let { it.selectFirst("p")?.text() ?: it.text()  }?.trim() ?: ""
+                            val inglesTitulo = listItem.selectFirst("h3")?.let { it.selectFirst("p")?.text() ?: it.text() }?.trim() ?: ""
                             val japanesTitulo = listItem.selectFirst("p span.jp_fonts")?.text()?.trim() ?: ""
 
                             val ingles = cleanEnglishTitle(inglesTitulo)
                             val japones = cleanJapaneseTitle(japanesTitulo)
 
                             if (ingles.isNotBlank() || japones.isNotBlank())
-                                currentVolume.capitulos.add(Capitulo(capitulo = chapterNumber, ingles = ingles.replace(mReplace, "").trim(), japones = japones.replace(mReplace, "").trim()))
+                                currentVolume.capitulos.add(
+                                    Capitulo(
+                                        capitulo = chapterNumber,
+                                        ingles = ingles.replace(mReplace, "").trim(),
+                                        japones = japones.replace(mReplace, "").trim()
+                                    )
+                                )
                         }
                     }
                 }
@@ -445,7 +453,11 @@ class PopupCapitulosController : Initializable {
     private fun cleanEnglishTitle(rawTitle: String): String {
         // Removes prefixes like "CHAPTER X: ", "BONUS CHAPTER: ", "Final Chapter: "
         var title = rawTitle
-        title = title.replaceFirst("""^(?:CHAPTER\s*[\d.]*\s*:\s*|BONUS CHAPTER\s*:\s*|Special one-shot\s*:\s*|Final Chapter\s*:\s*|CHAPTER\s*[\d.]*\s*-\s*|CHAPTER\s*[\d.]*\s+|CH\.[\d.]* )""".toRegex(RegexOption.IGNORE_CASE), "")
+        title = title.replaceFirst(
+            """^(?:CHAPTER\s*[\d.]*\s*:\s*|BONUS CHAPTER\s*:\s*|Special one-shot\s*:\s*|Final Chapter\s*:\s*|CHAPTER\s*[\d.]*\s*-\s*|CHAPTER\s*[\d.]*\s+|CH\.[\d.]* )""".toRegex(
+                RegexOption.IGNORE_CASE
+            ), ""
+        )
         // Specific case for "CHAPTER X: Title" without space after colon found in data
         title = title.replaceFirst("""^CHAPTER\s*\d+:""".toRegex(RegexOption.IGNORE_CASE), "")
         // For titles like "াCHAPTER 206: You've ended up this way."
@@ -460,7 +472,7 @@ class PopupCapitulosController : Initializable {
     }
 
     //<--------------------------  Comick  -------------------------->
-    internal fun extractComick(pagina: Document) : List<Volume> {
+    internal fun extractComick(pagina: Document): List<Volume> {
         val rawChapterEntries = mutableListOf<TempCapInfo>()
         val chapterRows = pagina.select("table tbody tr.group")
 
@@ -553,7 +565,7 @@ class PopupCapitulosController : Initializable {
     )
 
     //<--------------------------  Manga Fire  -------------------------->
-    internal fun extractMangaFire(pagina: Document) : List<Volume> {
+    internal fun extractMangaFire(pagina: Document): List<Volume> {
         val volume = Volume(volume = -1.0, capitulos = mutableListOf())
 
         // Seleciona a lista de capítulos
@@ -583,7 +595,7 @@ class PopupCapitulosController : Initializable {
 
                         // Se o regex não encontrou nada mas o texto não é apenas o prefixo do capítulo
                         if (title.isEmpty() && !fullText.matches("""(?i)^.*?(?:Chapter|Ch\.?|Ch)\s*[\d.]+$""".toRegex())) {
-                             title = fullText
+                            title = fullText
                         }
                     }
                     // Adiciona o capítulo. O campo 'ingles' é usado como título principal na UI se não for japonês.
@@ -598,7 +610,7 @@ class PopupCapitulosController : Initializable {
     }
 
     //<--------------------------  Tayo -------------------------->
-    internal fun extractTayo(pagina: Document) : List<Volume> {
+    internal fun extractTayo(pagina: Document): List<Volume> {
         val volumesList = mutableListOf<Volume>()
 
         // Seleciona cada bloco de volume
@@ -617,7 +629,7 @@ class PopupCapitulosController : Initializable {
             for (container in chapterContainers) {
                 val pElement = container.selectFirst("p.line-clamp-1")
                 val fullText = pElement?.text()?.trim() ?: ""
-                
+
                 val chapNumSpan = pElement?.selectFirst("span.font-medium")
                 val chapNumStr = chapNumSpan?.text()?.trim()
                 val chapNum = chapNumStr?.toDoubleOrNull() ?: extractChapterNumber(fullText)
@@ -686,7 +698,7 @@ class PopupCapitulosController : Initializable {
     }
 
     //<--------------------------  MangaForest -------------------------->
-    internal fun extractMangaForest(pagina: Document) : List<Volume> {
+    internal fun extractMangaForest(pagina: Document): List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
         val chapterList = pagina.getElementById("chapter-list-inner")
         val chapters = chapterList?.getElementsByTag("li")
@@ -721,7 +733,7 @@ class PopupCapitulosController : Initializable {
     }
 
     //<--------------------------  MangaRead -------------------------->
-    internal fun extractMangaRead(pagina: Document) : List<Volume> {
+    internal fun extractMangaRead(pagina: Document): List<Volume> {
         // Mapa para armazenar os volumes. Como não há volumes explícitos, usaremos 0.0 como padrão.
         val volumesMap = mutableMapOf<Double, Volume>()
 
@@ -757,7 +769,7 @@ class PopupCapitulosController : Initializable {
     }
 
     //<--------------------------  MangaDex -------------------------->
-    internal fun extractMangaDex(pagina: Document) : List<Volume> {
+    internal fun extractMangaDex(pagina: Document): List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
         val numberRegex = Regex("""[\d.]+""")
         val selectedLang = cbLinguagem.selectionModel.selectedItem
@@ -801,7 +813,7 @@ class PopupCapitulosController : Initializable {
                     extractedTitle = description
                     break
                 }
-                
+
                 // Mantém a primeira versão encontrada como fallback caso a selecionada não exista
                 if (fallbackTitle.isEmpty()) {
                     fallbackTitle = description
@@ -820,7 +832,7 @@ class PopupCapitulosController : Initializable {
     }
 
     //<--------------------------  Zbato -------------------------->
-    internal fun extractZBato(pagina: Document) : List<Volume> {
+    internal fun extractZBato(pagina: Document): List<Volume> {
         // Mapa para agrupar capítulos por volume. Usaremos 0.0 como padrão.
         val volumesMap = mutableMapOf<Double, Volume>()
         // Conjunto para rastrear capítulos já processados e evitar duplicatas (v2).
@@ -878,7 +890,7 @@ class PopupCapitulosController : Initializable {
     }
 
     //<--------------------------  MangaPark -------------------------->
-    internal fun extractMangaPark(pagina: Document) : List<Volume> {
+    internal fun extractMangaPark(pagina: Document): List<Volume> {
         val volume = Volume(volume = -1.0, capitulos = mutableListOf())
 
         // MangaPark lists chapters in li.item elements under div.tab-content[data-name="chapter"]
@@ -970,7 +982,8 @@ class PopupCapitulosController : Initializable {
             val item = param.value
             var descricao = ""
             if (item.capitulos.isNotEmpty())
-                descricao = item.capitulos.joinToString(separator = "\n") { capitulo.format(it.capitulo) + ": " + if (cbLinguagem.value == Linguagem.JAPANESE) it.japones else it.ingles }
+                descricao =
+                    item.capitulos.joinToString(separator = "\n") { capitulo.format(it.capitulo) + ": " + if (cbLinguagem.value == Linguagem.JAPANESE) it.japones else it.ingles }
 
             SimpleStringProperty(descricao)
         }
@@ -991,7 +1004,7 @@ class PopupCapitulosController : Initializable {
         listeners()
         tbViewTabela.items = mLista
 
-        for (button in arrayOf(hplMangaPlanet, hplTaiyo, hplComick, hplMangaFire, hplMangaForest, hplMangaRead, hplMangaDex, hplZBato, hplMangaPark))
+        for (button in arrayOf(hplComick, hplTaiyo, hplMangaDex, hplMangaFire, hplMangaPlanet, hplMangaForest, hplMangaRead, hplZBato, hplMangaPark))
             button.setOnAction { openSite(button.text) }
 
         val menu = javafx.scene.control.ContextMenu()

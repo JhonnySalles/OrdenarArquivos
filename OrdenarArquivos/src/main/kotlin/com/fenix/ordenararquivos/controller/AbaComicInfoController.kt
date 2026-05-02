@@ -294,7 +294,10 @@ class AbaComicInfoController : Initializable {
                 val linhas = mutableListOf<String>()
                 val separador = Utils.SEPARADOR_CAPITULO
                 for (linha in item.tags.split("\n"))
-                    linhas.add(if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) linha.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim() + " - " + linha.substringAfterLast(separador) else linha)
+                    linhas.add(
+                        if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) linha.substringBefore(Utils.SEPARADOR_IMPORTACAO)
+                            .trim() + " - " + linha.substringAfterLast(separador) else linha
+                    )
 
                 item.tags = linhas.joinToString(separator = "\n")
             }
@@ -397,7 +400,8 @@ class AbaComicInfoController : Initializable {
 
                         val capitulos = mOcrService.processOcr(sumario, Utils.SEPARADOR_PAGINA, separador).split("\n")
                         val newTag = mutableSetOf<String>()
-                        val tags = item.comicInfo?.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
+                        val tags = item.comicInfo?.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList()
+                            ?: emptyList()
 
                         var index = -1
                         for (tag in tags) {
@@ -493,7 +497,8 @@ class AbaComicInfoController : Initializable {
                                 ComicInfo()
                             }
 
-                            val bookMarks = comic.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toSet() ?: emptySet()
+                            val bookMarks =
+                                comic.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toSet() ?: emptySet()
                             val processar = JFXButton("Processar").apply { id = "btnProcessar_${i}" }
                             val amazon = JFXButton("Amazon").apply { id = "btnAmazon_${i}" }
                             val salvar = JFXButton("Salvar").apply { id = "btnSalvar_${i}" }
@@ -503,7 +508,7 @@ class AbaComicInfoController : Initializable {
                             processar.styleClass.add("background-White1")
                             processar.setOnAction { processarOcrItem(item) }
                             amazon.styleClass.add("background-White1")
-                            amazon.setOnAction { openSiteAmazon(item)}
+                            amazon.setOnAction { openSiteAmazon(item) }
                             salvar.styleClass.add("background-White1")
                             salvar.setOnAction { salvarComicInfoItem(item) }
 
@@ -514,7 +519,7 @@ class AbaComicInfoController : Initializable {
                             mObsListaProcessar = FXCollections.observableArrayList(lista)
                             tbViewProcessar.items = mObsListaProcessar
                             atualizaCheckTodosProcessado()
-                            
+
                             val lastLang = lista.lastOrNull()?.comicInfo?.languageISO
                             if (!lastLang.isNullOrEmpty()) {
                                 val lingua = Linguagem.getEnum(lastLang)
@@ -529,6 +534,7 @@ class AbaComicInfoController : Initializable {
                     }
                     return null
                 }
+
                 override fun succeeded() {
                     updateMessage("Arquivos carregados com sucesso.")
                     controllerPai.rootProgress.progressProperty().unbind()
@@ -571,15 +577,21 @@ class AbaComicInfoController : Initializable {
 
                 capitulo.lowercase().let {
                     if (it.contains("第") || it.contains("chapter") || it.contains("capítulo")) {
-                        val numero = if (it.contains("第"))
-                            Utils.fromNumberJapanese(it.substringBefore("-").replace("第", "Chapter ").replace("話", "").trim())
+                        val hasDelimiter = capitulo.contains("-") || capitulo.contains("—")
+                        val delimiter = if (capitulo.contains("—")) "—" else "-"
+
+                        val chapterPart = if (hasDelimiter) capitulo.substringBefore(delimiter).trim() else capitulo.trim()
+                        val numero = if (chapterPart.lowercase().contains("第"))
+                            Utils.fromNumberJapanese(chapterPart.lowercase().replace("第", "Chapter ").replace("話", "").trim())
                         else
-                            it.substringBefore("-").replace("capítulo", "Chapter").replace("chapter", "Chapter").trim()
-                        
-                        val tituloCapitulo = capitulo.substringAfter("-").trim()
-                        if (tituloCapitulo.isNotEmpty()) temTitulo = true
-                        
-                        sbSumario.append(numero).append(": ").append(tituloCapitulo).append("\n")
+                            chapterPart.lowercase().replace("capítulo", "Chapter").replace("chapter", "Chapter").trim()
+
+                        val tituloCapitulo = if (hasDelimiter) capitulo.substringAfter(delimiter).trim() else ""
+
+                        if (tituloCapitulo.isNotEmpty() && !tituloCapitulo.equals(chapterPart, ignoreCase = true)) {
+                            temTitulo = true
+                            sbSumario.append(Utils.normaliza(numero)).append(": ").append(tituloCapitulo).append("\n")
+                        }
                     }
                 }
 
@@ -614,7 +626,7 @@ class AbaComicInfoController : Initializable {
         }
     }
 
-    private fun salvarItens(startIndex: Int = 0, endIndex : Int = 0) {
+    private fun salvarItens(startIndex: Int = 0, endIndex: Int = 0) {
         controllerPai.setCursor(Cursor.WAIT)
         desabilita(btnSalvarTodos)
         val list = mObsListaProcessar.toList()
@@ -635,6 +647,7 @@ class AbaComicInfoController : Initializable {
                 }
                 return null
             }
+
             override fun succeeded() {
                 updateMessage("ComicInfo salvo com sucesso.")
                 controllerPai.rootProgress.progressProperty().unbind()
@@ -702,7 +715,7 @@ class AbaComicInfoController : Initializable {
         val header = if (series.isNotEmpty()) "$series - $title" else title
 
         val tags = item.comicInfo?.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { p ->
-            val b = p.bookmark!!.substringBefore("-", p.bookmark!!).trim()
+            val b = p.bookmark!!.split("-", "—")[0].trim()
             val mark = b.lowercase()
             val prefix = if (mark.contains("第") || mark.contains("capítulo") || mark.contains("capitulo") || mark.contains("chapter")) {
                 val capitulo = Utils.getNumber(if (mark.contains("第")) Utils.fromNumberJapanese(b) else b) ?: 0.0
@@ -710,10 +723,10 @@ class AbaComicInfoController : Initializable {
                     Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(mDecimal.format(capitulo))}話"
                     Linguagem.PORTUGUESE -> "Capítulo ${mDecimal.format(capitulo)}"
                     else -> "Chapter ${mDecimal.format(capitulo)}"
-                } + if (isAjustar) " - " + p.bookmark!!.substringAfterLast("-").trim() else ""
+                } + if (isAjustar) " — " + p.bookmark!!.substringAfterLast("-").substringAfterLast("—").trim() else ""
             } else b
 
-            p.image.toString() + Utils.SEPARADOR_IMAGEM + prefix + if (header.isNotEmpty()) " " + Utils.SEPARADOR_IMPORTACAO + " " + header else ""
+            p.image.toString() + Utils.SEPARADOR_IMAGEM + prefix
         }?.toList() ?: emptyList()
         item.tags = tags.joinToString(separator = "\n")
     }
@@ -728,19 +741,20 @@ class AbaComicInfoController : Initializable {
                     tags.add(linha.substringBefore(Utils.SEPARADOR_CAPITULO) + Utils.SEPARADOR_CAPITULO + Utils.normaliza(linha.substringAfter(Utils.SEPARADOR_CAPITULO)))
                 else
                     tags.add(linha)
-            } else if (ln.contains("第") || ln.contains("capítulo")  || ln.contains("capitulo") || ln.contains("chapter")) {
+            } else if (ln.contains("第") || ln.contains("capítulo") || ln.contains("capitulo") || ln.contains("chapter")) {
                 val imagem = linha.substringBefore(Utils.SEPARADOR_IMAGEM)
-                var capitulo = linha.substringAfter(Utils.SEPARADOR_IMAGEM).substringBefore("-").trim()
+                var capitulo = linha.substringAfter(Utils.SEPARADOR_IMAGEM).split("-", "—")[0].trim()
                 val numero = Utils.getNumber(if (capitulo.contains("第")) Utils.fromNumberJapanese(capitulo) else capitulo) ?: 0.0
                 capitulo = when (language) {
                     Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(mDecimal.format(numero))}話"
                     Linguagem.PORTUGUESE -> "Capítulo ${mDecimal.format(numero)}"
                     else -> "Chapter ${mDecimal.format(numero)}"
                 }
-                val titulo = if (linhas.contains(Utils.SEPARADOR_IMPORTACAO))
-                    " ${Utils.SEPARADOR_IMPORTACAO} " + linha.substringAfter(Utils.SEPARADOR_IMPORTACAO).substringBefore(Utils.SEPARADOR_CAPITULO).trim() + Utils.SEPARADOR_CAPITULO + Utils.normaliza(linha.substringAfterLast(Utils.SEPARADOR_CAPITULO).trim())
-                else if (linha.contains("-"))
-                    " - " + Utils.normaliza(linha.substringAfter("-").trim())
+                val titulo = if (linha.contains(Utils.SEPARADOR_IMPORTACAO))
+                    " ${Utils.SEPARADOR_IMPORTACAO} " + linha.substringAfter(Utils.SEPARADOR_IMPORTACAO).substringBefore(Utils.SEPARADOR_CAPITULO)
+                        .trim() + Utils.SEPARADOR_CAPITULO + Utils.normaliza(linha.substringAfterLast(Utils.SEPARADOR_CAPITULO).trim())
+                else if (linha.contains("-") || linha.contains("—"))
+                    " — " + Utils.normaliza(if (linha.contains("—")) linha.substringAfter("—").trim() else linha.substringAfter("-").trim())
                 else
                     ""
                 tags.add(imagem + Utils.SEPARADOR_IMAGEM + capitulo + titulo)
@@ -782,14 +796,19 @@ class AbaComicInfoController : Initializable {
             return@setCellValueFactory booleanProp
         }
         clProcessado.setCellFactory {
-            val cell : CheckBoxTableCellCustom<Processar, Boolean> = CheckBoxTableCellCustom()
+            val cell: CheckBoxTableCellCustom<Processar, Boolean> = CheckBoxTableCellCustom()
             cell.alignment = Pos.CENTER
             cell
         }
 
-        clTags.cellFactory = TextAreaTableCell.forTableColumn(Tooltip("Com o shift e alt pressionados poderá ser executado algumas funções no texto apresentado, são eles:\n" +
-                "Shift + Alt + Enter: Aplicação da tag gerada aos capítulos.\nShift + Alt + Delete: Apaga a linha selecionada.\nShift + Alt + Left: Aplicar as tags da linha selecionada.\n" +
-                "Shift + Alt + Acima/Baixo: Move a tag da linha selecionada para cima ou baixo, movimentando outras tags subjacentes."))
+        clTags.cellFactory = TextAreaTableCell.forTableColumn(
+            Tooltip(
+                "Com o shift e alt pressionados poderá ser executado algumas funções no texto apresentado, são eles:\n" +
+                        "Shift + Alt + Enter: Aplicação da tag gerada aos capítulos.\nShift + Alt + Delete: Apaga a linha selecionada.\nShift + Alt + Left: Aplicar as tags da linha selecionada.\n" +
+                        "Shift + Alt + Right: Aplicar capítulo importado da linha selecionada.\n" +
+                        "Shift + Alt + Acima/Baixo: Move a tag da linha selecionada para cima ou baixo, movimentando outras tags subjacentes."
+            )
+        )
         clTags.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
             e.tableView.items[e.tablePosition.row].tags = e.newValue
         }
@@ -797,7 +816,7 @@ class AbaComicInfoController : Initializable {
         val menu = ContextMenu()
 
         // GRUPO TAGS
-        val tagsAnteriores = MenuItem("Gerar Tags até o item atual")
+        val tagsAnteriores = MenuItem("Gerar Tags até o Item Atual")
         tagsAnteriores.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 controllerPai.setCursor(Cursor.WAIT)
@@ -809,6 +828,7 @@ class AbaComicInfoController : Initializable {
                 controllerPai.setCursor(null)
             }
         }
+
         val tags = MenuItem("Gerar Tags (Ctrl + T)")
         tags.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
@@ -817,6 +837,7 @@ class AbaComicInfoController : Initializable {
                 tbViewProcessar.refresh()
             }
         }
+
         val tagsAjustar = MenuItem("Ajustar Tags (Ctrl + A)")
         tagsAjustar.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
@@ -825,6 +846,7 @@ class AbaComicInfoController : Initializable {
                 tbViewProcessar.refresh()
             }
         }
+
         val tagsNormalizar = MenuItem("Normalizar Tags (Ctrl + N)")
         tagsNormalizar.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
@@ -832,6 +854,20 @@ class AbaComicInfoController : Initializable {
                 normalizarTagItem(tbViewProcessar.selectionModel.selectedItem, language)
                 tbViewProcessar.refresh()
             }
+        }
+
+        val tagsDoArquivo = MenuItem("Gerar Tags do Arquivo")
+        tagsDoArquivo.setOnAction {
+            val item = tbViewProcessar.selectionModel.selectedItem
+            if (item != null)
+                gerarTagsDoArquivo(item)
+        }
+
+        val atualizarPaginaTag = MenuItem("Atualizar Página da Tag")
+        atualizarPaginaTag.setOnAction {
+            val item = tbViewProcessar.selectionModel.selectedItem
+            if (item != null)
+                atualizarPaginaTag(item)
         }
 
         // GRUPO OCR
@@ -842,19 +878,21 @@ class AbaComicInfoController : Initializable {
         }
 
         // GRUPO SALVAR
-        val salvarAnteriores = MenuItem("Salvar ComicInfo do inicio até o item atual")
+        val salvarAnteriores = MenuItem("Salvar ComicInfo do Inicio até o Atual")
         salvarAnteriores.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem)
                 salvarItens(startIndex = 0, endIndex = index + 1)
             }
         }
+
         val salvar = MenuItem("Salvar ComicInfo (Ctrl + S)")
         salvar.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null)
                 salvarComicInfoItem(tbViewProcessar.selectionModel.selectedItem)
         }
-        val salvarPosteriores = MenuItem("Salvar ComicInfo do atual até o item final")
+
+        val salvarPosteriores = MenuItem("Salvar ComicInfo do Atual até o Final")
         salvarPosteriores.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem)
@@ -863,11 +901,12 @@ class AbaComicInfoController : Initializable {
         }
 
         // GRUPO GERAL
-        val recarregar = MenuItem("Recarregar ComicInfo")
+        val recarregar = MenuItem("Recarregar ComicInfo do Item Atual")
         recarregar.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null)
                 recarregarComicInfoItem(tbViewProcessar.selectionModel.selectedItem)
         }
+
         val remover = MenuItem("Remover registro (Del)")
         remover.setOnAction {
             val selected = tbViewProcessar.selectionModel.selectedItems.toList()
@@ -883,6 +922,8 @@ class AbaComicInfoController : Initializable {
             tags,
             tagsAjustar,
             tagsNormalizar,
+            atualizarPaginaTag,
+            tagsDoArquivo,
             SeparatorMenuItem(),
             processar,
             SeparatorMenuItem(),
@@ -916,10 +957,15 @@ class AbaComicInfoController : Initializable {
                         val linhas = mutableListOf<String>()
                         val separador = Utils.SEPARADOR_CAPITULO
                         for (linha in txt.split("\n"))
-                            linhas.add(if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) linha.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim() + " - " + linha.substringAfterLast(separador) else linha)
+                            linhas.add(
+                                if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) linha.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim() + " — " + linha.substringAfterLast(
+                                    separador
+                                ) else linha
+                            )
 
                         textArea.replaceText(0, textArea.length, linhas.joinToString(separator = "\n"))
                     }
+
                     KeyCode.DELETE -> {
                         if (textArea.text.isEmpty() || !textArea.text.contains("\n"))
                             return@setOnKeyPress true
@@ -939,6 +985,7 @@ class AbaComicInfoController : Initializable {
                         textArea.scrollTop = scroll
                         key.consume()
                     }
+
                     KeyCode.LEFT -> {
                         if (textArea.text.isEmpty() || !textArea.text.contains("\n") || !textArea.text.contains(Utils.SEPARADOR_IMPORTACAO))
                             return@setOnKeyPress true
@@ -957,12 +1004,45 @@ class AbaComicInfoController : Initializable {
                             return@setOnKeyPress true
 
                         val separador = Utils.SEPARADOR_CAPITULO
-                        val newLine = line.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim() + " - " + line.substringAfterLast(separador)
+                        val newLine = line.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim() + " — " + line.substringAfterLast(separador)
                         textArea.replaceText(0, textArea.length, before + newLine + last)
-                        val caret = before.length + newLine.lastIndexOf(" - ")
+                        val caret = before.length + newLine.lastIndexOf(" — ")
                         textArea.positionCaret(caret)
                         textArea.scrollTop = scroll
                     }
+
+                    KeyCode.RIGHT -> {
+                        if (textArea.text.isEmpty() || !textArea.text.contains("\n") || !textArea.text.contains(Utils.SEPARADOR_IMPORTACAO))
+                            return@setOnKeyPress true
+
+                        val lastCaretPos = textArea.caretPosition
+                        val txt = textArea.text ?: ""
+                        val scroll = textArea.scrollTopProperty().value
+
+                        var before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
+                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
+                        val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
+                        before = before.substringBeforeLast(line)
+
+                        if (!line.contains(Utils.SEPARADOR_IMPORTACAO))
+                            return@setOnKeyPress true
+
+                        val separador = Utils.SEPARADOR_CAPITULO
+                        val importedPart = line.substringAfterLast(separador).trim()
+                        val prefix = line.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
+
+                        val newLine = if (importedPart.lowercase().contains("capítulo") || importedPart.contains("—") || importedPart.contains(" - ")) {
+                            line.substringBefore(Utils.SEPARADOR_IMAGEM) + Utils.SEPARADOR_IMAGEM + importedPart.replace(" - ", " — ")
+                        } else {
+                            val cleanPrefix = prefix.split("-", "—")[0].trim()
+                            line.substringBefore(Utils.SEPARADOR_IMAGEM) + Utils.SEPARADOR_IMAGEM + cleanPrefix + " — " + importedPart
+                        }
+
+                        textArea.replaceText(0, textArea.length, before + newLine + last)
+                        textArea.positionCaret(before.length + newLine.length)
+                        textArea.scrollTop = scroll
+                    }
+
                     KeyCode.UP,
                     KeyCode.DOWN -> {
                         if (textArea.text.isEmpty() || !textArea.text.contains("\n") || !textArea.text.contains(Utils.SEPARADOR_IMPORTACAO))
@@ -1007,7 +1087,8 @@ class AbaComicInfoController : Initializable {
                                     inicio = spaco + 1
 
                                 for (i in inicio until index + 1) {
-                                    linhas[i-1] = linhas[i-1] + if (linhas[i].contains(Utils.SEPARADOR_IMPORTACAO)) Utils.SEPARADOR_IMPORTACAO + linhas[i].substringAfter(Utils.SEPARADOR_IMPORTACAO) else ""
+                                    linhas[i - 1] =
+                                        linhas[i - 1] + if (linhas[i].contains(Utils.SEPARADOR_IMPORTACAO)) Utils.SEPARADOR_IMPORTACAO + linhas[i].substringAfter(Utils.SEPARADOR_IMPORTACAO) else ""
                                     linhas[i] = linhas[i].substringBefore(Utils.SEPARADOR_IMPORTACAO)
                                 }
                             }
@@ -1022,11 +1103,12 @@ class AbaComicInfoController : Initializable {
                                 }
 
                                 var inicio = linhas.size - 2
-                                if (spaco > 0 && spaco < linhas.size -1)
+                                if (spaco > 0 && spaco < linhas.size - 1)
                                     inicio = spaco - 1
 
                                 for (i in inicio downTo index) {
-                                    linhas[i+1] = linhas[i+1] + if (linhas[i].contains(Utils.SEPARADOR_IMPORTACAO)) Utils.SEPARADOR_IMPORTACAO + linhas[i].substringAfter(Utils.SEPARADOR_IMPORTACAO) else ""
+                                    linhas[i + 1] =
+                                        linhas[i + 1] + if (linhas[i].contains(Utils.SEPARADOR_IMPORTACAO)) Utils.SEPARADOR_IMPORTACAO + linhas[i].substringAfter(Utils.SEPARADOR_IMPORTACAO) else ""
                                     linhas[i] = linhas[i].substringBefore(Utils.SEPARADOR_IMPORTACAO)
                                 }
                             }
@@ -1051,6 +1133,7 @@ class AbaComicInfoController : Initializable {
                         textArea.positionCaret(caret)
                         textArea.scrollTop = scroll
                     }
+
                     else -> {}
                 }
             }
@@ -1063,7 +1146,7 @@ class AbaComicInfoController : Initializable {
     private fun configurarAtalhosGrid() {
         tbViewProcessar.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED) { e ->
             if (e.target is javafx.scene.control.TextInputControl) return@addEventFilter
-            
+
             val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
             val selecionado = tbViewProcessar.selectionModel.selectedItem
             val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
@@ -1071,7 +1154,7 @@ class AbaComicInfoController : Initializable {
             if (e.code.isLetterKey && !e.isControlDown && !e.isAltDown) {
                 val letter = e.code.name.lowercase()
                 val startIdx = if (selecionado != null) mObsListaProcessar.indexOf(selecionado) + 1 else 0
-                
+
                 var foundIdx = -1
                 for (i in startIdx until mObsListaProcessar.size) {
                     if (mObsListaProcessar[i].arquivo.lowercase().startsWith(letter)) {
@@ -1103,6 +1186,7 @@ class AbaComicInfoController : Initializable {
                         e.consume()
                     }
                 }
+
                 KeyCode.T -> {
                     if (e.isControlDown) {
                         gerarTagItem(selecionado, language)
@@ -1110,12 +1194,14 @@ class AbaComicInfoController : Initializable {
                         e.consume()
                     }
                 }
+
                 KeyCode.O -> {
                     if (e.isControlDown) {
                         processarOcrItem(selecionado)
                         e.consume()
                     }
                 }
+
                 KeyCode.A -> {
                     if (e.isControlDown) {
                         gerarTagItem(selecionado, language, isAjustar = true)
@@ -1123,6 +1209,7 @@ class AbaComicInfoController : Initializable {
                         e.consume()
                     }
                 }
+
                 KeyCode.N -> {
                     if (e.isControlDown) {
                         normalizarTagItem(selecionado, language)
@@ -1130,6 +1217,7 @@ class AbaComicInfoController : Initializable {
                         e.consume()
                     }
                 }
+
                 KeyCode.DELETE -> {
                     if (selecionados.isNotEmpty()) {
                         if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
@@ -1139,8 +1227,195 @@ class AbaComicInfoController : Initializable {
                         e.consume()
                     }
                 }
+
                 else -> {}
             }
+        }
+    }
+
+    private fun gerarTagsDoArquivo(item: Processar) {
+        val file = item.file ?: return
+        val conteudo = mRarService.listarConteudo(file).sortedNaturally()
+        if (conteudo.isEmpty()) return
+
+        val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+        val newTags = mutableListOf<String>()
+        val mapCapitulos = mutableMapOf<String, String>()
+
+        // 1. Extrair títulos existentes das tags atuais
+        item.tags.split("\n").forEach { linha ->
+            if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                val cap = linha.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim().substringBefore(Utils.SEPARADOR_CAPITULO).trim()
+                val titulo = linha.substringAfterLast(Utils.SEPARADOR_CAPITULO).trim()
+                if (cap.isNotEmpty() && titulo.isNotEmpty()) mapCapitulos[cap] = titulo
+            } else if (linha.contains("-") || linha.contains("—")) {
+                val cap = linha.substringAfter(Utils.SEPARADOR_IMAGEM).trim().split("-", "—")[0].trim()
+                val titulo = if (linha.contains("—")) linha.substringAfter("—").trim() else linha.substringAfter("-").trim()
+                if (cap.isNotEmpty() && titulo.isNotEmpty()) {
+                    val num = Utils.getNumber(if (cap.contains("第")) Utils.fromNumberJapanese(cap) else cap)
+                    if (num != null) mapCapitulos[mDecimal.format(num)] = titulo
+                }
+            }
+        }
+
+        // 2. Extrair títulos do resumo
+        item.comicInfo?.summary?.let { summary ->
+            if (summary.lowercase().contains("*chapter titles manual*") || summary.lowercase().contains("*chapter titles*")) {
+                val lines = summary.split("\n")
+                lines.forEach { line ->
+                    if (line.contains(":")) {
+                        val cap = line.substringBefore(":").replace(Regex("(?i)chapter|capítulo|第|話"), "").trim()
+                        val titulo = line.substringAfter(":").trim()
+                        val num = Utils.getNumber(if (cap.contains("第")) Utils.fromNumberJapanese(cap) else cap)
+                        if (num != null && titulo.isNotEmpty()) mapCapitulos[mDecimal.format(num)] = titulo
+                    }
+                }
+            }
+        }
+
+        val chaptersFound = mutableSetOf<String>()
+        conteudo.forEachIndexed { index, path ->
+            val fileName = path.lowercase()
+            val folder = path.substringBeforeLast("/", "").substringBeforeLast("\\", "").lowercase()
+
+            var tag: String? = null
+            if (folder.contains("capa") || fileName.contains("frente") || fileName.contains("tras") || fileName.contains("tudo") || fileName.contains("sumario") || fileName.contains(
+                    "sumário"
+                )
+            ) {
+                tag = when {
+                    fileName.contains("frente") -> "Cover"
+                    fileName.contains("tras") -> "Back"
+                    fileName.contains("tudo") -> "All cover"
+                    fileName.contains("sumario") || fileName.contains("sumário") -> "Sumary"
+                    else -> null
+                }
+            }
+
+            if (tag == null) {
+                // Tenta identificar capítulos por pastas
+                val regexCap = Regex("(?i)(capítulo|chapter|第)\\s*([\\d.]+)")
+                val match = regexCap.find(path)
+                if (match != null) {
+                    val tipo = match.groupValues[1]
+                    val numeroStr = match.groupValues[2]
+                    val numero = Utils.getNumber(numeroStr)
+                    if (numero != null) {
+                        val formatado = mDecimal.format(numero)
+                        val folderPath = path.substringBeforeLast("/", path).substringBeforeLast("\\", path)
+                        if (!chaptersFound.contains(folderPath)) {
+                            chaptersFound.add(folderPath)
+                            val prefix = when (language) {
+                                Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(formatado)}話"
+                                Linguagem.ENGLISH -> "Chapter $formatado"
+                                else -> "Capítulo $formatado"
+                            }
+                            val titulo = mapCapitulos[formatado]
+                            tag = if (titulo != null) {
+                                "$prefix ${Utils.SEPARADOR_IMPORTACAO} $formatado${Utils.SEPARADOR_CAPITULO}$titulo"
+                            } else {
+                                prefix
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (tag != null) {
+                newTags.add("$index${Utils.SEPARADOR_IMAGEM}$tag")
+            }
+        }
+
+        if (newTags.isNotEmpty()) {
+            item.tags = newTags.joinToString("\n")
+            tbViewProcessar.refresh()
+        }
+    }
+
+    private fun atualizarPaginaTag(item: Processar) {
+        val file = item.file ?: return
+        val conteudo = mRarService.listarConteudo(file).sortedNaturally()
+        if (conteudo.isEmpty()) return
+
+        val tags = item.tags.split("\n")
+        val updatedTags = mutableListOf<String>()
+
+        tags.forEach { tagLine ->
+            if (tagLine.isBlank()) return@forEach
+
+            val parts = tagLine.split(Utils.SEPARADOR_IMAGEM, limit = 2)
+            if (parts.size < 2) {
+                updatedTags.add(tagLine)
+                return@forEach
+            }
+
+            val tagText = parts[1]
+            val tagTextLower = tagText.lowercase()
+
+            var foundIndex = -1
+
+            // 1. Identificar o que procurar no RAR
+            if (tagTextLower.contains("cover") || tagTextLower.contains("frente")) {
+                foundIndex = conteudo.indexOfFirst { it.lowercase().contains("frente") }
+            } else if (tagTextLower.contains("back") || tagTextLower.contains("tras")) {
+                foundIndex = conteudo.indexOfFirst { it.lowercase().contains("tras") }
+            } else if (tagTextLower.contains("all cover") || tagTextLower.contains("tudo")) {
+                foundIndex = conteudo.indexOfFirst { it.lowercase().contains("tudo") }
+            } else if (tagTextLower.contains("sumary") || tagTextLower.contains("sumario") || tagTextLower.contains("sumário")) {
+                foundIndex = conteudo.indexOfFirst { it.lowercase().contains("sumario") || it.lowercase().contains("sumário") }
+            } else {
+                // Procurar por capítulo
+                val capInfo = if (tagText.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                    tagText.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim().substringBefore(Utils.SEPARADOR_CAPITULO).trim()
+                } else {
+                    val match = Regex("(?i)(capítulo|chapter|第)\\s*([\\d.]+)").find(tagText)
+                    if (match != null) {
+                        val num = Utils.getNumber(match.groupValues[2])
+                        if (num != null) mDecimal.format(num) else null
+                    } else null
+                }
+
+                if (capInfo != null) {
+                    val num = Utils.getNumber(capInfo)
+                    if (num != null) {
+                        val formatado = mDecimal.format(num)
+                        // Procura a primeira página de uma pasta que contenha o número do capítulo
+                        foundIndex = conteudo.indexOfFirst { path ->
+                            val folder = path.substringBeforeLast("/", path).substringBeforeLast("\\", path).lowercase()
+                            folder.contains(formatado) || folder.contains(num.toInt().toString())
+                        }
+                    }
+                }
+            }
+
+            if (foundIndex != -1) {
+                updatedTags.add("$foundIndex${Utils.SEPARADOR_IMAGEM}$tagText")
+            } else {
+                updatedTags.add(tagLine)
+            }
+        }
+
+        item.tags = updatedTags.joinToString("\n")
+        tbViewProcessar.refresh()
+    }
+
+    private fun List<String>.sortedNaturally(): List<String> {
+        val regex = "(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)".toRegex()
+        return this.sortedWith { s1, s2 ->
+            val chunks1 = s1.split(regex)
+            val chunks2 = s2.split(regex)
+            var result = 0
+            for (i in 0 until minOf(chunks1.size, chunks2.size)) {
+                val c1 = chunks1[i]
+                val c2 = chunks2[i]
+                if (c1 != c2) {
+                    val n1 = c1.toLongOrNull()
+                    val n2 = c2.toLongOrNull()
+                    result = if (n1 != null && n2 != null) n1.compareTo(n2) else c1.compareTo(c2, ignoreCase = true)
+                    if (result != 0) break
+                }
+            }
+            if (result == 0) chunks1.size.compareTo(chunks2.size) else result
         }
     }
 
