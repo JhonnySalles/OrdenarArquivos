@@ -4,7 +4,8 @@ import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.controller.AbaMangaController
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.model.entities.Manga
-import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.notification.AlertasModal
+import com.fenix.ordenararquivos.notification.ConfirmaModal
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.jfoenix.controls.JFXButton
@@ -88,16 +89,17 @@ class AbaMangaUiTest : BaseTest() {
 
     @BeforeEach
     fun setUp(robot: FxRobot) {
-        AlertasPopup.isTeste = true
-        AlertasPopup.testResult = true
+        AlertasModal.isTeste = true
+        ConfirmaModal.isTeste = true
+        ConfirmaModal.testResult = true
         Mockito.reset(mockMangaService, mockComicInfoService, mockTelaInicialController)
 
         // Injeta o controller pai e mocks de progresso
         controller.controllerPai = mockTelaInicialController
 
         // Inicializa containers estáticos para notificações e alertas
-        AlertasPopup.rootStackPane = rootStack
-        AlertasPopup.nodeBlur = rootNode
+        ConfirmaModal.rootStackPane = rootStack
+        ConfirmaModal.nodeBlur = rootNode
         com.fenix.ordenararquivos.notification.Notificacoes.rootAnchorPane = rootNode as AnchorPane
 
         whenever(mockTelaInicialController.rootProgress)
@@ -305,8 +307,8 @@ class AbaMangaUiTest : BaseTest() {
 
     @AfterEach
     fun tearDown() {
-        AlertasPopup.isTeste = false
-        AlertasPopup.lastAlertTitle = null
-        AlertasPopup.lastAlertText = null
+        AlertasModal.isTeste = false
+        AlertasModal.lastAlertTitle = null
+        AlertasModal.lastAlertText = null
     }
 }

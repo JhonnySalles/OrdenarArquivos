@@ -1,7 +1,7 @@
 package com.fenix.ordenararquivos.ui
 
 import com.fenix.ordenararquivos.BaseTest
-import com.fenix.ordenararquivos.controller.PopupCapitulos
+import com.fenix.ordenararquivos.controller.PopupCapitulosController
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.model.entities.capitulos.Volume
 import com.jfoenix.controls.JFXButton
@@ -19,17 +19,19 @@ import org.jsoup.nodes.Document
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.Answers
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.MockedStatic
 import org.mockito.Mockito
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.whenever
+import java.io.File
 import org.testfx.api.FxRobot
 import org.testfx.framework.junit5.ApplicationExtension
 import org.testfx.framework.junit5.Start
 import org.testfx.util.WaitForAsyncUtils
-import java.io.File
 import java.util.concurrent.TimeUnit
 
 @Tag("UI")
@@ -37,7 +39,7 @@ import java.util.concurrent.TimeUnit
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class PopupCapitulosUiTest : BaseTest() {
 
-    private lateinit var popupController: PopupCapitulos
+    private lateinit var popupController: PopupCapitulosController
     private lateinit var mockJsoup: MockedStatic<Jsoup>
     private lateinit var mockConnection: Connection
     private lateinit var mockDocument: Document
@@ -49,10 +51,10 @@ class PopupCapitulosUiTest : BaseTest() {
         whenever(mockTelaInicialController.rootStack).thenReturn(StackPane())
         whenever(mockTelaInicialController.rootTab).thenReturn(JFXTabPane())
 
-        val loader = FXMLLoader(PopupCapitulos.fxmlLocate)
+        val loader = FXMLLoader(PopupCapitulosController.fxmlLocate)
         loader.setControllerFactory { controllerClass ->
-            if (controllerClass == PopupCapitulos::class.java) {
-                PopupCapitulos().also { popupController = it }
+            if (controllerClass == PopupCapitulosController::class.java) {
+                PopupCapitulosController().also { popupController = it }
             } else {
                 controllerClass.getDeclaredConstructor().newInstance()
             }
@@ -66,7 +68,10 @@ class PopupCapitulosUiTest : BaseTest() {
 
     @BeforeEach
     fun setUp(robot: FxRobot) {
-        mockJsoup = Mockito.mockStatic(Jsoup::class.java)
+        com.fenix.ordenararquivos.notification.AlertasModal.isTeste = true
+        com.fenix.ordenararquivos.notification.AlertasModal.lastAlertText = null
+ 
+        mockJsoup = Mockito.mockStatic(Jsoup::class.java, Answers.CALLS_REAL_METHODS)
         mockConnection = mock<Connection>()
         mockDocument = mock<Document>()
 

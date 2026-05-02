@@ -364,8 +364,7 @@ class AbaComicInfoController : Initializable {
 
         btnProcessar.accessibleTextProperty().set("PROCESSA")
         btnProcessar.text = "Processar ComicInfo"
-
-        controllerPai.setCursor(null)
+        if (::controller.isInitialized) controllerPai.setCursor(null)
     }
 
     private var mCANCELAR = false
@@ -1130,6 +1129,7 @@ class AbaComicInfoController : Initializable {
 
         linkaCelulas()
         configurarAtalhosGrid()
+        habilita()
     }
 
     companion object {

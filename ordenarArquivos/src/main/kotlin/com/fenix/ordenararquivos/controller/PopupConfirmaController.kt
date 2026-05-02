@@ -16,6 +16,9 @@ class PopupConfirmaController : Initializable {
 
     companion object {
         val IMG_CONFIRMA: Image = Image(PopupConfirmaController::class.java.getResourceAsStream("/images/alert/icoConfirma_48.png"))
+        val IMG_AVISO: Image = Image(PopupConfirmaController::class.java.getResourceAsStream("/images/alert/icoAviso_48.png"))
+        val IMG_ALERTA: Image = Image(PopupConfirmaController::class.java.getResourceAsStream("/images/alert/icoAlerta_48.png"))
+        val IMG_ERRO: Image = Image(PopupConfirmaController::class.java.getResourceAsStream("/images/alert/icoErro_48.png"))
         val fxmlLocate: URL get() = PopupConfirmaController::class.java.getResource("/view/PopupConfirmar.fxml") as URL
     }
 
@@ -45,6 +48,22 @@ class PopupConfirmaController : Initializable {
 
         if (texto.isNotEmpty())
             txtTexto.text = texto
+    }
+
+    fun aviso() {
+        imgIcone.image = IMG_AVISO
+    }
+
+    fun alerta() {
+        imgIcone.image = IMG_ALERTA
+    }
+
+    fun erro() {
+        imgIcone.image = IMG_ERRO
+    }
+
+    fun confirmacao() {
+        imgIcone.image = IMG_CONFIRMA
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {

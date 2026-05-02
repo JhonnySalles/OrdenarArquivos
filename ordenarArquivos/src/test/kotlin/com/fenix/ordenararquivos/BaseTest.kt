@@ -51,10 +51,11 @@ abstract class BaseTest {
     fun baseSetUp() {
         mLOG.info("Configurando ambiente de teste (:memory:)...")
         DataBase.isTeste = true
-        com.fenix.ordenararquivos.notification.AlertasPopup.isTeste = true
-        com.fenix.ordenararquivos.notification.AlertasPopup.testResult = true
-        com.fenix.ordenararquivos.notification.AlertasPopup.rootStackPane = javafx.scene.layout.StackPane()
-        com.fenix.ordenararquivos.notification.AlertasPopup.nodeBlur = javafx.scene.layout.StackPane()
+        com.fenix.ordenararquivos.notification.AlertasModal.isTeste = true
+        com.fenix.ordenararquivos.notification.ConfirmaModal.isTeste = true
+        com.fenix.ordenararquivos.notification.ConfirmaModal.testResult = true
+        com.fenix.ordenararquivos.notification.ConfirmaModal.rootStackPane = javafx.scene.layout.StackPane()
+        com.fenix.ordenararquivos.notification.ConfirmaModal.nodeBlur = javafx.scene.layout.StackPane()
         DataBase.closeConnection()
 
         mKeepAlive = DriverManager.getConnection("jdbc:sqlite:file:testdb?mode=memory&cache=shared")
@@ -92,7 +93,8 @@ abstract class BaseTest {
     @AfterAll
     fun baseTearDown() {
         mLOG.info("Limpando ambiente de teste...")
-        com.fenix.ordenararquivos.notification.AlertasPopup.isTeste = false
+        com.fenix.ordenararquivos.notification.AlertasModal.isTeste = false
+        com.fenix.ordenararquivos.notification.ConfirmaModal.isTeste = false
         DataBase.closeConnection()
         mKeepAlive?.close()
         mKeepAlive = null

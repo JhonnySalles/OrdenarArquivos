@@ -8,7 +8,7 @@ import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
-import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.notification.AlertasModal
 import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.process.Ocr
 import com.fenix.ordenararquivos.service.ComicInfoServices
@@ -90,8 +90,9 @@ class AbaArquivoUiTest : BaseTest() {
         Ocr.isTeste = true
 
         try {
-            AlertasPopup.rootStackPane = StackPane()
-            AlertasPopup.nodeBlur = AnchorPane()
+            AlertasModal.isTeste = true
+            AlertasModal.lastAlertTitle = null
+            AlertasModal.lastAlertText = null
             Notificacoes.rootAnchorPane = AnchorPane()
         } catch (e: Exception) {}
 
@@ -481,7 +482,7 @@ class AbaArquivoUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
 
         robot.interact {
-            AlertasPopup.lastAlertText = null
+            AlertasModal.lastAlertText = null
             val txtMalId = robot.lookup("#txtMalId").queryAs(JFXTextField::class.java)
             (txtMalId.parent as javafx.scene.layout.Pane).requestFocus()
             txtMalId.text = ""
@@ -490,17 +491,17 @@ class AbaArquivoUiTest : BaseTest() {
         robot.clickOn("#btnMalConsultar")
 
         // Espera explícita pelo alerta
-        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { AlertasPopup.lastAlertText != null }
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { AlertasModal.lastAlertText != null }
 
-        assertEquals("Alerta", AlertasPopup.lastAlertTitle)
+        assertEquals("Alerta", AlertasModal.lastAlertTitle)
         assertTrue(
-                AlertasPopup.lastAlertText?.lowercase()?.contains("id ou nome") == true,
+                AlertasModal.lastAlertText?.lowercase()?.contains("id ou nome") == true,
                 "Mensagem de erro de MAL não encontrada"
         )
 
         // Testar Aplicar sem seleção
         robot.interact {
-            AlertasPopup.lastAlertText = null
+            AlertasModal.lastAlertText = null
             robot.lookup("#tbViewMal")
                     .queryAs(TableView::class.java)
                     .selectionModel

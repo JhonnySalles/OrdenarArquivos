@@ -2,7 +2,7 @@ package com.fenix.ordenararquivos.ui
 
 import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.controller.AbaPastasController
-import com.fenix.ordenararquivos.controller.PopupAmazon
+import com.fenix.ordenararquivos.controller.PopupAmazonController
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.model.entities.Caminhos
@@ -11,7 +11,8 @@ import com.fenix.ordenararquivos.model.entities.Pasta
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
-import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.notification.AlertasModal
+import com.fenix.ordenararquivos.notification.ConfirmaModal
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.WinrarServices
@@ -64,7 +65,7 @@ class AbaPastasUiTest : BaseTest() {
     private lateinit var mockRarService: WinrarServices
 
     @TempDir lateinit var tempDir: Path
-    private lateinit var mockPopupAmazon: MockedStatic<PopupAmazon>
+    private lateinit var mockPopupAmazon: MockedStatic<PopupAmazonController>
 
     companion object {
         private var staticKeepAlive: java.sql.Connection? = null
@@ -139,16 +140,16 @@ class AbaPastasUiTest : BaseTest() {
 
     @BeforeEach
     fun setUp(robot: FxRobot) {
-        AlertasPopup.isTeste = true
-        AlertasPopup.lastAlertText = null
-        AlertasPopup.lastAlertTitle = null
-
+        AlertasModal.isTeste = true
+        AlertasModal.lastAlertText = null
+        AlertasModal.lastAlertTitle = null
+ 
         // Inicializa containers estáticos para notificações e alertas
-        AlertasPopup.rootStackPane = rootStack
-        AlertasPopup.nodeBlur = rootNode
+        ConfirmaModal.rootStackPane = rootStack
+        ConfirmaModal.nodeBlur = rootNode
         com.fenix.ordenararquivos.notification.Notificacoes.rootAnchorPane = rootNode as AnchorPane
 
-        mockPopupAmazon = Mockito.mockStatic(PopupAmazon::class.java)
+        mockPopupAmazon = Mockito.mockStatic(PopupAmazonController::class.java)
 
         Mockito.reset(
                 mockMangaService,
@@ -503,24 +504,24 @@ class AbaPastasUiTest : BaseTest() {
         val btnCarregar = robot.lookup("#btnCarregar").queryAs(JFXButton::class.java)
 
         robot.interact {
-            AlertasPopup.lastAlertText = null
+            AlertasModal.lastAlertText = null
             txtPasta.text = ""
         }
         robot.interact { btnCarregar.fire() }
         WaitForAsyncUtils.waitForFxEvents()
 
-        assertEquals("Alerta", AlertasPopup.lastAlertTitle)
+        assertEquals("Alerta", AlertasModal.lastAlertTitle)
 
         val btnRenomearLocal = robot.lookup("#btnRenomear").queryAs(JFXButton::class.java)
         robot.interact {
-            AlertasPopup.lastAlertText = null
+            AlertasModal.lastAlertText = null
             txtPasta.text = "caminho/qualquer"
             (robot.lookup("#cbManga").queryAs(JFXComboBox::class.java) as JFXComboBox<String>).value = null
         }
         robot.interact { btnRenomearLocal.fire() }
         WaitForAsyncUtils.waitForFxEvents()
 
-        assertEquals("Alerta", AlertasPopup.lastAlertTitle)
+        assertEquals("Alerta", AlertasModal.lastAlertTitle)
     }
 
     @AfterEach
@@ -528,9 +529,9 @@ class AbaPastasUiTest : BaseTest() {
         if (::mockPopupAmazon.isInitialized) {
             mockPopupAmazon.close()
         }
-        AlertasPopup.isTeste = false
-        AlertasPopup.lastAlertTitle = null
-        AlertasPopup.lastAlertText = null
+        AlertasModal.isTeste = false
+        AlertasModal.lastAlertTitle = null
+        AlertasModal.lastAlertText = null
     }
 
     @Test
@@ -790,10 +791,10 @@ class AbaPastasUiTest : BaseTest() {
         robot.clickOn("#btnCompactar")
         WaitForAsyncUtils.waitForFxEvents()
 
-        assertEquals("Alerta", AlertasPopup.lastAlertTitle)
+        assertEquals("Alerta", AlertasModal.lastAlertTitle)
         assertTrue(
-                AlertasPopup.lastAlertText?.contains("Erro") == true ||
-                        AlertasPopup.lastAlertTitle == "Alerta"
+                AlertasModal.lastAlertText?.contains("Erro") == true ||
+                        AlertasModal.lastAlertTitle == "Alerta"
         )
     }
 

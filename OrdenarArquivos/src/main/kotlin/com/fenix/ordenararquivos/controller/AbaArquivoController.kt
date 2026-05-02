@@ -721,7 +721,7 @@ class AbaArquivoController : Initializable {
         lsVwHistorico.isDisable = false
         btnProcessar.accessibleTextProperty().set("PROCESSA")
         btnProcessar.text = "Processar"
-        controllerPai.setCursor(null)
+        if (::controller.isInitialized) controllerPai.setCursor(null)
     }
 
     private fun validaCampos(isCapa: Boolean = false, isAjusteNome: Boolean = false): Boolean {
@@ -3089,6 +3089,7 @@ class AbaArquivoController : Initializable {
         lsVwHistorico.items = FXCollections.observableArrayList()
         acdArquivos.expandedPane = ttpArquivos
         configuraDragAndDrop()
+        habilita()
     }
 
     private fun setupSincronizacao() {

@@ -27,6 +27,10 @@ import javax.imageio.ImageIO
 object AlertasModal {
     private val mLOG: Logger = LoggerFactory.getLogger(AlertasModal::class.java)
 
+    var isTeste: Boolean = false
+    var lastAlertTitle: String? = null
+    var lastAlertText: String? = null
+
 
     fun aviso(titulo: String, texto: String) {
         mostrar(titulo, texto, Alerta.AVISO)
@@ -41,6 +45,11 @@ object AlertasModal {
     }
 
     private fun mostrar(titulo: String, texto: String, tipo: Alerta) {
+        if (isTeste) {
+            lastAlertTitle = titulo
+            lastAlertText = texto
+            return
+        }
         try {
             val loader = FXMLLoader(PopupAlertaController.fxmlLocate)
             val scPnTelaPrincipal: AnchorPane = loader.load()

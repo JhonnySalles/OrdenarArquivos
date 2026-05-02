@@ -5,7 +5,7 @@ import com.fenix.ordenararquivos.controller.AbaComicInfoController
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.enums.Linguagem
-import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.notification.AlertasModal
 import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.process.Ocr
 import com.fenix.ordenararquivos.service.OcrServices
@@ -122,15 +122,13 @@ class AbaComicInfoUiTest : BaseTest() {
     @BeforeEach
     fun setUp() {
         Ocr.isTeste = true
-        AlertasPopup.isTeste = true
-        AlertasPopup.testResult = true
-        AlertasPopup.lastAlertTitle = null
-        AlertasPopup.lastAlertText = null
-
+        AlertasModal.isTeste = true
+        AlertasModal.lastAlertTitle = null
+        AlertasModal.lastAlertText = null
+ 
         // Inicialização de componentes estáticos de UI para evitar
         // UninitializedPropertyAccessException
-        AlertasPopup.rootStackPane = rootStack
-        AlertasPopup.nodeBlur = rootNode
+        // AlertasModal não precisa de rootStackPane manual aqui como o AlertasPopup precisava
 
         if (rootNode is AnchorPane) {
             Notificacoes.rootAnchorPane = rootNode as AnchorPane
@@ -159,9 +157,9 @@ class AbaComicInfoUiTest : BaseTest() {
     fun tearDown() {
         mockOcr?.close()
         mockOcr = null
-        AlertasPopup.isTeste = false
-        AlertasPopup.lastAlertTitle = null
-        AlertasPopup.lastAlertText = null
+        AlertasModal.isTeste = false
+        AlertasModal.lastAlertTitle = null
+        AlertasModal.lastAlertText = null
         Mockito.validateMockitoUsage()
     }
 

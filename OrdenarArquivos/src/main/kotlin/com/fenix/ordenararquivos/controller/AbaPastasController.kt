@@ -732,7 +732,7 @@ class AbaPastasController : Initializable {
         tbViewProcessar.isDisable = false
         ckbSelecionarTodos.isDisable = false
         cbApagarArquivo.isDisable = false
-        controllerPai.setCursor(null)
+        if (::controller.isInitialized) controllerPai.setCursor(null)
 
         activeButton?.let {
             it.accessibleTextProperty().set(originalText.uppercase())
@@ -1868,6 +1868,7 @@ class AbaPastasController : Initializable {
         linkaCelulas()
         configuraTextEdit()
         configuraComboBox()
+        habilita()
     }
 
     private fun validarRegistros() {

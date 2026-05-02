@@ -1,7 +1,7 @@
 package com.fenix.ordenararquivos.service
 
 import com.fenix.ordenararquivos.BaseTest
-import com.fenix.ordenararquivos.controller.AbaArquivoController
+import com.fenix.ordenararquivos.controller.TelaInicialController
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeEach
@@ -14,7 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension
 internal class SincronizacaoServicesTest : BaseTest() {
 
     @Mock
-    lateinit var controller: AbaArquivoController
+    lateinit var controller: TelaInicialController
 
     private lateinit var sincronizacaoServices: SincronizacaoServices
 

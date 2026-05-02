@@ -68,9 +68,9 @@ class PopupAmazonUiTest : BaseTest() {
         }
         WaitForAsyncUtils.waitForFxEvents()
         
-        // Reset AlertasPopup
-        com.fenix.ordenararquivos.notification.AlertasPopup.isTeste = true
-        com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText = null
+        // Reset AlertasModal
+        com.fenix.ordenararquivos.notification.AlertasModal.isTeste = true
+        com.fenix.ordenararquivos.notification.AlertasModal.lastAlertText = null
     }
 
     @AfterEach
@@ -119,10 +119,10 @@ class PopupAmazonUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
         
         WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) { 
-            txtTitulo.text == "Manga Title EN" || com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText != null
+            txtTitulo.text == "Manga Title EN" || com.fenix.ordenararquivos.notification.AlertasModal.lastAlertText != null
         }
 
-        assertNull(com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText, "Should not have error: ${com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText}")
+        assertNull(com.fenix.ordenararquivos.notification.AlertasModal.lastAlertText, "Should not have error: ${com.fenix.ordenararquivos.notification.AlertasModal.lastAlertText}")
         assertEquals("Manga Title EN", txtTitulo.text)
         assertEquals("Publisher EN", txtEditora.text)
         assertEquals("2024-01-01", dpPublicacao.value.toString())
@@ -143,10 +143,10 @@ class PopupAmazonUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
 
         WaitForAsyncUtils.waitFor(3, TimeUnit.SECONDS) { 
-            txtTitulo.text == "Manga Title JP" || com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText != null
+            txtTitulo.text == "Manga Title JP" || com.fenix.ordenararquivos.notification.AlertasModal.lastAlertText != null
         }
 
-        assertNull(com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText, "Should not have error: ${com.fenix.ordenararquivos.notification.AlertasPopup.lastAlertText}")
+        assertNull(com.fenix.ordenararquivos.notification.AlertasModal.lastAlertText, "Should not have error: ${com.fenix.ordenararquivos.notification.AlertasModal.lastAlertText}")
         assertEquals("Manga Title JP", txtTitulo.text)
     }
 
