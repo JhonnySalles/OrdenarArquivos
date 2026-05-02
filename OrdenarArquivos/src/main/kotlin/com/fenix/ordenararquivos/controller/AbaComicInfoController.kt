@@ -514,6 +514,12 @@ class AbaComicInfoController : Initializable {
                             mObsListaProcessar = FXCollections.observableArrayList(lista)
                             tbViewProcessar.items = mObsListaProcessar
                             atualizaCheckTodosProcessado()
+                            
+                            val lastLang = lista.lastOrNull()?.comicInfo?.languageISO
+                            if (!lastLang.isNullOrEmpty()) {
+                                val lingua = Linguagem.getEnum(lastLang)
+                                if (lingua != null) cbLinguagem.selectionModel.select(lingua)
+                            }
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao carregar itens para processamento de mangas.", e)
@@ -643,6 +649,27 @@ class AbaComicInfoController : Initializable {
         Thread(processar).start()
     }
 
+    private fun recarregarComicInfoItem(item: Processar) {
+        val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
+        val info: File? = mRarService.extraiComicInfo(item.file!!)
+        val comic: ComicInfo = if (info != null && info.exists()) {
+            try {
+                val unmarshaller = jaxb.createUnmarshaller()
+                unmarshaller.unmarshal(info) as ComicInfo
+            } catch (e: Exception) {
+                mLOG.error(e.message, e)
+                ComicInfo()
+            }
+        } else {
+            ComicInfo()
+        }
+        item.comicInfo = comic
+        val bookMarks = comic.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toSet() ?: emptySet()
+        item.tags = bookMarks.joinToString(separator = "\n")
+        item.arquivo = item.file!!.name
+        tbViewProcessar.refresh()
+    }
+
     private fun processarOcrItem(item: Processar) {
         val sumario = mRarService.extraiSumario(item.file!!, mPASTA_TEMPORARIA) ?: return
         val capitulos = mOcrService.processOcr(sumario, Utils.SEPARADOR_PAGINA, Utils.SEPARADOR_CAPITULO).split("\n")
@@ -735,6 +762,13 @@ class AbaComicInfoController : Initializable {
     private fun editaColunas() {
         clTitulo.cellFactory = TextAreaTableCell.forTableColumn()
         clSerie.cellFactory = TextAreaTableCell.forTableColumn()
+        clResumo.cellFactory = TextAreaTableCell.forTableColumn()
+        clResumo.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
+            val item = e.tableView.items[e.tablePosition.row]
+            if (item.comicInfo != null) {
+                item.comicInfo!!.summary = e.newValue
+            }
+        }
 
         clProcessado.setCellValueFactory { param ->
             val item = param.value
@@ -829,11 +863,17 @@ class AbaComicInfoController : Initializable {
         }
 
         // GRUPO GERAL
+        val recarregar = MenuItem("Recarregar ComicInfo")
+        recarregar.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null)
+                recarregarComicInfoItem(tbViewProcessar.selectionModel.selectedItem)
+        }
         val remover = MenuItem("Remover registro (Del)")
         remover.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null)
+            val selected = tbViewProcessar.selectionModel.selectedItems.toList()
+            if (selected.isNotEmpty())
                 if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
-                    mObsListaProcessar.remove(tbViewProcessar.selectionModel.selectedItem)
+                    mObsListaProcessar.removeAll(selected)
                     tbViewProcessar.refresh()
                 }
         }
@@ -850,14 +890,15 @@ class AbaComicInfoController : Initializable {
             salvar,
             salvarPosteriores,
             SeparatorMenuItem(),
+            recarregar,
             remover
         )
 
         tbViewProcessar.contextMenu = menu
         tbViewProcessar.setOnKeyPressed { event ->
-            if (event.code == KeyCode.DELETE && tbViewProcessar.selectionModel.selectedItem != null)
+            if (event.code == KeyCode.DELETE && tbViewProcessar.selectionModel.selectedItems.isNotEmpty())
                 if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
-                    mObsListaProcessar.remove(tbViewProcessar.selectionModel.selectedItem)
+                    mObsListaProcessar.removeAll(tbViewProcessar.selectionModel.selectedItems.toList())
                     tbViewProcessar.refresh()
                 }
         }
@@ -1021,8 +1062,39 @@ class AbaComicInfoController : Initializable {
 
     private fun configurarAtalhosGrid() {
         tbViewProcessar.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED) { e ->
-            val selecionado = tbViewProcessar.selectionModel.selectedItem ?: return@addEventFilter
+            if (e.target is javafx.scene.control.TextInputControl) return@addEventFilter
+            
+            val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
+            val selecionado = tbViewProcessar.selectionModel.selectedItem
             val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+
+            if (e.code.isLetterKey && !e.isControlDown && !e.isAltDown) {
+                val letter = e.code.name.lowercase()
+                val startIdx = if (selecionado != null) mObsListaProcessar.indexOf(selecionado) + 1 else 0
+                
+                var foundIdx = -1
+                for (i in startIdx until mObsListaProcessar.size) {
+                    if (mObsListaProcessar[i].arquivo.lowercase().startsWith(letter)) {
+                        foundIdx = i
+                        break
+                    }
+                }
+                if (foundIdx == -1) {
+                    for (i in 0 until startIdx) {
+                        if (mObsListaProcessar[i].arquivo.lowercase().startsWith(letter)) {
+                            foundIdx = i
+                            break
+                        }
+                    }
+                }
+                if (foundIdx != -1) {
+                    tbViewProcessar.selectionModel.clearAndSelect(foundIdx)
+                    tbViewProcessar.scrollTo(foundIdx)
+                }
+                return@addEventFilter
+            }
+
+            if (selecionado == null && e.code != KeyCode.DELETE) return@addEventFilter
 
             when (e.code) {
                 KeyCode.S -> {
@@ -1059,11 +1131,13 @@ class AbaComicInfoController : Initializable {
                     }
                 }
                 KeyCode.DELETE -> {
-                    if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
-                        mObsListaProcessar.remove(selecionado)
-                        tbViewProcessar.refresh()
+                    if (selecionados.isNotEmpty()) {
+                        if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
+                            mObsListaProcessar.removeAll(selecionados)
+                            tbViewProcessar.refresh()
+                        }
+                        e.consume()
                     }
-                    e.consume()
                 }
                 else -> {}
             }

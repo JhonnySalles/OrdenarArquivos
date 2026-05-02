@@ -868,6 +868,7 @@ class AbaPastasController : Initializable {
                 override fun succeeded() {
                     mObsListaMal = FXCollections.observableArrayList(listaResults)
                     tbViewMal.items = mObsListaMal
+                    tbViewMal.refresh()
 
                     if (listaResults.isEmpty())
                         Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
@@ -1508,6 +1509,7 @@ class AbaPastasController : Initializable {
         clMalNome.cellValueFactory = PropertyValueFactory("nome")
         clMalSite.cellValueFactory = PropertyValueFactory("site")
         clMalImagem.cellValueFactory = PropertyValueFactory("imagem")
+        tbViewMal.items = mObsListaMal
 
         tbViewMal.onMouseClicked = EventHandler { click: MouseEvent ->
             if (click.clickCount > 1 && tbViewMal.items.isNotEmpty())
@@ -1554,10 +1556,10 @@ class AbaPastasController : Initializable {
     }
 
     private fun removerRegistro() {
-        val selecionado = tbViewProcessar.selectionModel.selectedItem
-        if (selecionado != null) {
+        val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
+        if (selecionados.isNotEmpty()) {
             if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
-                mObsListaProcessar.remove(selecionado)
+                mObsListaProcessar.removeAll(selecionados)
                 tbViewProcessar.refresh()
             }
         }
@@ -1565,6 +1567,37 @@ class AbaPastasController : Initializable {
 
     private fun configurarAtalhosGrid() {
         tbViewProcessar.addEventFilter(KeyEvent.KEY_PRESSED) { e ->
+            if (e.target is javafx.scene.control.TextInputControl) return@addEventFilter
+            
+            if (e.code.isLetterKey && !e.isControlDown && !e.isAltDown) {
+                val selecionado = tbViewProcessar.selectionModel.selectedItem
+                val letter = e.code.name.lowercase()
+                val startIdx = if (selecionado != null) mObsListaProcessar.indexOf(selecionado) + 1 else 0
+                
+                var foundIdx = -1
+                for (i in startIdx until mObsListaProcessar.size) {
+                    if (mObsListaProcessar[i].arquivo.lowercase().startsWith(letter)) {
+                        foundIdx = i
+                        break
+                    }
+                }
+                if (foundIdx == -1) {
+                    for (i in 0 until startIdx) {
+                        if (mObsListaProcessar[i].arquivo.lowercase().startsWith(letter)) {
+                            foundIdx = i
+                            break
+                        }
+                    }
+                }
+                if (foundIdx != -1) {
+                    tbViewProcessar.selectionModel.clearAndSelect(foundIdx)
+                    tbViewProcessar.scrollTo(foundIdx)
+                }
+                e.consume()
+                return@addEventFilter
+            }
+
+
             when (e.code) {
                 KeyCode.DELETE -> {
                     removerRegistro()

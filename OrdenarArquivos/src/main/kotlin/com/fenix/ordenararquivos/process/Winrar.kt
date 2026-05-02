@@ -68,10 +68,11 @@ object Winrar {
     }
 
     @JvmStatic
-    fun extrairArquivo(rar: File, arquivo: String): File? {
+    fun extrairArquivo(rar: File, arquivo: String, destino: File? = null): File? {
         var comicInfo: File? = null
         var proc: Process? = null
-        val comando = "rar e -ma4 -y " + '"' + rar.path + '"' + " " + '"' + Utils.getCaminho(rar.path) + '"' + " " + '"' + arquivo + '"'
+        val pastaDestino = destino?.path ?: Utils.getCaminho(rar.path)
+        val comando = "rar e -ma4 -y " + '"' + rar.path + '"' + " " + '"' + pastaDestino + '"' + " " + '"' + arquivo + '"'
         try {
             val rt: Runtime = Runtime.getRuntime()
             proc = rt.exec(comando)
@@ -89,9 +90,14 @@ object Winrar {
             if (resultado.isEmpty() && error.isNotEmpty())
                 mLOG.info("Error comand: $resultado Não foi possível extrair o arquivo ${arquivo}.")
             else {
-                val extracted = File(Utils.getCaminho(rar.path) + '\\' + arquivo)
+                val extracted = File(pastaDestino + '\\' + arquivo.replace("*", ""))
                 if (extracted.exists()) {
                     comicInfo = extracted
+                } else if (arquivo.contains("*")) {
+                    val possiveis = File(pastaDestino).listFiles { _, name -> name.contains(arquivo.replace("*", ""), ignoreCase = true) }
+                    if (possiveis != null && possiveis.isNotEmpty()) {
+                        comicInfo = possiveis[0]
+                    }
                 }
             }
         } catch (e: Exception) {

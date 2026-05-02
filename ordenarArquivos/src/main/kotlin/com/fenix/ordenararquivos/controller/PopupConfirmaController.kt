@@ -67,6 +67,8 @@ class PopupConfirmaController : Initializable {
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
+        btnConfirmar.isDefaultButton = true
+        btnCancelar.isCancelButton = true
     }
 
 }

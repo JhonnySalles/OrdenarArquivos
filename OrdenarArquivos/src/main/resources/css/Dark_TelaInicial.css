@@ -487,3 +487,27 @@
 .accordion .titled-pane > .title:hover {
     -fx-icon-color: #333333;
 }
+
+/*---------- Custom Scroll Links ----------*/
+.scroll-links .increment-button, .scroll-links .decrement-button {
+    visibility: hidden;
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+}
+
+.scroll-links .scroll-bar:horizontal .track,
+.scroll-links .scroll-bar:vertical .track {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.scroll-links .scroll-bar:horizontal .thumb,
+.scroll-links .scroll-bar:vertical .thumb {
+    -fx-background-color: black;
+}
+
+.scroll-links .scroll-bar:horizontal .thumb:hover,
+.scroll-links .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: black;
+    -fx-effect: none;
+}
