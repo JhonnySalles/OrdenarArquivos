@@ -4,6 +4,8 @@ import com.fenix.ordenararquivos.components.NumberTextFieldTableCell
 import com.fenix.ordenararquivos.model.entities.Caminhos
 import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.Pasta
+import com.fenix.ordenararquivos.model.entities.Processar
+import com.fenix.ordenararquivos.model.entities.capitulos.Volume
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
@@ -104,6 +106,9 @@ class AbaPastasController : Initializable {
 
     @FXML
     private lateinit var cbApagarArquivo: JFXCheckBox
+    
+    @FXML
+    private lateinit var btnCapitulos: JFXButton
 
     //<--------------------------  Arquivos   -------------------------->
 
@@ -232,6 +237,10 @@ class AbaPastasController : Initializable {
         tbViewProcessar.refresh()
     }
 
+    private fun atualizaCheckSelecionarTodos() {
+        ckbSelecionarTodos.isSelected = mObsListaProcessar.isNotEmpty() && mObsListaProcessar.all { it.isSelecionado }
+    }
+
     @FXML
     private fun onBtnCarregar() {
         carregarItens()
@@ -265,6 +274,35 @@ class AbaPastasController : Initializable {
     @FXML
     private fun onBtnImportarVolumes() {
         importarVolumes()
+    }
+
+    @FXML
+    private fun onBtnCapitulos() {
+        val selected = tbViewProcessar.selectionModel.selectedItems
+        val listToProcess = if (selected.size > 1) selected.toList() else mObsListaProcessar
+
+        val callback: Callback<ObservableList<Volume>, Boolean> = Callback<ObservableList<Volume>, Boolean> { param ->
+            val linguagem = cbLinguagem.value ?: Linguagem.PORTUGUESE
+            for (volume in param)
+                if (volume.marcado && volume.arquivo.isNotEmpty()) {
+                    val item = mObsListaProcessar.find { it.arquivo == volume.arquivo } ?: continue
+                    val capituloInfo = volume.capitulos.firstOrNull()
+                    if (capituloInfo != null) {
+                        item.titulo = if (linguagem == Linguagem.JAPANESE && capituloInfo.japones.isNotEmpty())
+                            capituloInfo.japones
+                        else
+                            capituloInfo.ingles
+                    }
+                }
+            tbViewProcessar.refresh()
+            null
+        }
+
+        val processarList = listToProcess.map { item ->
+            Processar(arquivo = item.arquivo, file = item.pasta, tags = "")
+        }
+
+        PopupCapitulosController.abreTelaCapitulos(controllerPai.rootStack, controllerPai.rootTab, callback, cbLinguagem.value ?: Linguagem.PORTUGUESE, processarList)
     }
 
     @FXML
@@ -482,18 +520,20 @@ class AbaPastasController : Initializable {
                             }
 
                             var summary = mComicInfo.summary ?: ""
-                            val hasChapter = summary.lowercase().indexOf("*chapter titles")
-                            val sbChapters = StringBuilder()
-                            if (hasChapter != -1)
-                                sbChapters.append("*Chapter Titles Manual*\n")
-                            else
-                                sbChapters.append("*Chapter Titles*\n")
+                            if (itensOrdenados.any { it.titulo.trim().isNotEmpty() }) {
+                                val hasChapter = summary.lowercase().indexOf("*chapter titles")
+                                val sbChapters = StringBuilder()
+                                if (hasChapter != -1)
+                                    sbChapters.append("*Chapter Titles Manual*\n")
+                                else
+                                    sbChapters.append("*Chapter Titles*\n")
 
-                            itensOrdenados.forEach { item ->
-                                sbChapters.append("Chapter ${capituloFormat.format(item.capitulo)}: ${item.titulo}\n")
+                                itensOrdenados.forEach { item ->
+                                    sbChapters.append("Chapter ${capituloFormat.format(item.capitulo)}: ${item.titulo}\n")
+                                }
+
+                                summary += sbChapters.toString().trimEnd()
                             }
-
-                            summary += sbChapters.toString().trimEnd()
 
                             val comicInfoEnvio = ComicInfo(mComicInfo)
                             comicInfoEnvio.volume = vol.toInt()
@@ -954,6 +994,7 @@ class AbaPastasController : Initializable {
                                 mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
                                 tbViewProcessar.items = mObsListaProcessar
                                 ckbSelecionarTodos.isSelected = true
+                                atualizaCheckSelecionarTodos()
                                 validarRegistros()
                             }
                         }
@@ -1301,6 +1342,7 @@ class AbaPastasController : Initializable {
             val booleanProp = SimpleBooleanProperty(param.value.isSelecionado)
             booleanProp.addListener { _, _, newValue ->
                 param.value.isSelecionado = newValue
+                atualizaCheckSelecionarTodos()
             }
             booleanProp
         }
@@ -1812,6 +1854,7 @@ class AbaPastasController : Initializable {
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
+        tbViewProcessar.selectionModel.selectionMode = SelectionMode.MULTIPLE
         tbViewProcessar.setRowFactory {
             object : TableRow<Pasta>() {
                 override fun updateItem(item: Pasta?, empty: Boolean) {

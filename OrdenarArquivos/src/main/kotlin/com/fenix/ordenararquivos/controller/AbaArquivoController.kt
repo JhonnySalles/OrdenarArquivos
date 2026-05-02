@@ -100,12 +100,6 @@ class AbaArquivoController : Initializable {
     private lateinit var tbTabArquivo_ComicInfo: Tab
 
     @FXML
-    private lateinit var btnCompartilhamento: JFXButton
-
-    @FXML
-    private lateinit var imgCompartilhamento: ImageView
-
-    @FXML
     private lateinit var btnLimparTudo: JFXButton
 
     @FXML
@@ -338,6 +332,7 @@ class AbaArquivoController : Initializable {
         get() = controller
         set(controller) {
             this.controller = controller
+            setupSincronizacao()
         }
 
     private val mSugestao: JFXAutoCompletePopup<String> = JFXAutoCompletePopup<String>()
@@ -363,11 +358,8 @@ class AbaArquivoController : Initializable {
     private lateinit var mImagemTudo: ImageView
     private lateinit var mGestureTudo: GesturePane
 
-    private val mAnimacao = Animacao()
-    internal var mSincronizacao = SincronizacaoServices(this)
 
     @FXML
-    private fun onBtnCompartilhamento() = compartilhamento()
 
     fun limpaCampos() {
         limparCapas()
@@ -2046,48 +2038,6 @@ class AbaArquivoController : Initializable {
         }
     }
 
-    fun setLog(texto: String, isError: Boolean = false) {
-        if (isError) {
-            lblAlerta.text = texto
-            lblAviso.text = ""
-        } else {
-            lblAlerta.text = ""
-            lblAviso.text = texto
-        }
-    }
-
-    private fun compartilhamento() {
-        val compartilha: Task<Boolean> = object : Task<Boolean>() {
-            override fun call(): Boolean {
-                mSincronizacao.consultar()
-                return mSincronizacao.sincroniza()
-            }
-
-            override fun succeeded() {
-                if (!value)
-                    setLog("Não foi possível sincronizar os dados com a cloud", true)
-                else
-                    setLog("Sincronização de dados com a cloud concluída com sucesso.")
-            }
-        }
-
-        val t = Thread(compartilha)
-        t.start()
-    }
-
-    fun animacaoSincronizacao(isProcessando: Boolean, isErro: Boolean) {
-        Platform.runLater {
-            if (isProcessando)
-                mAnimacao.tmSincronizacao.play()
-            else {
-                mAnimacao.tmSincronizacao.stop()
-                if (isErro)
-                    imgCompartilhamento.image = imgAnimaCompartilhaErro
-                else
-                    imgCompartilhamento.image = imgAnimaCompartilhaEnvio
-            }
-        }
-    }
 
     private val mMostraFinalTexto: MutableSet<TextField> = HashSet()
     private fun textFieldMostraFinalTexto(txt: JFXTextField) {
@@ -3136,35 +3086,30 @@ class AbaArquivoController : Initializable {
         configuraImagens()
         linkaCelulas()
         configuraTextEdit()
-        mAnimacao.animaSincronizacao(imgCompartilhamento, imgAnimaCompartilha, imgAnimaCompartilhaEspera)
-        mSincronizacao.setObserver { observable: ListChangeListener.Change<out Pair<Tipo, Int>> ->
-            if (!mSincronizacao.isSincronizando()) {
-                var sinc = ""
-                for (item in observable.list)
-                    sinc += observable.list.size.toString() + " ${if (item.first == Tipo.MANGA) "(Manga)" else "(ComicInfo)"} "
-
-                Platform.runLater {
-                    if (sinc.isNotEmpty()) {
-                        lblAviso.text = "Pendente registro(s) para envio: ${sinc.trim()}."
-                        imgCompartilhamento.image = imgAnimaCompartilhaEspera
-                    } else
-                        imgCompartilhamento.image = imgAnimaCompartilha
-                }
-            }
-        }
-
-        if (!mSincronizacao.isConfigurado())
-            imgCompartilhamento.image = imgAnimaCompartilhaErro
-        else if (mSincronizacao.listSize() > 0) {
-            lblAviso.text = "Pendente de envio " + mSincronizacao.listSize() + " registro(s)."
-            imgCompartilhamento.image = imgAnimaCompartilhaEspera
-        } else
-            imgCompartilhamento.image = imgAnimaCompartilha
 
         mSugestao.cellLimit = 1
         lsVwHistorico.items = FXCollections.observableArrayList()
         acdArquivos.expandedPane = ttpArquivos
         configuraDragAndDrop()
+    }
+
+    private fun setupSincronizacao() {
+        controllerPai.mSincronizacao.setObserver { _: ListChangeListener.Change<out Pair<Tipo, Int>> ->
+            if (!controllerPai.mSincronizacao.isSincronizando()) {
+                Platform.runLater {
+                    if (!controllerPai.mSincronizacao.isConfigurado())
+                        lblAviso.text = "Sincronização não configurada."
+                    else if (controllerPai.mSincronizacao.listSize() > 0) {
+                        lblAviso.text = "Pendente de envio " + controllerPai.mSincronizacao.listSize() + " registro(s)."
+                    } else
+                        lblAviso.text = ""
+                }
+            }
+        }
+
+        if (controllerPai.mSincronizacao.listSize() > 0) {
+            lblAviso.text = "Pendente de envio " + controllerPai.mSincronizacao.listSize() + " registro(s)."
+        }
     }
 
     private fun apagarTags() {
@@ -3649,9 +3594,5 @@ class AbaArquivoController : Initializable {
         val fxmlLocate: URL get() = TelaInicialController::class.java.getResource("/view/AbaArquivo.fxml")
         var isAbaSelecionada = false
 
-        val imgAnimaCompartilha = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamento_48.png"))
-        val imgAnimaCompartilhaEspera = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamentoEspera_48.png"))
-        val imgAnimaCompartilhaErro = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamentoErro_48.png"))
-        val imgAnimaCompartilhaEnvio = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamentoEnvio_48.png"))
     }
 }

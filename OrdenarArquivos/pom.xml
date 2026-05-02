@@ -17,7 +17,9 @@
         <maven.compiler.target>17</maven.compiler.target>
 
         <test.junit.version>5.10.2</test.junit.version>
+        <test.junit.platform.version>1.10.2</test.junit.platform.version>
         <test.testfx.version>4.0.18</test.testfx.version>
+        <test.testfx.monocle.version>17.0.10</test.testfx.monocle.version>
         <test.mockito.version>5.9.0</test.mockito.version>
         <test.mockito-kotlin.version>5.2.1</test.mockito-kotlin.version>
 
@@ -30,7 +32,9 @@
         <gesturefx.version>0.7.1</gesturefx.version>
         <sqlite.version>3.41.2.2</sqlite.version>
         <bd.jdbi3.version>3.1.0</bd.jdbi3.version>
+        <sparkjava.version>2.9.3</sparkjava.version>
         <flyway.version>8.5.0</flyway.version>
+        <jooq.version>3.16.4</jooq.version>
         <logger.slf4j.version>2.0.12</logger.slf4j.version>
         <sentry.version>7.8.0</sentry.version>
         <logback.classic.version>1.5.13</logback.classic.version>
@@ -42,10 +46,15 @@
         <ocr.colt.version>1.2.0</ocr.colt.version>
         <ocr.okhttp.version>2.7.5</ocr.okhttp.version>
         <ocr.json.version>20240303</ocr.json.version>
+        <mal4j.version>3.4.3</mal4j.version>
         <jakarta.xml.version>4.0.1</jakarta.xml.version>
         <jaxb.version>4.0.0</jaxb.version>
         <jsoup.version>1.15.3</jsoup.version>
         <ikonli.version>12.4.0</ikonli.version>
+        <google.firebase.version>9.3.0</google.firebase.version>
+        <io.grpc.version>1.62.2</io.grpc.version>
+        <google.api.version>v3-rev20230822-2.0.0</google.api.version>
+        <google.auth.version>1.24.0</google.auth.version>
     </properties>
 
     <repositories>
@@ -80,12 +89,12 @@
             <dependency>
                 <groupId>com.google.auth</groupId>
                 <artifactId>google-auth-library-credentials</artifactId>
-                <version>1.19.0</version>
+                <version>1.24.0</version>
             </dependency>
             <dependency>
                 <groupId>com.google.auth</groupId>
                 <artifactId>google-auth-library-oauth2-http</artifactId>
-                <version>1.19.0</version>
+                <version>1.24.0</version>
             </dependency>
             <dependency>
                 <groupId>com.google.api-client</groupId>
@@ -139,7 +148,7 @@
         <dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-launcher</artifactId>
-            <version>1.10.2</version>
+            <version>${test.junit.platform.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -160,7 +169,7 @@
         <dependency>
             <groupId>org.testfx</groupId>
             <artifactId>openjfx-monocle</artifactId>
-            <version>17.0.10</version>
+            <version>${test.testfx.monocle.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -253,7 +262,7 @@
         <dependency>
             <groupId>org.jooq</groupId>
             <artifactId>jooq</artifactId>
-            <version>3.16.4</version>
+            <version>${jooq.version}</version>
         </dependency>
 
         <dependency>
@@ -292,7 +301,7 @@
         <dependency>
             <groupId>com.sparkjava</groupId>
             <artifactId>spark-core</artifactId>
-            <version>2.9.3</version>
+            <version>${sparkjava.version}</version>
         </dependency>
 
         <!-- Gesto em imagem -->
@@ -306,13 +315,13 @@
         <dependency>
             <groupId>com.google.firebase</groupId>
             <artifactId>firebase-admin</artifactId>
-            <version>9.3.0</version>
+            <version>${google.firebase.version}</version>
         </dependency>
 
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-core</artifactId>
-            <version>1.62.2</version>
+            <version>${io.grpc.version}</version>
         </dependency>
 
         <!-- OCR -->
@@ -369,7 +378,7 @@
         <dependency>
             <groupId>dev.katsute</groupId>
             <artifactId>mal4j</artifactId>
-            <version>3.4.3</version>
+            <version>${mal4j.version}</version>
         </dependency>
 
         <!-- Amazon -->
@@ -410,17 +419,19 @@
         <dependency>
             <groupId>com.google.apis</groupId>
             <artifactId>google-api-services-drive</artifactId>
-            <version>v3-rev20230822-2.0.0</version>
+            <version>${google.api.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.google.auth</groupId>
             <artifactId>google-auth-library-credentials</artifactId>
+            <version>${google.auth.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.google.auth</groupId>
             <artifactId>google-auth-library-oauth2-http</artifactId>
+            <version>${google.auth.version}</version>
         </dependency>
     </dependencies>
 

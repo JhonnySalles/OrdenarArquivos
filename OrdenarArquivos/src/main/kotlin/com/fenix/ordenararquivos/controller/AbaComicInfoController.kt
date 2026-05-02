@@ -13,6 +13,7 @@ import com.fenix.ordenararquivos.service.OcrServices
 import com.fenix.ordenararquivos.service.WinrarServices
 import com.fenix.ordenararquivos.util.Utils
 import com.jfoenix.controls.JFXButton
+import com.jfoenix.controls.JFXCheckBox
 import com.jfoenix.controls.JFXComboBox
 import com.jfoenix.controls.JFXTextField
 import jakarta.xml.bind.JAXBContext
@@ -83,6 +84,9 @@ class AbaComicInfoController : Initializable {
     private lateinit var btnProcessar: JFXButton
 
     @FXML
+    private lateinit var ckbTodosProcessado: JFXCheckBox
+
+    @FXML
     private lateinit var tbViewProcessar: TableView<Processar>
 
     @FXML
@@ -134,6 +138,9 @@ class AbaComicInfoController : Initializable {
 
     @FXML
     private fun onBtnCapitulos() {
+        val selected = tbViewProcessar.selectionModel.selectedItems
+        val listToProcess = if (selected.size > 1) selected.toList() else mObsListaProcessar
+
         val callback: Callback<ObservableList<Volume>, Boolean> = Callback<ObservableList<Volume>, Boolean> { param ->
             val linguagem = cbLinguagem.value
             val separador = Utils.SEPARADOR_CAPITULO
@@ -166,7 +173,7 @@ class AbaComicInfoController : Initializable {
             tbViewProcessar.refresh()
             null
         }
-        PopupCapitulosController.abreTelaCapitulos(controllerPai.rootStack, controllerPai.rootTab, callback, cbLinguagem.value, mObsListaProcessar)
+        PopupCapitulosController.abreTelaCapitulos(controllerPai.rootStack, controllerPai.rootTab, callback, cbLinguagem.value, listToProcess)
     }
 
     @FXML
@@ -309,6 +316,16 @@ class AbaComicInfoController : Initializable {
         else
             txtPastaProcessar.text = ""
         carregarItens()
+    }
+
+    @FXML
+    private fun onBtnTodosProcessado() {
+        mObsListaProcessar.forEach { it.isProcessado = ckbTodosProcessado.isSelected }
+        tbViewProcessar.refresh()
+    }
+
+    private fun atualizaCheckTodosProcessado() {
+        ckbTodosProcessado.isSelected = mObsListaProcessar.isNotEmpty() && mObsListaProcessar.all { it.isProcessado }
     }
 
     private fun desabilita(botaoAtivo: JFXButton? = null) {
@@ -496,6 +513,7 @@ class AbaComicInfoController : Initializable {
                         Platform.runLater {
                             mObsListaProcessar = FXCollections.observableArrayList(lista)
                             tbViewProcessar.items = mObsListaProcessar
+                            atualizaCheckTodosProcessado()
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao carregar itens para processamento de mangas.", e)
@@ -531,8 +549,10 @@ class AbaComicInfoController : Initializable {
 
             item.comicInfo?.pages?.forEach { it.bookmark = null }
 
-            var sumario = "*Chapter Titles Manual*\n"
             val tags = item.tags.split("\n")
+            var temTitulo = false
+            val sbSumario = StringBuilder()
+
             for (tag in tags) {
                 val imagem = tag.substringBefore(Utils.SEPARADOR_IMAGEM)
                 var capitulo = tag.substringAfter(Utils.SEPARADOR_IMAGEM).trim()
@@ -549,7 +569,11 @@ class AbaComicInfoController : Initializable {
                             Utils.fromNumberJapanese(it.substringBefore("-").replace("第", "Chapter ").replace("話", "").trim())
                         else
                             it.substringBefore("-").replace("capítulo", "Chapter").replace("chapter", "Chapter").trim()
-                        sumario += numero + ": " + capitulo.substringAfter("-").trim() + "\n"
+                        
+                        val tituloCapitulo = capitulo.substringAfter("-").trim()
+                        if (tituloCapitulo.isNotEmpty()) temTitulo = true
+                        
+                        sbSumario.append(numero).append(": ").append(tituloCapitulo).append("\n")
                     }
                 }
 
@@ -557,14 +581,17 @@ class AbaComicInfoController : Initializable {
                 page.bookmark = capitulo
             }
 
-            item.comicInfo?.run {
-                summary = if (summary.isNullOrEmpty())
-                    sumario
-                else {
-                    if (summary!!.lowercase().contains("*chapter titles manual*"))
-                        summary!!.substring(0, summary!!.lowercase().indexOf("*chapter titles manual*")).trim() + "\n\n" + sumario
-                    else
-                        summary!! + "\n\n" + sumario
+            if (temTitulo) {
+                val sumarioFinal = "*Chapter Titles Manual*\n" + sbSumario.toString()
+                item.comicInfo?.run {
+                    summary = if (summary.isNullOrEmpty())
+                        sumarioFinal
+                    else {
+                        if (summary!!.lowercase().contains("*chapter titles manual*"))
+                            summary!!.substring(0, summary!!.lowercase().indexOf("*chapter titles manual*")).trim() + "\n\n" + sumarioFinal
+                        else
+                            summary!! + "\n\n" + sumarioFinal
+                    }
                 }
             }
 
@@ -715,6 +742,7 @@ class AbaComicInfoController : Initializable {
             val booleanProp = SimpleBooleanProperty(item.isProcessado)
             booleanProp.addListener { _, _, newValue ->
                 item.isProcessado = newValue
+                atualizaCheckTodosProcessado()
                 tbViewProcessar.refresh()
             }
             return@setCellValueFactory booleanProp
@@ -733,39 +761,8 @@ class AbaComicInfoController : Initializable {
         }
 
         val menu = ContextMenu()
-        val salvar = MenuItem("Salvar ComicInfo")
-        salvar.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null)
-                salvarComicInfoItem(tbViewProcessar.selectionModel.selectedItem)
-        }
-        val salvarAnteriores = MenuItem("Salvar ComicInfo do inicio até o item atual")
-        salvarAnteriores.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null) {
-                val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem)
-                salvarItens(startIndex = 0, endIndex = index + 1)
-            }
-        }
-        val salvarPosteriores = MenuItem("Salvar ComicInfo do atual até o item final")
-        salvarPosteriores.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null) {
-                val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem)
-                salvarItens(startIndex = index, endIndex = mObsListaProcessar.size)
-            }
-        }
 
-        val processar = MenuItem("Processar OCR")
-        processar.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null)
-                processarOcrItem(tbViewProcessar.selectionModel.selectedItem)
-        }
-        val tags = MenuItem("Gerar Tags")
-        tags.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null) {
-                val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
-                gerarTagItem(tbViewProcessar.selectionModel.selectedItem, language)
-                tbViewProcessar.refresh()
-            }
-        }
+        // GRUPO TAGS
         val tagsAnteriores = MenuItem("Gerar Tags até o item atual")
         tagsAnteriores.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
@@ -778,7 +775,15 @@ class AbaComicInfoController : Initializable {
                 controllerPai.setCursor(null)
             }
         }
-        val tagsAjustar = MenuItem("Ajustar Tags")
+        val tags = MenuItem("Gerar Tags (Ctrl + T)")
+        tags.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null) {
+                val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+                gerarTagItem(tbViewProcessar.selectionModel.selectedItem, language)
+                tbViewProcessar.refresh()
+            }
+        }
+        val tagsAjustar = MenuItem("Ajustar Tags (Ctrl + A)")
         tagsAjustar.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
@@ -786,7 +791,7 @@ class AbaComicInfoController : Initializable {
                 tbViewProcessar.refresh()
             }
         }
-        val tagsNormalizar = MenuItem("Normalizar Tags")
+        val tagsNormalizar = MenuItem("Normalizar Tags (Ctrl + N)")
         tagsNormalizar.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
@@ -794,7 +799,37 @@ class AbaComicInfoController : Initializable {
                 tbViewProcessar.refresh()
             }
         }
-        val remover = MenuItem("Remover registro")
+
+        // GRUPO OCR
+        val processar = MenuItem("Processar OCR (Ctrl + O)")
+        processar.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null)
+                processarOcrItem(tbViewProcessar.selectionModel.selectedItem)
+        }
+
+        // GRUPO SALVAR
+        val salvarAnteriores = MenuItem("Salvar ComicInfo do inicio até o item atual")
+        salvarAnteriores.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null) {
+                val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem)
+                salvarItens(startIndex = 0, endIndex = index + 1)
+            }
+        }
+        val salvar = MenuItem("Salvar ComicInfo (Ctrl + S)")
+        salvar.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null)
+                salvarComicInfoItem(tbViewProcessar.selectionModel.selectedItem)
+        }
+        val salvarPosteriores = MenuItem("Salvar ComicInfo do atual até o item final")
+        salvarPosteriores.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null) {
+                val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem)
+                salvarItens(startIndex = index, endIndex = mObsListaProcessar.size)
+            }
+        }
+
+        // GRUPO GERAL
+        val remover = MenuItem("Remover registro (Del)")
         remover.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null)
                 if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover o registro?")) {
@@ -802,44 +837,21 @@ class AbaComicInfoController : Initializable {
                     tbViewProcessar.refresh()
                 }
         }
-        val removerAnteriores = MenuItem("Remover registros anteriores")
-        removerAnteriores.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null)
-                if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover os registros anteriores?")) {
-                    controllerPai.setCursor(Cursor.WAIT)
-                    val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem)
-                    if (index > 0) {
-                        mObsListaProcessar.remove(0, index)
-                        tbViewProcessar.refresh()
-                    }
-                    controllerPai.setCursor(null)
-                }
-        }
 
-        val removerPosteriores = MenuItem("Remover próximos registros")
-        removerPosteriores.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null)
-                if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover os registros posteriores?")) {
-                    controllerPai.setCursor(Cursor.WAIT)
-                    val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem) + 1
-                    if (index > 0 && mObsListaProcessar.size > index) {
-                        mObsListaProcessar.remove(index, mObsListaProcessar.size)
-                        tbViewProcessar.refresh()
-                    }
-                    controllerPai.setCursor(null)
-                }
-        }
-        menu.items.add(salvar)
-        menu.items.add(salvarAnteriores)
-        menu.items.add(salvarPosteriores)
-        menu.items.add(processar)
-        menu.items.add(tags)
-        menu.items.add(tagsAnteriores)
-        menu.items.add(tagsAjustar)
-        menu.items.add(tagsNormalizar)
-        menu.items.add(remover)
-        menu.items.add(removerAnteriores)
-        menu.items.add(removerPosteriores)
+        menu.items.addAll(
+            tagsAnteriores,
+            tags,
+            tagsAjustar,
+            tagsNormalizar,
+            SeparatorMenuItem(),
+            processar,
+            SeparatorMenuItem(),
+            salvarAnteriores,
+            salvar,
+            salvarPosteriores,
+            SeparatorMenuItem(),
+            remover
+        )
 
         tbViewProcessar.contextMenu = menu
         tbViewProcessar.setOnKeyPressed { event ->
@@ -1007,6 +1019,57 @@ class AbaComicInfoController : Initializable {
 
     }
 
+    private fun configurarAtalhosGrid() {
+        tbViewProcessar.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED) { e ->
+            val selecionado = tbViewProcessar.selectionModel.selectedItem ?: return@addEventFilter
+            val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+
+            when (e.code) {
+                KeyCode.S -> {
+                    if (e.isControlDown) {
+                        salvarComicInfoItem(selecionado)
+                        e.consume()
+                    }
+                }
+                KeyCode.T -> {
+                    if (e.isControlDown) {
+                        gerarTagItem(selecionado, language)
+                        tbViewProcessar.refresh()
+                        e.consume()
+                    }
+                }
+                KeyCode.O -> {
+                    if (e.isControlDown) {
+                        processarOcrItem(selecionado)
+                        e.consume()
+                    }
+                }
+                KeyCode.A -> {
+                    if (e.isControlDown) {
+                        gerarTagItem(selecionado, language, isAjustar = true)
+                        tbViewProcessar.refresh()
+                        e.consume()
+                    }
+                }
+                KeyCode.N -> {
+                    if (e.isControlDown) {
+                        normalizarTagItem(selecionado, language)
+                        tbViewProcessar.refresh()
+                        e.consume()
+                    }
+                }
+                KeyCode.DELETE -> {
+                    if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover o registro?")) {
+                        mObsListaProcessar.remove(selecionado)
+                        tbViewProcessar.refresh()
+                    }
+                    e.consume()
+                }
+                else -> {}
+            }
+        }
+    }
+
     private fun linkaCelulas() {
         clProcessado.cellValueFactory = PropertyValueFactory("isProcessado")
         clArquivo.cellValueFactory = PropertyValueFactory("arquivo")
@@ -1061,7 +1124,11 @@ class AbaComicInfoController : Initializable {
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         cbLinguagem.items.addAll(Linguagem.JAPANESE, Linguagem.ENGLISH, Linguagem.PORTUGUESE)
         cbLinguagem.selectionModel.selectFirst()
+
+        tbViewProcessar.selectionModel.selectionMode = SelectionMode.MULTIPLE
+
         linkaCelulas()
+        configurarAtalhosGrid()
     }
 
     companion object {

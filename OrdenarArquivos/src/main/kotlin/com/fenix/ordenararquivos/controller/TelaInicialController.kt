@@ -1,10 +1,12 @@
 package com.fenix.ordenararquivos.controller
 
+import com.fenix.ordenararquivos.animation.Animacao
 import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.notification.AlertasPopup
 import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.service.GoogleDriveDownloadService
+import com.fenix.ordenararquivos.service.SincronizacaoServices
 import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXTabPane
 import javafx.application.Platform
@@ -17,6 +19,8 @@ import javafx.scene.Scene
 import javafx.scene.control.Label
 import javafx.scene.control.ProgressBar
 import javafx.scene.control.Tab
+import javafx.scene.image.Image
+import javafx.scene.image.ImageView
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.StackPane
 import org.slf4j.LoggerFactory
@@ -62,6 +66,12 @@ class TelaInicialController : Initializable {
     private lateinit var btnAtualizar: JFXButton
 
     @FXML
+    private lateinit var btnCompartilhamento: JFXButton
+
+    @FXML
+    private lateinit var imgCompartilhamento: ImageView
+
+    @FXML
     lateinit var apDragOverlay: AnchorPane
 
     @FXML
@@ -81,6 +91,14 @@ class TelaInicialController : Initializable {
 
     @FXML
     private lateinit var abaMangaController: AbaMangaController
+
+    lateinit var mSincronizacao: SincronizacaoServices
+    private lateinit var mAnimacao: Animacao
+
+    private val imgAnimaCompartilha = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamento_48.png"))
+    private val imgAnimaCompartilhaEspera = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamentoEspera_48.png"))
+    private val imgAnimaCompartilhaErro = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamentoErro_48.png"))
+    private val imgAnimaCompartilhaEnvio = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamentoEnvio_48.png"))
 
     @FXML
     private fun onSelectChanged(event: Event) {
@@ -175,11 +193,62 @@ class TelaInicialController : Initializable {
         Thread(task).start()
     }
 
+    @FXML
+    private fun onBtnCompartilhamento() {
+        compartilhamento()
+    }
+
+    private fun compartilhamento() {
+        val compartilha: Task<Boolean> = object : Task<Boolean>() {
+            override fun call(): Boolean {
+                mSincronizacao.consultar()
+                return mSincronizacao.sincroniza()
+            }
+
+            override fun succeeded() {
+                if (!value)
+                    setLog("Não foi possível sincronizar os dados com a cloud", true)
+                else
+                    setLog("Sincronização de dados com a cloud concluída com sucesso.")
+            }
+        }
+
+        val t = Thread(compartilha)
+        t.start()
+    }
+
+    fun animacaoSincronizacao(isProcessando: Boolean, isErro: Boolean) {
+        Platform.runLater {
+            if (isProcessando)
+                mAnimacao.tmSincronizacao.play()
+            else {
+                mAnimacao.tmSincronizacao.stop()
+                if (isErro)
+                    imgCompartilhamento.image = imgAnimaCompartilhaErro
+                else
+                    imgCompartilhamento.image = imgAnimaCompartilhaEnvio
+            }
+        }
+    }
+
+    fun setLog(texto: String, isError: Boolean = false) {
+        Platform.runLater {
+            lblProgresso.text = texto
+            if (isError) {
+                // Aqui poderíamos adicionar uma lógica visual para erro no lblProgresso se necessário
+            }
+        }
+    }
+
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         /* Setando as variáveis para o alerta padrão. */
         AlertasPopup.rootStackPane = spGlobal
         AlertasPopup.nodeBlur = tpGlobal
         Notificacoes.rootAnchorPane = apGlobal
+
+        mAnimacao = Animacao()
+        mAnimacao.animaSincronizacao(imgCompartilhamento, imgAnimaCompartilha, imgAnimaCompartilhaEspera)
+        mSincronizacao = SincronizacaoServices(this)
 
         arquivoController.controllerPai = this
         comicinfoController.controllerPai = this
