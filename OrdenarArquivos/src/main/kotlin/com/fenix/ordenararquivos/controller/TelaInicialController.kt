@@ -3,7 +3,7 @@ package com.fenix.ordenararquivos.controller
 import com.fenix.ordenararquivos.animation.Animacao
 import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.model.enums.Notificacao
-import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.notification.ConfirmaModal
 import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.service.GoogleDriveDownloadService
 import com.fenix.ordenararquivos.service.SincronizacaoServices
@@ -134,7 +134,7 @@ class TelaInicialController : Initializable {
 
     @FXML
     private fun onBtnAtualizar() {
-        if (!AlertasPopup.confirmacaoModal("Atualização", "Deseja verificar e aplicar atualizações do aplicativo?"))
+        if (!ConfirmaModal.confirmacao("Atualização", "Deseja verificar e aplicar atualizações do aplicativo?"))
             return
 
         btnAtualizar.isDisable = true
@@ -164,7 +164,7 @@ class TelaInicialController : Initializable {
                     Notificacoes.notificacao(Notificacao.SUCESSO, "Atualização", result.message)
                     // Schedule restart
                     Platform.runLater {
-                        if (AlertasPopup.confirmacaoModal("Reiniciar", "Atualização aplicada com sucesso! Deseja reiniciar o aplicativo agora?")) {
+                        if (ConfirmaModal.confirmacao("Reiniciar", "Atualização aplicada com sucesso! Deseja reiniciar o aplicativo agora?")) {
                             updateService.restartApplication()
                             DataBase.closeConnection()
                             exitProcess(0)
@@ -241,9 +241,8 @@ class TelaInicialController : Initializable {
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
-        /* Setando as variáveis para o alerta padrão. */
-        AlertasPopup.rootStackPane = spGlobal
-        AlertasPopup.nodeBlur = tpGlobal
+        ConfirmaModal.rootStackPane = spGlobal
+        ConfirmaModal.nodeBlur = tpGlobal
         Notificacoes.rootAnchorPane = apGlobal
 
         mAnimacao = Animacao()

@@ -2,7 +2,7 @@ package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.notification.ConfirmaModal
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.jfoenix.controls.JFXButton
@@ -248,7 +248,7 @@ class AbaMangaController : Initializable {
     }
 
     private fun excluirManga(manga: Manga) {
-        if (AlertasPopup.confirmacaoModal(
+        if (ConfirmaModal.confirmacao(
                 controllerPai.rootStack,
                 controllerPai.rootTab,
                 "Excluir Manga",

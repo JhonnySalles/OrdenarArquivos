@@ -12,7 +12,8 @@ import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.model.enums.Selecionado
-import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.notification.AlertasModal
+import com.fenix.ordenararquivos.notification.ConfirmaModal
 import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
@@ -431,21 +432,21 @@ class AbaPastasController : Initializable {
         if (btnCompactar.accessibleTextProperty().value.equals("COMPACTAR", ignoreCase = true)) {
             val listaSelecionada = mObsListaProcessar.filter { it.isSelecionado }
             if (listaSelecionada.isEmpty()) {
-                AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado para compactar.")
+                AlertasModal.alerta("Alerta", "Nenhum item selecionado para compactar.")
                 return
             }
 
             val pastaTexto = txtPasta.text
             if (pastaTexto.isNullOrEmpty()) {
                 txtPasta.unFocusColor = Color.RED
-                AlertasPopup.alertaModal("Alerta", "Não informado a pasta para processamento.")
+                AlertasModal.alerta("Alerta", "Não informado a pasta para processamento.")
                 return
             }
 
             val mangaProcessar = cbManga.value
             if (mangaProcessar.isNullOrEmpty()) {
                 cbManga.unFocusColor = Color.RED
-                AlertasPopup.alertaModal("Alerta", "Não informado o nome do manga.")
+                AlertasModal.alerta("Alerta", "Não informado o nome do manga.")
                 return
             }
 
@@ -592,11 +593,11 @@ class AbaPastasController : Initializable {
     private fun onBtnAjustarPastas() {
         val selecionados = mObsListaProcessar.filter { it.isSelecionado }
         if (selecionados.isEmpty()) {
-            AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado.")
+            AlertasModal.alerta("Alerta", "Nenhum item selecionado.")
             return
         }
 
-        if (!AlertasPopup.confirmacaoModal("Confirmação", "Deseja mover todos os arquivos internos para a primeira pasta de cada item selecionado?")) {
+        if (!ConfirmaModal.confirmacao("Confirmação", "Deseja mover todos os arquivos internos para a primeira pasta de cada item selecionado?")) {
             return
         }
 
@@ -889,7 +890,7 @@ class AbaPastasController : Initializable {
             }
             Thread(consulta).start()
         } else {
-            AlertasPopup.alertaModal("Alerta", "Necessário informar um id ou nome.")
+            AlertasModal.alerta("Alerta", "Necessário informar um id ou nome.")
             txtMalNome.requestFocus()
             isConsultandoMal = false
         }
@@ -1028,7 +1029,7 @@ class AbaPastasController : Initializable {
         } else
             mCANCELAR = true
         } else {
-            AlertasPopup.alertaModal("Alerta", "Necessário informar uma pasta para carregar.")
+            AlertasModal.alerta("Alerta", "Necessário informar uma pasta para carregar.")
             txtPasta.requestFocus()
         }
     }
@@ -1037,13 +1038,13 @@ class AbaPastasController : Initializable {
         val pastaTexto = txtPasta.text
         if (pastaTexto.isNullOrEmpty()) {
             txtPasta.unFocusColor = Color.RED
-            AlertasPopup.alertaModal("Alerta", "Não informado a pasta para processamento.")
+            AlertasModal.alerta("Alerta", "Não informado a pasta para processamento.")
             return
         }
 
         val listaOriginal = mObsListaProcessar.toList()
         if (listaOriginal.isEmpty()) {
-            AlertasPopup.alertaModal("Alerta", "Não existem itens para processar.")
+            AlertasModal.alerta("Alerta", "Não existem itens para processar.")
             return
         }
 
@@ -1440,7 +1441,7 @@ class AbaPastasController : Initializable {
             }
 
             if (lista.isEmpty()) {
-                AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado.")
+                AlertasModal.alerta("Alerta", "Nenhum item selecionado.")
                 return@setOnAction
             }
 
@@ -1523,7 +1524,7 @@ class AbaPastasController : Initializable {
         }
 
         if (lista.isEmpty()) {
-            AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado.")
+            AlertasModal.alerta("Alerta", "Nenhum item selecionado.")
             return
         }
 
@@ -1540,7 +1541,7 @@ class AbaPastasController : Initializable {
         }
 
         if (lista.isEmpty()) {
-            AlertasPopup.alertaModal("Alerta", "Nenhum item selecionado.")
+            AlertasModal.alerta("Alerta", "Nenhum item selecionado.")
             return
         }
 
@@ -1555,7 +1556,7 @@ class AbaPastasController : Initializable {
     private fun removerRegistro() {
         val selecionado = tbViewProcessar.selectionModel.selectedItem
         if (selecionado != null) {
-            if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover o registro?")) {
+            if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
                 mObsListaProcessar.remove(selecionado)
                 tbViewProcessar.refresh()
             }
@@ -1693,7 +1694,7 @@ class AbaPastasController : Initializable {
     private fun processaArquivosRar(files: List<File>) {
         if (txtPasta.text.isNullOrEmpty()) {
             txtPasta.unFocusColor = Color.RED
-            AlertasPopup.alertaModal("Alerta", "Não informado a pasta para processamento.")
+            AlertasModal.alerta("Alerta", "Não informado a pasta para processamento.")
             return
         }
 

@@ -1,6 +1,5 @@
 package com.fenix.ordenararquivos.controller
 
-import com.fenix.ordenararquivos.animation.Animacao
 import com.fenix.ordenararquivos.exceptions.LibException
 import com.fenix.ordenararquivos.model.entities.Caminhos
 import com.fenix.ordenararquivos.model.entities.Capa
@@ -11,12 +10,11 @@ import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
 import com.fenix.ordenararquivos.model.enums.*
-import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.notification.AlertasModal
 import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.process.Ocr
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
-import com.fenix.ordenararquivos.service.SincronizacaoServices
 import com.fenix.ordenararquivos.service.WinrarServices
 import com.fenix.ordenararquivos.util.Utils
 import com.jfoenix.controls.*
@@ -604,7 +602,7 @@ class AbaArquivoController : Initializable {
                 override fun failed() {
                     btnMalAplicar.isDisable = false
                     controllerPai.setCursor(null)
-                    AlertasPopup.erroModal("Erro", "Erro ao carregar dados do MyAnimeList: " + (exception?.message ?: "Erro desconhecido"))
+                    AlertasModal.erro("Erro", "Erro ao carregar dados do MyAnimeList: " + (exception?.message ?: "Erro desconhecido"))
                 }
             }
             Thread(task).start()
@@ -731,7 +729,7 @@ class AbaArquivoController : Initializable {
         if (mCaminhoOrigem == null || !mCaminhoOrigem!!.exists()) {
             txtSimularPasta.text = "Origem não informado."
             txtPastaOrigem.unFocusColor = Color.RED
-            AlertasPopup.alertaModal("Alerta", "Origem não informado.")
+            AlertasModal.alerta("Alerta", "Origem não informado.")
             valida = false
         }
 
@@ -741,7 +739,7 @@ class AbaArquivoController : Initializable {
         if (mCaminhoDestino == null || !mCaminhoDestino!!.exists()) {
             txtSimularPasta.text = "Destino não informado."
             txtPastaDestino.unFocusColor = Color.RED
-            AlertasPopup.alertaModal("Alerta", "Destino não informado.")
+            AlertasModal.alerta("Alerta", "Destino não informado.")
             valida = false
         }
 
@@ -757,13 +755,13 @@ class AbaArquivoController : Initializable {
         if (cbCompactarArquivo.isSelected && txtNomeArquivo.text.isEmpty()) {
             txtSimularPasta.text = "Não informado nome do arquivo."
             txtNomeArquivo.unFocusColor = Color.RED
-            AlertasPopup.alertaModal("Alerta", "Não informado nome do arquivo.")
+            AlertasModal.alerta("Alerta", "Não informado nome do arquivo.")
             valida = false
         }
 
         if (cbLinguagem.value == null) {
             cbLinguagem.unFocusColor = Color.RED
-            AlertasPopup.alertaModal("Alerta", "Necessário informar uma linguagem.")
+            AlertasModal.alerta("Alerta", "Necessário informar uma linguagem.")
             valida = false
         }
 
@@ -778,7 +776,7 @@ class AbaArquivoController : Initializable {
             }
 
             if (itens.isNotEmpty()) {
-                AlertasPopup.alertaModal(
+                AlertasModal.alerta(
                     "Alerta",
                     "Alguns arquivos selecionados não foram encontrados, verifique os arquivos na pasta de origem.\n" + itens.substringBeforeLast(", ") + "."
                 )
@@ -947,7 +945,7 @@ class AbaArquivoController : Initializable {
             }
             Thread(consulta).start()
         } else {
-            AlertasPopup.alertaModal("Alerta", "Necessário informar um id ou nome.")
+            AlertasModal.alerta("Alerta", "Necessário informar um id ou nome.")
             txtMalNome.requestFocus()
             isConsultandoMal = false
         }
@@ -1571,7 +1569,7 @@ class AbaArquivoController : Initializable {
                         LAST_PROCESS_FOLDERS = pastasCompactar
                 } catch (e: Exception) {
                     mLOG.error("Erro ao processar.", e)
-                    Platform.runLater { AlertasPopup.erroModal("Erro ao processar", e.stackTrace.toString()) }
+                    Platform.runLater { AlertasModal.erro("Erro ao processar", e.stackTrace.toString()) }
                 }
                 return true
             }
@@ -1588,7 +1586,7 @@ class AbaArquivoController : Initializable {
             override fun failed() {
                 super.failed()
                 updateMessage("Erro ao mover os arquivos.")
-                AlertasPopup.erroModal("Erro ao mover os arquivos", super.getMessage())
+                AlertasModal.erro("Erro ao mover os arquivos", super.getMessage())
                 habilita()
             }
         }

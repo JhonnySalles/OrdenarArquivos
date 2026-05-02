@@ -22,12 +22,11 @@ import org.slf4j.LoggerFactory
 import java.io.IOException
 
 object Notificacoes {
-    private val LOGGER: Logger = LoggerFactory.getLogger(Notificacoes::class.java)
-    private val IMG_ALERTA: ImageView = ImageView(Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/icoAlerta_48.png")))
-    private val IMG_AVISO: ImageView = ImageView(Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/icoAviso_48.png")))
-    private val IMG_ERRO: ImageView = ImageView(Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/icoErro_48.png")))
-    private val IMG_CONFIRMA: ImageView = ImageView(Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/icoConfirma_48.png")))
-    private val IMG_SUCESSO: ImageView = ImageView(Image(AlertasPopup::class.java.getResourceAsStream("/images/alert/btnConfirma_48.png")))
+    private val mLOG: Logger = LoggerFactory.getLogger(Notificacoes::class.java)
+    private val IMG_ALERTA: ImageView = ImageView(Image(AlertasModal::class.java.getResourceAsStream("/images/alert/icoAlerta_48.png")))
+    private val IMG_AVISO: ImageView = ImageView(Image(AlertasModal::class.java.getResourceAsStream("/images/alert/icoAviso_48.png")))
+    private val IMG_ERRO: ImageView = ImageView(Image(AlertasModal::class.java.getResourceAsStream("/images/alert/icoErro_48.png")))
+    private val IMG_SUCESSO: ImageView = ImageView(Image(AlertasModal::class.java.getResourceAsStream("/images/alert/btnConfirma_48.png")))
 
     private lateinit var CONTROLLER: PopupNotificacaoController
     internal lateinit var NOTIFICACAO: AnchorPane
@@ -95,7 +94,7 @@ object Notificacoes {
             CONTROLLER = loader.getController()
             ROOT_ANCHOR_PANE.children.add(NOTIFICACAO)
         } catch (e: IOException) {
-            LOGGER.error(e.message, e)
+            mLOG.error(e.message, e)
         }
         TT_AP_NOTIFICACOES = TranslateTransition(Duration(500.0), NOTIFICACAO)
         TT_AP_NOTIFICACOES.onFinished = object : EventHandler<ActionEvent> {

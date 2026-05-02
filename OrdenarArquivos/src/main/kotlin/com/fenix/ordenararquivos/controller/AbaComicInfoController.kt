@@ -7,7 +7,8 @@ import com.fenix.ordenararquivos.model.entities.capitulos.Volume
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.model.enums.Notificacao
-import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.notification.AlertasModal
+import com.fenix.ordenararquivos.notification.ConfirmaModal
 import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.service.OcrServices
 import com.fenix.ordenararquivos.service.WinrarServices
@@ -199,7 +200,7 @@ class AbaComicInfoController : Initializable {
     private fun onBtnProcessar() {
         if (btnProcessar.accessibleTextProperty().value.equals("PROCESSA", ignoreCase = true)) {
             if (txtPastaProcessar.text.isEmpty()) {
-                AlertasPopup.alertaModal("Alerta", "Necessário informar uma pasta para processar.")
+                AlertasModal.alerta("Alerta", "Necessário informar uma pasta para processar.")
                 txtPastaProcessar.requestFocus()
                 return
             }
@@ -242,7 +243,7 @@ class AbaComicInfoController : Initializable {
                     super.failed()
                     mLOG.error("Erro na Task de processamento de ComicInfo", exception)
                     updateMessage("Erro ao processar o ComicInfo.")
-                    AlertasPopup.erroModal("Erro ao processar o ComicInfo", exception?.message ?: "Erro desconhecido")
+                    AlertasModal.erro("Erro ao processar o ComicInfo", exception?.message ?: "Erro desconhecido")
                     habilita()
                 }
             }
@@ -427,7 +428,7 @@ class AbaComicInfoController : Initializable {
                     }
                 } catch (e: Exception) {
                     mLOG.error("Erro ao processar o OCR.", e)
-                    Platform.runLater { AlertasPopup.erroModal("Erro ao processar o OCR", e.stackTrace.toString()) }
+                    Platform.runLater { AlertasModal.erro("Erro ao processar o OCR", e.stackTrace.toString()) }
                 }
                 return true
             }
@@ -445,7 +446,7 @@ class AbaComicInfoController : Initializable {
             override fun failed() {
                 super.failed()
                 updateMessage("Erro ao processar o OCR.")
-                AlertasPopup.erroModal("Erro ao processar o OCR", super.getMessage() ?: "Erro desconhecido")
+                AlertasModal.erro("Erro ao processar o OCR", super.getMessage() ?: "Erro desconhecido")
                 habilita()
                 tbViewProcessar.refresh()
             }
@@ -536,7 +537,7 @@ class AbaComicInfoController : Initializable {
             controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
             Thread(processar).start()
         } else {
-            AlertasPopup.alertaModal("Alerta", "Necessário informar uma pasta para processar.")
+            AlertasModal.alerta("Alerta", "Necessário informar uma pasta para processar.")
             txtPastaProcessar.requestFocus()
         }
     }
@@ -604,7 +605,7 @@ class AbaComicInfoController : Initializable {
             mObsListaProcessar.remove(item)
         } catch (e: Exception) {
             mLOG.error(e.message, e)
-            AlertasPopup.alertaModal("Erro", "Erro ao salvar o ComicInfo no arquivo ComicInfo.xml. " + e.message)
+            AlertasModal.erro("Erro", "Erro ao salvar o ComicInfo no arquivo ComicInfo.xml. " + e.message)
         }
     }
 
@@ -832,7 +833,7 @@ class AbaComicInfoController : Initializable {
         val remover = MenuItem("Remover registro (Del)")
         remover.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null)
-                if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover o registro?")) {
+                if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
                     mObsListaProcessar.remove(tbViewProcessar.selectionModel.selectedItem)
                     tbViewProcessar.refresh()
                 }
@@ -856,7 +857,7 @@ class AbaComicInfoController : Initializable {
         tbViewProcessar.contextMenu = menu
         tbViewProcessar.setOnKeyPressed { event ->
             if (event.code == KeyCode.DELETE && tbViewProcessar.selectionModel.selectedItem != null)
-                if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover o registro?")) {
+                if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
                     mObsListaProcessar.remove(tbViewProcessar.selectionModel.selectedItem)
                     tbViewProcessar.refresh()
                 }
@@ -1059,7 +1060,7 @@ class AbaComicInfoController : Initializable {
                     }
                 }
                 KeyCode.DELETE -> {
-                    if (AlertasPopup.confirmacaoModal("Aviso", "Deseja remover o registro?")) {
+                    if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
                         mObsListaProcessar.remove(selecionado)
                         tbViewProcessar.refresh()
                     }

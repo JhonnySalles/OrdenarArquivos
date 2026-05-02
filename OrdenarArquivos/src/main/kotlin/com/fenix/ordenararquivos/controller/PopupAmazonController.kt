@@ -2,7 +2,7 @@ package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.enums.Linguagem
-import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.notification.AlertasModal
 import com.jfoenix.controls.*
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
@@ -167,11 +167,11 @@ class PopupAmazonController : Initializable {
                     .get()
             } catch (e: IOException) {
                 LOGGER.error(e.message, e)
-                AlertasPopup.erroModal("Erro ao carregar o site", e.message.toString())
+                AlertasModal.erro("Erro ao carregar o site", e.message.toString())
                 return
             } catch (e: Exception) {
                 LOGGER.error(e.message, e)
-                AlertasPopup.erroModal("Erro ao carregar o site", e.message.toString())
+                AlertasModal.erro("Erro ao carregar o site", e.message.toString())
                 return
             }
 
@@ -187,7 +187,7 @@ class PopupAmazonController : Initializable {
 
         } catch (e: Exception) {
             LOGGER.error(e.message, e)
-            AlertasPopup.erroModal("Erro ao realizar o processamento do site", e.message.toString())
+            AlertasModal.erro("Erro ao realizar o processamento do site", e.message.toString())
         }
     }
 

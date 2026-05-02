@@ -94,3 +94,7 @@
     -fx-background-radius : 9px 8px 8px 9px;
 }
 
+.titulo-aviso { -fx-text-fill: #1976D2; }
+.titulo-alerta { -fx-text-fill: #ffa100; }
+.titulo-erro { -fx-text-fill: #FF472B; }
+

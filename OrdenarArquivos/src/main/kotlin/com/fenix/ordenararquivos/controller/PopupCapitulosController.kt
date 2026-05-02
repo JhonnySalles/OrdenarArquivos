@@ -6,7 +6,7 @@ import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.entities.capitulos.Capitulo
 import com.fenix.ordenararquivos.model.entities.capitulos.Volume
 import com.fenix.ordenararquivos.model.enums.Linguagem
-import com.fenix.ordenararquivos.notification.AlertasPopup
+import com.fenix.ordenararquivos.notification.AlertasModal
 import com.fenix.ordenararquivos.util.Utils
 import com.jfoenix.controls.*
 import javafx.beans.property.SimpleBooleanProperty
@@ -167,7 +167,7 @@ class PopupCapitulosController : Initializable {
                 consulta()
                 success = true
             } ?: run {
-                AlertasPopup.alertaModal(AlertasPopup.rootStackPane, null, mutableListOf(),"Alerta", "Falha ao obter o arquivo.")
+                AlertasModal.alerta("Alerta", "Falha ao obter o arquivo.")
             }
         }
         // Sinaliza se o drop foi bem-sucedido
@@ -250,11 +250,11 @@ class PopupCapitulosController : Initializable {
                 }
             } catch (e: IOException) {
                 LOGGER.error(e.message, e)
-                AlertasPopup.erroModal(AlertasPopup.rootStackPane, null, mutableListOf(),"Erro ao carregar o site", e.message.toString())
+                AlertasModal.erro("Erro ao carregar o site", e.message.toString())
                 return
             } catch (e: Exception) {
                 LOGGER.error(e.message, e)
-                AlertasPopup.erroModal(AlertasPopup.rootStackPane, null, mutableListOf(),"Erro ao carregar o site", e.message.toString())
+                AlertasModal.erro("Erro ao carregar o site", e.message.toString())
                 return
             }
 
@@ -284,7 +284,7 @@ class PopupCapitulosController : Initializable {
             }
         } catch (e: Exception) {
             LOGGER.error(e.message, e)
-            AlertasPopup.erroModal(AlertasPopup.rootStackPane, null, mutableListOf(),"Erro ao realizar o processamento do site", e.message.toString())
+            AlertasModal.erro("Erro ao realizar o processamento do site", e.message.toString())
         }
     }
 

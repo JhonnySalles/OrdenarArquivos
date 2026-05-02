@@ -13,9 +13,16 @@ import javafx.scene.image.ImageView
 import java.net.URL
 import java.util.*
 
-
 class PopupAlertaController : Initializable {
-    
+
+    companion object {
+        val IMG_ALERTA: Image = Image(PopupAlertaController::class.java.getResourceAsStream("/images/alert/icoAlerta_48.png"))
+        val IMG_AVISO: Image = Image(PopupAlertaController::class.java.getResourceAsStream("/images/alert/icoAviso_48.png"))
+        val IMG_ERRO: Image = Image(PopupAlertaController::class.java.getResourceAsStream("/images/alert/icoErro_48.png"))
+
+        val fxmlLocate: URL get() = PopupAlertaController::class.java.getResource("/view/PopupAlerta.fxml") as URL
+    }
+
     @FXML
     private lateinit var btnOk: Button
 
@@ -57,12 +64,29 @@ class PopupAlertaController : Initializable {
         txtTexto.padding = Insets(topo, 0.0, 0.0, esquerda)
     }
 
-    @Override
+    fun setIcone(image: Image) {
+        imgIcone.image = image
+    }
+
+    fun aviso() {
+        setIcone(IMG_AVISO)
+        lblTitulo.styleClass.removeAll("titulo-alerta", "titulo-erro", "titulo-aviso")
+        lblTitulo.styleClass.add("titulo-aviso")
+    }
+
+    fun alerta() {
+        setIcone(IMG_ALERTA)
+        lblTitulo.styleClass.removeAll("titulo-alerta", "titulo-erro", "titulo-aviso")
+        lblTitulo.styleClass.add("titulo-alerta")
+    }
+
+    fun erro() {
+        setIcone(IMG_ERRO)
+        lblTitulo.styleClass.removeAll("titulo-alerta", "titulo-erro", "titulo-aviso")
+        lblTitulo.styleClass.add("titulo-erro")
+    }
+
     override fun initialize(location: URL?, resources: ResourceBundle?) {
     }
 
-    companion object {
-        val IMG_ALERTA: Image = Image(PopupAlertaController::class.java.getResourceAsStream("/images/alert/icoAlerta_48.png"))
-        val fxmlLocate: URL get() = PopupAlertaController::class.java.getResource("/view/PopupAlerta.fxml") as URL
-    }
 }
