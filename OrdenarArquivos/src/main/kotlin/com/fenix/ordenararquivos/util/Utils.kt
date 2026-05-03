@@ -249,6 +249,12 @@ class Utils {
                 output.close()
             }
         }
+
+        fun limparTitulo(titulo: String): String {
+            // Remove prefixos de capítulos redundantes: Capítulo 031 — , Chapter 1: , etc.
+            val regex = "(?i)(capítulo|capitulo|chapter|ch\\.?|話)\\s*[\\d.]+\\s*[\\-—:]?\\s*".toRegex()
+            return titulo.replace(regex, "").trim()
+        }
     }
 
 }

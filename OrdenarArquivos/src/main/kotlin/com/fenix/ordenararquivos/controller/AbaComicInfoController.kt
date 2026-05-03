@@ -392,36 +392,42 @@ class AbaComicInfoController : Initializable {
                         updateProgress(i.toLong(), max)
                         updateMessage("Processando item " + i + " de " + max + ". Processando OCR - " + item.arquivo)
 
-                        val sumario = mRarService.extraiSumario(item.file!!, mPASTA_TEMPORARIA)
-                        if (sumario == null) {
-                            i--
-                            continue
-                        }
+                        val extractDir = File(mPASTA_TEMPORARIA, "ocr_task_${System.currentTimeMillis()}")
+                        extractDir.mkdirs()
+                        try {
+                            val sumario = mRarService.extraiSumario(item.file!!, extractDir)
+                            if (sumario == null) {
+                                i--
+                                continue
+                            }
 
-                        val capitulos = mOcrService.processOcr(sumario, Utils.SEPARADOR_PAGINA, separador).split("\n")
-                        val newTag = mutableSetOf<String>()
-                        val tags = item.comicInfo?.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList()
-                            ?: emptyList()
+                            val capitulos = mOcrService.processOcr(sumario, Utils.SEPARADOR_PAGINA, separador).split("\n")
+                            val newTag = mutableSetOf<String>()
+                            val tags = item.comicInfo?.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList()
+                                ?: emptyList()
 
-                        var index = -1
-                        for (tag in tags) {
-                            if (tag.contains("capítulo", ignoreCase = true) || tag.contains("第", ignoreCase = true)) {
-                                index++
-                                val capitulo = if (index < capitulos.size) capitulos[index] else ""
-                                newTag.add("$tag ${Utils.SEPARADOR_IMPORTACAO} $capitulo")
-                            } else
-                                newTag.add(tag)
-                        }
+                            var index = -1
+                            for (tag in tags) {
+                                if (tag.contains("capítulo", ignoreCase = true) || tag.contains("第", ignoreCase = true)) {
+                                    index++
+                                    val capitulo = if (index < capitulos.size) capitulos[index] else ""
+                                    newTag.add("$tag ${Utils.SEPARADOR_IMPORTACAO} $capitulo")
+                                } else
+                                    newTag.add(tag)
+                            }
 
-                        if (index < capitulos.size) {
-                            for (idx in index + 1 until capitulos.size)
-                                newTag.add("0${Utils.SEPARADOR_IMAGEM} Capítulo novo ${Utils.SEPARADOR_IMPORTACAO} ${capitulos[idx]}")
-                        }
+                            if (index < capitulos.size) {
+                                for (idx in index + 1 until capitulos.size)
+                                    newTag.add("0${Utils.SEPARADOR_IMAGEM} Capítulo novo ${Utils.SEPARADOR_IMPORTACAO} ${capitulos[idx]}")
+                            }
 
-                        val finalTags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
-                        Platform.runLater {
-                            item.tags = finalTags
-                            item.isProcessado = true
+                            val finalTags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
+                            Platform.runLater {
+                                item.tags = finalTags
+                                item.isProcessado = true
+                            }
+                        } finally {
+                            extractDir.deleteRecursively()
                         }
                     }
 
@@ -484,17 +490,21 @@ class AbaComicInfoController : Initializable {
                             updateProgress(i.toLong(), max.toLong())
                             updateMessage("Carregando item $i de $max.")
 
-                            val info: File? = mRarService.extraiComicInfo(arquivo)
-                            val comic: ComicInfo = if (info != null && info.exists()) {
-                                try {
+                            val extractDir = File(mPASTA_TEMPORARIA, "load_${i}_${System.currentTimeMillis()}")
+                            extractDir.mkdirs()
+                            val comic: ComicInfo = try {
+                                val info: File? = mRarService.extraiComicInfo(arquivo, extractDir)
+                                if (info != null && info.exists()) {
                                     val unmarshaller = jaxb.createUnmarshaller()
                                     unmarshaller.unmarshal(info) as ComicInfo
-                                } catch (e: Exception) {
-                                    mLOG.error(e.message, e)
+                                } else {
                                     ComicInfo()
                                 }
-                            } else {
+                            } catch (e: Exception) {
+                                mLOG.error(e.message, e)
                                 ComicInfo()
+                            } finally {
+                                extractDir.deleteRecursively()
                             }
 
                             val bookMarks =
@@ -684,36 +694,38 @@ class AbaComicInfoController : Initializable {
     }
 
     private fun processarOcrItem(item: Processar) {
-        val sumario = mRarService.extraiSumario(item.file!!, mPASTA_TEMPORARIA) ?: return
-        val capitulos = mOcrService.processOcr(sumario, Utils.SEPARADOR_PAGINA, Utils.SEPARADOR_CAPITULO).split("\n")
-        val newTag = mutableSetOf<String>()
-        val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
+        val extractDir = File(mPASTA_TEMPORARIA, "ocr_${System.currentTimeMillis()}")
+        extractDir.mkdirs()
+        try {
+            val sumario = mRarService.extraiSumario(item.file!!, extractDir) ?: return
+            val capitulos = mOcrService.processOcr(sumario, Utils.SEPARADOR_PAGINA, Utils.SEPARADOR_CAPITULO).split("\n")
+            val newTag = mutableSetOf<String>()
+            val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
 
-        var index = -1
-        for (tag in tags) {
-            if (tag.contains("capítulo", ignoreCase = true) || tag.contains("第", ignoreCase = true)) {
-                index++
-                val capitulo = if (index < capitulos.size) capitulos[index] else ""
-                newTag.add("$tag ${Utils.SEPARADOR_IMPORTACAO} $capitulo")
-            } else
-                newTag.add(tag)
+            var index = -1
+            for (tag in tags) {
+                if (tag.contains("capítulo", ignoreCase = true) || tag.contains("第", ignoreCase = true)) {
+                    index++
+                    val capitulo = if (index < capitulos.size) capitulos[index] else ""
+                    newTag.add("$tag ${Utils.SEPARADOR_IMPORTACAO} $capitulo")
+                } else
+                    newTag.add(tag)
+            }
+
+            if (index < capitulos.size) {
+                for (i in index + 1 until capitulos.size)
+                    newTag.add("-1${Utils.SEPARADOR_IMAGEM} Capítulo novo ${Utils.SEPARADOR_IMPORTACAO} ${capitulos[i]}")
+            }
+
+            item.tags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
+            item.isProcessado = true
+            tbViewProcessar.refresh()
+        } finally {
+            extractDir.deleteRecursively()
         }
-
-        if (index < capitulos.size) {
-            for (i in index + 1 until capitulos.size)
-                newTag.add("-1${Utils.SEPARADOR_IMAGEM} Capítulo novo ${Utils.SEPARADOR_IMPORTACAO} ${capitulos[i]}")
-        }
-
-        item.tags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
-        item.isProcessado = true
-        tbViewProcessar.refresh()
     }
 
     private fun gerarTagItem(item: Processar, language: Linguagem, isAjustar: Boolean = false) {
-        val series = item.comicInfo?.series ?: ""
-        val title = item.comicInfo?.title ?: ""
-        val header = if (series.isNotEmpty()) "$series - $title" else title
-
         val tags = item.comicInfo?.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { p ->
             val b = p.bookmark!!.split("-", "—")[0].trim()
             val mark = b.lowercase()
@@ -779,9 +791,8 @@ class AbaComicInfoController : Initializable {
         clResumo.cellFactory = TextAreaTableCell.forTableColumn()
         clResumo.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
             val item = e.tableView.items[e.tablePosition.row]
-            if (item.comicInfo != null) {
+            if (item.comicInfo != null)
                 item.comicInfo!!.summary = e.newValue
-            }
         }
 
         clProcessado.setCellValueFactory { param ->
@@ -816,8 +827,8 @@ class AbaComicInfoController : Initializable {
         val menu = ContextMenu()
 
         // GRUPO TAGS
-        val tagsAnteriores = MenuItem("Gerar Tags até o Item Atual")
-        tagsAnteriores.setOnAction {
+        val gerarTagsAnteriores = MenuItem("Gerar Tags até o Item Atual")
+        gerarTagsAnteriores.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 controllerPai.setCursor(Cursor.WAIT)
                 val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
@@ -829,8 +840,8 @@ class AbaComicInfoController : Initializable {
             }
         }
 
-        val tags = MenuItem("Gerar Tags (Ctrl + T)")
-        tags.setOnAction {
+        val gerarTagsAtual = MenuItem("Gerar Tags (Ctrl + T)")
+        gerarTagsAtual.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
                 gerarTagItem(tbViewProcessar.selectionModel.selectedItem, language)
@@ -856,18 +867,16 @@ class AbaComicInfoController : Initializable {
             }
         }
 
-        val tagsDoArquivo = MenuItem("Gerar Tags do Arquivo")
-        tagsDoArquivo.setOnAction {
-            val item = tbViewProcessar.selectionModel.selectedItem
-            if (item != null)
-                gerarTagsDoArquivo(item)
+        val atualizarTagsDoArquivo = MenuItem("Atualizar Tags do Arquivo")
+        atualizarTagsDoArquivo.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null)
+                gerarTagsDoArquivo(tbViewProcessar.selectionModel.selectedItem)
         }
 
         val atualizarPaginaTag = MenuItem("Atualizar Página da Tag")
         atualizarPaginaTag.setOnAction {
-            val item = tbViewProcessar.selectionModel.selectedItem
-            if (item != null)
-                atualizarPaginaTag(item)
+            if (tbViewProcessar.selectionModel.selectedItem != null)
+                atualizarPaginaTag(tbViewProcessar.selectionModel.selectedItem)
         }
 
         // GRUPO OCR
@@ -918,12 +927,12 @@ class AbaComicInfoController : Initializable {
         }
 
         menu.items.addAll(
-            tagsAnteriores,
-            tags,
+            atualizarPaginaTag,
+            atualizarTagsDoArquivo,
+            gerarTagsAnteriores,
+            gerarTagsAtual,
             tagsAjustar,
             tagsNormalizar,
-            atualizarPaginaTag,
-            tagsDoArquivo,
             SeparatorMenuItem(),
             processar,
             SeparatorMenuItem(),
@@ -947,100 +956,104 @@ class AbaComicInfoController : Initializable {
         TextAreaTableCell.setOnKeyPress { pair ->
             val textArea = pair.key
             val key = pair.value
-            if (key.isShiftDown && key.isAltDown) {
+            if ((key.isShiftDown && key.isAltDown) || key.isControlDown) {
                 when (key.code) {
                     KeyCode.ENTER -> {
-                        if (textArea.text.isEmpty() || !textArea.text.contains("\n") || !textArea.text.contains(Utils.SEPARADOR_IMPORTACAO))
+                        if (textArea.text.isEmpty() || !textArea.text.contains(Utils.SEPARADOR_IMPORTACAO))
                             return@setOnKeyPress true
 
                         val txt = textArea.text ?: ""
                         val linhas = mutableListOf<String>()
                         val separador = Utils.SEPARADOR_CAPITULO
-                        for (linha in txt.split("\n"))
-                            linhas.add(
-                                if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) linha.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim() + " — " + linha.substringAfterLast(
-                                    separador
-                                ) else linha
-                            )
+                        for (linha in txt.split("\n")) {
+                            if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                                val prefix = linha.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
+                                val title = linha.substringAfterLast(separador).trim()
+                                val cleanTitle = Utils.limparTitulo(title)
+                                linhas.add("$prefix — $cleanTitle")
+                            } else {
+                                linhas.add(linha)
+                            }
+                        }
 
                         textArea.replaceText(0, textArea.length, linhas.joinToString(separator = "\n"))
+                        key.consume()
                     }
 
                     KeyCode.DELETE -> {
-                        if (textArea.text.isEmpty() || !textArea.text.contains("\n"))
+                        if (textArea.text.isEmpty())
                             return@setOnKeyPress true
 
                         val lastCaretPos = textArea.caretPosition
-
                         val txt = textArea.text ?: ""
                         val scroll = textArea.scrollTopProperty().value
 
-                        var before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
+                        val before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
                         val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
                         val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
-                        before = before.substringBeforeLast(line)
+                        val newBefore = before.substringBeforeLast(line)
 
-                        textArea.replaceText(0, textArea.length, (before + last).trim())
-                        textArea.positionCaret(before.length)
+                        textArea.replaceText(0, textArea.length, (newBefore + last).trim())
+                        textArea.positionCaret(newBefore.length)
                         textArea.scrollTop = scroll
                         key.consume()
                     }
 
-                    KeyCode.LEFT -> {
-                        if (textArea.text.isEmpty() || !textArea.text.contains("\n") || !textArea.text.contains(Utils.SEPARADOR_IMPORTACAO))
+                    KeyCode.LEFT, KeyCode.RIGHT -> {
+                        if (textArea.text.isEmpty() || !textArea.text.contains(Utils.SEPARADOR_IMPORTACAO))
                             return@setOnKeyPress true
 
-                        val lastCaretPos = textArea.caretPosition
-
-                        val txt = textArea.text ?: ""
                         val scroll = textArea.scrollTopProperty().value
+                        val selection = textArea.selection
+                        val fullText = textArea.text
 
-                        var before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
-                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
-                        val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
-                        before = before.substringBeforeLast(line)
-
-                        if (!line.contains(Utils.SEPARADOR_IMPORTACAO))
-                            return@setOnKeyPress true
-
-                        val separador = Utils.SEPARADOR_CAPITULO
-                        val newLine = line.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim() + " — " + line.substringAfterLast(separador)
-                        textArea.replaceText(0, textArea.length, before + newLine + last)
-                        val caret = before.length + newLine.lastIndexOf(" — ")
-                        textArea.positionCaret(caret)
-                        textArea.scrollTop = scroll
-                    }
-
-                    KeyCode.RIGHT -> {
-                        if (textArea.text.isEmpty() || !textArea.text.contains("\n") || !textArea.text.contains(Utils.SEPARADOR_IMPORTACAO))
-                            return@setOnKeyPress true
-
-                        val lastCaretPos = textArea.caretPosition
-                        val txt = textArea.text ?: ""
-                        val scroll = textArea.scrollTopProperty().value
-
-                        var before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
-                        val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
-                        val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
-                        before = before.substringBeforeLast(line)
-
-                        if (!line.contains(Utils.SEPARADOR_IMPORTACAO))
-                            return@setOnKeyPress true
-
-                        val separador = Utils.SEPARADOR_CAPITULO
-                        val importedPart = line.substringAfterLast(separador).trim()
-                        val prefix = line.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
-
-                        val newLine = if (importedPart.lowercase().contains("capítulo") || importedPart.contains("—") || importedPart.contains(" - ")) {
-                            line.substringBefore(Utils.SEPARADOR_IMAGEM) + Utils.SEPARADOR_IMAGEM + importedPart.replace(" - ", " — ")
+                        val (processStart, processEnd) = if (selection.length > 0) {
+                            Pair(selection.start, selection.end)
                         } else {
-                            val cleanPrefix = prefix.split("-", "—")[0].trim()
-                            line.substringBefore(Utils.SEPARADOR_IMAGEM) + Utils.SEPARADOR_IMAGEM + cleanPrefix + " — " + importedPart
+                            val caret = textArea.caretPosition
+                            val lineStart = fullText.substring(0, caret).lastIndexOf('\n').let { if (it == -1) 0 else it + 1 }
+                            val lineEnd = fullText.indexOf('\n', caret).let { if (it == -1) fullText.length else it }
+                            Pair(lineStart, lineEnd)
                         }
 
-                        textArea.replaceText(0, textArea.length, before + newLine + last)
-                        textArea.positionCaret(before.length + newLine.length)
+                        val beforeText = fullText.substring(0, processStart)
+                        val selectedText = fullText.substring(processStart, processEnd)
+                        val afterText = fullText.substring(processEnd)
+
+                        val separadorImportacao = Utils.SEPARADOR_IMPORTACAO
+                        val separadorCapitulo = Utils.SEPARADOR_CAPITULO
+                        val separadorImagem = Utils.SEPARADOR_IMAGEM
+
+                        val lines = selectedText.split("\n").toMutableList()
+                        val updatedLines = lines.map { line ->
+                            if (!line.contains(separadorImportacao)) return@map line
+
+                            val prefix = line.substringBefore(separadorImportacao).trim()
+                            val importedPart = line.substringAfterLast(separadorCapitulo).trim()
+
+                            val cleanTitle = Utils.limparTitulo(importedPart)
+
+                            val pagePart = if (prefix.contains(separadorImagem)) prefix.substringBefore(separadorImagem) else ""
+                            val labelPart = if (prefix.contains(separadorImagem)) {
+                                prefix.substringAfter(separadorImagem).trim()
+                            } else {
+                                prefix
+                            }.split("-", "—")[0].trim()
+
+                            val pagePrefix = if (pagePart.isNotEmpty()) "$pagePart$separadorImagem" else ""
+                            "$pagePrefix$labelPart — $cleanTitle"
+                        }
+
+                        val newSelectedText = updatedLines.joinToString("\n")
+                        textArea.replaceText(processStart, processEnd, newSelectedText)
+
                         textArea.scrollTop = scroll
+                        if (selection.length > 0) {
+                            textArea.selectRange(processStart, processStart + newSelectedText.length)
+                        } else {
+                            textArea.positionCaret(processStart + newSelectedText.length)
+                        }
+                        key.consume()
                     }
 
                     KeyCode.UP,
@@ -1235,173 +1248,229 @@ class AbaComicInfoController : Initializable {
 
     private fun gerarTagsDoArquivo(item: Processar) {
         val file = item.file ?: return
-        val conteudo = mRarService.listarConteudo(file).sortedNaturally()
-        if (conteudo.isEmpty()) return
 
-        val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
-        val newTags = mutableListOf<String>()
-        val mapCapitulos = mutableMapOf<String, String>()
+        // 1. Preparação da pasta temporária
+        val extractDir = File(mPASTA_TEMPORARIA, "extract_${System.currentTimeMillis()}")
+        if (extractDir.exists()) extractDir.deleteRecursively()
+        extractDir.mkdirs()
 
-        // 1. Extrair títulos existentes das tags atuais
-        item.tags.split("\n").forEach { linha ->
-            if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) {
-                val cap = linha.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim().substringBefore(Utils.SEPARADOR_CAPITULO).trim()
-                val titulo = linha.substringAfterLast(Utils.SEPARADOR_CAPITULO).trim()
-                if (cap.isNotEmpty() && titulo.isNotEmpty()) mapCapitulos[cap] = titulo
-            } else if (linha.contains("-") || linha.contains("—")) {
-                val cap = linha.substringAfter(Utils.SEPARADOR_IMAGEM).trim().split("-", "—")[0].trim()
-                val titulo = if (linha.contains("—")) linha.substringAfter("—").trim() else linha.substringAfter("-").trim()
-                if (cap.isNotEmpty() && titulo.isNotEmpty()) {
-                    val num = Utils.getNumber(if (cap.contains("第")) Utils.fromNumberJapanese(cap) else cap)
-                    if (num != null) mapCapitulos[mDecimal.format(num)] = titulo
-                }
+        try {
+            // 2. Extração total do arquivo
+            if (!mRarService.extrairTudo(file, extractDir)) {
+                AlertasModal.erro("Erro", "Não foi possível extrair o conteúdo do arquivo.")
+                return
             }
-        }
 
-        // 2. Extrair títulos do resumo
-        item.comicInfo?.summary?.let { summary ->
-            if (summary.lowercase().contains("*chapter titles manual*") || summary.lowercase().contains("*chapter titles*")) {
-                val lines = summary.split("\n")
-                lines.forEach { line ->
-                    if (line.contains(":")) {
-                        val cap = line.substringBefore(":").replace(Regex("(?i)chapter|capítulo|第|話"), "").trim()
-                        val titulo = line.substringAfter(":").trim()
-                        val num = Utils.getNumber(if (cap.contains("第")) Utils.fromNumberJapanese(cap) else cap)
-                        if (num != null && titulo.isNotEmpty()) mapCapitulos[mDecimal.format(num)] = titulo
+            val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+            val mapCapitulos = mutableMapOf<String, String>()
+
+            // 3. Mapear títulos existentes nas tags atuais
+            item.tags.split("\n").forEach { linha ->
+                if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                    val num = linha.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim().substringBefore(Utils.SEPARADOR_CAPITULO).trim()
+                    val titulo = linha.substringAfterLast(Utils.SEPARADOR_CAPITULO).trim()
+                    if (num.isNotEmpty() && titulo.isNotEmpty()) mapCapitulos[num] = titulo
+                } else if (linha.contains("—") || (linha.contains("-") && !linha.contains(";"))) {
+                    val labelPart = if (linha.contains(";")) linha.substringAfter(";").trim() else linha
+                    val capPart = labelPart.split("—", "-")[0].trim()
+                    val titulo = if (linha.contains("—")) linha.substringAfter("—").trim() else linha.substringAfter("-").trim()
+
+                    val num = Utils.getNumber(capPart)
+                    if (num != null && titulo.isNotEmpty() && !titulo.lowercase().let { it == "cover" || it == "back" || it == "all cover" || it == "sumary" || it == "sumário" }) {
+                        mapCapitulos[mDecimal.format(num)] = titulo
                     }
                 }
             }
-        }
 
-        val chaptersFound = mutableSetOf<String>()
-        conteudo.forEachIndexed { index, path ->
-            val fileName = path.lowercase()
-            val folder = path.substringBeforeLast("/", "").substringBeforeLast("\\", "").lowercase()
-
-            var tag: String? = null
-            if (folder.contains("capa") || fileName.contains("frente") || fileName.contains("tras") || fileName.contains("tudo") || fileName.contains("sumario") || fileName.contains(
-                    "sumário"
-                )
-            ) {
-                tag = when {
-                    fileName.contains("frente") -> "Cover"
-                    fileName.contains("tras") -> "Back"
-                    fileName.contains("tudo") -> "All cover"
-                    fileName.contains("sumario") || fileName.contains("sumário") -> "Sumary"
-                    else -> null
-                }
-            }
-
-            if (tag == null) {
-                // Tenta identificar capítulos por pastas
-                val regexCap = Regex("(?i)(capítulo|chapter|第)\\s*([\\d.]+)")
-                val match = regexCap.find(path)
-                if (match != null) {
-                    val tipo = match.groupValues[1]
-                    val numeroStr = match.groupValues[2]
-                    val numero = Utils.getNumber(numeroStr)
-                    if (numero != null) {
-                        val formatado = mDecimal.format(numero)
-                        val folderPath = path.substringBeforeLast("/", path).substringBeforeLast("\\", path)
-                        if (!chaptersFound.contains(folderPath)) {
-                            chaptersFound.add(folderPath)
-                            val prefix = when (language) {
-                                Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(formatado)}話"
-                                Linguagem.ENGLISH -> "Chapter $formatado"
-                                else -> "Capítulo $formatado"
-                            }
-                            val titulo = mapCapitulos[formatado]
-                            tag = if (titulo != null) {
-                                "$prefix ${Utils.SEPARADOR_IMPORTACAO} $formatado${Utils.SEPARADOR_CAPITULO}$titulo"
-                            } else {
-                                prefix
-                            }
+            // Extrair títulos do resumo (ComicInfo)
+            item.comicInfo?.summary?.let { summary ->
+                if (summary.lowercase().contains("*chapter titles manual*") || summary.lowercase().contains("*chapter titles*")) {
+                    summary.split("\n").forEach { line ->
+                        if (line.contains(":")) {
+                            val capRaw = line.substringBefore(":").replace(Regex("(?i)chapter|capítulo|第|話"), "").trim()
+                            val titulo = line.substringAfter(":").trim()
+                            val num = Utils.getNumber(capRaw)
+                            if (num != null && titulo.isNotEmpty()) mapCapitulos[mDecimal.format(num)] = titulo
                         }
                     }
                 }
             }
 
-            if (tag != null) {
-                newTags.add("$index${Utils.SEPARADOR_IMAGEM}$tag")
-            }
-        }
+            // 4. Listar e ordenar imagens fisicamente
+            val imagensFisicas = extractDir.walkTopDown()
+                .filter { it.isFile && Utils.isImage(it.name) }
+                .toList()
+                .sortedNaturally()
 
-        if (newTags.isNotEmpty()) {
+            val newTags = mutableListOf<String>()
+            val chaptersFoundInFile = mutableSetOf<String>()
+            val foldersProcessed = mutableSetOf<String>()
+
+            imagensFisicas.forEachIndexed { index, fileImg ->
+                val fileName = fileImg.name.lowercase()
+                val folderPath = fileImg.parentFile.absolutePath
+
+                var tag: String? = null
+
+                // Identificar especiais
+                if (fileName.contains("frente") || fileName.contains("cover")) tag = "Cover"
+                else if (fileName.contains("tras") || fileName.contains("back")) tag = "Back"
+                else if (fileName.contains("tudo") || fileName.contains("all cover")) tag = "All cover"
+                else if (fileName.contains("sumario") || fileName.contains("sumário") || fileName.contains("sumary")) tag = "Sumary"
+
+                if (tag == null) {
+                    // Identificar capítulos por pastas (primeira imagem da pasta)
+                    if (!foldersProcessed.contains(folderPath)) {
+                        val regexCap = Regex("(?i)(capítulo|chapter|第|ch)\\s*([\\d.]+)", RegexOption.IGNORE_CASE)
+                        val match = regexCap.find(fileImg.parentFile.name)
+                        if (match != null) {
+                            val numeroStr = match.groupValues[2]
+                            val numero = Utils.getNumber(numeroStr)
+                            if (numero != null) {
+                                val formatado = mDecimal.format(numero)
+                                chaptersFoundInFile.add(formatado)
+                                val prefix = when (language) {
+                                    Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(formatado)}話"
+                                    Linguagem.ENGLISH -> "Chapter $formatado"
+                                    else -> "Capítulo $formatado"
+                                }
+                                val titulo = mapCapitulos[formatado]
+                                tag = if (titulo != null) {
+                                    "$prefix ${Utils.SEPARADOR_IMPORTACAO} $formatado${Utils.SEPARADOR_CAPITULO}$titulo"
+                                } else {
+                                    prefix
+                                }
+                            }
+                        }
+                        foldersProcessed.add(folderPath)
+                    }
+                }
+
+                if (tag != null) {
+                    newTags.add("$index${Utils.SEPARADOR_IMAGEM}$tag")
+                }
+            }
+
+            // 5. Capítulos novos (não encontrados no arquivo)
+            mapCapitulos.keys.subtract(chaptersFoundInFile).sortedBy { Utils.getNumber(it) ?: 0.0 }.forEach { num ->
+                val titulo = mapCapitulos[num]
+                val prefix = when (language) {
+                    Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(num)}話"
+                    Linguagem.ENGLISH -> "Chapter $num"
+                    else -> "Capítulo $num"
+                }
+                newTags.add("-1${Utils.SEPARADOR_IMAGEM} Capítulo novo ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$prefix — $titulo")
+            }
+
             item.tags = newTags.joinToString("\n")
             tbViewProcessar.refresh()
+
+        } catch (e: Exception) {
+            mLOG.error("Erro ao gerar tags do arquivo: ${e.message}", e)
+            AlertasModal.erro("Erro", "Falha ao processar o arquivo: ${e.message}")
+        } finally {
+            extractDir.deleteRecursively()
         }
     }
 
     private fun atualizarPaginaTag(item: Processar) {
         val file = item.file ?: return
-        val conteudo = mRarService.listarConteudo(file).sortedNaturally()
-        if (conteudo.isEmpty()) return
 
-        val tags = item.tags.split("\n")
-        val updatedTags = mutableListOf<String>()
+        // 1. Preparação da pasta temporária
+        val extractDir = File(mPASTA_TEMPORARIA, "update_pages_${System.currentTimeMillis()}")
+        if (extractDir.exists()) extractDir.deleteRecursively()
+        extractDir.mkdirs()
 
-        tags.forEach { tagLine ->
-            if (tagLine.isBlank()) return@forEach
-
-            val parts = tagLine.split(Utils.SEPARADOR_IMAGEM, limit = 2)
-            if (parts.size < 2) {
-                updatedTags.add(tagLine)
-                return@forEach
+        try {
+            // 2. Extração total do arquivo
+            if (!mRarService.extrairTudo(file, extractDir)) {
+                AlertasModal.erro("Erro", "Não foi possível extrair o conteúdo do arquivo.")
+                return
             }
 
-            val tagText = parts[1]
-            val tagTextLower = tagText.lowercase()
+            // 3. Listar apenas imagens fisicamente e ordenar
+            val imagensFisicas = extractDir.walkTopDown()
+                .filter { it.isFile && Utils.isImage(it.name) }
+                .toList()
+                .sortedNaturally()
 
-            var foundIndex = -1
+            if (imagensFisicas.isEmpty()) return
 
-            // 1. Identificar o que procurar no RAR
-            if (tagTextLower.contains("cover") || tagTextLower.contains("frente")) {
-                foundIndex = conteudo.indexOfFirst { it.lowercase().contains("frente") }
-            } else if (tagTextLower.contains("back") || tagTextLower.contains("tras")) {
-                foundIndex = conteudo.indexOfFirst { it.lowercase().contains("tras") }
-            } else if (tagTextLower.contains("all cover") || tagTextLower.contains("tudo")) {
-                foundIndex = conteudo.indexOfFirst { it.lowercase().contains("tudo") }
-            } else if (tagTextLower.contains("sumary") || tagTextLower.contains("sumario") || tagTextLower.contains("sumário")) {
-                foundIndex = conteudo.indexOfFirst { it.lowercase().contains("sumario") || it.lowercase().contains("sumário") }
-            } else {
-                // Procurar por capítulo
-                val capInfo = if (tagText.contains(Utils.SEPARADOR_IMPORTACAO)) {
-                    tagText.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim().substringBefore(Utils.SEPARADOR_CAPITULO).trim()
-                } else {
-                    val match = Regex("(?i)(capítulo|chapter|第)\\s*([\\d.]+)").find(tagText)
-                    if (match != null) {
-                        val num = Utils.getNumber(match.groupValues[2])
-                        if (num != null) mDecimal.format(num) else null
-                    } else null
+            val tags = item.tags.split("\n")
+            val updatedTags = mutableListOf<String>()
+
+            tags.forEach { tagLine ->
+                if (tagLine.isBlank()) return@forEach
+
+                val parts = tagLine.split(Utils.SEPARADOR_IMAGEM, limit = 2)
+                if (parts.size < 2) {
+                    updatedTags.add(tagLine)
+                    return@forEach
                 }
 
-                if (capInfo != null) {
-                    val num = Utils.getNumber(capInfo)
-                    if (num != null) {
-                        val formatado = mDecimal.format(num)
-                        // Procura a primeira página de uma pasta que contenha o número do capítulo
-                        foundIndex = conteudo.indexOfFirst { path ->
-                            val folder = path.substringBeforeLast("/", path).substringBeforeLast("\\", path).lowercase()
-                            folder.contains(formatado) || folder.contains(num.toInt().toString())
+                val tagText = parts[1]
+                val tagTextLower = tagText.lowercase()
+
+                var foundIndex = -1
+
+                // 4. Identificar o alvo
+                if (tagTextLower.contains("cover") || tagTextLower.contains("frente")) {
+                    foundIndex = imagensFisicas.indexOfFirst { it.name.lowercase().let { name -> name.contains("frente") || name.contains("cover") } }
+                } else if (tagTextLower.contains("back") || tagTextLower.contains("tras")) {
+                    foundIndex = imagensFisicas.indexOfFirst { it.name.lowercase().let { name -> name.contains("tras") || name.contains("back") } }
+                } else if (tagTextLower.contains("all cover") || tagTextLower.contains("tudo")) {
+                    foundIndex = imagensFisicas.indexOfFirst { it.name.lowercase().let { name -> name.contains("tudo") || name.contains("all cover") } }
+                } else if (tagTextLower.contains("sumary") || tagTextLower.contains("sumario") || tagTextLower.contains("sumário")) {
+                    foundIndex = imagensFisicas.indexOfFirst { it.name.lowercase().let { name -> name.contains("sumario") || name.contains("sumário") || name.contains("sumary") } }
+                } else {
+                    // Procurar por capítulo
+                    val capInfo = if (tagText.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                        tagText.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim().substringBefore(Utils.SEPARADOR_CAPITULO).trim()
+                    } else {
+                        val match = Regex("(?i)(capítulo|chapter|第|ch)\\s*([\\d.]+)").find(tagText)
+                        if (match != null) {
+                            val num = Utils.getNumber(match.groupValues[2])
+                            if (num != null) mDecimal.format(num) else null
+                        } else null
+                    }
+
+                    if (capInfo != null) {
+                        val num = Utils.getNumber(capInfo)
+                        if (num != null) {
+                            val formatado = mDecimal.format(num)
+                            // Procura a primeira página de uma pasta que contenha o número do capítulo
+                            foundIndex = imagensFisicas.indexOfFirst { fileImg ->
+                                val folderName = fileImg.parentFile.name.lowercase()
+                                folderName.contains(formatado) || folderName.contains(num.toInt().toString())
+                            }
                         }
                     }
                 }
+
+                if (foundIndex != -1) {
+                    updatedTags.add("$foundIndex${Utils.SEPARADOR_IMAGEM}$tagText")
+                } else {
+                    updatedTags.add(tagLine)
+                }
             }
 
-            if (foundIndex != -1) {
-                updatedTags.add("$foundIndex${Utils.SEPARADOR_IMAGEM}$tagText")
-            } else {
-                updatedTags.add(tagLine)
-            }
+            item.tags = updatedTags.joinToString("\n")
+            tbViewProcessar.refresh()
+
+        } catch (e: Exception) {
+            mLOG.error("Erro ao atualizar páginas: ${e.message}", e)
+            AlertasModal.erro("Erro", "Falha ao processar o arquivo: ${e.message}")
+        } finally {
+            extractDir.deleteRecursively()
         }
-
-        item.tags = updatedTags.joinToString("\n")
-        tbViewProcessar.refresh()
     }
 
-    private fun List<String>.sortedNaturally(): List<String> {
+    private fun <T> List<T>.sortedNaturally(): List<T> {
         val regex = "(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)".toRegex()
-        return this.sortedWith { s1, s2 ->
+        return this.sortedWith { o1, o2 ->
+            val s1 = if (o1 is File) o1.absolutePath else o1.toString()
+            val s2 = if (o2 is File) o2.absolutePath else o2.toString()
+
             val chunks1 = s1.split(regex)
             val chunks2 = s2.split(regex)
             var result = 0

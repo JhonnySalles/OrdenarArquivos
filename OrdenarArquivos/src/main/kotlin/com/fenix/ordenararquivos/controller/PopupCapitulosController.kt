@@ -452,7 +452,11 @@ class PopupCapitulosController : Initializable {
                 }
 
                 val tags = capitulosEncontrados.sortedBy { it.capitulo }.joinToString(separator = "\n") {
-                    formatar(it.capitulo) + Utils.SEPARADOR_CAPITULO + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
+                    val num = formatar(it.capitulo)
+                    val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
+                    val cleanTitle = Utils.limparTitulo(title)
+                    val label = "Capítulo $num"
+                    "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
                 }
                 volumesResult.add(Volume(arquivo = info.processar.arquivo, volume = info.volume, capitulos = capitulosEncontrados, tags = tags))
             }
@@ -461,7 +465,11 @@ class PopupCapitulosController : Initializable {
             if (sourcePool.isNotEmpty()) {
                 val caps = sourcePool.map { it.cap }.sortedBy { it.capitulo }
                 val tags = caps.joinToString(separator = "\n") {
-                    formatar(it.capitulo) + Utils.SEPARADOR_CAPITULO + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
+                    val num = formatar(it.capitulo)
+                    val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
+                    val cleanTitle = Utils.limparTitulo(title)
+                    val label = "Capítulo $num"
+                    "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
                 }
                 volumesResult.add(Volume(arquivo = "Não Localizados", volume = 0.0, capitulos = caps.toMutableList(), tags = tags))
             }
@@ -469,7 +477,11 @@ class PopupCapitulosController : Initializable {
             // Se mProcessar estiver vazio, apenas exibe o que veio da lista
             for (item in lista) {
                 item.tags = item.capitulos.joinToString(separator = "\n") {
-                    formatar(it.capitulo) + Utils.SEPARADOR_CAPITULO + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
+                    val num = formatar(it.capitulo)
+                    val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
+                    val cleanTitle = Utils.limparTitulo(title)
+                    val label = "Capítulo $num"
+                    "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
                 }
                 item.arquivo = mArquivos.find { it.lowercase().contains("volume " + formatar(item.volume)) } ?: ""
                 volumesResult.add(item)
@@ -484,7 +496,11 @@ class PopupCapitulosController : Initializable {
     private fun atualizarTags(volume: Volume) {
         val linguagem = cbLinguagem.value
         volume.tags = volume.capitulos.joinToString(separator = "\n") {
-            formatar(it.capitulo) + Utils.SEPARADOR_CAPITULO + if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
+            val num = formatar(it.capitulo)
+            val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
+            val cleanTitle = Utils.limparTitulo(title)
+            val label = "Capítulo $num"
+            "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
         }
     }
 
