@@ -511,3 +511,49 @@
     -fx-background-color: black;
     -fx-effect: none;
 }
+
+.scroll-links {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.scroll-links .viewport {
+    -fx-background-color: transparent;
+}
+
+.scroll-links .scroll-bar, 
+.scroll-links .scroll-bar:hover, 
+.scroll-links .scroll-bar:pressed {
+    -fx-pref-width: 6;
+    -fx-pref-height: 6;
+    -fx-padding: 0;
+}
+
+.scroll-links .scroll-bar:horizontal .thumb {
+    -fx-background-color: #444444;
+    -fx-background-radius: 3;
+}
+
+.scroll-links .scroll-bar:horizontal .track {
+    -fx-background-color: transparent;
+}
+
+.scroll-links .scroll-bar .increment-button, 
+.scroll-links .scroll-bar .decrement-button {
+    -fx-padding: 0;
+    -fx-max-width: 0;
+    -fx-max-height: 0;
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+    -fx-opacity: 0;
+}
+
+.scroll-links .scroll-bar .increment-arrow, 
+.scroll-links .scroll-bar .decrement-arrow {
+    -fx-shape: "";
+    -fx-padding: 0;
+    -fx-max-width: 0;
+    -fx-max-height: 0;
+}

@@ -7,78 +7,92 @@
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
 <?import java.net.URL?>
-<AnchorPane minWidth="700.0" onDragDropped="#handleDragDropped" onDragEntered="#handleDragEntered" onDragExited="#handleDragExited" onDragOver="#handleDragOver" prefWidth="700.0" styleClass="background-Black2" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.PopupCapitulosController">
+
+<StackPane onDragDropped="#handleDragDropped" onDragEntered="#handleDragEntered" onDragExited="#handleDragExited" onDragOver="#handleDragOver" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.PopupCapitulosController">
    <children>
-      <VBox alignment="CENTER" spacing="30.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+      <AnchorPane fx:id="apRoot" minWidth="700.0" prefWidth="700.0" styleClass="background-Black2">
          <children>
-            <HBox alignment="CENTER_LEFT" spacing="10.0">
+            <VBox alignment="CENTER" spacing="30.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                <children>
-                  <JFXComboBox fx:id="cbLinguagem" focusColor="#71afe5" labelFloat="true" prefWidth="200.0" minWidth="200.0" promptText="Linguagem" styleClass="combo-box" unFocusColor="#106ebe" />
-                  <VBox HBox.hgrow="ALWAYS">
+                  <HBox alignment="CENTER_LEFT" spacing="10.0">
                      <children>
-                        <Label prefWidth="50.0" text="Sites:" style="-fx-font-size: 10px; -fx-text-fill: #71afe5;" />
-                        <ScrollPane fitToHeight="true" pannable="true" styleClass="background-Black2, scroll-links">
-                          <content>
-                            <AnchorPane minHeight="0.0" minWidth="0.0" styleClass="background-Black2">
-                                 <children>
-                                    <HBox alignment="CENTER" styleClass="background-Black2" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="0.0">
+                        <JFXComboBox fx:id="cbLinguagem" focusColor="#71afe5" labelFloat="true" minWidth="200.0" prefWidth="200.0" promptText="Linguagem" styleClass="combo-box" unFocusColor="#106ebe" />
+                        <VBox HBox.hgrow="ALWAYS">
+                           <children>
+                              <Label prefWidth="50.0" style="-fx-font-size: 10px;" styleClass="texto-stilo-1" text="Sites:" />
+                              <ScrollPane fitToHeight="true" pannable="true" styleClass="scroll-links">
+                                <content>
+                                  <AnchorPane minHeight="0.0" minWidth="0.0" styleClass="background-Black2">
                                        <children>
-                                          <Hyperlink fx:id="hplComick" text="https://comick.io/" />
-                                          <Hyperlink fx:id="hplMangaFire" text="https://mangafire.to/" />
-                                          <Hyperlink fx:id="hplMangaForest" text="https://mangaforest.me/" />
-                                          <Hyperlink fx:id="hplMangaRead" text="https://www.mangaread.org/" />
-                                          <Hyperlink fx:id="hplMangaDex" text="https://mangadex.org/" />
-                                          <Hyperlink fx:id="hplZBato" text="https://zbato.org/" />
-                                          <Hyperlink fx:id="hplMangaPlanet" text="https://mangaplanet.com/" />
-                                          <Hyperlink fx:id="hplTaiyo" text="https://taiyo.moe/" />
-                                          <Hyperlink fx:id="hplMangaPark" text="https://mangapark.net/" />
+                                          <HBox alignment="CENTER" styleClass="background-Black2" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                             <children>
+                                                <Hyperlink fx:id="hplComick" text="https://comick.io/" />
+                                                <Hyperlink fx:id="hplMangaFire" text="https://mangafire.to/" />
+                                                <Hyperlink fx:id="hplMangaForest" text="https://mangaforest.me/" />
+                                                <Hyperlink fx:id="hplMangaRead" text="https://www.mangaread.org/" />
+                                                <Hyperlink fx:id="hplMangaDex" text="https://mangadex.org/" />
+                                                <Hyperlink fx:id="hplZBato" text="https://zbato.org/" />
+                                                <Hyperlink fx:id="hplMangaPlanet" text="https://mangaplanet.com/" />
+                                                <Hyperlink fx:id="hplTaiyo" text="https://taiyo.moe/" />
+                                                <Hyperlink fx:id="hplMangaPark" text="https://mangapark.net/" />
+                                             </children>
+                                          </HBox>
                                        </children>
-                                    </HBox>
-                                 </children>
-                              </AnchorPane>
-                          </content>
-                        </ScrollPane>
+                                    </AnchorPane>
+                                </content>
+                              </ScrollPane>
+                           </children>
+                        </VBox>
                      </children>
-                  </VBox>
+                  </HBox>
+                  <HBox spacing="10.0">
+                     <children>
+                        <JFXTextField fx:id="txtEndereco" focusColor="#71afe5" labelFloat="true" prefHeight="25.0" prefWidth="228.0" promptText="Endereço" styleClass="texto-stilo-1" unFocusColor="#106ebe" HBox.hgrow="ALWAYS" />
+                        <JFXButton fx:id="btnArquivo" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnArquivo" styleClass="background-Black3">
+                           <graphic>
+                              <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
+                                 <image>
+                                    <Image url="@../images/icoAbrir_48.png" />
+                                 </image>
+                              </ImageView>
+                           </graphic>
+                        </JFXButton>
+                        <JFXButton fx:id="btnExecutar" onAction="#onBtnExecutar" prefHeight="30.0" prefWidth="110.0" styleClass="background-Green2" text="Executar" textFill="WHITE" />
+                     </children>
+                  </HBox>
+                  <TableView fx:id="tbViewTabela" editable="true" prefHeight="400.0" prefWidth="700.0">
+                     <columns>
+                        <TableColumn fx:id="clMarcado" prefWidth="27.0">
+                           <graphic>
+                              <JFXCheckBox fx:id="cbMarcarTodos" checkedColor="#71afe5" onAction="#marcarTodos" text=" " unCheckedColor="WHITE" />
+                           </graphic>
+                        </TableColumn>
+                        <TableColumn fx:id="clArquivo" prefWidth="150.0" text="Arquivo" />
+                        <TableColumn fx:id="clVolume" prefWidth="50.0" text="Volume" />
+                        <TableColumn fx:id="clCapitulos" prefWidth="70.0" text="Capítulos" />
+                        <TableColumn fx:id="clDescricoes" prefWidth="150.0" text="Descrições" />
+                        <TableColumn fx:id="clTags" prefWidth="230.0" text="Tags" />
+                     </columns>
+                  </TableView>
                </children>
-            </HBox>
-            <HBox spacing="10.0">
-               <children>
-                  <JFXTextField fx:id="txtEndereco" focusColor="#71afe5" labelFloat="true" prefHeight="25.0" prefWidth="228.0" promptText="Endereço" styleClass="texto-stilo-1" unFocusColor="#106ebe" HBox.hgrow="ALWAYS" />
-                  <JFXButton fx:id="btnArquivo" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnArquivo" styleClass="background-Black3">
-                     <graphic>
-                        <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
-                           <image>
-                              <Image url="@../images/icoAbrir_48.png" />
-                           </image>
-                        </ImageView>
-                     </graphic>
-                  </JFXButton>
-                  <JFXButton fx:id="btnExecutar" onAction="#onBtnExecutar" prefHeight="30.0" prefWidth="110.0" styleClass="background-Green2" text="Executar" textFill="WHITE" />
-               </children>
-            </HBox>
-            <TableView fx:id="tbViewTabela" editable="true" prefHeight="400.0" prefWidth="700.0">
-               <columns>
-                  <TableColumn fx:id="clMarcado" prefWidth="27.0">
-                     <graphic>
-                        <JFXCheckBox fx:id="cbMarcarTodos" checkedColor="#71afe5" onAction="#marcarTodos" text=" " unCheckedColor="WHITE" />
-                     </graphic>
-                  </TableColumn>
-                  <TableColumn fx:id="clArquivo" prefWidth="150.0" text="Arquivo" />
-                  <TableColumn fx:id="clVolume" prefWidth="50.0" text="Volume" />
-                  <TableColumn fx:id="clCapitulos" prefWidth="70.0" text="Capítulos" />
-                  <TableColumn fx:id="clDescricoes" prefWidth="150.0" text="Descrições" />
-                  <TableColumn fx:id="clTags" prefWidth="230.0" text="Tags" />
-               </columns>
-            </TableView>
+               <padding>
+                  <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+               </padding>
+            </VBox>
          </children>
-         <padding>
-            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-         </padding>
-      </VBox>
+      </AnchorPane>
+      <AnchorPane fx:id="apDragOverlay" mouseTransparent="true" visible="false">
+         <children>
+            <StackPane fx:id="spDragDropZone" prefHeight="150.0" prefWidth="200.0" style="-fx-background-color: rgba(0, 0, 0, 0.7); -fx-border-color: #71afe5; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10;" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="10.0">
+               <children>
+                  <Label fx:id="lblDragDrop" style="-fx-font-size: 24px; -fx-font-weight: bold;" text="Arraste o arquivo aqui" textFill="WHITE" />
+               </children>
+            </StackPane>
+         </children>
+      </AnchorPane>
    </children>
    <stylesheets>
       <URL value="@../css/Dark_TelaInicial.css" />
       <URL value="@../css/Paleta_Cores.css" />
    </stylesheets>
-</AnchorPane>
+</StackPane>
