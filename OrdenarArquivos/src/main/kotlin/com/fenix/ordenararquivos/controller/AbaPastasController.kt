@@ -708,6 +708,7 @@ class AbaPastasController : Initializable {
         ckbSelecionarTodos.isDisable = true
         cbApagarArquivo.isDisable = true
         btnCompactar.isDisable = true
+        btnCapitulos.isDisable = true
         btnValidar.isDisable = true
         btnImportarVolumes.isDisable = true
 
@@ -728,11 +729,14 @@ class AbaPastasController : Initializable {
         btnAjustarPastas.isDisable = false
         btnCompactar.isDisable = false
         btnValidar.isDisable = false
+        btnCapitulos.isDisable = false
         btnImportarVolumes.isDisable = false
         tbViewProcessar.isDisable = false
         ckbSelecionarTodos.isDisable = false
         cbApagarArquivo.isDisable = false
-        if (::controller.isInitialized) controllerPai.setCursor(null)
+        
+        if (::controller.isInitialized)
+            controllerPai.setCursor(null)
 
         activeButton?.let {
             it.accessibleTextProperty().set(originalText.uppercase())
@@ -898,10 +902,12 @@ class AbaPastasController : Initializable {
     }
 
     private fun carregarItens() {
-        val pasta = File(txtPasta.text)
-        if (txtPasta.text.isNotEmpty() && pasta.exists()) {
-        if (btnCarregar.accessibleTextProperty().value.equals("CARREGAR", ignoreCase = true)) {
-            desabilita(btnCarregar)
+        val path = txtPasta.text?.trim() ?: ""
+        val pasta = File(path)
+        if (path.isNotEmpty() && pasta.exists() && pasta.isDirectory) {
+            val state = btnCarregar.accessibleTextProperty().value ?: ""
+            if (state.equals("CARREGAR", ignoreCase = true)) {
+                desabilita(btnCarregar)
 
             val processar: Task<Void> = object : Task<Void>() {
                 override fun call(): Void? {
@@ -1162,6 +1168,13 @@ class AbaPastasController : Initializable {
                 carregarItens()
 
             txtPasta.unFocusColor = Color.web("#4059a9")
+        }
+
+        txtPasta.onKeyPressed = EventHandler { e: KeyEvent ->
+            if (e.code == KeyCode.ENTER) {
+                carregarItens()
+                Utils.clickTab()
+            }
         }
 
         txtIdMal.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
@@ -1901,6 +1914,15 @@ class AbaPastasController : Initializable {
         linkaCelulas()
         configuraTextEdit()
         configuraComboBox()
+        
+        // Inicializa o accessibleText dos botões que possuem estado (Carregar/Cancela)
+        btnCarregar.accessibleText = "CARREGAR"
+        btnValidar.accessibleText = "VALIDAR"
+        btnGerarCapas.accessibleText = "GERAR"
+        btnCompactar.accessibleText = "COMPACTAR"
+        btnRenomear.accessibleText = "RENOMEAR"
+        btnAjustarPastas.accessibleText = "AJUSTAR"
+        
         habilita()
     }
 

@@ -280,6 +280,9 @@ class ComicInfoServices {
 
     private var MyAnimeLis: MyAnimeList? = null
     fun getMal(id: Long?, nome : String) : List<Mal> {
+        if (Configuracao.myAnimeListClient.isBlank())
+            throw Exception("Não possui o client id do MyAnimeList configurado.")
+
         if (MyAnimeLis == null)
             MyAnimeLis = MyAnimeList.withClientID(Configuracao.myAnimeListClient)
 

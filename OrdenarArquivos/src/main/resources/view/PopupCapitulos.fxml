@@ -83,7 +83,7 @@
       </AnchorPane>
       <AnchorPane fx:id="apDragOverlay" mouseTransparent="true" visible="false">
          <children>
-            <StackPane fx:id="spDragDropZone" prefHeight="150.0" prefWidth="200.0" style="-fx-background-color: rgba(0, 0, 0, 0.7); -fx-border-color: #71afe5; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10;" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="10.0">
+            <StackPane fx:id="spDragDropZone" prefHeight="150.0" prefWidth="200.0" style="-fx-border-color: white; -fx-border-style: dashed; -fx-border-width: 3; -fx-border-radius: 10; -fx-background-color: rgba(0,0,0,0.3); -fx-background-radius: 10;" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="10.0">
                <children>
                   <Label fx:id="lblDragDrop" style="-fx-font-size: 24px; -fx-font-weight: bold;" text="Arraste o arquivo aqui" textFill="WHITE" />
                </children>

@@ -207,9 +207,9 @@ class PopupCapitulosController : Initializable {
 
     private fun mostrarOverlayDrag(aceito: Boolean) {
         spDragDropZone.style = if (aceito)
-            "-fx-background-color: rgba(0, 0, 0, 0.7); -fx-border-color: #0cff00; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10;"
+            "-fx-border-color: white; -fx-border-style: dashed; -fx-border-width: 3; -fx-border-radius: 10; -fx-background-color: rgba(0,0,0,0.3); -fx-background-radius: 10;"
         else
-            "-fx-background-color: rgba(0, 0, 0, 0.7); -fx-border-color: #ff0000; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10;"
+            "-fx-border-color: red; -fx-border-style: dashed; -fx-border-width: 3; -fx-border-radius: 10; -fx-background-color: rgba(255,0,0,0.1); -fx-background-radius: 10;"
 
         lblDragDrop.text = if (aceito) "Arraste o arquivo aqui" else "Formato não aceito"
         lblDragDrop.textFill = if (aceito) Color.WHITE else Color.RED
@@ -352,11 +352,11 @@ class PopupCapitulosController : Initializable {
                     pagina
                 }
             } catch (e: IOException) {
-                LOGGER.error(e.message, e)
+                mLOG.error(e.message, e)
                 AlertasModal.erro("Erro ao carregar o site", e.message.toString())
                 return
             } catch (e: Exception) {
-                LOGGER.error(e.message, e)
+                mLOG.error(e.message, e)
                 AlertasModal.erro("Erro ao carregar o site", e.message.toString())
                 return
             }
@@ -386,7 +386,7 @@ class PopupCapitulosController : Initializable {
                 preparar(list)
             }
         } catch (e: Exception) {
-            LOGGER.error(e.message, e)
+            mLOG.error(e.message, e)
             AlertasModal.erro("Erro ao realizar o processamento do site", e.message.toString())
         }
     }
@@ -571,7 +571,7 @@ class PopupCapitulosController : Initializable {
             subDialog.isOverlayClose = true
             subDialog.show()
         } catch (e: Exception) {
-            LOGGER.error(e.message, e)
+            mLOG.error(e.message, e)
         }
     }
 
@@ -579,9 +579,9 @@ class PopupCapitulosController : Initializable {
         try {
             Desktop.getDesktop().browse(URI(site))
         } catch (e: IOException) {
-            LOGGER.error(e.message, e)
+            mLOG.error(e.message, e)
         } catch (e: URISyntaxException) {
-            LOGGER.error(e.message, e)
+            mLOG.error(e.message, e)
         }
     }
 
@@ -674,11 +674,11 @@ class PopupCapitulosController : Initializable {
             if (connection.responseCode == 200) {
                 connection.inputStream.bufferedReader().use { it.readText() }
             } else {
-                LOGGER.error("Erro na API Comick: ${connection.responseCode} - ${connection.responseMessage} para URL: $url")
+                mLOG.error("Erro na API Comick: ${connection.responseCode} - ${connection.responseMessage} para URL: $url")
                 null
             }
         } catch (e: Exception) {
-            LOGGER.error("Erro ao conectar na API Comick", e)
+            mLOG.error("Erro ao conectar na API Comick", e)
             null
         }
     }
@@ -1301,7 +1301,7 @@ class PopupCapitulosController : Initializable {
     }
 
     companion object {
-        private val LOGGER: Logger = LoggerFactory.getLogger(PopupAmazonController::class.java)
+        private val mLOG: Logger = LoggerFactory.getLogger(PopupAmazonController::class.java)
         private val STYLE_SHEET: String = PopupCapitulosController::class.java.getResource("/css/Dark_TelaInicial.css").toExternalForm()
         private lateinit var btnConfirmar: JFXButton
         private lateinit var btnVoltar: JFXButton
@@ -1357,7 +1357,7 @@ class PopupCapitulosController : Initializable {
                 nodeBlur.isDisable = true
                 dialog.show()
             } catch (e: IOException) {
-                LOGGER.error(e.message, e)
+                mLOG.error(e.message, e)
             }
         }
 

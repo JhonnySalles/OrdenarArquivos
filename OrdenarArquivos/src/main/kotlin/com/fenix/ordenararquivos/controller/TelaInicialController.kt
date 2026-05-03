@@ -28,7 +28,6 @@ import java.net.URL
 import java.util.*
 import kotlin.system.exitProcess
 
-
 class TelaInicialController : Initializable {
 
     private val mLOG = LoggerFactory.getLogger(TelaInicialController::class.java)

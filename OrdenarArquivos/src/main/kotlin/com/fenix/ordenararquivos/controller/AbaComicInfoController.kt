@@ -25,6 +25,7 @@ import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import javafx.concurrent.Task
+import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.geometry.Pos
@@ -32,8 +33,12 @@ import javafx.scene.Cursor
 import javafx.scene.control.*
 import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyEvent
+import javafx.scene.input.TransferMode
 import javafx.scene.layout.AnchorPane
+import javafx.scene.paint.Color
 import javafx.util.Callback
+import javafx.scene.effect.BoxBlur
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.FileOutputStream
@@ -370,6 +375,65 @@ class AbaComicInfoController : Initializable {
         if (::controller.isInitialized) controllerPai.setCursor(null)
     }
 
+    private fun configuraTextEdit() {
+        txtPastaProcessar.onKeyPressed = EventHandler { e: javafx.scene.input.KeyEvent ->
+            if (e.code == KeyCode.ENTER) {
+                carregarItens()
+                Utils.clickTab()
+            }
+        }
+    }
+
+    private fun configurarDragAndDrop() {
+        apRoot.onDragOver = EventHandler { event ->
+            if (event.gestureSource !== apRoot && event.dragboard.hasFiles()) {
+                val aceito = event.dragboard.files.any { it.isDirectory || Utils.isRar(it.name) || it.extension.lowercase() == "xml" }
+                event.acceptTransferModes(if (aceito) TransferMode.COPY else null)
+                mostrarOverlayDrag(aceito)
+            }
+            event.consume()
+        }
+
+        apRoot.onDragExited = EventHandler { esconderOverlayDrag() }
+
+        apRoot.onDragDropped = EventHandler { event ->
+            val db = event.dragboard
+            if (db.hasFiles()) {
+                val files = db.files ?: emptyList<File>()
+                if (files.isNotEmpty()) {
+                    val first = files.first()
+                    val targetDir = if (first.isDirectory) first else first.parentFile
+                    if (targetDir != null && targetDir.exists()) {
+                        txtPastaProcessar.text = targetDir.absolutePath
+                        carregarItens()
+                        event.isDropCompleted = true
+                    }
+                }
+            }
+            esconderOverlayDrag()
+            event.consume()
+        }
+    }
+
+    private fun mostrarOverlayDrag(aceito: Boolean) {
+        val blur = BoxBlur(3.0, 3.0, 3)
+        controllerPai.rootTab.effect = blur
+
+        controllerPai.spDragDropZone.style = if (aceito)
+            "-fx-border-color: white; -fx-border-style: dashed; -fx-border-width: 3; -fx-border-radius: 10; -fx-background-color: rgba(0,0,0,0.3); -fx-background-radius: 10;"
+        else
+            "-fx-border-color: red; -fx-border-style: dashed; -fx-border-width: 3; -fx-border-radius: 10; -fx-background-color: rgba(255,0,0,0.1); -fx-background-radius: 10;"
+
+        controllerPai.lblDragDrop.text = if (aceito) "Arraste a pasta aqui" else "Formato não aceito"
+        controllerPai.lblDragDrop.textFill = if (aceito) Color.WHITE else Color.RED
+        controllerPai.apDragOverlay.isVisible = true
+    }
+
+    private fun esconderOverlayDrag() {
+        controllerPai.rootTab.effect = null
+        controllerPai.apDragOverlay.isVisible = false
+    }
+
     private var mCANCELAR = false
     private fun processaOCR() {
         val separador = Utils.SEPARADOR_CAPITULO
@@ -468,8 +532,9 @@ class AbaComicInfoController : Initializable {
     }
 
     private fun carregarItens() {
-        val pasta = File(txtPastaProcessar.text)
-        if (txtPastaProcessar.text.isNotEmpty() && pasta.exists()) {
+        val path = txtPastaProcessar.text?.trim() ?: ""
+        val pasta = File(path)
+        if (path.isNotEmpty() && pasta.exists() && pasta.isDirectory) {
             btnCarregar.isDisable = true
             controllerPai.setCursor(Cursor.WAIT)
 
@@ -1547,6 +1612,8 @@ class AbaComicInfoController : Initializable {
 
         linkaCelulas()
         configurarAtalhosGrid()
+        configuraTextEdit()
+        configurarDragAndDrop()
         habilita()
     }
 

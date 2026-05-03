@@ -27,10 +27,7 @@ import java.net.URL
 import java.time.LocalDate
 import java.util.*
 
-
 class PopupAmazonController : Initializable {
-
-    private val LOGGER: Logger = LoggerFactory.getLogger(PopupAmazonController::class.java)
 
     @FXML
     lateinit var txtSiteAmazon: JFXTextField
@@ -166,11 +163,11 @@ class PopupAmazonController : Initializable {
                     .referrer("http://www.google.com")
                     .get()
             } catch (e: IOException) {
-                LOGGER.error(e.message, e)
+                mLOG.error(e.message, e)
                 AlertasModal.erro("Erro ao carregar o site", e.message.toString())
                 return
             } catch (e: Exception) {
-                LOGGER.error(e.message, e)
+                mLOG.error(e.message, e)
                 AlertasModal.erro("Erro ao carregar o site", e.message.toString())
                 return
             }
@@ -186,7 +183,7 @@ class PopupAmazonController : Initializable {
             parse(pagina, linguagem)
 
         } catch (e: Exception) {
-            LOGGER.error(e.message, e)
+            mLOG.error(e.message, e)
             AlertasModal.erro("Erro ao realizar o processamento do site", e.message.toString())
         }
     }
@@ -406,7 +403,7 @@ class PopupAmazonController : Initializable {
     }
 
     companion object {
-        private val LOGGER: Logger = LoggerFactory.getLogger(PopupAmazonController::class.java)
+        private val mLOG: Logger = LoggerFactory.getLogger(PopupAmazonController::class.java)
         private val STYLE_SHEET: String = PopupAmazonController::class.java.getResource("/css/Dark_TelaInicial.css").toExternalForm()
         private lateinit var btnConfirmar: JFXButton
         private lateinit var btnVoltar: JFXButton
@@ -454,7 +451,7 @@ class PopupAmazonController : Initializable {
                 nodeBlur.isDisable = true
                 dialog.show()
             } catch (e: IOException) {
-                LOGGER.error(e.message, e)
+                mLOG.error(e.message, e)
             }
         }
 
