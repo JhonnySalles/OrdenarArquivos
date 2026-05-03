@@ -49,6 +49,8 @@ import java.io.IOException
 import java.net.URI
 import java.net.URISyntaxException
 import java.net.URL
+import com.google.gson.JsonParser
+import java.net.HttpURLConnection
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.*
@@ -302,8 +304,17 @@ class PopupCapitulosController : Initializable {
 
         try {
             var site = txtEndereco.text
+
+            val isUrl = site.contains("https:") || site.contains("http:")
+            if (isUrl && site.contains("comick" , ignoreCase = true)) {
+                val slug = site.substringAfter("/comic/").substringBefore("?").substringBefore("#").trim('/')
+                val list = extractComickApi(slug)
+                preparar(list)
+                return
+            }
+
             val pagina: Document = try {
-                if (site.contains("https:") || site.contains("http:"))
+                 if (isUrl)
                     Jsoup.connect(site)
                         .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
                         .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
@@ -649,6 +660,116 @@ class PopupCapitulosController : Initializable {
     private fun cleanJapaneseTitle(rawTitle: String): String {
         // Removes prefixes like "第X話 ", "番外編 ", "最終話 "
         return rawTitle.replaceFirst("""^(?:第[\d.]+話\s*|番外編\s*|特別読み切り\s*|最終話\s*)""".toRegex(), "").trim()
+    }
+
+    private fun fetchFromUrl(url: String): String? {
+        return try {
+            val connection = URL(url).openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            connection.setRequestProperty("Referer", "https://comick.dev/")
+            connection.connectTimeout = 10000
+            connection.readTimeout = 10000
+
+            if (connection.responseCode == 200) {
+                connection.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                LOGGER.error("Erro na API Comick: ${connection.responseCode} - ${connection.responseMessage} para URL: $url")
+                null
+            }
+        } catch (e: Exception) {
+            LOGGER.error("Erro ao conectar na API Comick", e)
+            null
+        }
+    }
+
+    internal fun extractComickApi(slug: String): List<Volume> {
+        val lang = when (cbLinguagem.value) {
+            Linguagem.PORTUGUESE -> "pt-br"
+            Linguagem.ENGLISH -> "en"
+            Linguagem.JAPANESE -> "ja"
+            else -> "pt-br"
+        }
+
+        // 1. Obter HID do mangá
+        val infoJson = fetchFromUrl("https://api.comick.dev/comic/$slug") ?: return emptyList()
+        val infoObj = JsonParser.parseString(infoJson).asJsonObject
+        val hid = infoObj.get("comic")?.asJsonObject?.get("hid")?.asString ?: return emptyList()
+
+        // 2. Buscar capítulos com lógica de range
+        val volumesMap = mutableMapOf<Double, Volume>()
+
+        // Determinar range necessário se houver mProcessar
+        var minNeeded = Double.MAX_VALUE
+        var maxNeeded = Double.MIN_VALUE
+        if (mProcessar.isNotEmpty()) {
+            val capRegex = Regex("(?:(?:Chapter|Capítulo|Ch\\.?|Cap\\.?|第)\\s*)?(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE)
+            mProcessar.forEach { p ->
+                p.tags.lines().forEach { tag ->
+                    var capitulo = tag.substringAfter(Utils.SEPARADOR_IMAGEM).trim()
+                    if (capitulo.endsWith(Utils.SEPARADOR_IMPORTACAO))
+                        capitulo = capitulo.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
+
+                    capRegex.find(capitulo)?.groupValues?.get(1)?.toDoubleOrNull()?.let {
+                        if (it < minNeeded) minNeeded = it
+                        if (it > maxNeeded) maxNeeded = it
+                    }
+                }
+            }
+        }
+
+        var currentPage = 1
+        val limit = 300
+        var totalFetched = 0
+        var totalAvailable = 0
+
+        do {
+            val url = "https://api.comick.dev/comic/$hid/chapters?lang=$lang&limit=$limit&page=$currentPage"
+            val chaptersJson = fetchFromUrl(url) ?: break
+            val chaptersObj = JsonParser.parseString(chaptersJson).asJsonObject
+
+            if (totalAvailable == 0) {
+                totalAvailable = chaptersObj.get("total")?.asInt ?: 0
+            }
+
+            val chaptersArr = chaptersObj.getAsJsonArray("chapters") ?: break
+            if (chaptersArr.size() == 0) break
+
+            var minOnPage = Double.MAX_VALUE
+            var maxOnPage = Double.MIN_VALUE
+
+            chaptersArr.forEach { element ->
+                val obj = element.asJsonObject
+                val chapNum = obj.get("chap")?.asString?.toDoubleOrNull() ?: return@forEach
+                val volNum = obj.get("vol")?.let { if (it.isJsonNull) -1.0 else it.asString.toDoubleOrNull() ?: -1.0 } ?: -1.0
+                val title = obj.get("title")?.let { if (it.isJsonNull) "" else it.asString } ?: ""
+
+                if (chapNum < minOnPage) minOnPage = chapNum
+                if (chapNum > maxOnPage) maxOnPage = chapNum
+
+                val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
+                if (volume.capitulos.none { it.capitulo == chapNum }) {
+                    volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = title.replace(mReplace, "").trim(), japones = ""))
+                }
+            }
+
+            totalFetched += chaptersArr.size()
+
+            // Se temos mProcessar, precisamos garantir que o minNeeded foi alcançado.
+            // Os resultados da API geralmente são decrescentes.
+            val continuePagination = if (mProcessar.isNotEmpty() && minNeeded != Double.MAX_VALUE) {
+                minNeeded < minOnPage && totalFetched < totalAvailable
+            } else {
+                false
+            }
+
+            if (continuePagination) currentPage++ else break
+
+        } while (totalFetched < totalAvailable)
+
+        // Ordenar volumes e capítulos
+        volumesMap.values.forEach { it.capitulos.sortBy { c -> c.capitulo } }
+        return volumesMap.values.toList().sortedBy { it.volume }
     }
 
     //<--------------------------  Comick  -------------------------->
