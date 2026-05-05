@@ -991,7 +991,17 @@ class AbaComicInfoController : Initializable {
                 }
         }
 
+        val editarComicInfo = MenuItem("Editar ComicInfo / Pesquisar MAL").apply {
+            setOnAction {
+                val selected = tbViewProcessar.selectionModel.selectedItems
+                if (selected.isNotEmpty())
+                    abrirPopupComicInfo(selected.toList())
+            }
+        }
+
         menu.items.addAll(
+            editarComicInfo,
+            SeparatorMenuItem(),
             atualizarPaginaTag,
             atualizarTagsDoArquivo,
             gerarTagsAnteriores,
@@ -1602,6 +1612,58 @@ class AbaComicInfoController : Initializable {
         clSalvarComicInfo.cellValueFactory = PropertyValueFactory("salvar")
 
         editaColunas()
+    }
+
+
+    private fun abrirPopupComicInfo(itens: List<Processar>) {
+        if (itens.isEmpty()) return
+
+        try {
+            val itemPrimeiro = itens.first()
+            val loader = javafx.fxml.FXMLLoader(javaClass.getResource("/view/PopupComicInfo.fxml"))
+            val root = loader.load<AnchorPane>()
+            val controller = loader.getController<PopupComicInfoController>()
+
+            // Se o item não tem ComicInfo, cria um novo
+            if (itemPrimeiro.comicInfo == null)
+                itemPrimeiro.comicInfo = ComicInfo()
+
+            controller.setComicInfo(itemPrimeiro.comicInfo)
+
+            val blur = BoxBlur(3.0, 3.0, 3)
+            val dialogLayout = com.jfoenix.controls.JFXDialogLayout()
+            dialogLayout.setBody(root)
+            val dialog = com.jfoenix.controls.JFXDialog(controllerPai.rootStack, dialogLayout, com.jfoenix.controls.JFXDialog.DialogTransition.CENTER)
+            dialog.isOverlayClose = false
+
+            controller.onClose = { dialog.close() }
+            controller.onSave = { ci ->
+                // Se houver mais de um registro, atualiza todos os selecionados
+                if (itens.size > 1) {
+                    itens.forEach { item ->
+                        if (item != itemPrimeiro) {
+                            if (item.comicInfo == null)
+                                item.comicInfo = ComicInfo()
+                            item.comicInfo!!.merge(ci)
+                        }
+                    }
+                }
+                tbViewProcessar.refresh()
+            }
+
+            dialog.setOnDialogClosed {
+                controllerPai.rootTab.effect = null
+                controllerPai.rootTab.isDisable = false
+            }
+
+            controllerPai.rootTab.effect = blur
+            controllerPai.rootTab.isDisable = true
+            dialog.show()
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            mLOG.error("Erro ao abrir popup de ComicInfo: ${e.message}", e)
+        }
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {

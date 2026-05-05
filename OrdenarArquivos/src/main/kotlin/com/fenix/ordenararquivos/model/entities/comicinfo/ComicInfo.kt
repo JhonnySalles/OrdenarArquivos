@@ -142,6 +142,7 @@ data class ComicInfo(
         this.genre = comic.genre
         this.languageISO = comic.languageISO
         this.ageRating = comic.ageRating
+        this.notes = comic.notes
     }
 
 }

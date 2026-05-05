@@ -127,8 +127,25 @@ class AbaMangaController : Initializable {
             val row = TableRow<Manga>()
             row.setOnMouseClicked { event ->
                 if (event.clickCount == 2 && !row.isEmpty)
-                    abrirPopupComicInfo(row.item)
+                    abrirPopupComicInfo(listOf(row.item))
             }
+
+            val menu = ContextMenu()
+            val itemEditar = MenuItem("Editar ComicInfo / Pesquisar MAL").apply {
+                setOnAction {
+                    val selected = tbViewManga.selectionModel.selectedItems
+                    if (selected.isNotEmpty())
+                        abrirPopupComicInfo(selected.toList())
+                }
+            }
+            menu.items.add(itemEditar)
+
+            row.contextMenuProperty().bind(
+                javafx.beans.binding.Bindings.`when`(row.emptyProperty())
+                    .then(null as ContextMenu?)
+                    .otherwise(menu)
+            )
+
             row
         }
 
@@ -265,16 +282,19 @@ class AbaMangaController : Initializable {
         }
     }
 
-    internal fun abrirPopupComicInfo(manga: Manga) {
+    internal fun abrirPopupComicInfo(mangas: List<Manga>) {
+        if (mangas.isEmpty()) return
+
         try {
+            val mangaPrimeiro = mangas.first()
             val loader = FXMLLoader(javaClass.getResource("/view/PopupComicInfo.fxml"))
             val root = loader.load<AnchorPane>()
             val controller = loader.getController<PopupComicInfoController>()
 
-            // Busca o ComicInfo associado ao manga
-            val comicInfo = mServiceComicInfo.find(manga.nome, "pt") ?: mServiceComicInfo.find(manga.nome, "ja") ?: ComicInfo().apply {
-                series = manga.nome
-                comic = manga.comic
+            // Busca o ComicInfo associado ao primeiro manga selecionado
+            val comicInfo = mServiceComicInfo.find(mangaPrimeiro.nome, "pt") ?: mServiceComicInfo.find(mangaPrimeiro.nome, "ja") ?: ComicInfo().apply {
+                series = mangaPrimeiro.nome
+                comic = mangaPrimeiro.comic
             }
 
             controller.setComicInfo(comicInfo)
@@ -286,12 +306,31 @@ class AbaMangaController : Initializable {
             dialog.isOverlayClose = false
 
             controller.onClose = { dialog.close() }
+            controller.onSave = { ci ->
+                // Se houver mais de um registro, atualiza todos os selecionados
+                if (mangas.size > 1) {
+                    mangas.forEach { m ->
+                        if (m != mangaPrimeiro) {
+                            val ciManga = mServiceComicInfo.find(m.nome, "pt") ?: mServiceComicInfo.find(m.nome, "ja") ?: ComicInfo().apply {
+                                series = m.nome
+                                comic = m.comic
+                            }
+                            ciManga.merge(ci)
+                            mServiceComicInfo.save(ciManga)
+                        }
+                    }
+                }
+                // Após salvar, atualiza os nomes na grid caso tenham mudado
+                mangas.forEach { m ->
+                    m.nome = ci.series ?: ci.title ?: m.nome
+                    m.comic = ci.comic
+                }
+                tbViewManga.refresh()
+            }
 
             dialog.setOnDialogClosed {
                 controllerPai.rootTab.effect = null
                 controllerPai.rootTab.isDisable = false
-                // Recarrega os dados caso mude o nome do comic
-                carregarDados()
             }
 
             controllerPai.rootTab.effect = blur

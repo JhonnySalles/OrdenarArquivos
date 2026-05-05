@@ -97,6 +97,7 @@ class PopupComicInfoController : Initializable {
     private lateinit var btnCancelar: JFXButton
 
     var onClose: (() -> Unit)? = null
+    var onSave: ((ComicInfo) -> Unit)? = null
     private lateinit var mComicInfo: ComicInfo
     private val mServiceComicInfo = ComicInfoServices()
     private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
@@ -198,6 +199,7 @@ class PopupComicInfoController : Initializable {
         atualizaObjeto()
         try {
             mServiceComicInfo.save(mComicInfo)
+            onSave?.invoke(mComicInfo)
             fechar()
         } catch (e: Exception) {
             e.printStackTrace()

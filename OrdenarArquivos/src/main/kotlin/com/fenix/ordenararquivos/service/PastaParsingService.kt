@@ -26,14 +26,19 @@ class PastaParsingService {
             scan = nome.substringAfter("[").substringBefore("]").trim()
         }
 
-        regexCapitulo.find(nome)?.let { match ->
-            capitulos = match.groups[2]?.value?.trim() ?: "0"
-            titulo = nome.substringAfter(match.value).trim()
-            val before = nome.substringBefore(match.value).trim()
+        val matchCap = regexCapitulo.find(nome)
+        if (matchCap != null) {
+            capitulos = matchCap.groups[2]?.value?.trim() ?: "0"
+            titulo = nome.substringAfter(matchCap.value).trim()
+            val before = nome.substringBefore(matchCap.value).trim()
             if (scan.isEmpty()) {
-                scan = regexVolume.find(before)?.let { 
-                    if (it.value.isNotEmpty()) before.substringBefore(it.value) else before 
+                scan = regexVolume.find(before)?.let {
+                    if (it.value.isNotEmpty()) before.substringBefore(it.value) else before
                 } ?: before
+            }
+        } else {
+            apenasNumeros.find(nome)?.let {
+                capitulos = it.value.trim()
             }
         }
         
