@@ -279,7 +279,7 @@ class AbaMangaUiTest : BaseTest() {
         // Chamar o método diretamente para garantir estabilidade no ambiente headless
         robot.interact {
             val manga = tbViewManga.items[0]
-            controller.abrirPopupComicInfo(manga)
+            controller.abrirPopupComicInfo(listOf(manga))
         }
 
         // Aguardar o JFXDialog aparecer com paciência (animação do JFoenix)

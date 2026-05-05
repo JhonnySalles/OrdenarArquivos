@@ -68,4 +68,47 @@ class UtilsTest {
         // Null for non-numbers
         assertNull(Utils.getNumber("No numbers here"))
     }
+
+    @Test
+    fun testLimparTitulo() {
+        assertEquals("O Início", Utils.limparTitulo("Capítulo 01 — O Início"))
+        assertEquals("The Beginning", Utils.limparTitulo("Chapter 1: The Beginning"))
+        assertEquals("Special", Utils.limparTitulo("Ch. 10.5 Special"))
+        assertEquals("Manga Name", Utils.limparTitulo("Manga Name"))
+    }
+
+    @Test
+    fun testMD5() {
+        val hash = Utils.MD5("test string")
+        assertNotNull(hash)
+        assertEquals(32, hash.length)
+        
+        // Same input should produce same hash
+        assertEquals(hash, Utils.MD5("test string"))
+        assertNotEquals(hash, Utils.MD5("other string"))
+    }
+
+    @Test
+    fun testGetNomeNormalizadoOrdenacao() {
+        // Testa a lógica de preenchimento de zeros à esquerda no final da string para ordenação
+        // getNomeNormalizadoOrdenacao("Manga 1") -> "Manga 0000000001"
+        val normalized = Utils.getNomeNormalizadoOrdenacao("Manga 1.zip")
+        assertTrue(normalized.contains("0000000001"))
+        assertTrue(normalized.endsWith(".zip"))
+        
+        val normalized2 = Utils.getNomeNormalizadoOrdenacao("Manga 10.zip")
+        assertTrue(normalized2.contains("0000000010"))
+    }
+
+    @Test
+    fun testFileFormatDetectionExtended() {
+        assertTrue(Utils.isZip("test.zip"))
+        assertTrue(Utils.isZip("test.CBZ"))
+        assertTrue(Utils.isImage("test.png"))
+        assertTrue(Utils.isImage("test.WEBP"))
+        assertTrue(Utils.isSevenZ("test.7z"))
+        assertTrue(Utils.isSevenZ("test.cb7"))
+        assertTrue(Utils.isTarball("test.cbt"))
+    }
 }
+
