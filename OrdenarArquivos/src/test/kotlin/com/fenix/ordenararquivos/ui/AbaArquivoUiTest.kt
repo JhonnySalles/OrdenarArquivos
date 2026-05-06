@@ -144,9 +144,6 @@ class AbaArquivoUiTest : BaseTest() {
                 mockTelaInicialController
         )
 
-        // Injeta o controller pai para evitar UninitializedPropertyAccessException
-        controller.controllerPai = mockTelaInicialController
-
         // Mock das propriedades de progresso para evitar NPE no processar()
         whenever(mockTelaInicialController.rootProgress).thenReturn(ProgressBar())
         whenever(mockTelaInicialController.rootMessage).thenReturn(Label())
@@ -156,6 +153,11 @@ class AbaArquivoUiTest : BaseTest() {
         whenever(mockTelaInicialController.apDragOverlay).thenReturn(AnchorPane())
         whenever(mockTelaInicialController.spDragDropZone).thenReturn(StackPane())
         whenever(mockTelaInicialController.lblDragDrop).thenReturn(Label())
+        whenever(mockTelaInicialController.mSincronizacao).thenReturn(mockSincronizacao)
+
+        // Injeta o controller pai para evitar UninitializedPropertyAccessException
+        // IMPORTANTE: deve ser depois dos mocks acima pois o setter chama setupSincronizacao()
+        controller.controllerPai = mockTelaInicialController
 
         // Limpar estado do controller para evitar vazamento entre testes
         robot.interact {
@@ -198,6 +200,9 @@ class AbaArquivoUiTest : BaseTest() {
 
         // Mock padrão para ComicInfo find (2 args)
         doReturn(null).whenever(mockComicInfoService).find(any(), anyOrNull())
+
+        // Mock padrão para Sincronizacao para evitar NPE no setupSincronizacao
+        whenever(mockSincronizacao.listSize()).thenReturn(0)
     }
 
     @Test
@@ -214,8 +219,17 @@ class AbaArquivoUiTest : BaseTest() {
         robot.interact {
             txtNomePastaManga.text = "Dummy Manga"
             txtVolume.text = "01"
+            txtVolume.requestFocus()
         }
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        // Garante que o texto foi definido antes de clicar
+        assertEquals("01", txtVolume.text)
+        
         robot.clickOn("#btnVolumeMais")
+        WaitForAsyncUtils.waitForFxEvents()
+        
         assertEquals("02", txtVolume.text)
     }
 
@@ -1088,7 +1102,8 @@ class AbaArquivoUiTest : BaseTest() {
     @Order(30)
     fun testDragOverVisualState(robot: FxRobot) {
         val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
-        val apDragOverlay = robot.lookup("#apDragOverlay").queryAs(AnchorPane::class.java)
+        // apDragOverlay é do TelaInicialController (mockado), então usamos a referência do mock
+        val apDragOverlay = mockTelaInicialController.apDragOverlay
         
         val dragboard = mock<Dragboard>()
         whenever(dragboard.hasFiles()).thenReturn(true)
