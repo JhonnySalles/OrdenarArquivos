@@ -66,6 +66,7 @@ class AbaPastasUiTest : BaseTest() {
 
     @TempDir lateinit var tempDir: Path
     private lateinit var mockPopupAmazon: MockedStatic<PopupAmazonController>
+    private lateinit var mockConfirmaModal: MockedStatic<ConfirmaModal>
 
     companion object {
         private var staticKeepAlive: java.sql.Connection? = null
@@ -150,6 +151,7 @@ class AbaPastasUiTest : BaseTest() {
         com.fenix.ordenararquivos.notification.Notificacoes.rootAnchorPane = rootNode as AnchorPane
 
         mockPopupAmazon = Mockito.mockStatic(PopupAmazonController::class.java)
+        mockConfirmaModal = Mockito.mockStatic(ConfirmaModal::class.java)
 
         Mockito.reset(
                 mockMangaService,
@@ -529,6 +531,9 @@ class AbaPastasUiTest : BaseTest() {
         if (::mockPopupAmazon.isInitialized) {
             mockPopupAmazon.close()
         }
+        if (::mockConfirmaModal.isInitialized) {
+            mockConfirmaModal.close()
+        }
         AlertasModal.isTeste = false
         AlertasModal.lastAlertTitle = null
         AlertasModal.lastAlertText = null
@@ -800,7 +805,70 @@ class AbaPastasUiTest : BaseTest() {
 
     @Test
     @Order(23)
+    fun testValidarRegistrosVisual(robot: FxRobot) {
+        val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        
+        // Criar um buraco nos capítulos (1 e 5)
+        val p1 = Pasta(File("P1"), "P1", volume = 1f, capitulo = 1f)
+        val p2 = Pasta(File("P2"), "P2", volume = 1f, capitulo = 5f)
+        
+        robot.interact {
+            pastasController.mObsListaProcessar.setAll(p1, p2)
+        }
+        
+        robot.clickOn("#btnValidar")
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        // Verifica se ambos os registros receberam o estado de alerta
+        assertTrue(p1.isAlerta, "P1 deveria estar em alerta")
+        assertTrue(p2.isAlerta, "P2 deveria estar em alerta")
+    }
+
+    @Test
+    @Order(24)
+    fun testAjustarPastasFlow(robot: FxRobot) {
+        val baseDir = tempDir.resolve("Ajustar_" + System.currentTimeMillis()).toFile().apply { mkdirs() }
+        val pastaRaiz = File(baseDir, "Manga Item").apply { mkdirs() }
+        val subPasta = File(pastaRaiz, "Sub").apply { mkdirs() }
+        val arquivo = File(subPasta, "imagem.jpg").apply { createNewFile() }
+        
+        val p1 = Pasta(pastaRaiz, "Manga Item", isSelecionado = true)
+        robot.interact {
+            pastasController.mObsListaProcessar.setAll(p1)
+        }
+        
+        // Mock da confirmação
+        mockConfirmaModal.`when`<Boolean> { ConfirmaModal.confirmacao(any(), any()) }.thenReturn(true)
+        
+        robot.clickOn("#btnAjustarPastas")
+        
+        // Aguarda a Task (botão reabilitado)
+        WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) {
+            !robot.lookup("#btnAjustarPastas").queryAs(JFXButton::class.java).isDisable
+        }
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        // Verifica se o arquivo foi movido para a raiz e a subpasta removida
+        assertTrue(File(pastaRaiz, "imagem.jpg").exists(), "O arquivo deveria ter sido movido para a raiz")
+        assertFalse(subPasta.exists(), "A subpasta vazia deveria ter sido removida")
+    }
+
+    @Test
+    @Order(25)
+    fun testOpenPopupCapitulos(robot: FxRobot) {
+        // Mock static para evitar chamadas reais
+        Mockito.mockStatic(com.fenix.ordenararquivos.controller.PopupCapitulosController::class.java).use { mockPopup ->
+            robot.clickOn("#btnCapitulos")
+            mockPopup.verify {
+                com.fenix.ordenararquivos.controller.PopupCapitulosController.abreTelaCapitulos(any(), any(), any(), any(), any())
+            }
+        }
+    }
+
+    @Test
+    @Order(26)
     fun testRemoverArquivosAposProcessar(robot: FxRobot) {
+
         val folder = tempDir.resolve("FolderToRemove").toFile().apply { mkdirs() }
         File(folder, "img.jpg").createNewFile()
 
@@ -855,8 +923,9 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
-    @Order(24)
+    @Order(27)
     fun testProcessaArquivosRarLogic(robot: FxRobot) {
+
         // Testa a lógica de extração de nome do mangá a partir do arquivo (vinha do ControllerTest)
         val method =
                 pastasController.javaClass.getDeclaredMethod(
@@ -912,8 +981,9 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
-    @Order(25)
+    @Order(28)
     fun testCbMangaChangeUpdatesList(robot: FxRobot) {
+
         val tbViewProcessar =
                 robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         robot.interact { tbViewProcessar.items.add(Pasta(File("p1"), "a1")) }
@@ -950,8 +1020,9 @@ class AbaPastasUiTest : BaseTest() {
     }
 
     @Test
-    @Order(26)
+    @Order(29)
     fun testProgressBarUpdates(robot: FxRobot) {
+
         val pb = pastasController.controllerPai.rootProgress
         robot.interact { pb.progress = 0.0 }
 

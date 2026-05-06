@@ -1083,4 +1083,62 @@ class AbaArquivoUiTest : BaseTest() {
         robot.interact { cbCapa.isSelected = true }
         assertTrue(cbCapa.isSelected)
     }
+
+    @Test
+    @Order(30)
+    fun testDragOverVisualState(robot: FxRobot) {
+        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
+        val apDragOverlay = robot.lookup("#apDragOverlay").queryAs(AnchorPane::class.java)
+        
+        val dragboard = mock<Dragboard>()
+        whenever(dragboard.hasFiles()).thenReturn(true)
+        whenever(dragboard.files).thenReturn(listOf(File("test.rar")))
+        
+        val dragEvent = mock<DragEvent>()
+        whenever(dragEvent.dragboard).thenReturn(dragboard)
+        whenever(dragEvent.eventType).thenReturn(DragEvent.DRAG_OVER)
+        
+        robot.interact {
+            root.onDragOver.handle(dragEvent)
+        }
+        
+        assertTrue(apDragOverlay.isVisible, "Overlay de drag deveria estar visível")
+        
+        robot.interact {
+            root.onDragExited.handle(dragEvent)
+        }
+        assertFalse(apDragOverlay.isVisible, "Overlay de drag deveria estar oculto após exit")
+    }
+
+    @Test
+    @Order(31)
+    fun testConditionalValidation(robot: FxRobot) {
+        val cbCompactar = robot.lookup("#cbCompactarArquivo").queryAs(JFXCheckBox::class.java)
+        val txtNomeArquivo = robot.lookup("#txtNomeArquivo").queryAs(JFXTextField::class.java)
+        
+        robot.interact {
+            cbCompactar.isSelected = true
+            txtNomeArquivo.text = ""
+            AlertasModal.lastAlertTitle = null
+        }
+        
+        // Chama validaCampos via reflection para testar a lógica interna
+        val method = controller.javaClass.getDeclaredMethod("validaCampos", Boolean::class.java, Boolean::class.java)
+        method.isAccessible = true
+        
+        val result = method.invoke(controller, false, false) as Boolean
+        
+        assertFalse(result, "Validação deveria falhar com compactar selecionado e nome vazio")
+        assertEquals("Alerta", AlertasModal.lastAlertTitle)
+        
+        robot.interact {
+            cbCompactar.isSelected = false
+            AlertasModal.lastAlertTitle = null
+        }
+        
+        // Com compactar desativado, o nome vazio não deve causar erro (nesse ponto específico da lógica)
+        // Nota: Outras validações (origem/destino) ainda podem falhar se não estiverem preenchidas, 
+        // mas aqui estamos testando a condicional do compactar.
+    }
 }
+

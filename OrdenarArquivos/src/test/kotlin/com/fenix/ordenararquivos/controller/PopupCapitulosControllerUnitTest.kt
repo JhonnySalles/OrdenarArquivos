@@ -83,7 +83,7 @@ class PopupCapitulosControllerUnitTest : BaseJfxTest() {
     fun testPrepararSemProcessar() {
         val volumes = listOf(
             Volume(volume = 1.0).apply {
-                capitulos.add(com.fenix.ordenararquivos.model.entities.capitulos.Capitulo(capitulo = 1.0, ingles = "Title 1"))
+                capitulos.add(com.fenix.ordenararquivos.model.entities.capitulos.Capitulo(capitulo = 1.0, ingles = "Title 1", japones = ""))
             }
         )
         

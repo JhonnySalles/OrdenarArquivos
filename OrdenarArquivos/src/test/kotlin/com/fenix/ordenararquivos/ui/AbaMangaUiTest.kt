@@ -305,6 +305,84 @@ class AbaMangaUiTest : BaseTest() {
         )
     }
 
+    @Test
+    @Order(7)
+    fun testInfiniteScroll(robot: FxRobot) {
+        val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java)
+        
+        // Mock para simular que existem mais dados
+        val extraMangas = List(10) { i -> Manga(id = (i + 3).toLong(), nome = "Extra $i") }
+        whenever(mockMangaService.findAll(anyOrNull(), any(), any(), any()))
+            .thenReturn(extraMangas)
+
+        robot.interact {
+            // No ambiente headless, forçamos a chamada do método que o listener dispararia
+            val method = controller.javaClass.getDeclaredMethod("carregarDados", Boolean::class.java)
+            method.isAccessible = true
+            method.invoke(controller, true)
+        }
+
+        // Verifica se os itens foram adicionados à lista existente (2 originais + 10 novos)
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) { tbViewManga.items.size == 12 }
+        assertEquals(12, tbViewManga.items.size)
+    }
+
+    @Test
+    @Order(8)
+    fun testDoubleClickEdit(robot: FxRobot) {
+        val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java)
+        
+        robot.interact {
+            tbViewManga.selectionModel.select(0)
+            // Simular o clique duplo via evento manual para garantir estabilidade
+            val event = javafx.scene.input.MouseEvent(
+                javafx.scene.input.MouseEvent.MOUSE_CLICKED,
+                0.0, 0.0, 0.0, 0.0,
+                javafx.scene.input.MouseButton.PRIMARY, 2,
+                false, false, false, false, false, false, false, false, false, false, null
+            )
+            // Localiza a linha e dispara o evento
+            val row = robot.lookup(".table-row-cell").nth(0).queryAs(javafx.scene.control.TableRow::class.java)
+            row.fireEvent(event)
+        }
+
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
+            robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent
+        }
+        assertTrue(robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent)
+        
+        // Limpar para o próximo teste
+        robot.interact {
+            val btnCancelar = robot.lookup("#btnCancelar").queryAs(JFXButton::class.java)
+            btnCancelar.fire()
+        }
+        WaitForAsyncUtils.waitForFxEvents()
+    }
+
+    @Test
+    @Order(9)
+    fun testContextMenuEdit(robot: FxRobot) {
+        val tbViewManga = robot.lookup("#tbViewManga").queryAs(TableView::class.java)
+        
+        robot.interact {
+            tbViewManga.selectionModel.select(0)
+            val row = robot.lookup(".table-row-cell").nth(0).queryAs(javafx.scene.control.TableRow::class.java)
+            val contextMenu = row.contextMenu
+            assertNotNull(contextMenu, "ContextMenu não encontrado na linha")
+            
+            val itemEditar = contextMenu!!.items.find { it.text.contains("Editar ComicInfo") }
+            assertNotNull(itemEditar, "Item de menu 'Editar ComicInfo' não encontrado")
+            
+            itemEditar!!.onAction.handle(javafx.event.ActionEvent())
+        }
+
+        WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS) {
+            robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent
+        }
+        assertTrue(robot.lookup(".jfx-dialog-layout").tryQuery<javafx.scene.Node>().isPresent)
+    }
+
+
     @AfterEach
     fun tearDown() {
         AlertasModal.isTeste = false
