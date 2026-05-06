@@ -2,6 +2,7 @@ package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.components.CheckBoxTableCellCustom
 import com.fenix.ordenararquivos.components.TextAreaTableCell
+import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.entities.capitulos.Volume
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
@@ -1026,6 +1027,15 @@ class AbaComicInfoController : Initializable {
                     mObsListaProcessar.removeAll(tbViewProcessar.selectionModel.selectedItems.toList())
                     tbViewProcessar.refresh()
                 }
+        }
+
+        tbViewProcessar.setRowFactory {
+            val row = TableRow<Processar>()
+            row.setOnMouseClicked { event ->
+                if (event.clickCount == 2 && !row.isEmpty)
+                    abrirPopupComicInfo(listOf(row.item))
+            }
+            row
         }
 
         TextAreaTableCell.setOnKeyPress { pair ->
