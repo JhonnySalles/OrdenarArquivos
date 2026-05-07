@@ -558,9 +558,7 @@ class AbaPastasController : Initializable {
                         }
                     } catch (e: Exception) {
                         mLOG.error("Erro ao compactar.", e)
-                        Platform.runLater {
-                            Notificacoes.notificacao(Notificacao.ERRO, "Compactar", "Erro ao compactar: ${e.message}")
-                        }
+                        Platform.runLater { AlertasModal.erro("Erro ao compactar", e.message ?: "Erro desconhecido") }
                     }
                     return null
                 }
@@ -632,9 +630,7 @@ class AbaPastasController : Initializable {
                         }
                     } catch (e: Exception) {
                         mLOG.error("Erro ao ajustar pastas.", e)
-                        Platform.runLater {
-                            Notificacoes.notificacao(Notificacao.ERRO, "Ajustar Pastas", "Erro: ${e.message}")
-                        }
+                        Platform.runLater { AlertasModal.erro("Erro ao ajustar pastas", e.message ?: "Erro desconhecido") }
                     }
                     return null
                 }
@@ -862,9 +858,7 @@ class AbaPastasController : Initializable {
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
-                        Platform.runLater {
-                            Notificacoes.notificacao(Notificacao.ERRO, "My Anime List", "Erro ao realizar a consulta do MyAnimeList. " + e.message)
-                        }
+                        Platform.runLater { AlertasModal.erro("Erro no My Anime List", e.message ?: "Erro desconhecido") }
                     }
                     return null
                 }
@@ -914,12 +908,17 @@ class AbaPastasController : Initializable {
                     try {
                         mCANCELAR = false
                         val lista = mutableListOf<Pasta>()
-
                         val parsingService = PastaParsingService()
-                        val max = pasta.listFiles()?.size?.toLong() ?: 0L
+                        val files = pasta.listFiles()
+                        if (files == null) {
+                            Platform.runLater { AlertasModal.erro("Erro ao carregar", "Não foi possível listar os arquivos do diretório: ${pasta.absolutePath}") }
+                            return null
+                        }
+
+                        val max = files.size.toLong()
                         var i = 0L
 
-                        for (file in pasta.listFiles()!!) {
+                        for (file in files) {
                             if (mCANCELAR) break
 
                             i++
@@ -1008,9 +1007,7 @@ class AbaPastasController : Initializable {
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao carregar pastas.", e)
-                        Platform.runLater {
-                            Notificacoes.notificacao(Notificacao.ERRO, "Carregar Pastas", "Erro ao carregar pastas. " + e.message)
-                        }
+                        Platform.runLater { AlertasModal.erro("Erro ao carregar pastas", e.message ?: "Erro desconhecido") }
                     }
                     return null
                 }
@@ -1092,9 +1089,7 @@ class AbaPastasController : Initializable {
                         }
                     } catch (e: Exception) {
                         mLOG.info("Erro ao processar pastas.", e)
-                        Platform.runLater {
-                            Notificacoes.notificacao(Notificacao.ERRO, "Renomear Pastas", "Erro ao renomear pastas. " + e.message)
-                        }
+                        Platform.runLater { AlertasModal.erro("Erro ao renomear pastas", e.message ?: "Erro desconhecido") }
                     }
                     return null
                 }
@@ -1891,9 +1886,7 @@ class AbaPastasController : Initializable {
                 }
             } catch (e: Exception) {
                 mLOG.error("Erro ao carregar ComicInfo.xml arrastado", e)
-                Platform.runLater {
-                    Notificacoes.notificacao(Notificacao.ERRO, "Erro XML", "Não foi possível carregar os metadados: ${e.message}")
-                }
+                Platform.runLater { AlertasModal.erro("Erro ao carregar XML", e.message ?: "Erro desconhecido") }
             }
         } else {
             mLOG.info("Arquivo XML ignorado por não ser 'ComicInfo.xml': ${file.name}")

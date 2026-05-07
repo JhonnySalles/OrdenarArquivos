@@ -2,6 +2,7 @@ package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
+import com.fenix.ordenararquivos.notification.AlertasModal
 import com.fenix.ordenararquivos.notification.ConfirmaModal
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
@@ -226,7 +227,7 @@ class AbaMangaController : Initializable {
 
             override fun failed() {
                 mCarregando = false
-                exception.printStackTrace()
+                Platform.runLater { AlertasModal.erro("Erro ao carregar dados", exception.message ?: "Erro desconhecido") }
             }
         }
         Thread(task).start()
@@ -260,7 +261,7 @@ class AbaMangaController : Initializable {
                 controllerPai.rootMessage.text = "Manga ${manga.nome} salvo com sucesso."
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Platform.runLater { AlertasModal.erro("Erro ao processar", e.message ?: "Erro desconhecido") }
         }
     }
 
@@ -277,7 +278,7 @@ class AbaMangaController : Initializable {
                 mMangas.remove(manga)
                 controllerPai.rootMessage.text = "Manga excluído com sucesso."
             } catch (e: Exception) {
-                e.printStackTrace()
+                Platform.runLater { AlertasModal.erro("Erro ao excluir manga", e.message ?: "Erro desconhecido") }
             }
         }
     }
@@ -338,7 +339,7 @@ class AbaMangaController : Initializable {
             dialog.show()
 
         } catch (e: Exception) {
-            e.printStackTrace()
+            Platform.runLater { AlertasModal.erro("Erro ao processar", e.message ?: "Erro desconhecido") }
         }
     }
 

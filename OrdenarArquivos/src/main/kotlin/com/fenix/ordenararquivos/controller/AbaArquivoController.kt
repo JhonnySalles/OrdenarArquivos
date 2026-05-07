@@ -1074,15 +1074,20 @@ class AbaArquivoController : Initializable {
     }
 
     private fun salvaManga() {
-        mManga = if (mManga == null) geraManga(0) else geraManga(mManga!!.id)
-        mManga!!.caminhos.clear()
-        for (caminho in mListaCaminhos)
-            mManga!!.addCaminhos(caminho)
-        mServiceManga.save(mManga!!)
-        Platform.runLater {
-            lblAlerta.text = ""
-            lblAviso.text = "Manga salvo."
-            Notificacoes.notificacao(Notificacao.SUCESSO, "Sucesso", "Manga salvo.")
+        try {
+            mManga = if (mManga == null) geraManga(0) else geraManga(mManga!!.id)
+            mManga!!.caminhos.clear()
+            for (caminho in mListaCaminhos)
+                mManga!!.addCaminhos(caminho)
+            mServiceManga.save(mManga!!)
+            Platform.runLater {
+                lblAlerta.text = ""
+                lblAviso.text = "Manga salvo."
+                Notificacoes.notificacao(Notificacao.SUCESSO, "Sucesso", "Manga salvo.")
+            }
+        } catch (e: Exception) {
+            mLOG.error("Erro ao salvar manga.", e)
+            AlertasModal.erro("Erro ao salvar manga", e.message ?: "Erro desconhecido")
         }
     }
 
@@ -1504,7 +1509,13 @@ class AbaArquivoController : Initializable {
                     if (listaCaminhos.size > 1)
                         proxCapitulo = listaCaminhos[pagina].numero
 
-                    for (arquivos in mCaminhoOrigem!!.listFiles(mFilterNomeArquivo).sorted()) {
+                    val filesProcessar = mCaminhoOrigem!!.listFiles(mFilterNomeArquivo)
+                    if (filesProcessar == null) {
+                        Platform.runLater { AlertasModal.erro("Erro ao processar", "Não foi possível listar os arquivos do diretório de origem: ${mCaminhoOrigem!!.absolutePath}") }
+                        return false
+                    }
+
+                    for (arquivos in filesProcessar.sorted()) {
                         if (mCANCELAR)
                             return true
 
@@ -1569,7 +1580,7 @@ class AbaArquivoController : Initializable {
                         LAST_PROCESS_FOLDERS = pastasCompactar
                 } catch (e: Exception) {
                     mLOG.error("Erro ao processar.", e)
-                    Platform.runLater { AlertasModal.erro("Erro ao processar", e.stackTrace.toString()) }
+                    Platform.runLater { AlertasModal.erro("Erro ao processar", e.message ?: e.toString()) }
                 }
                 return true
             }
