@@ -136,8 +136,8 @@ class AbaMangaUiTest : BaseTest() {
     @Test
     @Order(3)
     fun testFiltroManga(robot: FxRobot) {
-        val root = robot.lookup("#apRoot").queryAs(AnchorPane::class.java)
         val txtFiltro = robot.lookup("#txtFiltro").queryAs(JFXTextField::class.java)
+        @Suppress("UNCHECKED_CAST")
         val tbViewManga =
                 robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
 
@@ -174,10 +174,12 @@ class AbaMangaUiTest : BaseTest() {
     @Test
     @Order(3)
     fun testInlineEditManga(robot: FxRobot) {
+        @Suppress("UNCHECKED_CAST")
         val tbViewManga =
                 robot.lookup("#tbViewManga").queryAs(TableView::class.java) as TableView<Manga>
         WaitForAsyncUtils.waitFor(1, TimeUnit.SECONDS) { tbViewManga.items.isNotEmpty() }
 
+        @Suppress("UNCHECKED_CAST")
         val clNome = tbViewManga.columns[1] as TableColumn<Manga, String>
 
         // Forçar entrada no modo de edição programaticamente

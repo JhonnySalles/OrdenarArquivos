@@ -497,6 +497,11 @@ class AbaPastasUiTest : BaseTest() {
                 "Naruto Classic",
                 robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text
         )
+
+        // Validar se a nova coluna clMalTipo está presente e acessível
+        val tv = robot.lookup("#tbViewMal").queryAs(TableView::class.java) as TableView<Mal>
+        val clTipo = tv.columns.find { it.text?.contains("Tipo", ignoreCase = true) == true }
+        assertNotNull(clTipo, "A coluna clMalTipo deveria estar presente na tabela")
     }
 
     @Test
@@ -560,8 +565,6 @@ class AbaPastasUiTest : BaseTest() {
     @Test
     @Order(8)
     fun testVolumeUpdateAutomaticoMock(robot: FxRobot) {
-        val tbViewProcessar =
-                robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
         val pastaTest = Pasta(File("Chapter item"), "Chapter item", capitulo = 81f, volume = 0f)
         robot.interact {
             pastasController.mObsListaProcessar.clear()
@@ -798,9 +801,63 @@ class AbaPastasUiTest : BaseTest() {
 
         assertEquals("Alerta", AlertasModal.lastAlertTitle)
         assertTrue(
-                AlertasModal.lastAlertText?.contains("Erro") == true ||
-                        AlertasModal.lastAlertTitle == "Alerta"
+                AlertasModal.lastAlertText!!.contains("Falha na compactação"),
+                "Mensagem de erro inesperada: ${AlertasModal.lastAlertText}"
         )
+    }
+
+    @Test
+    @Order(21)
+    fun testTabTitleSync(robot: FxRobot) {
+        val tabPane = robot.lookup("#tbTabRootPastas").queryAs(JFXTabPane::class.java)
+        val tabComic = tabPane.tabs[1]
+        
+        robot.interact { tabPane.selectionModel.select(1) }
+        
+        val txtSeries = robot.lookup("#txtSeries").queryAs(JFXTextField::class.java)
+        
+        robot.interact {
+            // Simular seleção anterior para o sufixo aparecer
+            pastasController.mComicInfo.series = "Antigo"
+            tabComic.text = "Comic Info (Antigo)"
+            
+            txtSeries.text = "Nova Serie de Teste Longa para Validar o Truncamento de 50 Caracteres"
+        }
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        assertTrue(tabComic.text.contains("Nova Serie de Teste Longa para Validar o Truncamento"), "O título da aba deveria ter sido atualizado")
+        assertTrue(tabComic.text.endsWith("...)"), "O título da aba deveria estar truncado")
+        
+        robot.interact {
+            txtSeries.text = ""
+        }
+        assertEquals("Comic Info", tabComic.text, "O título da aba deveria voltar ao normal quando o texto for vazio")
+    }
+
+    @Test
+    @Order(23)
+    fun testContextMenuAjustarTodosTitulos(robot: FxRobot) {
+        val p1 = Pasta(File("1"), "P1", titulo = "Cap. 01 - Titulo 1")
+        val p2 = Pasta(File("2"), "P2", titulo = "Cap. 02 - Titulo 2")
+        
+        robot.interact {
+            pastasController.mObsListaProcessar.setAll(p1, p2)
+        }
+        
+        val tbViewProcessar = robot.lookup("#tbViewProcessar").queryAs(TableView::class.java) as TableView<Pasta>
+        
+        robot.interact {
+            val menu = tbViewProcessar.contextMenu ?: pastasController.contextMenu
+            val item = menu?.items?.find { it.text?.contains("Ajustar todos os titulos", ignoreCase = true) == true }
+            assertNotNull(item, "Menu item 'Ajustar todos os titulos' não encontrado")
+            item?.onAction?.handle(null)
+        }
+        
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        assertEquals("Titulo 1", p1.titulo)
+        assertEquals("Titulo 2", p2.titulo)
     }
 
     @Test

@@ -502,7 +502,7 @@
                         --add-opens javafx.controls/javafx.scene.control.skin=com.jfoenix
                         --add-opens javafx.graphics/com.sun.javafx.scene=com.jfoenix
 
-                        -Dcom.jfoenix.disableAnimations=true -Xmx256m -Xms128m
+                        -Dcom.jfoenix.disableAnimations=true -Xmx1024m -Xms512m
                     </argLine>
                     <excludedGroups>${exclude.groups}</excludedGroups>
                     <useFile>false</useFile>

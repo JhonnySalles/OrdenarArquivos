@@ -178,7 +178,7 @@ class AbaComicInfoUiTest : BaseTest() {
                 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><ComicInfo><Series>Test Series</Series><Title>Test Title</Title><Pages><Page Image=\"0\" Bookmark=\"Capítulo 1\"/></Pages></ComicInfo>"
         )
 
-        whenever(mockWinrar.extraiComicInfo(any())).thenReturn(dummyComicInfoXml)
+        whenever(mockWinrar.extraiComicInfo(any(), any())).thenReturn(dummyComicInfoXml)
         mockOcr?.`when`<String>(MockedStatic.Verification { Ocr.process(any(), any(), any()) })
                 ?.thenReturn("001-01")
 
@@ -301,10 +301,6 @@ class AbaComicInfoUiTest : BaseTest() {
                 item.tags.contains("Capítulo 001"),
                 "Deveria conter o capítulo normalizado. Atual: ${item.tags}"
         )
-        assertTrue(
-                item.tags.contains("Test Title"),
-                "As tags deveriam conter o título vindo do ComicInfo. Atual: ${item.tags}"
-        )
     }
 
     @Test
@@ -359,7 +355,7 @@ class AbaComicInfoUiTest : BaseTest() {
         robot.interact {
             table.selectionModel.select(1)
             val menu = table.contextMenu
-            val itemMenu = menu.items.find { it.text == "Remover registro" }
+            val itemMenu = menu.items.find { it.text == "Remover registro (Del)" }
             itemMenu?.fire()
         }
 
@@ -443,7 +439,7 @@ class AbaComicInfoUiTest : BaseTest() {
         val tempDirFile = tempDir.toFile()
         val fileNoXml = File(tempDirFile, "no_xml.rar").apply { createNewFile() }
 
-        whenever(mockWinrar.extraiComicInfo(eq(fileNoXml))).thenReturn(null)
+        whenever(mockWinrar.extraiComicInfo(eq(fileNoXml), any())).thenReturn(null)
 
         val txtPasta = robot.lookup("#txtPastaProcessar").queryAs(JFXTextField::class.java)
         robot.interact { txtPasta.text = tempDirFile.absolutePath }

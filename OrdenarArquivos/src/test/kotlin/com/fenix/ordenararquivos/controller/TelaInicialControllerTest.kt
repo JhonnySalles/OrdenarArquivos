@@ -44,6 +44,7 @@ class TelaInicialControllerTest {
     private lateinit var scene: Scene
     private lateinit var stage: Stage
     private lateinit var controller: TelaInicialController
+    private var keepAlive: java.sql.Connection? = null
 
     private val PASTA_TEMPORARIA = File(System.getProperty("user.dir"), "temp/")
     private val ORIGEM_TEMPORARIA = File(System.getProperty("user.dir"), "temp/origem/")
@@ -57,6 +58,9 @@ class TelaInicialControllerTest {
         val db = File(System.getProperty("user.dir"), DataBase.mDATABASE_TEST)
         if (db.exists())
             db.delete()
+
+        mLOG.info("Inicializando banco de dados...")
+        keepAlive = DataBase.instancia
 
         mLOG.info("Iniciando a tela...")
         this.stage = stage

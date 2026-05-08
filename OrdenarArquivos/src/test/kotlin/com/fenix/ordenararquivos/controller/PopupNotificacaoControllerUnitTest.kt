@@ -17,7 +17,8 @@ class PopupNotificacaoControllerUnitTest : BaseJfxTest() {
         controller = PopupNotificacaoController()
         setField("lblTitulo", Label())
         setField("lblTexto", Label())
-        setField("imgIcone", ImageView())
+        setField("imgImagem", ImageView())
+        setField("notificacaoBackground", javafx.scene.layout.AnchorPane())
     }
 
     private fun setField(name: String, value: Any?) {

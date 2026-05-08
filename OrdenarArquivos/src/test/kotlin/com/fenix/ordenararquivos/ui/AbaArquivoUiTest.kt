@@ -39,6 +39,7 @@ import javafx.stage.Stage
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
@@ -316,6 +317,10 @@ class AbaArquivoUiTest : BaseTest() {
 
         val tbViewMal = robot.lookup("#tbViewMal").queryAs(TableView::class.java) as TableView<Mal>
         assertEquals(2, tbViewMal.items.size)
+
+        // Validar se a nova coluna clMalTipo está presente
+        val clTipo = tbViewMal.columns.find { it.text?.contains("Tipo", ignoreCase = true) == true }
+        assertNotNull(clTipo, "A coluna clMalTipo deveria estar presente na tabela do MAL")
 
         // 2. Fluxo: Duplo Clique
         robot.doubleClickOn("Naruto Classic")
@@ -1151,9 +1156,46 @@ class AbaArquivoUiTest : BaseTest() {
             AlertasModal.lastAlertTitle = null
         }
         
-        // Com compactar desativado, o nome vazio não deve causar erro (nesse ponto específico da lógica)
-        // Nota: Outras validações (origem/destino) ainda podem falhar se não estiverem preenchidas, 
         // mas aqui estamos testando a condicional do compactar.
+    }
+
+    @Test
+    @Order(20)
+    fun testAutoCompleteSuggestionsOnLoad(robot: FxRobot) {
+        // Mock do MangaServices para retornar sugestões
+        whenever(mockMangaService.sugestao(any())).thenReturn(listOf("Manga Sugerido"))
+
+        robot.interact {
+            // Invocar o método privado que processa o carregamento (simulando o fim da Task de extração)
+            val method = controller.javaClass.getDeclaredMethod("carregarArquivo", File::class.java, File::class.java)
+            method.isAccessible = true
+            
+            // Criar arquivos temporários para simular o RAR e a pasta extraída
+            val tempDir = Files.createTempDirectory("test_rar_load").toFile()
+            val rarFile = File(tempDir, "Manga.cbr")
+            val extractedDir = File(tempDir, "extracted").apply { mkdirs() }
+            
+            // Criar um ComicInfo.xml fake na pasta extraída
+            val comicFile = File(extractedDir, "ComicInfo.xml")
+            comicFile.writeText("<?xml version=\"1.0\" encoding=\"utf-8\"?><ComicInfo><Series>Serie Extraida</Series><Title>Titulo Extraido</Title></ComicInfo>")
+            
+            method.invoke(controller, rarFile, extractedDir)
+        }
+
+        WaitForAsyncUtils.waitForFxEvents()
+        
+        // 1. Verificar se o mAutoComplete foi populado
+        val field = controller.javaClass.getDeclaredField("mAutoComplete")
+        field.isAccessible = true
+        val autoComplete = field.get(controller) as com.jfoenix.controls.JFXAutoCompletePopup<String>
+        assertTrue(autoComplete.suggestions.contains("Manga Sugerido"), "As sugestões deveriam ter sido carregadas no autoComplete")
+
+        // 2. Verificar se o ComicInfo foi carregado nos campos da UI
+        val txtTitle = robot.lookup("#txtTitle").queryAs(JFXTextField::class.java)
+        val txtSeries = robot.lookup("#txtSeries").queryAs(JFXTextField::class.java)
+        
+        assertEquals("Titulo Extraido", txtTitle.text)
+        assertEquals("Serie Extraida", txtSeries.text)
     }
 }
 
