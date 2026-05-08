@@ -83,9 +83,10 @@ class PopupComicInfoController : Initializable {
 
     @FXML
     private lateinit var clMalNome: TableColumn<Mal, String>
-
     @FXML
-    private lateinit var clMalSite: TableColumn<Mal, JFXButton>
+    private lateinit var clMalTipo: TableColumn<Mal, String>
+    @FXML
+    private lateinit var clMalSite: TableColumn<Mal, JFXButton?>
 
     @FXML
     private lateinit var clMalImagem: TableColumn<Mal, ImageView>
@@ -108,8 +109,9 @@ class PopupComicInfoController : Initializable {
     }
 
     private fun initTable() {
-        clMalId.cellValueFactory = PropertyValueFactory("id")
+        clMalId.cellValueFactory = PropertyValueFactory("idVisual")
         clMalNome.cellValueFactory = PropertyValueFactory("nome")
+        clMalTipo.cellValueFactory = PropertyValueFactory("tipo")
         clMalSite.cellValueFactory = PropertyValueFactory("site")
         clMalImagem.cellValueFactory = PropertyValueFactory("imagem")
         tbViewMal.items = mObsListaMal
@@ -163,7 +165,7 @@ class PopupComicInfoController : Initializable {
     @FXML
     private fun onBtnMalConsultar() {
         val id = txtMalId.text.toLongOrNull()
-        val nome = txtMalNome.text
+        val nome = txtMalNome.text.replace(Regex("[^\\w\\s-]"), "")
 
         if (nome.isEmpty() && id == null) return
 

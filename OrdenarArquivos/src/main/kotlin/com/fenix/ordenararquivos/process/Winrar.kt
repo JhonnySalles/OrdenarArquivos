@@ -72,7 +72,8 @@ object Winrar {
         var comicInfo: File? = null
         var proc: Process? = null
         val pastaDestino = destino?.path ?: Utils.getCaminho(rar.path)
-        val comando = "rar e -ma4 -y " + '"' + rar.path + '"' + " " + '"' + pastaDestino + '"' + " " + '"' + arquivo + '"'
+        val delimitador = if (pastaDestino.endsWith("\\")) "" else "\\"
+        val comando = "rar e -ma4 -y " + '"' + rar.path + '"' + " " + '"' + arquivo + '"' + " " + '"' + pastaDestino + delimitador + '"'
         try {
             val rt: Runtime = Runtime.getRuntime()
             proc = rt.exec(comando)
@@ -111,7 +112,8 @@ object Winrar {
     @JvmStatic
     fun extrairTudo(rar: File, destino: File): Boolean {
         var proc: Process? = null
-        val comando = "rar x -ma4 -y " + '"' + rar.path + '"' + " " + '"' + destino.path + '"'
+        val delimitador = if (destino.path.endsWith("\\")) "" else "\\"
+        val comando = "rar x -ma4 -y " + '"' + rar.path + '"' + " " + '"' + destino.path + delimitador + '"'
         return try {
             val rt: Runtime = Runtime.getRuntime()
             proc = rt.exec(comando)
@@ -169,7 +171,8 @@ object Winrar {
         if (itens.isEmpty()) return true
         var proc: Process? = null
         val listaItens = itens.joinToString(" ") { '"' + it + '"' }
-        val comando = "rar x -ma4 -y " + '"' + rar.path + '"' + " " + listaItens + " " + '"' + destino.path + '"'
+        val delimitador = if (destino.path.endsWith("\\")) "" else "\\"
+        val comando = "rar x -ma4 -y " + '"' + rar.path + '"' + " " + listaItens + " " + '"' + destino.path + delimitador + '"'
         mLOG.info(comando)
         return try {
             val rt: Runtime = Runtime.getRuntime()

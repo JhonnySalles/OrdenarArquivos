@@ -205,7 +205,8 @@ class AbaPastasController : Initializable {
 
     @FXML
     private lateinit var clMalNome: TableColumn<Mal, String>
-
+    @FXML
+    private lateinit var clMalTipo: TableColumn<Mal, String>
     @FXML
     private lateinit var clMalSite: TableColumn<Mal, JFXButton?>
 
@@ -808,7 +809,8 @@ class AbaPastasController : Initializable {
             else -> Selecionado.VAZIO
         }
         Selecionado.setTabColor(tbTabPastas_ComicInfo, selecionado)
-        val sufixo = if (selecionado == Selecionado.SELECIONADO && comic.comic.isNotEmpty()) " (${comic.comic})" else ""
+        val serie = if (comic.series.length > 50) comic.series.substring(0, 50) + "..." else comic.series
+        val sufixo = if (selecionado == Selecionado.SELECIONADO && serie.isNotEmpty()) " ($serie)" else ""
         tbTabPastas_ComicInfo.text = "Comic Info$sufixo"
     }
 
@@ -840,7 +842,7 @@ class AbaPastasController : Initializable {
 
         if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
             val id: Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
-            val nome = txtMalNome.text
+            val nome = txtMalNome.text.replace(Regex("[^\\w\\s-]"), "")
             val linguagem = cbLinguagem.value ?: Linguagem.JAPANESE
             val comicInfo = ComicInfo(mComicInfo)
 
@@ -1196,6 +1198,17 @@ class AbaPastasController : Initializable {
             if (newValue != null && newValue.isNotEmpty() && !newValue.matches(Utils.NUMBER_REGEX))
                 txtMalId.text = oldValue
         }
+
+        txtSeries.textProperty().addListener { _, _, newValue ->
+            mComicInfo.series = newValue
+            if (tbTabPastas_ComicInfo.text.contains("(")) {
+                val serie = if (newValue.length > 50) newValue.substring(0, 50) + "..." else newValue
+                if (serie.isNotEmpty())
+                    tbTabPastas_ComicInfo.text = "Comic Info ($serie)"
+                else
+                    tbTabPastas_ComicInfo.text = "Comic Info"
+            }
+        }
     }
 
     private fun configuraComboBox() {
@@ -1484,6 +1497,9 @@ class AbaPastasController : Initializable {
         val ajustarTitulos = MenuItem("Ajustar títulos (Ctrl + T)")
         ajustarTitulos.setOnAction { ajustarTitulos() }
 
+        val ajustarTodosTitulos = MenuItem("Ajustar todos os títulos")
+        ajustarTodosTitulos.setOnAction { ajustarTitulos(todos = true) }
+
         val normalizarTitulo = MenuItem("Normalizar título (Ctrl + N)")
         normalizarTitulo.setOnAction { normalizarTitulos() }
 
@@ -1501,6 +1517,7 @@ class AbaPastasController : Initializable {
             SeparatorMenuItem(),
             apagarTitulo,
             ajustarTitulos,
+            ajustarTodosTitulos,
             normalizarTitulo,
             apagarTituloAnteriores,
             apagarTituloProximos,
@@ -1515,6 +1532,7 @@ class AbaPastasController : Initializable {
 
         clMalId.cellValueFactory = PropertyValueFactory("idVisual")
         clMalNome.cellValueFactory = PropertyValueFactory("nome")
+        clMalTipo.cellValueFactory = PropertyValueFactory("tipo")
         clMalSite.cellValueFactory = PropertyValueFactory("site")
         clMalImagem.cellValueFactory = PropertyValueFactory("imagem")
         tbViewMal.items = mObsListaMal
@@ -1528,8 +1546,8 @@ class AbaPastasController : Initializable {
         configurarDragAndDrop()
     }
 
-    private fun ajustarTitulos() {
-        val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
+    private fun ajustarTitulos(todos: Boolean = false) {
+        val lista = if (todos) mObsListaProcessar else mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
             tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
         }
 
@@ -1538,7 +1556,7 @@ class AbaPastasController : Initializable {
             return
         }
 
-        val regex = "(?i)^((ch|chapter|cap|capitulo|c|v|volume|vol)\\.?\\s*\\d+|\\d+)\\s*[:\\- ]+\\s*".toRegex()
+        val regex = "(?i)^.*?((ch|chapter|cap|capitulo|c|v|volume|vol)\\.?\\s*\\d+|\\d+)\\s*[:\\- ]+\\s*".toRegex()
         for (item in lista) {
             item.titulo = item.titulo.replace(regex, "").trim()
         }

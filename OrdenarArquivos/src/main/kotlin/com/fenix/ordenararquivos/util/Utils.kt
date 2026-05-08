@@ -122,6 +122,36 @@ class Utils {
             }
         }
 
+        fun safeToInt(texto: String?, default: Int = 0): Int {
+            if (texto == null || texto.isBlank()) return default
+            return try {
+                // Remove espaços e substitui 'I' ou 'l' por '1' (erros comuns de OCR)
+                val sanitized = texto.trim()
+                    .replace(" ", "")
+                    .replace("I", "1")
+                    .replace("l", "1")
+                    .replace(Regex("[^\\d]"), "")
+                if (sanitized.isEmpty()) default else sanitized.toInt()
+            } catch (e: Exception) {
+                default
+            }
+        }
+
+        fun safeToFloat(texto: String?, default: Float = 0f): Float {
+            if (texto == null || texto.isBlank()) return default
+            return try {
+                val sanitized = texto.trim()
+                    .replace(" ", "")
+                    .replace("I", "1")
+                    .replace("l", "1")
+                    .replace(",", ".")
+                    .replace(Regex("[^\\d.]"), "")
+                if (sanitized.isEmpty()) default else sanitized.toFloat()
+            } catch (e: Exception) {
+                default
+            }
+        }
+
         fun fromNumberJapanese(capitulo: String) : String {
             var numbero = ""
             for (c in capitulo)

@@ -15,6 +15,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.jfoenix.controls.JFXButton
 import dev.katsute.mal4j.MyAnimeList
+import javafx.scene.image.Image
 import javafx.scene.image.ImageView
 import org.slf4j.LoggerFactory
 import java.awt.Desktop
@@ -258,16 +259,20 @@ class ComicInfoServices {
         buton.setOnAction { openSiteMal(manga.id) }
 
         var imageView : ImageView? = null
-        if (manga.mainPicture.largeURL != null)
-            imageView = ImageView(manga.mainPicture.largeURL)
-        else if (manga.mainPicture.mediumURL != null)
-            imageView = ImageView(manga.mainPicture.mediumURL)
-        else if (manga.pictures.isNotEmpty()) {
-            if (manga.pictures[0].largeURL != null)
-                imageView = ImageView(manga.pictures[0].largeURL)
-            else if (manga.pictures[0].mediumURL != null)
-                imageView = ImageView(manga.pictures[0].mediumURL)
+        val url = when {
+            manga.mainPicture.largeURL != null -> manga.mainPicture.largeURL
+            manga.mainPicture.mediumURL != null -> manga.mainPicture.mediumURL
+            manga.pictures.isNotEmpty() -> {
+                when {
+                    manga.pictures[0].largeURL != null -> manga.pictures[0].largeURL
+                    else -> manga.pictures[0].mediumURL
+                }
+            }
+            else -> null
         }
+
+        if (url != null)
+            imageView = ImageView(Image(url, true))
 
         if (imageView != null) {
             imageView.fitWidth = 170.0

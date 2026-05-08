@@ -14,6 +14,9 @@ class Mal(
     val idVisual: String
         get() = if (id > 0) id.toString() else ""
 
+    val tipo: String
+        get() = mal.type.field().replace("_", " ").replaceFirstChar { it.uppercase() }
+
     fun setButton(site: JFXButton) {
         this.site = site
     }

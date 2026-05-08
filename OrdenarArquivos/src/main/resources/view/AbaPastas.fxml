@@ -198,9 +198,10 @@
                                                 </VBox>
                                                 <TableView fx:id="tbViewMal" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
                                                    <columns>
-                                                      <TableColumn fx:id="clMalId" prefWidth="75.0" text="ID" />
-                                                      <TableColumn fx:id="clMalNome" prefWidth="150.0" text="Nome" />
-                                                      <TableColumn fx:id="clMalSite" prefWidth="75.0" text="Site" />
+                                                      <TableColumn fx:id="clMalId" prefWidth="50.0" text="ID" />
+                                                      <TableColumn fx:id="clMalNome" prefWidth="170.0" text="Nome" />
+                                                      <TableColumn fx:id="clMalTipo" prefWidth="50.0" text="Tipo" />
+                                                      <TableColumn fx:id="clMalSite" prefWidth="50.0" text="Site" />
                                                       <TableColumn fx:id="clMalImagem" prefWidth="200.0" text="Imagem" />
                                                    </columns>
                                                 </TableView>

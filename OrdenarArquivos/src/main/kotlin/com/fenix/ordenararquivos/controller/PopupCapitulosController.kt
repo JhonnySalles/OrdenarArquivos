@@ -24,6 +24,7 @@ import javafx.scene.Parent
 import javafx.scene.control.Hyperlink
 import javafx.scene.control.Label
 import javafx.scene.control.TableColumn
+import javafx.scene.control.TableRow
 import javafx.scene.control.TableView
 import javafx.scene.control.cell.ComboBoxTableCell
 import javafx.scene.control.cell.PropertyValueFactory
@@ -1298,6 +1299,16 @@ class PopupCapitulosController : Initializable {
 
         menu.items.addAll(colar, dividir)
         tbViewTabela.contextMenu = menu
+
+        tbViewTabela.setRowFactory {
+            val row = TableRow<Volume>()
+            row.setOnMouseClicked { event ->
+                if (event.clickCount == 2 && !row.isEmpty) {
+                    btnConfirmar.fire()
+                }
+            }
+            row
+        }
     }
 
     companion object {

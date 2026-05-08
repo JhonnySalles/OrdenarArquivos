@@ -317,7 +317,8 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private lateinit var clMalNome: TableColumn<Mal, String>
-
+    @FXML
+    private lateinit var clMalTipo: TableColumn<Mal, String>
     @FXML
     private lateinit var clMalSite: TableColumn<Mal, JFXButton?>
 
@@ -513,7 +514,7 @@ class AbaArquivoController : Initializable {
             var volume = texto.replace(texto.replace(Utils.NUMBER_PATTERN.toRegex(), ""), "").trim { it <= ' ' }
             val padding = volume.length
             try {
-                var number = Integer.valueOf(volume)
+                var number = Utils.safeToInt(volume)
                 texto = texto.substring(0, texto.lastIndexOf(volume))
                 number -= 1
                 volume = texto + String.format("%0" + padding + "d", max(number, 0))
@@ -521,7 +522,7 @@ class AbaArquivoController : Initializable {
                 simulaNome()
                 if (!carregaManga())
                     incrementaCapitulos(txtVolume.text, oldVolume)
-            } catch (e: NumberFormatException) {
+            } catch (e: Exception) {
                 try {
                     var number = java.lang.Double.valueOf(volume)
                     texto = texto.substring(0, texto.lastIndexOf(volume))
@@ -546,7 +547,7 @@ class AbaArquivoController : Initializable {
             var volume = texto.replace(texto.replace(Utils.NUMBER_PATTERN.toRegex(), ""), "").trim { it <= ' ' }
             val padding = volume.length
             try {
-                var number = Integer.valueOf(volume)
+                var number = Utils.safeToInt(volume)
                 texto = texto.substring(0, texto.lastIndexOf(volume))
                 number += 1
                 volume = texto + String.format("%0" + padding + "d", number)
@@ -554,7 +555,7 @@ class AbaArquivoController : Initializable {
                 simulaNome()
                 if (!carregaManga())
                     incrementaCapitulos(txtVolume.text, oldVolume)
-            } catch (e: NumberFormatException) {
+            } catch (e: Exception) {
                 try {
                     var number = java.lang.Double.valueOf(volume)
                     texto = texto.substring(0, texto.lastIndexOf(volume))
@@ -811,7 +812,8 @@ class AbaArquivoController : Initializable {
             else -> Selecionado.VAZIO
         }
         Selecionado.setTabColor(tbTabArquivo_ComicInfo, selecionado)
-        val sufixo = if (selecionado == Selecionado.SELECIONADO && comic.comic.isNotEmpty()) " (${comic.comic})" else ""
+        val serie = if (comic.series.length > 50) comic.series.substring(0, 50) + "..." else comic.series
+        val sufixo = if (selecionado == Selecionado.SELECIONADO && serie.isNotEmpty()) " ($serie)" else ""
         tbTabArquivo_ComicInfo.text = "Comic Info$sufixo"
     }
 
@@ -877,7 +879,8 @@ class AbaArquivoController : Initializable {
             mSugestao.suggestions.add(textos)
             mSugestao.show(txtAreaImportar)
             mSugestao.setSelectionHandler {
-                txtAreaImportar.replaceText(0, txtAreaImportar.length, it.`object` ?: "")
+                val result = it.`object`?.replace(Regex("\\s*\\|\\s*"), "|") ?: ""
+                txtAreaImportar.replaceText(0, txtAreaImportar.length, result)
             }
         }
     }
@@ -894,8 +897,8 @@ class AbaArquivoController : Initializable {
         isConsultandoMal = true
 
         if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
-            val id: Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
-            val nome = txtMalNome.text
+            val id: Long? = if (txtIdMal.text.isNotEmpty()) txtIdMal.text.toLong() else null
+            val nome = txtMalNome.text.replace(Regex("[^\\w\\s-]"), "")
             val linguagem = cbLinguagem.value ?: Linguagem.JAPANESE
             val comicInfo = ComicInfo(mComicInfo)
 
@@ -1000,7 +1003,7 @@ class AbaArquivoController : Initializable {
                         if (capitulo.trim().isEmpty() || !Utils.ONLY_NUMBER_REGEX.containsMatchIn(capitulo))
                             continue
 
-                        val cap = capitulo.replace(Regex("\\D"), "").toInt()
+                        val cap = Utils.safeToInt(capitulo)
                         if (min == 0 || min > cap)
                             min = cap
                         else
@@ -1504,7 +1507,7 @@ class AbaArquivoController : Initializable {
                     pastasCompactar.add(destino)
                     pastasComic[listaCaminhos[pagina].capitulo] = destino
 
-                    var contadorCapitulo = Integer.valueOf(listaCaminhos[pagina].numeroPagina)
+                    var contadorCapitulo = Utils.safeToInt(listaCaminhos[pagina].numeroPagina)
                     pagina++
                     if (listaCaminhos.size > 1)
                         proxCapitulo = listaCaminhos[pagina].numero
@@ -1536,7 +1539,7 @@ class AbaArquivoController : Initializable {
                             pastasComic[listaCaminhos[pagina].capitulo] = destino
                             pagina++
                             if (pagina < listaCaminhos.size)
-                                proxCapitulo = Integer.valueOf(listaCaminhos[pagina].numeroPagina)
+                                proxCapitulo = Utils.safeToInt(listaCaminhos[pagina].numeroPagina)
                         }
                         i++
                         updateProgress(i, max)
@@ -2210,6 +2213,7 @@ class AbaArquivoController : Initializable {
 
         clMalId.cellValueFactory = PropertyValueFactory("idVisual")
         clMalNome.cellValueFactory = PropertyValueFactory("nome")
+        clMalTipo.cellValueFactory = PropertyValueFactory("tipo")
         clMalSite.cellValueFactory = PropertyValueFactory("site")
         clMalImagem.cellValueFactory = PropertyValueFactory("imagem")
 
@@ -2323,6 +2327,20 @@ class AbaArquivoController : Initializable {
     private fun configuraTextEdit() {
         txtSeparadorPagina.isDisable = true
         txtSeparadorCapitulo.isDisable = true
+
+        txtMalNome.textProperty().addListener { _, _, newValue ->
+            mComicInfo.comic = newValue
+        }
+        txtSeries.textProperty().addListener { _, _, newValue ->
+            mComicInfo.series = newValue
+            if (tbTabArquivo_ComicInfo.text.contains("(")) {
+                val serie = if (newValue.length > 50) newValue.substring(0, 50) + "..." else newValue
+                if (serie.isNotEmpty())
+                    tbTabArquivo_ComicInfo.text = "Comic Info ($serie)"
+                else
+                    tbTabArquivo_ComicInfo.text = "Comic Info"
+            }
+        }
         textFieldMostraFinalTexto(txtSimularPasta)
         textFieldMostraFinalTexto(txtPastaOrigem)
 
@@ -2729,6 +2747,7 @@ class AbaArquivoController : Initializable {
                         inverterCapituloPagina(e.isShiftDown && e.isAltDown)
                     }
 
+                    KeyCode.BACK_SPACE,
                     in (KeyCode.NUMPAD0..KeyCode.NUMPAD9),
                     in (KeyCode.DIGIT0..KeyCode.DIGIT9) -> {
                         if (txtAreaImportar.text.isEmpty())
@@ -2741,7 +2760,6 @@ class AbaArquivoController : Initializable {
                         val startIndex = txt.lastIndexOf('\n', caretPos - 1).let { if (it == -1) 0 else it + 1 }
                         val endIndex = txt.indexOf('\n', caretPos).let { if (it == -1) txt.length else it }
                         val linhaAtual = txt.substring(startIndex, endIndex)
-                        val digito = e.text.toInt()
 
                         val separadorCapitulo = Utils.SEPARADOR_CAPITULO
                         val separadorPagina = Utils.SEPARADOR_PAGINA
@@ -2755,11 +2773,17 @@ class AbaArquivoController : Initializable {
                         val subCapitulo = if (capituloCompleto.contains(".")) "." + capituloCompleto.substringAfter(".") else ""
                         var capitulo = capituloCompleto.substringBefore(".")
 
-                        if (!mInsetCapitulo) {
-                            capitulo = digito.toString()
-                            mInsetCapitulo = true
-                        } else
-                            capitulo += digito
+                        if (e.code == KeyCode.BACK_SPACE) {
+                            if (!mInsetCapitulo || capitulo.isEmpty()) return@EventHandler
+                            capitulo = capitulo.dropLast(1)
+                        } else {
+                            val digito = e.text.toInt()
+                            if (!mInsetCapitulo) {
+                                capitulo = digito.toString()
+                                mInsetCapitulo = true
+                            } else
+                                capitulo += digito
+                        }
 
                         val novaLinha = "$capitulo$subCapitulo$pagina$tag"
                         val novoTexto = txt.substring(0, startIndex) + novaLinha + txt.substring(endIndex)
@@ -3183,15 +3207,18 @@ class AbaArquivoController : Initializable {
 
             val itens = texto.split(pipe)
             if (itens.size == 2) {
-                if (itens[1].trim().isNotEmpty() && Utils.ONLY_NUMBER_REGEX.containsMatchIn(itens[1]))
-                    String.format(padding, itens[1].toInt()) + pipe + itens[0] + tag
+                val item0 = itens[0].trim()
+                val item1 = itens[1].trim()
+                if (item1.isNotEmpty() && Utils.ONLY_NUMBER_REGEX.containsMatchIn(item1))
+                    String.format(padding, item1.toInt()) + pipe + item0 + tag
                 else
-                    itens[1] + pipe + itens[0] + tag
+                    item1 + pipe + item0 + tag
             } else linha
         }
 
         val position: Int
         val newText: String
+        val selection = txtAreaImportar.selection
 
         if (all) {
             val texto = mutableListOf<String>()
@@ -3199,6 +3226,25 @@ class AbaArquivoController : Initializable {
                 texto.add(moveCapitulo(linha))
             newText = texto.joinToString("\n")
             position = newText.length
+            txtAreaImportar.replaceText(0, txtAreaImportar.length, newText)
+        } else if (selection.length > 0) {
+            val startLineIdx = txt.lastIndexOf('\n', selection.start - 1).let { if (it == -1) 0 else it + 1 }
+            val endLineIdx = txt.indexOf('\n', selection.end).let { if (it == -1) txt.length else it }
+
+            val before = txt.substring(0, startLineIdx)
+            val selectedLinesText = txt.substring(startLineIdx, endLineIdx)
+            val last = txt.substring(endLineIdx)
+
+            val texto = mutableListOf<String>()
+            for (linha in selectedLinesText.split("\n"))
+                texto.add(moveCapitulo(linha))
+
+            val replacedText = texto.joinToString("\n")
+            newText = before + replacedText + last
+            position = before.length + replacedText.length
+
+            txtAreaImportar.replaceText(0, txtAreaImportar.length, newText)
+            txtAreaImportar.selectRange(startLineIdx, before.length + replacedText.length)
         } else {
             var before = if (txt.indexOf('\n', mLastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', mLastCaretPos)) else txt
             val last = if (txt.indexOf('\n', mLastCaretPos) > 0) txt.substring(txt.indexOf('\n', mLastCaretPos)) else ""
@@ -3208,9 +3254,9 @@ class AbaArquivoController : Initializable {
             val newLine = moveCapitulo(line)
             newText = before + newLine + last
             position = before.length + if (newLine.contains(separador)) newLine.lastIndexOf(separador) else newLine.length
+            txtAreaImportar.replaceText(0, txtAreaImportar.length, newText)
         }
 
-        txtAreaImportar.replaceText(0, txtAreaImportar.length, newText)
         mLastCaretPos = position
         txtAreaImportar.positionCaret(mLastCaretPos)
         txtAreaImportar.scrollTop = scroll
@@ -3357,7 +3403,7 @@ class AbaArquivoController : Initializable {
     private fun configuraDragAndDrop() {
         apRoot.onDragOver = EventHandler { event ->
             if (event.gestureSource != apRoot && event.dragboard.hasFiles()) {
-                val aceito = event.dragboard.files.any { it.extension.lowercase() in setOf("rar", "cbr", "xml") }
+                val aceito = event.dragboard.files.any { Utils.isRar(it.name) || it.extension.lowercase() == "xml" }
                 event.acceptTransferModes(if (aceito) TransferMode.COPY else null)
             }
             event.consume()
@@ -3365,7 +3411,7 @@ class AbaArquivoController : Initializable {
 
         apRoot.onDragEntered = EventHandler { event ->
             if (event.dragboard.hasFiles()) {
-                val aceito = event.dragboard.files.any { it.extension.lowercase() in setOf("rar", "cbr", "xml") }
+                val aceito = event.dragboard.files.any { Utils.isRar(it.name) || it.extension.lowercase() == "xml" }
                 mostrarOverlayDrag(aceito)
             }
             event.consume()
@@ -3381,7 +3427,7 @@ class AbaArquivoController : Initializable {
             var success = false
             if (db.hasFiles()) {
                 val files = db.files ?: emptyList<File>()
-                val archives = files.filter { it.extension.lowercase() in setOf("rar", "cbr") }
+                val archives = files.filter { Utils.isRar(it.name) }
                 val xmls = files.filter { it.extension.lowercase() == "xml" }
 
                 if (archives.isNotEmpty()) {
@@ -3523,46 +3569,54 @@ class AbaArquivoController : Initializable {
                         nomeManga = if (sugestoes.isNotEmpty()) sugestoes.first() else nomeManga
                         val scan = if (nomeOriginal.contains("]")) nomeOriginal.substringBefore("]").trim() + "]" else ""
 
+                        val comicFile = File(tempDir, "ComicInfo.xml").let { if (it.exists()) it else File(folder, "ComicInfo.xml") }
+                        var comicInfoResult: ComicInfo? = null
+                        if (comicFile.exists() && comicFile.length() > 0) {
+                            try {
+                                val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
+                                val unmarshaller = jaxb.createUnmarshaller()
+                                comicInfoResult = unmarshaller.unmarshal(comicFile) as ComicInfo
+                            } catch (e: Exception) {
+                                mLOG.error("Erro ao realizar o unmarshal do ComicInfo.xml no RAR: ${comicFile.absolutePath}", e)
+                            }
+                        }
+
                         updateProgress(1.0, 1.0)
                         Platform.runLater {
-                            txtNomePastaCapitulo.text = capituloManga
                             txtNomePastaManga.text = "$scan $nomeManga -"
                             simulaNome()
 
-                            val comicFile = File(tempDir, "ComicInfo.xml").let { if (it.exists()) it else File(folder, "ComicInfo.xml") }
-                            if (comicFile.exists()) {
-                                try {
-                                    val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
-                                    val unmarshaller = jaxb.createUnmarshaller()
-                                    val comicInfo = unmarshaller.unmarshal(comicFile) as ComicInfo
+                            if (sugestoes.isNotEmpty()) {
+                                mAutoComplete.suggestions.clear()
+                                mAutoComplete.suggestions.addAll(sugestoes)
+                                mAutoComplete.show(txtNomePastaManga)
+                            }
 
-                                    mComicInfo.apply {
-                                        idMal = comicInfo.idMal
-                                        title = comicInfo.title
-                                        series = comicInfo.series
-                                        publisher = comicInfo.publisher
-                                        alternateSeries = comicInfo.alternateSeries
-                                        seriesGroup = comicInfo.seriesGroup
-                                        storyArc = comicInfo.storyArc
-                                        imprint = comicInfo.imprint
-                                        genre = comicInfo.genre
-                                        ageRating = comicInfo.ageRating
-                                        languageISO = comicInfo.languageISO
-                                        notes = comicInfo.notes
-                                        summary = comicInfo.summary
-                                    }
-
-                                    txtMalId.text = comicInfo.idMal?.toString() ?: ""
-                                    txtMalNome.text = comicInfo.series
-                                    carregaComicInfo(mComicInfo)
-
-                                    if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty())
-                                        consultarMal()
-                                } catch (e: Exception) {
-                                    mLOG.error("Erro ao carregar ComicInfo do RAR.", e)
+                            if (comicInfoResult != null) {
+                                val comicInfo = comicInfoResult!!
+                                mComicInfo.apply {
+                                    idMal = comicInfo.idMal
+                                    title = comicInfo.title
+                                    series = comicInfo.series
+                                    publisher = comicInfo.publisher
+                                    alternateSeries = comicInfo.alternateSeries
+                                    seriesGroup = comicInfo.seriesGroup
+                                    storyArc = comicInfo.storyArc
+                                    imprint = comicInfo.imprint
+                                    genre = comicInfo.genre
+                                    ageRating = comicInfo.ageRating
+                                    languageISO = comicInfo.languageISO
+                                    notes = comicInfo.notes
+                                    summary = comicInfo.summary
                                 }
-                            } else
-                                carregaComicInfo()
+
+                                txtMalId.text = comicInfo.idMal?.toString() ?: ""
+                                txtMalNome.text = comicInfo.series
+                                carregaComicInfo(mComicInfo)
+
+                                if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty())
+                                    consultarMal()
+                            }
                         }
                     }
                 } catch (e: Exception) {

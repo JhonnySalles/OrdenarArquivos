@@ -181,11 +181,11 @@ object ComicInfo {
                             if (aux.isNotEmpty()) {
                                 try {
                                     number = if (aux[0].matches("[a-zA-Z ]+[.][\\d]".toRegex())) // Ex: Act.1: Spring of the Dead
-                                        aux[0].replace("[^\\d]".toRegex(), "").toFloat()
+                                        Utils.safeToFloat(aux[0])
                                     else if (aux[0].lowercase(Locale.getDefault()).contains("extra") || aux[0].lowercase(Locale.getDefault()).contains("special"))
                                         -1f
                                     else
-                                        aux[0].replace("[^\\d.]".toRegex(), "").toFloat()
+                                        Utils.safeToFloat(aux[0])
 
                                     chapter = aux[1].trim()
                                 } catch (e: Exception) {
@@ -288,7 +288,7 @@ object ComicInfo {
                                         if (capitulo.isNotEmpty()) {
                                             if (titulosCapitulo.isNotEmpty()) {
                                                 try {
-                                                    val number = Utils.fromNumberJapanese(capitulo).replace("[^\\d.]".toRegex(), "").toFloat()
+                                                    val number = Utils.safeToFloat(Utils.fromNumberJapanese(capitulo))
                                                     val titulo: Optional<Pair<Float, String>> = titulosCapitulo.stream().filter { it.key == number }.findFirst()
                                                     if (titulo.isPresent && titulo.get().value.isNotEmpty()) {
                                                         capitulo += " - " + titulo.get().value
