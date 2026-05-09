@@ -32,25 +32,20 @@
    <children>
       <VBox layoutY="6.0" prefHeight="200.0" prefWidth="100.0" spacing="5.0" styleClass="background-Black1" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
-            <HBox prefHeight="40.0" prefWidth="700.0" spacing="5.0" styleClass="background-Black4">
+            <HBox alignment="CENTER_LEFT" prefHeight="40.0" prefWidth="700.0" spacing="5.0" styleClass="background-Black4">
                <children>
-                  <VBox HBox.hgrow="ALWAYS">
-                     <children>
-                        <Label fx:id="lblTitulo26" styleClass="texto-stilo-1" text="Simulação do caminho" textFill="WHITE" />
-                        <JFXTextField fx:id="txtSimularPasta" focusColor="#0cff00" prefHeight="25.0" prefWidth="290.0" unFocusColor="WHITE" VBox.vgrow="ALWAYS">
-                           <styleClass>
-                              <String fx:value="texto-stilo-1" />
-                              <String fx:value="background-Black2" />
-                           </styleClass>
-                        </JFXTextField>
-                     </children>
-                  </VBox>
+                  <JFXTextField fx:id="txtSimularPasta" focusColor="#0cff00" prefHeight="25.0" prefWidth="290.0" unFocusColor="WHITE" HBox.hgrow="ALWAYS">
+                     <styleClass>
+                        <String fx:value="texto-stilo-1" />
+                        <String fx:value="background-Black2" />
+                     </styleClass>
+                  </JFXTextField>
 
-                  <JFXButton fx:id="btnAjustarNomes" minHeight="35.0" minWidth="50.0" onAction="#onAjustarNomes" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Ajustar nomes" textFill="WHITE" />
-                  <JFXButton fx:id="btnGerarCapa" minHeight="35.0" minWidth="50.0" onAction="#onBtnGerarCapa" prefHeight="50.0" prefWidth="100.0" styleClass="background-Indigo1" text="Gerar Capa" textFill="WHITE" />
-                  <JFXButton fx:id="btnCompactar" minHeight="35.0" minWidth="50.0" onAction="#onBtnCompactar" prefHeight="50.0" prefWidth="90.0" styleClass="background-Indigo1" text="Compactar" textFill="WHITE" />
-                  <JFXButton fx:id="btnLimparTudo" minHeight="35.0" minWidth="50.0" onAction="#onBtnLimparTudo" prefHeight="50.0" prefWidth="80.0" styleClass="background-Indigo1" text="Limpar" textFill="WHITE" />
-                  <JFXButton fx:id="btnProcessar" accessibleText="PROCESSA" minHeight="35.0" minWidth="50.0" onAction="#onBtnProcessa" prefHeight="50.0" prefWidth="80.0" styleClass="background-Indigo1" text="Processar" textFill="WHITE">
+                  <JFXButton fx:id="btnAjustarNomes" minHeight="35.0" minWidth="50.0" onAction="#onAjustarNomes" prefHeight="50.0" prefWidth="100.0" styleClass="background-Purple2" text="Ajustar nomes" textFill="WHITE" />
+                  <JFXButton fx:id="btnGerarCapa" minHeight="35.0" minWidth="50.0" onAction="#onBtnGerarCapa" prefHeight="50.0" prefWidth="100.0" styleClass="background-Orange1" text="Gerar Capa" textFill="WHITE" />
+                  <JFXButton fx:id="btnCompactar" minHeight="35.0" minWidth="50.0" onAction="#onBtnCompactar" prefHeight="50.0" prefWidth="90.0" styleClass="background-White1" text="Compactar" />
+                  <JFXButton fx:id="btnLimparTudo" minHeight="35.0" minWidth="50.0" onAction="#onBtnLimparTudo" prefHeight="50.0" prefWidth="80.0" styleClass="background-Blue3" text="Limpar" textFill="WHITE" />
+                  <JFXButton fx:id="btnProcessar" accessibleText="PROCESSA" minHeight="35.0" minWidth="50.0" onAction="#onBtnProcessa" prefHeight="50.0" prefWidth="80.0" styleClass="background-Green2" text="Processar" textFill="WHITE">
                      <tooltip>
                         <Tooltip text="Ctrl + Espaço" />
                      </tooltip>
@@ -314,7 +309,7 @@
                                              <columns>
                                                 <TableColumn fx:id="clCapitulo" prefWidth="59.0" text="Capítulo" />
                                                 <TableColumn fx:id="clNumeroPagina" prefWidth="68.0" text="Nr. Página" />
-                                                <TableColumn fx:id="clTag" prefWidth="41.0" text="Tag Comic Info" />
+                                                <TableColumn fx:id="clTag" prefWidth="100.0" text="Tag Comic Info" />
                                                 <TableColumn fx:id="clNomePasta" prefWidth="400.0" text="Nome Pasta" />
                                              </columns>
                                           </TableView>

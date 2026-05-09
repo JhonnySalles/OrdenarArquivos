@@ -71,6 +71,12 @@ class TelaInicialController : Initializable {
     private lateinit var imgCompartilhamento: ImageView
 
     @FXML
+    private lateinit var btnConfiguracao: JFXButton
+
+    @FXML
+    private lateinit var imgConfiguracao: ImageView
+
+    @FXML
     lateinit var apDragOverlay: AnchorPane
 
     @FXML
@@ -195,6 +201,11 @@ class TelaInicialController : Initializable {
     @FXML
     private fun onBtnCompartilhamento() {
         compartilhamento()
+    }
+
+    @FXML
+    private fun onBtnConfiguracao() {
+        PopupConfiguracaoController.abreTelaConfiguracao(spGlobal, tpGlobal)
     }
 
     private fun compartilhamento() {

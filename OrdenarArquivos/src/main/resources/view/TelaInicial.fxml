@@ -112,16 +112,25 @@
             </AnchorPane>
          </children>
       </StackPane>
-      <JFXButton fx:id="btnAtualizar" buttonType="RAISED" minHeight="45.0" minWidth="110.0" onAction="#onBtnAtualizar" text="Atualizar" textFill="WHITE" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+      <JFXButton fx:id="btnAtualizar" buttonType="RAISED" minHeight="45.0" minWidth="110.0" onAction="#onBtnAtualizar" text="Atualizar" textFill="WHITE" AnchorPane.rightAnchor="90.0" AnchorPane.topAnchor="0.0">
          <font>
             <Font name="System Bold" size="14.0" />
          </font>
       </JFXButton>
-      <JFXButton fx:id="btnCompartilhamento" alignment="TOP_CENTER" buttonType="RAISED" contentDisplay="GRAPHIC_ONLY" graphicTextGap="0.0" layoutX="10.0" layoutY="10.0" onAction="#onBtnCompartilhamento" prefHeight="45.0" prefWidth="45.0" AnchorPane.rightAnchor="120.0" AnchorPane.topAnchor="0.0">
+      <JFXButton fx:id="btnCompartilhamento" alignment="TOP_CENTER" buttonType="RAISED" contentDisplay="GRAPHIC_ONLY" graphicTextGap="0.0" layoutX="10.0" layoutY="10.0" onAction="#onBtnCompartilhamento" prefHeight="45.0" prefWidth="45.0" AnchorPane.rightAnchor="45.0" AnchorPane.topAnchor="0.0">
          <graphic>
             <ImageView fx:id="imgCompartilhamento" fitHeight="30.0" fitWidth="30.0" pickOnBounds="true" preserveRatio="true" translateY="2.0">
                <image>
                   <Image url="@../images/icoCompartilhamento_48.png" />
+               </image>
+            </ImageView>
+         </graphic>
+      </JFXButton>
+      <JFXButton fx:id="btnConfiguracao" alignment="TOP_CENTER" buttonType="RAISED" contentDisplay="GRAPHIC_ONLY" graphicTextGap="0.0" layoutX="20.0" layoutY="20.0" onAction="#onBtnConfiguracao" prefHeight="45.0" prefWidth="45.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <graphic>
+            <ImageView fx:id="imgConfiguracao" fitHeight="30.0" fitWidth="30.0" pickOnBounds="true" preserveRatio="true" translateY="2.0">
+               <image>
+                  <Image url="@../images/icoBtnImportar_48.png" />
                </image>
             </ImageView>
          </graphic>

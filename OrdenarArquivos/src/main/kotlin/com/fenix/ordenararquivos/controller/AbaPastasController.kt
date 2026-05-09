@@ -1048,9 +1048,9 @@ class AbaPastasController : Initializable {
             return
         }
 
-        val listaOriginal = mObsListaProcessar.toList()
-        if (listaOriginal.isEmpty()) {
-            AlertasModal.alerta("Alerta", "Não existem itens para processar.")
+        val listaProcessar = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty { tbViewProcessar.selectionModel.selectedItems.toList() }
+        if (listaProcessar.isEmpty()) {
+            AlertasModal.alerta("Alerta", "Não existem itens selecionados para processar.")
             return
         }
 
@@ -1058,35 +1058,46 @@ class AbaPastasController : Initializable {
             desabilita(btnRenomear)
             val processar: Task<Void> = object : Task<Void>() {
                 override fun call(): Void? {
+                    val falhas = mutableListOf<String>()
                     try {
                         mCANCELAR = false
                         val volume = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
                         val capitulo = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
 
                         var i = 0L
-                        val max = listaOriginal.size.toLong()
+                        val max = listaProcessar.size.toLong()
 
-                        for ((index, item) in listaOriginal.sortedBy { it.volume }.withIndex()) {
+                        for ((index, item) in listaProcessar.sortedBy { it.volume }.withIndex()) {
                             if (mCANCELAR) break
 
                             updateProgress(++i, max)
                             updateMessage("Renomeando item $i de $max.")
 
-                            val pasta =
-                                "[${item.scan}] ${item.nome} - Volume ${volume.format(item.volume)} ${if (item.isCapa) "Capa" else "Capítulo " + capitulo.format(item.capitulo)}"
-                            val path = item.pasta.toPath()
-                            val target = path.resolveSibling(pasta)
+                            try {
+                                val pasta =
+                                    "[${item.scan}] ${item.nome} - Volume ${volume.format(item.volume)} ${if (item.isCapa) "Capa" else "Capítulo " + capitulo.format(item.capitulo)}"
+                                val path = item.pasta.toPath()
+                                val target = path.resolveSibling(pasta)
 
-                            if (path != target) {
-                                item.pasta = Files.move(path, target, StandardCopyOption.REPLACE_EXISTING).toFile()
-                                item.arquivo = item.pasta.name
+                                if (path != target) {
+                                    item.pasta = Files.move(path, target, StandardCopyOption.REPLACE_EXISTING).toFile()
+                                    item.arquivo = item.pasta.name
+                                }
+                            } catch (e: Exception) {
+                                falhas.add(item.arquivo)
+                                mLOG.error("Erro ao renomear pasta: ${item.arquivo}", e)
                             }
                         }
 
                         if (!mCANCELAR) {
                             Platform.runLater {
                                 tbViewProcessar.refresh()
-                                Notificacoes.notificacao(Notificacao.SUCESSO, "Renomear Pastas", "Pastas renomeadas com sucesso.")
+                                if (falhas.isNotEmpty()) {
+                                    Notificacoes.notificacao(Notificacao.ALERTA, "Renomear Pastas", "Processo concluído com ${falhas.size} falhas.")
+                                    AlertasModal.alerta("Aviso", "Não foi possível renomear as seguintes pastas:\n\n" + falhas.joinToString("\n"))
+                                } else {
+                                    Notificacoes.notificacao(Notificacao.SUCESSO, "Renomear Pastas", "Pastas renomeadas com sucesso.")
+                                }
                             }
                         }
                     } catch (e: Exception) {
@@ -1126,8 +1137,18 @@ class AbaPastasController : Initializable {
         mangas.forEach { m -> volumes.putAll(m.caminhos.associate { c -> c.capitulo to m.volume }) }
         val formater = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
         val letras = Utils.NOT_NUMBER_PATTERN.toRegex()
-        for (item in mObsListaProcessar)
-            item.volume = if (item.capitulo > 0) volumes[formater.format(item.capitulo)]?.replace(letras, "")?.toFloatOrNull() ?: 0f else 0f
+        for (item in mObsListaProcessar) {
+            item.volume = if (item.capitulo > 0) {
+                val capStr = formater.format(item.capitulo)
+                val vol = volumes[capStr]
+                if (vol != null) {
+                    vol.replace(letras, "").toFloatOrNull() ?: 0f
+                } else {
+                    val capInteiroStr = formater.format(item.capitulo.toInt())
+                    volumes[capInteiroStr]?.replace(letras, "")?.toFloatOrNull() ?: 0f
+                }
+            } else 0f
+        }
         mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
         tbViewProcessar.refresh()
     }
@@ -1322,6 +1343,10 @@ class AbaPastasController : Initializable {
                         mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
                         tbViewProcessar.refresh()
                         carregaComicInfo()
+                        
+                        if (txtMalNome.text.isNotEmpty() || txtMalId.text.isNotEmpty()) {
+                            btnMalConsultar.fire()
+                        }
                     } else {
                         tbViewProcessar.refresh()
                     }
@@ -1352,6 +1377,29 @@ class AbaPastasController : Initializable {
             e.tableView.items[e.tablePosition.row].titulo = e.newValue
             tbViewProcessar.refresh()
         }
+    }
+
+    private fun ajustarCapitulo() {
+        val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
+            tbViewProcessar.selectionModel.selectedItems.toList()
+        }
+
+        if (lista.isEmpty()) {
+            AlertasModal.alerta("Alerta", "Nenhum item selecionado.")
+            return
+        }
+
+        for (item in lista)
+            item.capitulo = item.capitulo.toInt().toFloat()
+
+        tbViewProcessar.refresh()
+    }
+
+    private fun apagarTodosTitulos() {
+        for (item in mObsListaProcessar)
+            item.titulo = ""
+
+        tbViewProcessar.refresh()
     }
 
     private fun linkaCelulas() {
@@ -1414,6 +1462,7 @@ class AbaPastasController : Initializable {
                 }
             }
         }
+
         val volumesZerar = MenuItem("Zerar volumes")
         volumesZerar.setOnAction {
             mObsListaProcessar.forEach { item -> item.volume = 0f }
@@ -1471,6 +1520,12 @@ class AbaPastasController : Initializable {
             tbViewProcessar.refresh()
         }
 
+        val apagarTodosTitulos = MenuItem("Apagar todos os títulos")
+        apagarTodosTitulos.setOnAction { apagarTodosTitulos() }
+
+        val ajustarCapitulo = MenuItem("Ajustar capítulo")
+        ajustarCapitulo.setOnAction { ajustarCapitulo() }
+
         val apagarTituloProximos = MenuItem("Apagar titulos nos arquivos proximos")
         apagarTituloProximos.setOnAction {
             tbViewProcessar.selectionModel.selectedItem?.run {
@@ -1509,18 +1564,21 @@ class AbaPastasController : Initializable {
             scanAnterior,
             scanProximos,
             SeparatorMenuItem(),
-            volumesZerar,
-            volumesImportar,
             volumeAnteriores,
             volumeProximos,
             volumeFaltantes,
+            volumesZerar,
+            volumesImportar,
             SeparatorMenuItem(),
+            ajustarCapitulo,
+            SeparatorMenuItem(),
+            apagarTituloAnteriores,
             apagarTitulo,
+            apagarTituloProximos,
+            apagarTodosTitulos,
             ajustarTitulos,
             ajustarTodosTitulos,
             normalizarTitulo,
-            apagarTituloAnteriores,
-            apagarTituloProximos,
             SeparatorMenuItem(),
             remover
         )

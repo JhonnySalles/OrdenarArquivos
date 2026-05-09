@@ -557,3 +557,23 @@
     -fx-max-width: 0;
     -fx-max-height: 0;
 }
+
+/*---------- Spinner ----------*/
+.spinner-dark {
+    -fx-background-color: #000000 !important;
+    -fx-border-color: #000000 !important;
+    -fx-border-width: 0 !important;
+    -fx-background-insets: 0 !important;
+    -fx-padding: 0 !important;
+    -fx-focus-color: transparent !important;
+    -fx-faint-focus-color: transparent !important;
+}
+
+.spinner-dark .text-field {
+    -fx-background-color: #000000 !important;
+    -fx-text-fill: white !important;
+    -fx-padding: 0 5 0 5 !important;
+    -fx-background-insets: 0 !important;
+    -fx-border-color: #000000 !important;
+}
+

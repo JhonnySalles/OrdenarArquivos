@@ -620,12 +620,22 @@ class AbaArquivoController : Initializable {
     private fun onBtnGravarComicInfo() {
         mServiceComicInfo.save(mComicInfo)
 
-        val comicInfo = File(mCaminhoDestino!!.path.trim { it <= ' ' }, "ComicInfo.xml")
-        if (comicInfo.exists())
-            comicInfo.delete()
-
         try {
             mLOG.info("Salvando xml do ComicInfo.")
+
+            val comicInfo = File(mCaminhoDestino!!.path.trim { it <= ' ' }, "ComicInfo.xml")
+            if (comicInfo.exists()) {
+                try {
+                    val unmarshaller = JAXBContext.newInstance(ComicInfo::class.java).createUnmarshaller()
+                    val oldInfo = unmarshaller.unmarshal(comicInfo) as ComicInfo
+                    mComicInfo.pages = oldInfo.pages
+                    mComicInfo.pageCount = oldInfo.pageCount
+                } catch (e: Exception) {
+                    mLOG.error("Erro ao realizar merge do ComicInfo existente.", e)
+                }
+                comicInfo.delete()
+            }
+
             val marshaller = JAXBContext.newInstance(ComicInfo::class.java).createMarshaller()
             marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
             val out = FileOutputStream(comicInfo)
@@ -1859,6 +1869,7 @@ class AbaArquivoController : Initializable {
         else
             txtPastaDestino.text = ""
         simulaNome()
+        carregarConfDestino()
     }
 
     @FXML
@@ -1877,6 +1888,7 @@ class AbaArquivoController : Initializable {
                 mCaminhoDestino = proximaPasta
                 txtPastaDestino.text = proximaPasta.absolutePath
                 simulaNome()
+                carregarConfDestino()
             } else
                 Notificacoes.notificacao(Notificacao.ALERTA, "Última pasta", "Esta já é a última pasta do diretório.")
         }
@@ -1885,6 +1897,7 @@ class AbaArquivoController : Initializable {
     private fun carregaPastaDestino() {
         mCaminhoDestino = File(txtPastaDestino.text)
         simulaNome()
+        carregarConfDestino()
     }
 
     private fun listaItens() {
@@ -2373,8 +2386,10 @@ class AbaArquivoController : Initializable {
         }
 
         txtPastaDestino.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, _: Boolean? ->
-            if (oldPropertyValue)
+            if (oldPropertyValue) {
                 carregaPastaDestino()
+                carregarConfDestino()
+            }
             txtPastaDestino.unFocusColor = Color.GRAY
         }
         txtPastaDestino.onKeyPressed = EventHandler { e: KeyEvent ->
@@ -2597,7 +2612,7 @@ class AbaArquivoController : Initializable {
                             mSugestao.show(txtAreaImportar)
                     }
 
-                    KeyCode.T -> apagarTags()
+                    KeyCode.T -> ajustarTitulo()
                     KeyCode.O -> ordenarLinhas()
                     KeyCode.D,
                     KeyCode.E,
@@ -2680,6 +2695,7 @@ class AbaArquivoController : Initializable {
                 }
             } else if (e.isControlDown && (e.isShiftDown || e.isAltDown)) {
                 when (e.code) {
+                    KeyCode.T -> apagarTags()
                     KeyCode.UP,
                     KeyCode.DOWN -> {
                         mInsetCapitulo = false
@@ -2922,7 +2938,9 @@ class AbaArquivoController : Initializable {
         }
         val ordenar = MenuItem("Ordenar linhas (Ctrl + O)")
         ordenar.setOnAction { ordenarLinhas() }
-        val apagarTags = MenuItem("Apagar todas as tags (Ctrl + T)")
+        val ajustarTitulo = MenuItem("Ajustar titulo (Ctrl + T)")
+        ajustarTitulo.setOnAction { ajustarTitulo() }
+        val apagarTags = MenuItem("Apagar todas as tags (Ctrl + Shift + T)")
         apagarTags.setOnAction { apagarTags() }
         val inverterTudo = MenuItem("Inverter Capítulos e Páginas (Tudo)")
         inverterTudo.setOnAction { inverterCapituloPagina(true) }
@@ -2935,7 +2953,7 @@ class AbaArquivoController : Initializable {
         val reprocessar = MenuItem("Reprocessar Capítulos (Início ao Fim)")
         reprocessar.setOnAction { reprocessarCapitulos() }
 
-        menu.items.addAll(sugestao, capitulos, SeparatorMenuItem(), ordenar, apagarTags, inverterTudo, inverterLinha, SeparatorMenuItem(), formatarTag, formatarCap, reprocessar)
+        menu.items.addAll(sugestao, capitulos, SeparatorMenuItem(), ajustarTitulo, ordenar, apagarTags, inverterTudo, inverterLinha, SeparatorMenuItem(), formatarTag, formatarCap, reprocessar)
         txtAreaImportar.contextMenu = menu
 
         cbMesclarCapaTudo.selectedProperty().addListener { _: ObservableValue<out Boolean?>?, _: Boolean?, _: Boolean? -> reloadCapa() }
@@ -3124,6 +3142,7 @@ class AbaArquivoController : Initializable {
         lsVwHistorico.items = FXCollections.observableArrayList()
         acdArquivos.expandedPane = ttpArquivos
         configuraDragAndDrop()
+        setupConfListeners()
         habilita()
     }
 
@@ -3144,6 +3163,41 @@ class AbaArquivoController : Initializable {
         if (controllerPai.mSincronizacao.listSize() > 0) {
             lblAviso.text = "Pendente de envio " + controllerPai.mSincronizacao.listSize() + " registro(s)."
         }
+    }
+
+    private fun ajustarTitulo() {
+        if (txtAreaImportar.text.isEmpty())
+            return
+
+        val txt = txtAreaImportar.text
+        val scroll = txtAreaImportar.scrollTopProperty().value
+        val caretPos = txtAreaImportar.caretPosition
+
+        val pipe = Utils.SEPARADOR_PAGINA
+        val regex = Regex("^([第巻話]?\\s*\\d+\\s*[第巻話]?\\s+)")
+        val texto = mutableListOf<String>()
+
+        for (linha in txt.split("\n")) {
+            if (linha.contains(pipe)) {
+                val parts = linha.split(pipe, limit = 2)
+                val info = parts[0]
+                val titulo = parts[1]
+
+                val match = regex.find(titulo)
+                if (match != null) {
+                    val novoTitulo = titulo.replaceFirst(match.value, "")
+                    texto.add("$info$pipe$novoTitulo")
+                } else {
+                    texto.add(linha)
+                }
+            } else {
+                texto.add(linha)
+            }
+        }
+
+        txtAreaImportar.replaceText(0, txtAreaImportar.length, texto.joinToString("\n"))
+        txtAreaImportar.positionCaret(caretPos.coerceAtMost(txtAreaImportar.length))
+        txtAreaImportar.scrollTop = scroll
     }
 
     private fun apagarTags() {
@@ -3637,6 +3691,126 @@ class AbaArquivoController : Initializable {
         controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
         controllerPai.rootMessage.textProperty().bind(task.messageProperty())
         Thread(task).start()
+    }
+
+    private fun salvarConfDestino() {
+        val pasta = mCaminhoDestino ?: return
+        if (!pasta.exists()) return
+
+        try {
+            val props = Properties()
+            props.setProperty("manga_nome", txtNomePastaManga.text ?: "")
+            props.setProperty("manga_volume", txtVolume.text ?: "")
+            props.setProperty("manga_capitulo", txtNomePastaCapitulo.text ?: "")
+            props.setProperty("importar_texto", txtAreaImportar.text ?: "")
+
+            // Comic Info
+            props.setProperty("ci_id_mal", txtIdMal.text ?: "")
+            props.setProperty("ci_age_rating", cbAgeRating.selectionModel.selectedItem?.name ?: "")
+            props.setProperty("ci_linguagem", cbLinguagem.selectionModel.selectedItem?.name ?: "")
+            props.setProperty("ci_title", txtTitle.text ?: "")
+            props.setProperty("ci_series", txtSeries.text ?: "")
+            props.setProperty("ci_alternate_series", txtAlternateSeries.text ?: "")
+            props.setProperty("ci_series_group", txtSeriesGroup.text ?: "")
+            props.setProperty("ci_publisher", txtPublisher.text ?: "")
+            props.setProperty("ci_story_arc", txtStoryArc.text ?: "")
+            props.setProperty("ci_imprint", txtImprint.text ?: "")
+            props.setProperty("ci_genre", txtGenre.text ?: "")
+            props.setProperty("ci_notes", txtNotes.text ?: "")
+
+            val confFile = File(pasta, "conf.properties")
+            FileOutputStream(confFile).use { out ->
+                props.store(out, "Configuracoes da pasta salva pelo OrdenarArquivos")
+            }
+            mLOG.info("Configurações salvas em ${confFile.absolutePath}")
+        } catch (e: Exception) {
+            mLOG.error("Erro ao salvar conf.properties", e)
+        }
+    }
+
+    private fun carregarConfDestino() {
+        val pasta = mCaminhoDestino ?: return
+        val confFile = File(pasta, "conf.properties")
+        if (!confFile.exists()) return
+
+        try {
+            val props = Properties()
+            java.io.FileInputStream(confFile).use { input ->
+                props.load(input)
+            }
+
+            txtNomePastaManga.text = props.getProperty("manga_nome", txtNomePastaManga.text)
+            txtVolume.text = props.getProperty("manga_volume", txtVolume.text)
+            txtNomePastaCapitulo.text = props.getProperty("manga_capitulo", txtNomePastaCapitulo.text)
+            txtAreaImportar.replaceText(0, txtAreaImportar.length, props.getProperty("importar_texto", ""))
+
+            // Comic Info
+            txtIdMal.text = props.getProperty("ci_id_mal", txtIdMal.text)
+
+            val ageRatingStr = props.getProperty("ci_age_rating")
+            if (!ageRatingStr.isNullOrEmpty()) {
+                val rating = try { AgeRating.valueOf(ageRatingStr) } catch (e: Exception) { null }
+                rating?.let { cbAgeRating.selectionModel.select(it) }
+            }
+
+            val linguagemStr = props.getProperty("ci_linguagem")
+            if (!linguagemStr.isNullOrEmpty()) {
+                val lingua = try { Linguagem.valueOf(linguagemStr) } catch (e: Exception) { null }
+                lingua?.let { cbLinguagem.selectionModel.select(it) }
+            }
+
+            txtTitle.text = props.getProperty("ci_title", txtTitle.text)
+            txtSeries.text = props.getProperty("ci_series", txtSeries.text)
+            txtAlternateSeries.text = props.getProperty("ci_alternate_series", txtAlternateSeries.text)
+            txtSeriesGroup.text = props.getProperty("ci_series_group", txtSeriesGroup.text)
+            txtPublisher.text = props.getProperty("ci_publisher", txtPublisher.text)
+            txtStoryArc.text = props.getProperty("ci_story_arc", txtStoryArc.text)
+            txtImprint.text = props.getProperty("ci_imprint", txtImprint.text)
+            txtGenre.text = props.getProperty("ci_genre", txtGenre.text)
+            txtNotes.text = props.getProperty("ci_notes", txtNotes.text)
+
+            simulaNome()
+
+            // Force suggestion menu
+            if (txtNomePastaManga.text.isNotEmpty()) {
+                Platform.runLater {
+                    mAutoComplete.suggestions.clear()
+                    val sugestoes = mServiceManga.sugestao(txtNomePastaManga.text)
+                    if (sugestoes.isNotEmpty()) {
+                        mAutoComplete.suggestions.addAll(sugestoes)
+                        mAutoComplete.show(txtNomePastaManga)
+                    }
+                }
+            }
+
+        } catch (e: Exception) {
+            mLOG.error("Erro ao carregar conf.properties", e)
+        }
+    }
+
+    private fun setupConfListeners() {
+        val focusListener = ChangeListener<Boolean> { _, _, newValue ->
+            if (!newValue) salvarConfDestino()
+        }
+
+        txtNomePastaManga.focusedProperty().addListener(focusListener)
+        txtVolume.focusedProperty().addListener(focusListener)
+        txtNomePastaCapitulo.focusedProperty().addListener(focusListener)
+        txtAreaImportar.focusedProperty().addListener(focusListener)
+
+        txtIdMal.focusedProperty().addListener(focusListener)
+        txtTitle.focusedProperty().addListener(focusListener)
+        txtSeries.focusedProperty().addListener(focusListener)
+        txtAlternateSeries.focusedProperty().addListener(focusListener)
+        txtSeriesGroup.focusedProperty().addListener(focusListener)
+        txtPublisher.focusedProperty().addListener(focusListener)
+        txtStoryArc.focusedProperty().addListener(focusListener)
+        txtImprint.focusedProperty().addListener(focusListener)
+        txtGenre.focusedProperty().addListener(focusListener)
+        txtNotes.focusedProperty().addListener(focusListener)
+
+        cbAgeRating.valueProperty().addListener { _, _, _ -> salvarConfDestino() }
+        cbLinguagem.valueProperty().addListener { _, _, _ -> salvarConfDestino() }
     }
 
     companion object {
