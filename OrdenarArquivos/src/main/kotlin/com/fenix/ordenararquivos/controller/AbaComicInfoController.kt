@@ -1326,6 +1326,17 @@ class AbaComicInfoController : Initializable {
                     }
                 }
 
+                KeyCode.SPACE -> {
+                    val selecionadosItems = tbViewProcessar.selectionModel.selectedItems
+                    if (selecionadosItems.isNotEmpty()) {
+                        val novoEstado = !selecionadosItems.first().isProcessado
+                        selecionadosItems.forEach { it.isProcessado = novoEstado }
+                        tbViewProcessar.refresh()
+                        atualizaCheckTodosProcessado()
+                    }
+                    e.consume()
+                }
+
                 else -> {}
             }
         }

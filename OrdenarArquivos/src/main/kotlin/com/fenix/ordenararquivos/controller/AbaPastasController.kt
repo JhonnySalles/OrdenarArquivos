@@ -1379,9 +1379,9 @@ class AbaPastasController : Initializable {
         }
     }
 
-    private fun ajustarCapitulo() {
-        val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
-            tbViewProcessar.selectionModel.selectedItems.toList()
+    private fun ajustarCapitulo(todos: Boolean = false) {
+        val lista = if (todos) mObsListaProcessar else tbViewProcessar.selectionModel.selectedItems.toList().ifEmpty {
+            mObsListaProcessar.filter { it.isSelecionado }
         }
 
         if (lista.isEmpty()) {
@@ -1389,8 +1389,12 @@ class AbaPastasController : Initializable {
             return
         }
 
-        for (item in lista)
-            item.capitulo = item.capitulo.toInt().toFloat()
+        for (item in lista) {
+            val parteInteira = item.capitulo.toInt()
+            val parteDecimal = item.capitulo - parteInteira
+            if (Math.abs(parteDecimal - 0.1f) < 0.001f)
+                item.capitulo = parteInteira.toFloat()
+        }
 
         tbViewProcessar.refresh()
     }
@@ -1463,6 +1467,18 @@ class AbaPastasController : Initializable {
             }
         }
 
+        val scanMesmoVolume = MenuItem("Aplicar scan nos arquivos de mesmo volume")
+        scanMesmoVolume.setOnAction {
+            tbViewProcessar.selectionModel.selectedItem?.run {
+                val scanValue = this.scan
+                val volumeValue = this.volume
+                if (scanValue.isNotEmpty()) {
+                    mObsListaProcessar.filter { it.volume == volumeValue }.forEach { it.scan = scanValue }
+                    tbViewProcessar.refresh()
+                }
+            }
+        }
+
         val volumesZerar = MenuItem("Zerar volumes")
         volumesZerar.setOnAction {
             mObsListaProcessar.forEach { item -> item.volume = 0f }
@@ -1507,8 +1523,8 @@ class AbaPastasController : Initializable {
 
         val apagarTitulo = MenuItem("Apagar titulo")
         apagarTitulo.setOnAction {
-            val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
-                tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
+            val lista = tbViewProcessar.selectionModel.selectedItems.toList().ifEmpty {
+                mObsListaProcessar.filter { it.isSelecionado }
             }
 
             if (lista.isEmpty()) {
@@ -1525,6 +1541,9 @@ class AbaPastasController : Initializable {
 
         val ajustarCapitulo = MenuItem("Ajustar capítulo")
         ajustarCapitulo.setOnAction { ajustarCapitulo() }
+
+        val ajustarTodosCapitulos = MenuItem("Ajustar todos os capítulos")
+        ajustarTodosCapitulos.setOnAction { ajustarCapitulo(todos = true) }
 
         val apagarTituloProximos = MenuItem("Apagar titulos nos arquivos proximos")
         apagarTituloProximos.setOnAction {
@@ -1549,7 +1568,7 @@ class AbaPastasController : Initializable {
             }
         }
 
-        val ajustarTitulos = MenuItem("Ajustar títulos (Ctrl + T)")
+        val ajustarTitulos = MenuItem("Ajustar título (Ctrl + T)")
         ajustarTitulos.setOnAction { ajustarTitulos() }
 
         val ajustarTodosTitulos = MenuItem("Ajustar todos os títulos")
@@ -1563,6 +1582,7 @@ class AbaPastasController : Initializable {
         menu.items.addAll(
             scanAnterior,
             scanProximos,
+            scanMesmoVolume,
             SeparatorMenuItem(),
             volumeAnteriores,
             volumeProximos,
@@ -1571,6 +1591,7 @@ class AbaPastasController : Initializable {
             volumesImportar,
             SeparatorMenuItem(),
             ajustarCapitulo,
+            ajustarTodosCapitulos,
             SeparatorMenuItem(),
             apagarTituloAnteriores,
             apagarTitulo,
@@ -1605,8 +1626,8 @@ class AbaPastasController : Initializable {
     }
 
     private fun ajustarTitulos(todos: Boolean = false) {
-        val lista = if (todos) mObsListaProcessar else mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
-            tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
+        val lista = if (todos) mObsListaProcessar else tbViewProcessar.selectionModel.selectedItems.toList().ifEmpty {
+            mObsListaProcessar.filter { it.isSelecionado }
         }
 
         if (lista.isEmpty()) {
@@ -1622,8 +1643,8 @@ class AbaPastasController : Initializable {
     }
 
     private fun normalizarTitulos() {
-        val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
-            tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
+        val lista = tbViewProcessar.selectionModel.selectedItems.toList().ifEmpty {
+            mObsListaProcessar.filter { it.isSelecionado }
         }
 
         if (lista.isEmpty()) {
@@ -1685,6 +1706,16 @@ class AbaPastasController : Initializable {
             when (e.code) {
                 KeyCode.DELETE -> {
                     removerRegistro()
+                    e.consume()
+                }
+                KeyCode.SPACE -> {
+                    val selecionados = tbViewProcessar.selectionModel.selectedItems
+                    if (selecionados.isNotEmpty()) {
+                        val novoEstado = !selecionados.first().isSelecionado
+                        selecionados.forEach { it.isSelecionado = novoEstado }
+                        tbViewProcessar.refresh()
+                        atualizaCheckSelecionarTodos()
+                    }
                     e.consume()
                 }
                 KeyCode.T -> {
@@ -1869,7 +1900,6 @@ class AbaPastasController : Initializable {
                                     cbManga.value = mangaNome
                                     txtMalNome.text = mangaNome
                                     consultarMal()
-                                    tbTabRootPastas.selectionModel.select(tbTabPastas_ComicInfo)
                                 }
                                 atualizado = true
                             }
