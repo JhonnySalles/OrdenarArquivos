@@ -19,6 +19,8 @@ import javafx.scene.control.TableView
 import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.image.ImageView
 import javafx.stage.Stage
+import javafx.application.Platform
+import com.fenix.ordenararquivos.notification.AlertasModal
 import java.net.URL
 import java.util.*
 
@@ -115,6 +117,12 @@ class PopupComicInfoController : Initializable {
         clMalSite.cellValueFactory = PropertyValueFactory("site")
         clMalImagem.cellValueFactory = PropertyValueFactory("imagem")
         tbViewMal.items = mObsListaMal
+
+        tbViewMal.setOnMouseClicked { event ->
+            if (event.clickCount == 2) {
+                onBtnMalAplicar()
+            }
+        }
     }
 
     private fun initCombos() {
@@ -182,6 +190,9 @@ class PopupComicInfoController : Initializable {
 
             override fun failed() {
                 btnMalConsultar.isDisable = false
+                Platform.runLater {
+                    AlertasModal.erro("Erro na Consulta MAL", exception.message ?: "Erro desconhecido")
+                }
                 exception.printStackTrace()
             }
         }

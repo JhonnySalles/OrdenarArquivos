@@ -299,7 +299,8 @@ class ComicInfoServices {
             var page = 0
             do {
                 mLOG.info("Realizando a consulta $page")
-                val consulta = MyAnimeLis!!.manga.withQuery(nome).withLimit(Configuracao.registrosConsultaMal).withOffset(page).search()
+                val query = if (nome.length > 64) nome.substring(0, 64) else nome
+                val consulta = MyAnimeLis!!.manga.withQuery(query).withLimit(Configuracao.registrosConsultaMal).withOffset(page).search()
                 if (consulta != null && consulta.isNotEmpty()) {
                     for (item in consulta)
                         lista.add(toMal(item))

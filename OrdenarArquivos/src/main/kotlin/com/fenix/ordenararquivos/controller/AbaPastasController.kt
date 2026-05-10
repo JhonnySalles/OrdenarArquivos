@@ -46,6 +46,10 @@ import javafx.scene.paint.Color
 import javafx.util.Callback
 import javafx.util.converter.NumberStringConverter
 import org.slf4j.LoggerFactory
+import com.fenix.ordenararquivos.util.GridHistoryManager
+import com.fenix.ordenararquivos.util.PropertyChangeAction
+import com.fenix.ordenararquivos.util.CompositeAction
+import com.fenix.ordenararquivos.util.ReversibleAction
 import java.io.File
 import java.net.URL
 import java.nio.file.Files
@@ -223,6 +227,7 @@ class AbaPastasController : Initializable {
     internal var mComicInfo by Delegates.observable(ComicInfo()) { _, _, newValue -> carregaComicInfo(newValue) }
     internal var mObsListaProcessar: ObservableList<Pasta> = FXCollections.observableArrayList()
     private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
+    private val mHistory = GridHistoryManager()
 
     internal var mServiceManga = MangaServices()
     internal var mServiceComicInfo = ComicInfoServices()
@@ -999,6 +1004,7 @@ class AbaPastasController : Initializable {
 
                         if (!mCANCELAR) {
                             Platform.runLater {
+                                mHistory.clear()
                                 mObsListaProcessar = FXCollections.observableArrayList(lista)
                                 mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
                                 tbViewProcessar.items = mObsListaProcessar
@@ -1389,20 +1395,33 @@ class AbaPastasController : Initializable {
             return
         }
 
+        val actions = mutableListOf<ReversibleAction>()
         for (item in lista) {
             val parteInteira = item.capitulo.toInt()
             val parteDecimal = item.capitulo - parteInteira
-            if (Math.abs(parteDecimal - 0.1f) < 0.001f)
-                item.capitulo = parteInteira.toFloat()
+            if (Math.abs(parteDecimal - 0.1f) < 0.001f) {
+                val oldVal = item.capitulo
+                val newVal = parteInteira.toFloat()
+                if (oldVal != newVal) {
+                    actions.add(PropertyChangeAction(item, oldVal, newVal) { it, v -> it.capitulo = v })
+                    item.capitulo = newVal
+                }
+            }
         }
+        if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
 
         tbViewProcessar.refresh()
     }
 
     private fun apagarTodosTitulos() {
-        for (item in mObsListaProcessar)
-            item.titulo = ""
-
+        val actions = mutableListOf<ReversibleAction>()
+        for (item in mObsListaProcessar) {
+            if (item.titulo.isNotEmpty()) {
+                actions.add(PropertyChangeAction(item, item.titulo, "") { it, v -> it.titulo = v })
+                item.titulo = ""
+            }
+        }
+        if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
         tbViewProcessar.refresh()
     }
 
@@ -1412,6 +1431,45 @@ class AbaPastasController : Initializable {
         clVolume.cellValueFactory = PropertyValueFactory("volume")
         clCapitulo.cellValueFactory = PropertyValueFactory("capitulo")
         clTitulo.cellValueFactory = PropertyValueFactory("titulo")
+        clTitulo.setOnEditCommit { e ->
+            val item = e.tableView.items[e.tablePosition.row]
+            val oldVal = item.titulo
+            val newVal = e.newValue
+            if (oldVal != newVal) {
+                mHistory.pushAction(PropertyChangeAction(item, oldVal, newVal) { i, v -> i.titulo = v })
+                item.titulo = newVal
+            }
+        }
+        
+        clScan.setOnEditCommit { e ->
+            val item = e.tableView.items[e.tablePosition.row]
+            val oldVal = item.scan
+            val newVal = e.newValue
+            if (oldVal != newVal) {
+                mHistory.pushAction(PropertyChangeAction(item, oldVal, newVal) { i, v -> i.scan = v })
+                item.scan = newVal
+            }
+        }
+
+        clVolume.setOnEditCommit { e ->
+            val item = e.tableView.items[e.tablePosition.row]
+            val oldVal = item.volume
+            val newVal : Float = e.newValue as Float
+            if (oldVal != newVal) {
+                mHistory.pushAction(PropertyChangeAction(item, oldVal, newVal) { i, v -> i.volume = v })
+                item.volume = newVal
+            }
+        }
+
+        clCapitulo.setOnEditCommit { e ->
+            val item = e.tableView.items[e.tablePosition.row]
+            val oldVal = item.capitulo
+            val newVal : Float = e.newValue as Float
+            if (oldVal != newVal) {
+                mHistory.pushAction(PropertyChangeAction(item, oldVal, newVal) { i, v -> i.capitulo = v })
+                item.capitulo = newVal
+            }
+        }
 
         clSelecionado.setCellValueFactory { param ->
             val booleanProp = SimpleBooleanProperty(param.value.isSelecionado)
@@ -1448,8 +1506,15 @@ class AbaPastasController : Initializable {
                 val scan = this.scan
                 val index = mObsListaProcessar.indexOf(this)
                 if (scan.isNotEmpty() && index < tbViewProcessar.items.size - 1) {
-                    for (i in index + 1 until tbViewProcessar.items.size)
-                        mObsListaProcessar[i].scan = scan
+                    val actions = mutableListOf<ReversibleAction>()
+                    for (i in index + 1 until tbViewProcessar.items.size) {
+                        val item = mObsListaProcessar[i]
+                        if (item.scan != scan) {
+                            actions.add(PropertyChangeAction(item, item.scan, scan) { it, v -> it.scan = v })
+                            item.scan = scan
+                        }
+                    }
+                    if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                     tbViewProcessar.refresh()
                 }
             }
@@ -1460,8 +1525,15 @@ class AbaPastasController : Initializable {
                 val scan = this.scan
                 val index = mObsListaProcessar.indexOf(this)
                 if (scan.isNotEmpty() && index > 0) {
-                    for (i in index - 1 downTo 0)
-                        mObsListaProcessar[i].scan = scan
+                    val actions = mutableListOf<ReversibleAction>()
+                    for (i in index - 1 downTo 0) {
+                        val item = mObsListaProcessar[i]
+                        if (item.scan != scan) {
+                            actions.add(PropertyChangeAction(item, item.scan, scan) { it, v -> it.scan = v })
+                            item.scan = scan
+                        }
+                    }
+                    if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                     tbViewProcessar.refresh()
                 }
             }
@@ -1473,7 +1545,14 @@ class AbaPastasController : Initializable {
                 val scanValue = this.scan
                 val volumeValue = this.volume
                 if (scanValue.isNotEmpty()) {
-                    mObsListaProcessar.filter { it.volume == volumeValue }.forEach { it.scan = scanValue }
+                    val actions = mutableListOf<ReversibleAction>()
+                    mObsListaProcessar.filter { it.volume == volumeValue }.forEach { item ->
+                        if (item.scan != scanValue) {
+                            actions.add(PropertyChangeAction(item, item.scan, scanValue) { it, v -> it.scan = v })
+                            item.scan = scanValue
+                        }
+                    }
+                    if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                     tbViewProcessar.refresh()
                 }
             }
@@ -1481,7 +1560,14 @@ class AbaPastasController : Initializable {
 
         val volumesZerar = MenuItem("Zerar volumes")
         volumesZerar.setOnAction {
-            mObsListaProcessar.forEach { item -> item.volume = 0f }
+            val actions = mutableListOf<ReversibleAction>()
+            mObsListaProcessar.forEach { item -> 
+                if (item.volume != 0f) {
+                    actions.add(PropertyChangeAction(item, item.volume, 0f) { it, v -> it.volume = v })
+                    item.volume = 0f 
+                }
+            }
+            if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
             tbViewProcessar.refresh()
         }
         val volumesImportar = MenuItem("Importar volumes")
@@ -1493,8 +1579,15 @@ class AbaPastasController : Initializable {
                 val volumeItem = this.volume
                 val index = mObsListaProcessar.indexOf(this)
                 if (index != -1 && index < tbViewProcessar.items.size - 1) {
-                    for (i in index + 1 until tbViewProcessar.items.size)
-                        mObsListaProcessar[i].volume = volumeItem
+                    val actions = mutableListOf<ReversibleAction>()
+                    for (i in index + 1 until tbViewProcessar.items.size) {
+                        val item = mObsListaProcessar[i]
+                        if (item.volume != volumeItem) {
+                            actions.add(PropertyChangeAction(item, item.volume, volumeItem) { it, v -> it.volume = v })
+                            item.volume = volumeItem
+                        }
+                    }
+                    if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                     tbViewProcessar.refresh()
                 }
             }
@@ -1505,8 +1598,15 @@ class AbaPastasController : Initializable {
                 val volumeItem = this.volume
                 val index = mObsListaProcessar.indexOf(this)
                 if (index != -1 && index > 0) {
-                    for (i in index - 1 downTo 0)
-                        mObsListaProcessar[i].volume = volumeItem
+                    val actions = mutableListOf<ReversibleAction>()
+                    for (i in index - 1 downTo 0) {
+                        val item = mObsListaProcessar[i]
+                        if (item.volume != volumeItem) {
+                            actions.add(PropertyChangeAction(item, item.volume, volumeItem) { it, v -> it.volume = v })
+                            item.volume = volumeItem
+                        }
+                    }
+                    if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                     tbViewProcessar.refresh()
                 }
             }
@@ -1515,8 +1615,14 @@ class AbaPastasController : Initializable {
         volumeFaltantes.setOnAction {
             tbViewProcessar.selectionModel.selectedItem?.run {
                 val volumeItem = this.volume
-                for (item in mObsListaProcessar)
-                    if (item.volume == 0f) item.volume = volumeItem
+                val actions = mutableListOf<ReversibleAction>()
+                for (item in mObsListaProcessar) {
+                    if (item.volume == 0f && item.volume != volumeItem) {
+                        actions.add(PropertyChangeAction(item, item.volume, volumeItem) { it, v -> it.volume = v })
+                        item.volume = volumeItem
+                    }
+                }
+                if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                 tbViewProcessar.refresh()
             }
         }
@@ -1532,7 +1638,14 @@ class AbaPastasController : Initializable {
                 return@setOnAction
             }
 
-            for (item in lista) item.titulo = ""
+            val actions = mutableListOf<ReversibleAction>()
+            for (item in lista) {
+                if (item.titulo.isNotEmpty()) {
+                    actions.add(PropertyChangeAction(item, item.titulo, "") { it, v -> it.titulo = v })
+                    item.titulo = ""
+                }
+            }
+            if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
             tbViewProcessar.refresh()
         }
 
@@ -1635,10 +1748,17 @@ class AbaPastasController : Initializable {
             return
         }
 
+        val actions = mutableListOf<ReversibleAction>()
         val regex = "(?i)^.*?((ch|chapter|cap|capitulo|c|v|volume|vol)\\.?\\s*\\d+|\\d+)\\s*[:\\- ]+\\s*".toRegex()
         for (item in lista) {
-            item.titulo = item.titulo.replace(regex, "").trim()
+            val oldVal = item.titulo
+            val newVal = item.titulo.replace(regex, "").trim()
+            if (oldVal != newVal) {
+                actions.add(PropertyChangeAction(item, oldVal, newVal) { i, v -> i.titulo = v })
+                item.titulo = newVal
+            }
         }
+        if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
         tbViewProcessar.refresh()
     }
 
@@ -1652,11 +1772,18 @@ class AbaPastasController : Initializable {
             return
         }
 
+        val actions = mutableListOf<ReversibleAction>()
         for (item in lista) {
             if (item.titulo.isNotEmpty()) {
-                item.titulo = item.titulo.lowercase(Locale.getDefault()).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                val oldVal = item.titulo
+                val newVal = item.titulo.lowercase(Locale.getDefault()).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                if (oldVal != newVal) {
+                    actions.add(PropertyChangeAction(item, oldVal, newVal) { i, v -> i.titulo = v })
+                    item.titulo = newVal
+                }
             }
         }
+        if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
         tbViewProcessar.refresh()
     }
 
@@ -1664,6 +1791,7 @@ class AbaPastasController : Initializable {
         val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
         if (selecionados.isNotEmpty()) {
             if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
+                selecionados.forEach { mHistory.removeHistoryForItem(it) }
                 mObsListaProcessar.removeAll(selecionados)
                 tbViewProcessar.refresh()
             }
@@ -1704,6 +1832,32 @@ class AbaPastasController : Initializable {
 
 
             when (e.code) {
+                KeyCode.Z -> {
+                    if (e.isControlDown) {
+                        val action = mHistory.undo()
+                        if (action != null) {
+                            tbViewProcessar.refresh()
+                            (action.getFirstAffectedItem() as? Pasta)?.let { item ->
+                                val idx = mObsListaProcessar.indexOf(item)
+                                if (idx != -1) tbViewProcessar.scrollTo(idx)
+                            }
+                        }
+                        e.consume()
+                    }
+                }
+                KeyCode.Y -> {
+                    if (e.isControlDown) {
+                        val action = mHistory.redo()
+                        if (action != null) {
+                            tbViewProcessar.refresh()
+                            (action.getFirstAffectedItem() as? Pasta)?.let { item ->
+                                val idx = mObsListaProcessar.indexOf(item)
+                                if (idx != -1) tbViewProcessar.scrollTo(idx)
+                            }
+                        }
+                        e.consume()
+                    }
+                }
                 KeyCode.DELETE -> {
                     removerRegistro()
                     e.consume()
@@ -1753,7 +1907,14 @@ class AbaPastasController : Initializable {
                     val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
                         tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
                     }
-                    lista.forEach { it.volume = volumeValue }
+                    val actions = mutableListOf<ReversibleAction>()
+                    lista.forEach { item -> 
+                        if (item.volume != volumeValue) {
+                            actions.add(PropertyChangeAction(item, item.volume, volumeValue) { i, v -> i.volume = v })
+                            item.volume = volumeValue
+                        }
+                    }
+                    if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                     tbViewProcessar.refresh()
                 }
                 volumeBuffer = ""
@@ -1766,7 +1927,14 @@ class AbaPastasController : Initializable {
                     val lista = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty {
                         tbViewProcessar.selectionModel.selectedItem?.let { listOf(it) } ?: emptyList()
                     }
-                    lista.forEach { it.capitulo = chapterValue }
+                    val actions = mutableListOf<ReversibleAction>()
+                    lista.forEach { item -> 
+                        if (item.capitulo != chapterValue) {
+                            actions.add(PropertyChangeAction(item, item.capitulo, chapterValue) { i, v -> i.capitulo = v })
+                            item.capitulo = chapterValue
+                        }
+                    }
+                    if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                     tbViewProcessar.refresh()
                 }
                 chapterBuffer = ""

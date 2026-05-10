@@ -225,7 +225,7 @@ class PopupCapitulosController : Initializable {
         cbMarcarTodos.isSelected = mLista.isNotEmpty() && mLista.all { it.marcado }
     }
 
-    private fun extractManualText(texto: String) {
+    internal fun extractManualText(texto: String) {
         val volumesMap = mutableMapOf<Double, Volume>()
 
         // Regex para capturar Volume e Capítulo de forma flexível (prefixos opcionais)
@@ -438,10 +438,14 @@ class PopupCapitulosController : Initializable {
                 // 2.1 - Localizar por volume e capítulo (Exato)
                 // Percorremos os capítulos que este arquivo "deveria" ter conforme suas tags
                 info.tagCapitulos.forEach { numCapTag ->
-                    val found = sourcePool.find { it.vol == info.volume && it.cap.capitulo == numCapTag }
-                    if (found != null) {
-                        capitulosEncontrados.add(found.cap)
-                        sourcePool.remove(found)
+                    var found = sourcePool.find { it.vol == info.volume && it.cap.capitulo == numCapTag }
+                    if (found == null) {
+                        found = sourcePool.find { it.vol == info.volume && it.cap.capitulo.toInt() == numCapTag.toInt() }
+                    }
+
+                    found?.let {
+                        capitulosEncontrados.add(it.cap)
+                        sourcePool.remove(it)
                     }
                 }
 
@@ -449,10 +453,14 @@ class PopupCapitulosController : Initializable {
                 // Só tentamos os capítulos das tags que ainda não foram preenchidos
                 val restantesTags = info.tagCapitulos.filter { tagNum -> capitulosEncontrados.none { it.capitulo == tagNum } }
                 restantesTags.forEach { numCapTag ->
-                    val found = sourcePool.find { it.cap.capitulo == numCapTag }
-                    if (found != null) {
-                        capitulosEncontrados.add(found.cap)
-                        sourcePool.remove(found)
+                    var found = sourcePool.find { it.cap.capitulo == numCapTag }
+                    if (found == null) {
+                        found = sourcePool.find { it.cap.capitulo.toInt() == numCapTag.toInt() }
+                    }
+
+                    found?.let {
+                        capitulosEncontrados.add(it.cap)
+                        sourcePool.remove(it)
                     }
                 }
 
@@ -1320,7 +1328,7 @@ class PopupCapitulosController : Initializable {
         private lateinit var stackPane: StackPane
 
         @JvmStatic
-        fun abreTelaCapitulos(rootStackPane: StackPane, nodeBlur: Node, callback: Callback<ObservableList<Volume>, Boolean>, linguagem: Linguagem, processar: List<Processar>) {
+        fun abreTelaCapitulos(rootStackPane: StackPane, nodeBlur: Node, callback: Callback<ObservableList<Volume>, Boolean>, linguagem: Linguagem, processar: List<Processar>, textoInicial: String? = null) {
             try {
                 stackPane = rootStackPane
                 val blur = BoxBlur(3.0, 3.0, 3)
@@ -1333,6 +1341,10 @@ class PopupCapitulosController : Initializable {
                 cnt.setLinguagem(linguagem)
                 cnt.setArquivos(processar.map { it.arquivo })
                 cnt.setProcessar(processar)
+
+                if (!textoInicial.isNullOrEmpty()) {
+                    cnt.extractManualText(textoInicial)
+                }
                 val titulo = Label("Importando capitulos")
                 titulo.font = Font.font(20.0)
                 titulo.textFill = Color.WHITE

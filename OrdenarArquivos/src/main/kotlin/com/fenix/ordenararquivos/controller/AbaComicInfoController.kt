@@ -2,7 +2,6 @@ package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.components.CheckBoxTableCellCustom
 import com.fenix.ordenararquivos.components.TextAreaTableCell
-import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.entities.capitulos.Volume
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
@@ -40,6 +39,14 @@ import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
 import javafx.util.Callback
 import javafx.scene.effect.BoxBlur
+import com.fenix.ordenararquivos.util.GridHistoryManager
+import com.fenix.ordenararquivos.util.PropertyChangeAction
+import com.fenix.ordenararquivos.util.CompositeAction
+import com.fenix.ordenararquivos.util.ReversibleAction
+import javafx.scene.layout.HBox
+import javafx.fxml.FXMLLoader
+import com.jfoenix.controls.JFXDialogLayout
+import com.jfoenix.controls.JFXDialog
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.FileOutputStream
@@ -121,13 +128,7 @@ class AbaComicInfoController : Initializable {
     private lateinit var clTags: TableColumn<Processar, String>
 
     @FXML
-    private lateinit var clProcessarOcr: TableColumn<Processar, JFXButton?>
-
-    @FXML
-    private lateinit var clProcessarAmazon: TableColumn<Processar, JFXButton?>
-
-    @FXML
-    private lateinit var clSalvarComicInfo: TableColumn<Processar, JFXButton?>
+    private lateinit var clAcoes: TableColumn<Processar, Void>
 
     internal var mRarService = WinrarServices()
     internal var mOcrService = OcrServices()
@@ -142,18 +143,25 @@ class AbaComicInfoController : Initializable {
     private var mObsListaProcessar: ObservableList<Processar> = FXCollections.observableArrayList()
     private val mDecimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
     private val mPASTA_TEMPORARIA = File(System.getProperty("user.dir"), "temp/")
+    private val mHistory = GridHistoryManager()
 
     @FXML
     private fun onBtnCapitulos() {
+        abrirPopupCapitulos()
+    }
+
+    private fun abrirPopupCapitulos(textoInicial: String? = null) {
         val selected = tbViewProcessar.selectionModel.selectedItems
         val listToProcess = if (selected.size > 1) selected.toList() else mObsListaProcessar
 
         val callback: Callback<ObservableList<Volume>, Boolean> = Callback<ObservableList<Volume>, Boolean> { param ->
             val linguagem = cbLinguagem.value
             val separador = Utils.SEPARADOR_CAPITULO
+            val actions = mutableListOf<ReversibleAction>()
             for (volume in param)
                 if (volume.marcado && volume.arquivo.isNotEmpty()) {
                     val item = mObsListaProcessar.find { it.arquivo == volume.arquivo } ?: continue
+                    val oldTags = item.tags
                     val capitulos = volume.capitulos.toMutableList()
                     val tags = mutableListOf<String>()
                     for (tag in item.tags.split("\n")) {
@@ -172,15 +180,22 @@ class AbaComicInfoController : Initializable {
                     }
 
                     if (capitulos.isNotEmpty())
-                        for (capitulo in capitulos)
-                            tags.add("-1${Utils.SEPARADOR_IMAGEM} Capítulo novo ${Utils.SEPARADOR_IMPORTACAO} ${mDecimal.format(capitulo.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && capitulo.japones.isNotEmpty()) capitulo.japones else capitulo.ingles}")
+                        for (capitulo in capitulos) {
+                            val num = mDecimal.format(capitulo.capitulo)
+                            tags.add("-1${Utils.SEPARADOR_IMAGEM} Capítulo novo $num ${Utils.SEPARADOR_IMPORTACAO} $num$separador${if (linguagem == Linguagem.JAPANESE && capitulo.japones.isNotEmpty()) capitulo.japones else capitulo.ingles}")
+                        }
 
-                    item.tags = tags.joinToString("\n")
+                    val newTags = tags.joinToString("\n")
+                    if (oldTags != newTags) {
+                        actions.add(PropertyChangeAction(item, oldTags, newTags) { i, v -> i.tags = v })
+                        item.tags = newTags
+                    }
                 }
+            if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
             tbViewProcessar.refresh()
             null
         }
-        PopupCapitulosController.abreTelaCapitulos(controllerPai.rootStack, controllerPai.rootTab, callback, cbLinguagem.value, listToProcess)
+        PopupCapitulosController.abreTelaCapitulos(controllerPai.rootStack, controllerPai.rootTab, callback, cbLinguagem.value, listToProcess, textoInicial)
     }
 
     @FXML
@@ -270,8 +285,15 @@ class AbaComicInfoController : Initializable {
         if (mObsListaProcessar.isNotEmpty()) {
             controllerPai.setCursor(Cursor.WAIT)
             val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
-            for (item in mObsListaProcessar)
+            val actions = mutableListOf<ReversibleAction>()
+            for (item in mObsListaProcessar) {
+                val oldTags = item.tags
                 gerarTagItem(item, language)
+                if (oldTags != item.tags) {
+                    actions.add(PropertyChangeAction(item, oldTags, item.tags) { i, v -> i.tags = v })
+                }
+            }
+            if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
             tbViewProcessar.refresh()
             controllerPai.setCursor(null)
         }
@@ -282,8 +304,15 @@ class AbaComicInfoController : Initializable {
         if (mObsListaProcessar.isNotEmpty()) {
             controllerPai.setCursor(Cursor.WAIT)
             val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
-            for (item in mObsListaProcessar)
+            val actions = mutableListOf<ReversibleAction>()
+            for (item in mObsListaProcessar) {
+                val oldTags = item.tags
                 normalizarTagItem(item, language)
+                if (oldTags != item.tags) {
+                    actions.add(PropertyChangeAction(item, oldTags, item.tags) { i, v -> i.tags = v })
+                }
+            }
+            if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
             tbViewProcessar.refresh()
             controllerPai.setCursor(null)
         }
@@ -293,10 +322,12 @@ class AbaComicInfoController : Initializable {
     private fun onBtnTagsAplicar() {
         if (mObsListaProcessar.isNotEmpty()) {
             controllerPai.setCursor(Cursor.WAIT)
+            val actions = mutableListOf<ReversibleAction>()
             for (item in mObsListaProcessar) {
                 if (item.tags.isEmpty() || !item.tags.contains("\n") || !item.tags.contains(Utils.SEPARADOR_IMPORTACAO))
                     continue
 
+                val oldTags = item.tags
                 val linhas = mutableListOf<String>()
                 val separador = Utils.SEPARADOR_CAPITULO
                 for (linha in item.tags.split("\n"))
@@ -305,8 +336,13 @@ class AbaComicInfoController : Initializable {
                             .trim() + " - " + linha.substringAfterLast(separador) else linha
                     )
 
-                item.tags = linhas.joinToString(separator = "\n")
+                val newTags = linhas.joinToString(separator = "\n")
+                if (oldTags != newTags) {
+                    actions.add(PropertyChangeAction(item, oldTags, newTags) { i, v -> i.tags = v })
+                    item.tags = newTags
+                }
             }
+            if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
             tbViewProcessar.refresh()
             controllerPai.setCursor(null)
         }
@@ -388,7 +424,7 @@ class AbaComicInfoController : Initializable {
     private fun configurarDragAndDrop() {
         apRoot.onDragOver = EventHandler { event ->
             if (event.gestureSource !== apRoot && event.dragboard.hasFiles()) {
-                val aceito = event.dragboard.files.any { it.isDirectory || Utils.isRar(it.name) || it.extension.lowercase() == "xml" }
+                val aceito = event.dragboard.files.any { it.isDirectory || Utils.isRar(it.name) || it.extension.lowercase() == "xml" || it.extension.lowercase() == "txt" }
                 event.acceptTransferModes(if (aceito) TransferMode.COPY else null)
                 mostrarOverlayDrag(aceito)
             }
@@ -403,12 +439,20 @@ class AbaComicInfoController : Initializable {
                 val files = db.files ?: emptyList<File>()
                 if (files.isNotEmpty()) {
                     val first = files.first()
-                    val targetDir = if (first.isDirectory) first else first.parentFile
-                    if (targetDir != null && targetDir.exists()) {
-                        txtPastaProcessar.text = targetDir.absolutePath
-                        carregarItens()
-                        event.isDropCompleted = true
+                    if (first.extension.lowercase() == "txt") {
+                        val content = first.readText(Charsets.UTF_8)
+                        val capRegex = Regex("(?i)(?:Chapter|Ch\\.?|Capítulo|Cap\\.?)\\s*(\\d+(?:\\.\\d+)?)")
+                        if (content.lines().any { capRegex.containsMatchIn(it) }) {
+                            abrirPopupCapitulos(content)
+                        }
+                    } else {
+                        val targetDir = if (first.isDirectory) first else first.parentFile
+                        if (targetDir != null && targetDir.exists()) {
+                            txtPastaProcessar.text = targetDir.absolutePath
+                            carregarItens()
+                        }
                     }
+                    event.isDropCompleted = true
                 }
             }
             esconderOverlayDrag()
@@ -584,7 +628,7 @@ class AbaComicInfoController : Initializable {
                             processar.styleClass.add("background-White1")
                             processar.setOnAction { processarOcrItem(item) }
                             amazon.styleClass.add("background-White1")
-                            amazon.setOnAction { openSiteAmazon(item) }
+                            amazon.setOnAction { popupAmazon(item) }
                             salvar.styleClass.add("background-White1")
                             salvar.setOnAction { salvarComicInfoItem(item) }
 
@@ -592,6 +636,7 @@ class AbaComicInfoController : Initializable {
                         }
 
                         Platform.runLater {
+                            mHistory.clear()
                             mObsListaProcessar = FXCollections.observableArrayList(lista)
                             tbViewProcessar.items = mObsListaProcessar
                             atualizaCheckTodosProcessado()
@@ -695,6 +740,7 @@ class AbaComicInfoController : Initializable {
             marshaller.marshal(item.comicInfo, out)
             out.close()
             mRarService.insereComicInfo(item.file!!, info)
+            mHistory.removeHistoryForItem(item)
             mObsListaProcessar.remove(item)
         } catch (e: Exception) {
             mLOG.error(e.message, e)
@@ -738,6 +784,41 @@ class AbaComicInfoController : Initializable {
         Thread(processar).start()
     }
 
+    private fun salvarListaItens(itens: List<Processar>) {
+        controllerPai.setCursor(Cursor.WAIT)
+        desabilita()
+        val processar: Task<Void> = object : Task<Void>() {
+            override fun call(): Void? {
+                try {
+                    val total = itens.size.toLong()
+                    itens.forEachIndexed { i, item ->
+                        updateProgress(i.toLong() + 1, total)
+                        updateMessage("Salvando item ${i + 1} de $total: ${item.arquivo}")
+                        Platform.runLater { salvarComicInfoItem(item) }
+                        Thread.sleep(100) // Pequena pausa para UI respirar
+                    }
+                } catch (e: Exception) {
+                    mLOG.error("Erro ao salvar itens selecionados", e)
+                }
+                return null
+            }
+
+            override fun succeeded() {
+                controllerPai.clearProgress()
+                habilita()
+                Notificacoes.notificacao(Notificacao.SUCESSO, "Salvar ComicInfo", "Itens salvos com sucesso.")
+            }
+
+            override fun failed() {
+                controllerPai.clearProgress()
+                habilita()
+            }
+        }
+        controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
+        controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
+        Thread(processar).start()
+    }
+
     private fun recarregarComicInfoItem(item: Processar) {
         val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
         val info: File? = mRarService.extraiComicInfo(item.file!!)
@@ -760,35 +841,152 @@ class AbaComicInfoController : Initializable {
     }
 
     private fun processarOcrItem(item: Processar) {
-        val extractDir = File(mPASTA_TEMPORARIA, "ocr_${System.currentTimeMillis()}")
+        controllerPai.setCursor(Cursor.WAIT)
+        val extractDir = File(mPASTA_TEMPORARIA, "ocr_direto_${System.currentTimeMillis()}")
         extractDir.mkdirs()
-        try {
-            val sumario = mRarService.extraiSumario(item.file!!, extractDir) ?: return
-            val capitulos = mOcrService.processOcr(sumario, Utils.SEPARADOR_PAGINA, Utils.SEPARADOR_CAPITULO).split("\n")
-            val newTag = mutableSetOf<String>()
-            val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
 
-            var index = -1
-            for (tag in tags) {
-                if (tag.contains("capítulo", ignoreCase = true) || tag.contains("第", ignoreCase = true)) {
-                    index++
-                    val capitulo = if (index < capitulos.size) capitulos[index] else ""
-                    newTag.add("$tag ${Utils.SEPARADOR_IMPORTACAO} $capitulo")
-                } else
-                    newTag.add(tag)
+        val task = object : Task<File?>() {
+            override fun call(): File? {
+                return mRarService.extraiSumario(item.file!!, extractDir)
             }
 
-            if (index < capitulos.size) {
-                for (i in index + 1 until capitulos.size)
-                    newTag.add("-1${Utils.SEPARADOR_IMAGEM} Capítulo novo ${Utils.SEPARADOR_IMPORTACAO} ${capitulos[i]}")
+            override fun succeeded() {
+                val sumario = value
+                if (sumario != null && sumario.exists()) {
+                    executarOcrItem(item, sumario, extractDir)
+                } else {
+                    controllerPai.setCursor(null)
+                    extractDir.deleteRecursively()
+                    AlertasModal.aviso("OCR", "Não foi possível localizar o sumário no arquivo.")
+                }
             }
 
-            item.tags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
-            item.isProcessado = true
-            tbViewProcessar.refresh()
-        } finally {
-            extractDir.deleteRecursively()
+            override fun failed() {
+                controllerPai.setCursor(null)
+                extractDir.deleteRecursively()
+                AlertasModal.erro("Erro", "Erro ao extrair sumário: ${exception.message}")
+            }
         }
+        Thread(task).start()
+    }
+
+    private fun visualizarSumarioItem(item: Processar) {
+        controllerPai.setCursor(Cursor.WAIT)
+        val extractDir = File(mPASTA_TEMPORARIA, "ocr_preview_${System.currentTimeMillis()}")
+        extractDir.mkdirs()
+
+        val task = object : Task<File?>() {
+            override fun call(): File? {
+                return mRarService.extraiSumario(item.file!!, extractDir)
+            }
+
+            override fun succeeded() {
+                controllerPai.setCursor(null)
+                val sumario = value
+                if (sumario != null && sumario.exists()) {
+                    abrirPopupVisualizarSumario(item, sumario, extractDir)
+                } else {
+                    extractDir.deleteRecursively()
+                    AlertasModal.aviso("OCR", "Não foi possível localizar o sumário no arquivo.")
+                }
+            }
+
+            override fun failed() {
+                controllerPai.setCursor(null)
+                extractDir.deleteRecursively()
+                AlertasModal.erro("Erro", "Erro ao extrair sumário: ${exception.message}")
+            }
+        }
+        Thread(task).start()
+    }
+
+    private fun abrirPopupVisualizarSumario(item: Processar, sumarioFile: File, extractDir: File) {
+        try {
+            val loader = FXMLLoader(javaClass.getResource("/view/PopupVisualizarSumario.fxml"))
+            val root = loader.load<AnchorPane>()
+            val controller = loader.getController<PopupVisualizarSumarioController>()
+
+            val blur = BoxBlur(3.0, 3.0, 3)
+            val dialogLayout = JFXDialogLayout()
+            dialogLayout.setBody(root)
+            val dialog = JFXDialog(controllerPai.rootStack, dialogLayout, JFXDialog.DialogTransition.CENTER)
+            dialog.isOverlayClose = true
+
+            controller.setDados(item, sumarioFile)
+            controller.onFechar = { dialog.close() }
+            controller.onProcessar = {
+                dialog.close()
+                executarOcrItem(item, sumarioFile, extractDir)
+            }
+
+            dialog.setOnDialogClosed {
+                controllerPai.rootTab.effect = null
+                controllerPai.rootTab.isDisable = false
+                if (extractDir.exists()) {
+                     Thread {
+                         Thread.sleep(500)
+                         extractDir.deleteRecursively()
+                     }.start()
+                }
+            }
+
+            controllerPai.rootTab.effect = blur
+            controllerPai.rootTab.isDisable = true
+            dialog.show()
+        } catch (e: Exception) {
+            extractDir.deleteRecursively()
+            AlertasModal.erro("Erro", "Erro ao abrir visualizador: ${e.message}")
+        }
+    }
+
+    private fun executarOcrItem(item: Processar, sumario: File, extractDir: File) {
+        controllerPai.setCursor(Cursor.WAIT)
+        val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+
+        val task = object : Task<Unit>() {
+            override fun call() {
+                val capitulos = mOcrService.processOcr(sumario, Utils.SEPARADOR_PAGINA, Utils.SEPARADOR_CAPITULO).split("\n")
+                val newTag = mutableSetOf<String>()
+                val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
+
+                var index = -1
+                for (tag in tags) {
+                    if (tag.contains("capítulo", ignoreCase = true) || tag.contains("第", ignoreCase = true)) {
+                        index++
+                        val capitulo = if (index < capitulos.size) capitulos[index] else ""
+                        newTag.add("$tag ${Utils.SEPARADOR_IMPORTACAO} $capitulo")
+                    } else
+                        newTag.add(tag)
+                }
+
+                if (index < capitulos.size) {
+                    for (i in index + 1 until capitulos.size) {
+                        val capLabel = when (language) {
+                            Linguagem.JAPANESE -> "?${Utils.toNumberJapanese(mDecimal.format(Utils.getNumber(capitulos[i]) ?: 0.0))}?"
+                            Linguagem.PORTUGUESE -> "Capítulo novo ${mDecimal.format(Utils.getNumber(capitulos[i]) ?: 0.0)}"
+                            else -> "New Chapter ${mDecimal.format(Utils.getNumber(capitulos[i]) ?: 0.0)}"
+                        }
+                        newTag.add("-1${Utils.SEPARADOR_IMAGEM} $capLabel ${Utils.SEPARADOR_IMPORTACAO} ${capitulos[i]}")
+                    }
+                }
+
+                item.tags = if (newTag.isNotEmpty()) newTag.joinToString(separator = "\n") else item.tags
+                item.isProcessado = true
+            }
+
+            override fun succeeded() {
+                controllerPai.setCursor(null)
+                tbViewProcessar.refresh()
+                extractDir.deleteRecursively()
+            }
+
+            override fun failed() {
+                controllerPai.setCursor(null)
+                extractDir.deleteRecursively()
+                AlertasModal.erro("Erro", "Erro no processamento OCR: ${exception.message}")
+            }
+        }
+        Thread(task).start()
     }
 
     private fun gerarTagItem(item: Processar, language: Linguagem, isAjustar: Boolean = false) {
@@ -814,35 +1012,54 @@ class AbaComicInfoController : Initializable {
         val tags = mutableListOf<String>()
         for (linha in linhas) {
             val ln = linha.lowercase()
-            if (ln.contains("capítulo Novo", ignoreCase = true)) {
-                if (linha.contains(Utils.SEPARADOR_CAPITULO))
-                    tags.add(linha.substringBefore(Utils.SEPARADOR_CAPITULO) + Utils.SEPARADOR_CAPITULO + Utils.normaliza(linha.substringAfter(Utils.SEPARADOR_CAPITULO)))
-                else
-                    tags.add(linha)
-            } else if (ln.contains("第") || ln.contains("capítulo") || ln.contains("capitulo") || ln.contains("chapter")) {
+            if (ln.contains("第") || ln.contains("capítulo") || ln.contains("capitulo") || ln.contains("chapter")) {
                 val imagem = linha.substringBefore(Utils.SEPARADOR_IMAGEM)
-                var capitulo = linha.substringAfter(Utils.SEPARADOR_IMAGEM).split("-", "—")[0].trim()
-                val numero = Utils.getNumber(if (capitulo.contains("第")) Utils.fromNumberJapanese(capitulo) else capitulo) ?: 0.0
-                capitulo = when (language) {
+                val resto = linha.substringAfter(Utils.SEPARADOR_IMAGEM)
+                
+                var prefixPart = resto
+                var importPart = ""
+                
+                if (resto.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                    prefixPart = resto.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
+                    importPart = resto.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim()
+                }
+                
+                // Processa prefixPart (Capítulo + Título Original)
+                val capParts = prefixPart.split(Regex("—|-"), 2)
+                val capLabel = capParts[0].trim()
+                val originalTitle = if (capParts.size > 1) capParts[1].trim() else ""
+                
+                val numero = Utils.getNumber(if (capLabel.contains("第")) Utils.fromNumberJapanese(capLabel) else capLabel) ?: 0.0
+                val formattedCap = when (language) {
                     Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(mDecimal.format(numero))}話"
                     Linguagem.PORTUGUESE -> "Capítulo ${mDecimal.format(numero)}"
                     else -> "Chapter ${mDecimal.format(numero)}"
                 }
-                val titulo = if (linha.contains(Utils.SEPARADOR_IMPORTACAO))
-                    " ${Utils.SEPARADOR_IMPORTACAO} " + linha.substringAfter(Utils.SEPARADOR_IMPORTACAO).substringBefore(Utils.SEPARADOR_CAPITULO)
-                        .trim() + Utils.SEPARADOR_CAPITULO + Utils.normaliza(linha.substringAfterLast(Utils.SEPARADOR_CAPITULO).trim())
-                else if (linha.contains("-") || linha.contains("—"))
-                    " — " + Utils.normaliza(if (linha.contains("—")) linha.substringAfter("—").trim() else linha.substringAfter("-").trim())
-                else
-                    ""
-                tags.add(imagem + Utils.SEPARADOR_IMAGEM + capitulo + titulo)
+                
+                var resultLine = "$imagem${Utils.SEPARADOR_IMAGEM}$formattedCap"
+                if (originalTitle.isNotEmpty()) {
+                    resultLine += " — ${Utils.normaliza(originalTitle)}"
+                }
+                
+                // Processa importPart ($# Número|Título Importado)
+                if (importPart.isNotEmpty()) {
+                    val importNum = importPart.substringBefore(Utils.SEPARADOR_CAPITULO).trim()
+                    val importTitle = if (importPart.contains(Utils.SEPARADOR_CAPITULO)) importPart.substringAfter(Utils.SEPARADOR_CAPITULO).trim() else ""
+                    
+                    resultLine += " ${Utils.SEPARADOR_IMPORTACAO} $importNum"
+                    if (importTitle.isNotEmpty()) {
+                        resultLine += "${Utils.SEPARADOR_CAPITULO}${Utils.normaliza(importTitle)}"
+                    }
+                }
+                
+                tags.add(resultLine)
             } else
                 tags.add(linha)
         }
         item.tags = tags.joinToString(separator = "\n")
     }
 
-    private fun openSiteAmazon(item: Processar) {
+    private fun popupAmazon(item: Processar) {
         val callback: Callback<ComicInfo, Boolean> = Callback<ComicInfo, Boolean> { param ->
             item.comicInfo = param
             tbViewProcessar.refresh()
@@ -853,22 +1070,53 @@ class AbaComicInfoController : Initializable {
 
     private fun editaColunas() {
         clTitulo.cellFactory = TextAreaTableCell.forTableColumn()
+        clTitulo.setOnEditCommit { e ->
+            val item = e.tableView.items[e.tablePosition.row]
+            val oldVal = item.comicInfo?.title ?: ""
+            val newVal = e.newValue
+            if (oldVal != newVal) {
+                mHistory.pushAction(PropertyChangeAction(item, oldVal, newVal) { i, v -> i.comicInfo?.title = v })
+                item.comicInfo?.title = newVal
+            }
+        }
+
         clSerie.cellFactory = TextAreaTableCell.forTableColumn()
+        clSerie.setOnEditCommit { e ->
+            val item = e.tableView.items[e.tablePosition.row]
+            val oldVal = item.comicInfo?.series ?: ""
+            val newVal = e.newValue
+            if (oldVal != newVal) {
+                mHistory.pushAction(PropertyChangeAction(item, oldVal, newVal) { i, v -> i.comicInfo?.series = v })
+                item.comicInfo?.series = newVal
+            }
+        }
+
         clResumo.cellFactory = TextAreaTableCell.forTableColumn()
         clResumo.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
             val item = e.tableView.items[e.tablePosition.row]
-            if (item.comicInfo != null)
-                item.comicInfo!!.summary = e.newValue
+            val oldVal = item.comicInfo?.summary ?: ""
+            val newVal = e.newValue
+            if (oldVal != newVal) {
+                mHistory.pushAction(PropertyChangeAction(item, oldVal, newVal) { i, v -> i.comicInfo?.summary = v })
+                if (item.comicInfo != null)
+                    item.comicInfo!!.summary = newVal
+            }
         }
 
         clProcessado.setCellValueFactory { param ->
             val item = param.value
-
             val booleanProp = SimpleBooleanProperty(item.isProcessado)
             booleanProp.addListener { _, _, newValue ->
-                item.isProcessado = newValue
-                atualizaCheckTodosProcessado()
-                tbViewProcessar.refresh()
+                if (item.isProcessado != newValue) {
+                    val oldVal = item.isProcessado
+                    mHistory.pushAction(PropertyChangeAction(item, oldVal, newValue) { i, v -> 
+                        i.isProcessado = v
+                        Platform.runLater { tbViewProcessar.refresh() }
+                    })
+                    item.isProcessado = newValue
+                    atualizaCheckTodosProcessado()
+                    tbViewProcessar.refresh()
+                }
             }
             return@setCellValueFactory booleanProp
         }
@@ -881,13 +1129,40 @@ class AbaComicInfoController : Initializable {
         clTags.cellFactory = TextAreaTableCell.forTableColumn(
             Tooltip(
                 "Com o shift e alt pressionados poderá ser executado algumas funções no texto apresentado, são eles:\n" +
-                        "Shift + Alt + Enter: Aplicação da tag gerada aos capítulos.\nShift + Alt + Delete: Apaga a linha selecionada.\nShift + Alt + Left: Aplicar as tags da linha selecionada.\n" +
+                        "Shift + Alt + Enter: Aplicação da tag gerada aos capítulos.\nShift + Alt + Delete: Apaga a linha selecionada ou remove o novo título se existir.\nShift + Alt + Left: Aplicar as tags da linha selecionada.\n" +
                         "Shift + Alt + Right: Aplicar capítulo importado da linha selecionada.\n" +
                         "Shift + Alt + Acima/Baixo: Move a tag da linha selecionada para cima ou baixo, movimentando outras tags subjacentes."
             )
         )
         clTags.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
-            e.tableView.items[e.tablePosition.row].tags = e.newValue
+            val item = e.tableView.items[e.tablePosition.row]
+            val oldVal = item.tags
+            val newVal = e.newValue
+            if (oldVal != newVal) {
+                mHistory.pushAction(PropertyChangeAction(item, oldVal, newVal) { i, v -> i.tags = v })
+                item.tags = newVal
+            }
+        }
+
+        clAcoes.setCellFactory {
+            object : TableCell<Processar, Void>() {
+                private val btnOcr = JFXButton("OCR").apply {
+                    styleClass.add("background-White1")
+                    setOnAction { visualizarSumarioItem(tableView.items[index]) }
+                }
+                private val btnSalvar = JFXButton("Salvar").apply {
+                    styleClass.add("background-Green3")
+                    setOnAction { salvarComicInfoItem(tableView.items[index]) }
+                }
+                private val hbox = HBox(5.0, btnOcr, btnSalvar).apply {
+                    alignment = Pos.CENTER
+                }
+
+                override fun updateItem(item: Void?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    graphic = if (empty) null else hbox
+                }
+            }
         }
 
         val menu = ContextMenu()
@@ -933,7 +1208,7 @@ class AbaComicInfoController : Initializable {
             }
         }
 
-        val atualizarTagsDoArquivo = MenuItem("Atualizar Tags do Arquivo")
+        val atualizarTagsDoArquivo = MenuItem("Gerar Tags do Arquivo (Através das pastas)")
         atualizarTagsDoArquivo.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null)
                 gerarTagsDoArquivo(tbViewProcessar.selectionModel.selectedItem)
@@ -946,10 +1221,16 @@ class AbaComicInfoController : Initializable {
         }
 
         // GRUPO OCR
-        val processar = MenuItem("Processar OCR (Ctrl + O)")
-        processar.setOnAction {
+        val processarOcr = MenuItem("Processar OCR")
+        processarOcr.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null)
                 processarOcrItem(tbViewProcessar.selectionModel.selectedItem)
+        }
+
+        val visualizarSumario = MenuItem("Visualizar Sumário (Ctrl + O)")
+        visualizarSumario.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null)
+                visualizarSumarioItem(tbViewProcessar.selectionModel.selectedItem)
         }
 
         // GRUPO SALVAR
@@ -963,8 +1244,13 @@ class AbaComicInfoController : Initializable {
 
         val salvar = MenuItem("Salvar ComicInfo (Ctrl + S)")
         salvar.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null)
-                salvarComicInfoItem(tbViewProcessar.selectionModel.selectedItem)
+            val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
+            if (selecionados.isNotEmpty()) {
+                if (selecionados.size > 1)
+                    salvarListaItens(selecionados)
+                else
+                    salvarComicInfoItem(selecionados[0])
+            }
         }
 
         val salvarPosteriores = MenuItem("Salvar ComicInfo do Atual até o Final")
@@ -975,24 +1261,41 @@ class AbaComicInfoController : Initializable {
             }
         }
 
-        // GRUPO GERAL
-        val recarregar = MenuItem("Recarregar ComicInfo do Item Atual")
-        recarregar.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null)
-                recarregarComicInfoItem(tbViewProcessar.selectionModel.selectedItem)
+        // GRUPO RECARREGAR
+        val recarregarTodos = MenuItem("Recarregar todos ComicInfo")
+        recarregarTodos.setOnAction {
+            mObsListaProcessar.forEach { recarregarComicInfoItem(it) }
+            mHistory.clear()
         }
 
+        val recarregarSelecionados = MenuItem("Recarregar ComicInfo")
+        recarregarSelecionados.setOnAction {
+            val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
+            if (selecionados.isNotEmpty()) {
+                selecionados.forEach { 
+                    recarregarComicInfoItem(it)
+                    mHistory.removeHistoryForItem(it)
+                }
+            } else if (tbViewProcessar.selectionModel.selectedItem != null) {
+                val item = tbViewProcessar.selectionModel.selectedItem
+                recarregarComicInfoItem(item)
+                mHistory.removeHistoryForItem(item)
+            }
+        }
+
+        // GRUPO GERAL
         val remover = MenuItem("Remover registro (Del)")
         remover.setOnAction {
             val selected = tbViewProcessar.selectionModel.selectedItems.toList()
             if (selected.isNotEmpty())
                 if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
+                    selected.forEach { mHistory.removeHistoryForItem(it) }
                     mObsListaProcessar.removeAll(selected)
                     tbViewProcessar.refresh()
                 }
         }
 
-        val editarComicInfo = MenuItem("Editar ComicInfo / Pesquisar MAL").apply {
+        val editarComicInfo = MenuItem("Editar ComicInfo").apply {
             setOnAction {
                 val selected = tbViewProcessar.selectionModel.selectedItems
                 if (selected.isNotEmpty())
@@ -1000,8 +1303,18 @@ class AbaComicInfoController : Initializable {
             }
         }
 
+        val chamarCapitulos = MenuItem("Abrir Capítulo").apply {
+            setOnAction { onBtnCapitulos() }
+        }
+
+        val chamarAmazon = MenuItem("Consulta Amazon").apply {
+            setOnAction { popupAmazon(tbViewProcessar.selectionModel.selectedItem) }
+        }
+
         menu.items.addAll(
             editarComicInfo,
+            chamarCapitulos,
+            chamarAmazon,
             SeparatorMenuItem(),
             atualizarPaginaTag,
             atualizarTagsDoArquivo,
@@ -1010,23 +1323,67 @@ class AbaComicInfoController : Initializable {
             tagsAjustar,
             tagsNormalizar,
             SeparatorMenuItem(),
-            processar,
+            processarOcr,
+            visualizarSumario,
             SeparatorMenuItem(),
             salvarAnteriores,
             salvar,
             salvarPosteriores,
             SeparatorMenuItem(),
-            recarregar,
+            recarregarTodos,
+            recarregarSelecionados,
+            SeparatorMenuItem(),
             remover
         )
 
         tbViewProcessar.contextMenu = menu
-        tbViewProcessar.setOnKeyPressed { event ->
-            if (event.code == KeyCode.DELETE && tbViewProcessar.selectionModel.selectedItems.isNotEmpty())
+        
+        tbViewProcessar.addEventFilter(KeyEvent.KEY_PRESSED) { event ->
+            if (event.isControlDown) {
+                when (event.code) {
+                    KeyCode.Z -> {
+                        val action = mHistory.undo()
+                        if (action != null) {
+                            tbViewProcessar.refresh()
+                            (action.getFirstAffectedItem() as? Processar)?.let { item ->
+                                val idx = mObsListaProcessar.indexOf(item)
+                                if (idx != -1) tbViewProcessar.scrollTo(idx)
+                            }
+                        }
+                        event.consume()
+                    }
+                    KeyCode.Y -> {
+                        val action = mHistory.redo()
+                        if (action != null) {
+                            tbViewProcessar.refresh()
+                            (action.getFirstAffectedItem() as? Processar)?.let { item ->
+                                val idx = mObsListaProcessar.indexOf(item)
+                                if (idx != -1) tbViewProcessar.scrollTo(idx)
+                            }
+                        }
+                        event.consume()
+                    }
+                    KeyCode.S -> {
+                        val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
+                        if (selecionados.isNotEmpty()) {
+                            if (selecionados.size > 1)
+                                salvarListaItens(selecionados)
+                            else
+                                salvarComicInfoItem(selecionados[0])
+                        }
+                        event.consume()
+                    }
+                    else -> {}
+                }
+            } else if (event.code == KeyCode.DELETE && tbViewProcessar.selectionModel.selectedItems.isNotEmpty()) {
                 if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
-                    mObsListaProcessar.removeAll(tbViewProcessar.selectionModel.selectedItems.toList())
+                    val selected = tbViewProcessar.selectionModel.selectedItems.toList()
+                    selected.forEach { mHistory.removeHistoryForItem(it) }
+                    mObsListaProcessar.removeAll(selected)
                     tbViewProcessar.refresh()
                 }
+                event.consume()
+            }
         }
 
         tbViewProcessar.setRowFactory {
@@ -1053,9 +1410,10 @@ class AbaComicInfoController : Initializable {
                         for (linha in txt.split("\n")) {
                             if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) {
                                 val prefix = linha.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
+                                val basePrefix = prefix.split(Regex("—|-"), 2)[0].trim()
                                 val title = linha.substringAfterLast(separador).trim()
                                 val cleanTitle = Utils.limparTitulo(title)
-                                linhas.add("$prefix — $cleanTitle")
+                                linhas.add("$basePrefix — $cleanTitle")
                             } else {
                                 linhas.add(linha)
                             }
@@ -1076,10 +1434,17 @@ class AbaComicInfoController : Initializable {
                         val before = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(0, txt.indexOf('\n', lastCaretPos)) else txt
                         val last = if (txt.indexOf('\n', lastCaretPos) > 0) txt.substring(txt.indexOf('\n', lastCaretPos)) else ""
                         val line = before.substringAfterLast("\n", before) + last.substringBefore("\n", "")
-                        val newBefore = before.substringBeforeLast(line)
-
-                        textArea.replaceText(0, textArea.length, (newBefore + last).trim())
-                        textArea.positionCaret(newBefore.length)
+                        
+                        if (line.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                            val newLine = line.substringBefore(Utils.SEPARADOR_IMPORTACAO).trimEnd()
+                            val prefix = before.substringBeforeLast(line)
+                            textArea.replaceText(0, textArea.length, (prefix + newLine + last.substringAfter(line.substringAfterLast("\n", line), "")).trim())
+                            textArea.positionCaret(prefix.length + newLine.length)
+                        } else {
+                            val newBefore = before.substringBeforeLast(line)
+                            textArea.replaceText(0, textArea.length, (newBefore + last).trim())
+                            textArea.positionCaret(newBefore.length)
+                        }
                         textArea.scrollTop = scroll
                         key.consume()
                     }
@@ -1280,7 +1645,10 @@ class AbaComicInfoController : Initializable {
             when (e.code) {
                 KeyCode.S -> {
                     if (e.isControlDown) {
-                        salvarComicInfoItem(selecionado)
+                        if (selecionados.size > 1)
+                            salvarListaItens(selecionados)
+                        else if (selecionado != null)
+                            salvarComicInfoItem(selecionado)
                         e.consume()
                     }
                 }
@@ -1295,7 +1663,7 @@ class AbaComicInfoController : Initializable {
 
                 KeyCode.O -> {
                     if (e.isControlDown) {
-                        processarOcrItem(selecionado)
+                        visualizarSumarioItem(selecionado)
                         e.consume()
                     }
                 }
@@ -1455,7 +1823,7 @@ class AbaComicInfoController : Initializable {
                     Linguagem.ENGLISH -> "Chapter $num"
                     else -> "Capítulo $num"
                 }
-                newTags.add("-1${Utils.SEPARADOR_IMAGEM} Capítulo novo ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$prefix — $titulo")
+                newTags.add("-1${Utils.SEPARADOR_IMAGEM} Capítulo novo $num ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$prefix — $titulo")
             }
 
             item.tags = newTags.joinToString("\n")
@@ -1628,9 +1996,6 @@ class AbaComicInfoController : Initializable {
         }
 
         clTags.cellValueFactory = PropertyValueFactory("tags")
-        clProcessarOcr.cellValueFactory = PropertyValueFactory("processar")
-        clProcessarAmazon.cellValueFactory = PropertyValueFactory("amazon")
-        clSalvarComicInfo.cellValueFactory = PropertyValueFactory("salvar")
 
         editaColunas()
     }

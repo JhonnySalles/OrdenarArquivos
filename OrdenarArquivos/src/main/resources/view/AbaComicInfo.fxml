@@ -77,9 +77,7 @@
                   <TableColumn fx:id="clPublicacao" prefWidth="90.0" text="Publicação" />
                   <TableColumn fx:id="clResumo" prefWidth="150.0" text="Resumo" />
                   <TableColumn fx:id="clTags" prefWidth="250.0" text="Tags" />
-                  <TableColumn fx:id="clProcessarOcr" prefWidth="76.0" text="OCR" />
-                  <TableColumn fx:id="clProcessarAmazon" text="Amazon" />
-                  <TableColumn fx:id="clSalvarComicInfo" prefWidth="76.0" text="Salvar" />
+                  <TableColumn fx:id="clAcoes" prefWidth="200.0" text="Ações" />
                </columns>
             </TableView>
          </children>

@@ -157,14 +157,7 @@ class AbaMangaController : Initializable {
         clAcoes.setCellFactory {
             object : TableCell<Manga, Void>() {
                 private val btnConfirmar =
-                    JFXButton().apply {
-                        val stream = AbaMangaController::class.java.getResourceAsStream("/images/icoConfirmar_48.png")
-                        if (stream != null) {
-                            graphic = ImageView(Image(stream)).apply {
-                                fitHeight = 16.0
-                                fitWidth = 16.0
-                            }
-                        }
+                    JFXButton("Salvar").apply {
                         styleClass.add("background-Green2")
                         setOnAction {
                             val manga = tableView.items[index]
@@ -173,14 +166,7 @@ class AbaMangaController : Initializable {
                     }
 
                 private val btnExcluir =
-                    JFXButton().apply {
-                        val stream = AbaMangaController::class.java.getResourceAsStream("/images/icoCancelar_48.png")
-                        if (stream != null) {
-                            graphic = ImageView(Image(stream)).apply {
-                                fitHeight = 16.0
-                                fitWidth = 16.0
-                            }
-                        }
+                    JFXButton("Cancelar").apply {
                         styleClass.add("background-Red2")
                         setOnAction {
                             val manga = tableView.items[index]
@@ -188,7 +174,7 @@ class AbaMangaController : Initializable {
                         }
                     }
 
-                private val container = HBox(5.0, btnConfirmar, btnExcluir).apply { alignment = javafx.geometry.Pos.CENTER }
+                private val container = HBox(5.0, btnExcluir, btnConfirmar).apply { alignment = javafx.geometry.Pos.CENTER }
 
                 override fun updateItem(item: Void?, empty: Boolean) {
                     super.updateItem(item, empty)
