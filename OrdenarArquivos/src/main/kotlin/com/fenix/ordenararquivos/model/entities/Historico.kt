@@ -14,7 +14,7 @@ data class Historico(
     val inicio: String,
     val fim: String,
     val importar: String,
-    val selecionado: String,
+    val badgePositions: Map<Int, Int>,
     val manga: Manga?,
     val comicInfo: ComicInfo,
     val caminhos: List<Caminhos>,

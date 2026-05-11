@@ -23,7 +23,6 @@ import jakarta.xml.bind.Marshaller
 import jakarta.xml.bind.Unmarshaller
 import javafx.animation.Interpolator
 import javafx.application.Platform
-import javafx.beans.InvalidationListener
 import javafx.beans.Observable
 import javafx.beans.property.ReadOnlyProperty
 import javafx.beans.value.ChangeListener
@@ -35,9 +34,11 @@ import javafx.concurrent.Task
 import javafx.css.PseudoClass
 import javafx.event.Event
 import javafx.event.EventHandler
+import javafx.fxml.FXMLLoader
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.geometry.Point2D
+import javafx.geometry.Pos
 import javafx.scene.Cursor
 import javafx.scene.Scene
 import javafx.scene.control.*
@@ -48,7 +49,9 @@ import javafx.scene.image.Image
 import javafx.scene.image.ImageView
 import javafx.scene.input.*
 import javafx.scene.layout.AnchorPane
+import javafx.scene.layout.HBox
 import javafx.scene.paint.Color
+import javafx.scene.text.Font
 import javafx.util.Callback
 import javafx.util.Duration
 import kotlinx.coroutines.*
@@ -186,6 +189,9 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private lateinit var btnOcr: JFXButton
+
+    @FXML
+    private lateinit var btnGerarBadge: JFXButton
 
     @FXML
     private lateinit var btnLimpar: JFXButton
@@ -343,9 +349,12 @@ class AbaArquivoController : Initializable {
     private var mObsListaImagesSelected: ObservableList<Capa> = FXCollections.observableArrayList()
     private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
 
+    private val mImageCache = mutableMapOf<String, Image>()
+    private var mDraggingChapterIndex: Int? = null
+    private val mBadgePositions = mutableMapOf<Int, Int>()
+
     private var mCaminhoOrigem: File? = null
     private var mCaminhoDestino: File? = null
-    private var mSelecionado: String? = null
     private var mComicInfo by Delegates.observable(ComicInfo()) { _, _, newValue -> carregaComicInfo(newValue) }
     internal var mServiceManga = MangaServices()
     internal var mServiceComicInfo = ComicInfoServices()
@@ -383,7 +392,8 @@ class AbaArquivoController : Initializable {
         onBtnLimpar()
         mObsListaItens = FXCollections.observableArrayList("")
         lsVwImagens.items = mObsListaItens
-        mSelecionado = null
+        mBadgePositions.clear()
+        mImageCache.clear()
 
         mObsListaMal = FXCollections.observableArrayList()
         tbViewMal.items = mObsListaMal
@@ -1002,6 +1012,7 @@ class AbaArquivoController : Initializable {
             mListaCaminhos = ArrayList(it.caminhos)
             mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
             tbViewTabela.items = mObsListaCaminhos
+            recalculateBadgePositions()
 
             try {
                 var min = 0
@@ -1464,13 +1475,10 @@ class AbaArquivoController : Initializable {
     }
 
     private fun processar() {
-        if (lsVwImagens.selectionModel.selectedItem != null)
-            mSelecionado = lsVwImagens.selectionModel.selectedItem
-
         val nomePastaManga = txtNomePastaManga.text.trim { it <= ' ' }
         val volume = txtVolume.text.trim { it <= ' ' }
         val nomeArquivo = txtNomeArquivo.text
-        val selectedItem = mSelecionado ?: ""
+        val badgePositions = mBadgePositions.toMap()
         val manga = mManga?.let { m -> Manga().apply { merge(m) } } ?: geraManga(0)
         val comicInfo = ComicInfo(mComicInfo)
         val listaCaminhos = mListaCaminhos.map { it.copy() }.toMutableList()
@@ -1484,7 +1492,7 @@ class AbaArquivoController : Initializable {
         val processarItem = Historico(
             nome, txtPastaOrigem.text, txtPastaDestino.text,
             txtNomePastaManga.text, txtVolume.text, txtNomeArquivo.text, txtNomePastaCapitulo.text, txtGerarInicio.text,
-            txtGerarFim.text, txtAreaImportar.text, mSelecionado ?: "", mManga?.apply { Manga.copy(this) },
+            txtGerarFim.text, txtAreaImportar.text, mBadgePositions.toMap(), mManga?.apply { Manga.copy(this) },
             mComicInfo, mListaCaminhos.map { it.copy() }, mObsListaItens.toList(), mObsListaImagesSelected.map { it.copy() }, mObsListaMal.toList()
         )
 
@@ -1510,17 +1518,16 @@ class AbaArquivoController : Initializable {
                     pastasCompactar.add(gerarCapa(nomePasta, mesclarCapaTudo))
                     pastasComic["000"] = pastasCompactar[0]
 
-                    var pagina = 0
-                    var proxCapitulo = 0
-                    var contar = false
-                    var destino = criaPasta(nomePasta + " " + listaCaminhos[pagina].nomePasta + "\\")
-                    pastasCompactar.add(destino)
-                    pastasComic[listaCaminhos[pagina].capitulo] = destino
+                    // Montar lista de posições de imagem (0-based) onde cada capítulo inicia, baseado nos badges
+                    val chapterImagePositions = mutableListOf<Int>()
+                    for (capIdx in listaCaminhos.indices) {
+                        chapterImagePositions.add(badgePositions[capIdx] ?: (listaCaminhos[capIdx].numero - 1))
+                    }
 
-                    var contadorCapitulo = Utils.safeToInt(listaCaminhos[pagina].numeroPagina)
-                    pagina++
-                    if (listaCaminhos.size > 1)
-                        proxCapitulo = listaCaminhos[pagina].numero
+                    var capAtual = 0
+                    var destino = criaPasta(nomePasta + " " + listaCaminhos[capAtual].nomePasta + "\\")
+                    pastasCompactar.add(destino)
+                    pastasComic[listaCaminhos[capAtual].capitulo] = destino
 
                     val filesProcessar = mCaminhoOrigem!!.listFiles(mFilterNomeArquivo)
                     if (filesProcessar == null) {
@@ -1528,36 +1535,27 @@ class AbaArquivoController : Initializable {
                         return false
                     }
 
-                    for (arquivos in filesProcessar.sorted()) {
+                    val sortedFiles = filesProcessar.sorted()
+                    for ((fileIdx, arquivos) in sortedFiles.withIndex()) {
                         if (mCANCELAR)
                             return true
 
-                        mLOG.info("Contar: " + contar + " - Contador: " + contadorCapitulo + " - Prox cap: " + proxCapitulo + " - Nome Imagem: " + arquivos.name)
+                        val proxCapIdx = capAtual + 1
+                        mLOG.info("Cap: $capAtual - FileIdx: $fileIdx - Nome Imagem: ${arquivos.name}")
 
-                        if (arquivos.name.equals(selectedItem, ignoreCase = true))
-                            contar = true
-
-                        if (contar && verificaPaginaDupla) {
-                            if (verificaPaginaDupla(arquivos))
-                                contadorCapitulo++
-                        }
-
-                        if (contadorCapitulo >= proxCapitulo && pagina < listaCaminhos.size) {
-                            updateMessage("Criando diretório - " + nomePasta + " " + listaCaminhos[pagina].nomePasta + "\\")
-                            destino = criaPasta(nomePasta + " " + listaCaminhos[pagina].nomePasta + "\\")
+                        // Verificar se esta imagem é o início do próximo capítulo
+                        if (proxCapIdx < listaCaminhos.size && fileIdx >= chapterImagePositions[proxCapIdx]) {
+                            capAtual = proxCapIdx
+                            updateMessage("Criando diretório - " + nomePasta + " " + listaCaminhos[capAtual].nomePasta + "\\")
+                            destino = criaPasta(nomePasta + " " + listaCaminhos[capAtual].nomePasta + "\\")
                             pastasCompactar.add(destino)
-                            pastasComic[listaCaminhos[pagina].capitulo] = destino
-                            pagina++
-                            if (pagina < listaCaminhos.size)
-                                proxCapitulo = Utils.safeToInt(listaCaminhos[pagina].numeroPagina)
+                            pastasComic[listaCaminhos[capAtual].capitulo] = destino
                         }
+
                         i++
                         updateProgress(i, max)
                         updateMessage("Processando item " + i + " de " + max + ". Copiando - " + arquivos.absolutePath)
                         copiaItem(arquivos, destino)
-
-                        if (contar)
-                            contadorCapitulo++
 
                         if (mCANCELAR)
                             break
@@ -1857,6 +1855,7 @@ class AbaArquivoController : Initializable {
     private fun carregaPastaOrigem() {
         mCaminhoOrigem = File(txtPastaOrigem.text)
         limparCapas()
+        mImageCache.clear()
         listaItens()
         tbTabRootArquivo.selectionModel.select(0)
     }
@@ -1907,8 +1906,6 @@ class AbaArquivoController : Initializable {
             FXCollections.observableArrayList("")
         lsVwImagens.items = mObsListaItens
         limparCapas()
-        if (mObsListaItens.isNotEmpty())
-            mSelecionado = mObsListaItens[0]
     }
 
     private fun simulaNome() {
@@ -1949,6 +1946,11 @@ class AbaArquivoController : Initializable {
     }
 
     @FXML
+    private fun onBtnGerarBadge() {
+        recalculateBadgePositions()
+    }
+
+    @FXML
     private fun onBtnOcr() {
         val sumario = mObsListaImagesSelected.stream().filter { it.tipo == TipoCapa.SUMARIO }.findFirst().getOrNull() ?: return
         val img = File(txtPastaOrigem.text + "\\" + sumario.arquivo)
@@ -1964,6 +1966,7 @@ class AbaArquivoController : Initializable {
         mListaCaminhos = ArrayList()
         mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
         tbViewTabela.items = mObsListaCaminhos
+        recalculateBadgePositions()
     }
 
     private fun limpaCampo() {
@@ -1995,6 +1998,7 @@ class AbaArquivoController : Initializable {
             mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
             tbViewTabela.items = mObsListaCaminhos
             tbViewTabela.refresh()
+            recalculateBadgePositions()
         }
     }
 
@@ -2136,6 +2140,84 @@ class AbaArquivoController : Initializable {
                 }
             }
         }
+
+        val contextMenu = ContextMenu()
+
+        val itemAbrir = MenuItem("Abrir imagem")
+        itemAbrir.setOnAction {
+            val selected = lsVwImagens.selectionModel.selectedItem
+            if (selected != null) {
+                val file = File(txtPastaOrigem.text, selected)
+                if (file.exists()) {
+                    abrirPopupVisualizarImagem(file)
+                }
+            }
+        }
+
+        val itemCapa = MenuItem("Marcar capa")
+        itemCapa.setOnAction {
+            val selected = lsVwImagens.selectionModel.selectedItem
+            if (selected != null) {
+                remCapa(selected)
+                addCapa(TipoCapa.CAPA, selected)
+                lsVwImagens.refresh()
+            }
+        }
+
+        val itemSumario = MenuItem("Marcar sumário")
+        itemSumario.setOnAction {
+            val selected = lsVwImagens.selectionModel.selectedItem
+            if (selected != null) {
+                remCapa(selected)
+                addCapa(TipoCapa.SUMARIO, selected)
+                lsVwImagens.refresh()
+            }
+        }
+
+        val itemCapaCompleta = MenuItem("Marcar capa completa")
+        itemCapaCompleta.setOnAction {
+            val selected = lsVwImagens.selectionModel.selectedItem
+            if (selected != null) {
+                addCapa(TipoCapa.CAPA_COMPLETA, selected)
+                lsVwImagens.refresh()
+            }
+        }
+
+        val itemMoverBadge = MenuItem("Mover marcador aqui")
+        itemMoverBadge.setOnAction {
+            val selectedIdx = lsVwImagens.selectionModel.selectedIndex
+            if (selectedIdx >= 0) {
+                // Encontrar o "próximo" badge (o primeiro capítulo cujo badge está após o índice selecionado)
+                val nextChapter = mBadgePositions.entries
+                    .filter { it.value > selectedIdx }
+                    .minByOrNull { it.value }
+                    ?.key
+
+                if (nextChapter != null) {
+                    val oldPos = mBadgePositions[nextChapter]!!
+                    val diff = selectedIdx - oldPos
+
+                    // Deslocar este e todos os posteriores
+                    for (i in nextChapter until tbViewTabela.items.size) {
+                        if (mBadgePositions.containsKey(i)) {
+                            val currentPos = mBadgePositions[i]!!
+                            val newPos = (currentPos + diff).coerceIn(0, lsVwImagens.items.size - 1)
+                            mBadgePositions[i] = newPos
+                        }
+                    }
+                    lsVwImagens.refresh()
+                }
+            }
+        }
+
+        val itemGerarBadge = MenuItem("Gerar marcadores")
+        itemGerarBadge.setOnAction {
+            recalculateBadgePositions()
+        }
+
+        contextMenu.items.addAll(itemAbrir, SeparatorMenuItem(), itemCapa, itemSumario, itemCapaCompleta, SeparatorMenuItem(), itemMoverBadge, itemGerarBadge)
+        lsVwImagens.contextMenu = contextMenu
+
         lsVwImagens.onMouseClicked = EventHandler { click: MouseEvent ->
             if (click.clickCount > 1) {
                 if (click.isControlDown)
@@ -2154,46 +2236,183 @@ class AbaArquivoController : Initializable {
                                 TipoCapa.CAPA
                             addCapa(tipo, item)
                         }
+                        lsVwImagens.refresh()
                     }
                 }
             }
         }
+
         val capaSelected = PseudoClass.getPseudoClass("capaSelected")
         val capaCompletaSelected = PseudoClass.getPseudoClass("capaCompletaSelected")
         val sumarioSelected = PseudoClass.getPseudoClass("sumarioSelected")
+
         lsVwImagens.setCellFactory {
-            val cell: JFXListCell<String> = object : JFXListCell<String>() {
-                override fun updateItem(images: String?, empty: Boolean) {
-                    super.updateItem(images, empty)
-                    text = images
+            object : JFXListCell<String>() {
+                private val imageView = ImageView().apply {
+                    fitWidth = 100.0
+                    fitHeight = 140.0
+                    isPreserveRatio = true
+                    isSmooth = true
+                }
+
+                private val lblCapa = Label().apply {
+                    style = "-fx-background-color: #00cc00; -fx-text-fill: white; -fx-padding: 2 5; -fx-font-weight: bold; -fx-background-radius: 3; -fx-font-size: 10px;"
+                    isVisible = false
+                }
+
+                private val lblSumario = Label("SUMÁRIO").apply {
+                    style = "-fx-background-color: #9933ff; -fx-text-fill: white; -fx-padding: 2 5; -fx-font-weight: bold; -fx-background-radius: 3; -fx-font-size: 10px;"
+                    isVisible = false
+                }
+
+                private val lblCapitulo = Label().apply {
+                    style = "-fx-background-color: #007bff; -fx-text-fill: white; -fx-padding: 2 5; -fx-font-weight: bold; -fx-background-radius: 3; -fx-font-size: 10px;"
+                    isVisible = false
+                }
+
+                private val imgContainer = AnchorPane().apply {
+                    maxWidth = 100.0
+                    maxHeight = 140.0
+                }
+
+                private val root = HBox(10.0).apply {
+                    children.addAll(imgContainer)
+                    alignment = Pos.CENTER_LEFT
+                }
+
+                init {
+                    imgContainer.children.addAll(imageView, lblCapa, lblSumario, lblCapitulo)
+                    AnchorPane.setTopAnchor(imageView, 0.0)
+                    AnchorPane.setBottomAnchor(imageView, 0.0)
+                    AnchorPane.setLeftAnchor(imageView, 0.0)
+                    AnchorPane.setRightAnchor(imageView, 0.0)
+
+                    AnchorPane.setTopAnchor(lblCapa, 5.0)
+                    AnchorPane.setLeftAnchor(lblCapa, 5.0)
+
+                    AnchorPane.setTopAnchor(lblSumario, 5.0)
+                    AnchorPane.setRightAnchor(lblSumario, 5.0)
+
+                    AnchorPane.setBottomAnchor(lblCapitulo, 5.0)
+                    AnchorPane.setRightAnchor(lblCapitulo, 5.0)
+
+                    setOnDragDetected { event ->
+                        // Verificar se esta imagem tem um badge
+                        val chapterIdx = mBadgePositions.entries.find { it.value == index }?.key
+                        if (chapterIdx != null && chapterIdx < tbViewTabela.items.size) {
+                            val db = startDragAndDrop(TransferMode.MOVE)
+                            val content = ClipboardContent()
+                            content.putString(chapterIdx.toString())
+                            db.setContent(content)
+
+                            // Gerar sombra visual (DragView) - tamanho grande
+                            val dragLabel = Label("Cap: ${tbViewTabela.items[chapterIdx].capitulo}").apply {
+                                style = "-fx-background-color: #007bff; -fx-text-fill: white; -fx-padding: 8 16; -fx-font-weight: bold; -fx-background-radius: 5; -fx-font-size: 18px;"
+                            }
+                            javafx.scene.Scene(javafx.scene.layout.StackPane(dragLabel))
+                            dragLabel.applyCss()
+                            dragLabel.layout()
+
+                            val snapshot = dragLabel.snapshot(javafx.scene.SnapshotParameters().apply { fill = javafx.scene.paint.Color.TRANSPARENT }, null)
+                            db.setDragView(snapshot, snapshot.width / 2, snapshot.height / 2)
+
+                            mDraggingChapterIndex = chapterIdx
+                            event.consume()
+                        }
+                    }
+
+                    setOnDragOver { event ->
+                        if (event.gestureSource != this && event.dragboard.hasString()) {
+                            event.acceptTransferModes(TransferMode.MOVE)
+                        }
+                        event.consume()
+                    }
+
+                    setOnDragDropped { event ->
+                        val db = event.dragboard
+                        var success = false
+                        if (db.hasString()) {
+                            val draggedIdx = db.string.toIntOrNull()
+                            if (draggedIdx != null && draggedIdx >= 0 && draggedIdx < tbViewTabela.items.size) {
+                                mBadgePositions[draggedIdx] = index
+                                lsVwImagens.refresh()
+                                success = true
+                            }
+                        }
+                        event.isDropCompleted = success
+                        event.consume()
+                    }
+                }
+
+                private fun updateBadgeState() {
+                    val currentIndex = getIndex()
+                    val currentItem = item
+                    if (currentItem == null || currentItem.isEmpty()) return
+
+                    val chapterIdx = mBadgePositions.entries.find { it.value == currentIndex }?.key
+                    if (chapterIdx != null && chapterIdx < tbViewTabela.items.size) {
+                        val chapter = tbViewTabela.items[chapterIdx]
+                        lblCapitulo.text = "Cap: ${chapter.capitulo}"
+                        lblCapitulo.isVisible = true
+                        imgContainer.style = "-fx-border-color: #007bff; -fx-border-width: 2; -fx-border-radius: 3;"
+                    } else {
+                        lblCapitulo.isVisible = false
+                        imgContainer.style = ""
+                    }
+                }
+
+                override fun updateIndex(i: Int) {
+                    super.updateIndex(i)
+                    updateBadgeState()
+                }
+
+                override fun updateItem(item: String?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    if (empty || item == null || item.isEmpty()) {
+                        text = null
+                        graphic = null
+                        style = ""
+                        pseudoClassStateChanged(capaSelected, false)
+                        pseudoClassStateChanged(capaCompletaSelected, false)
+                        pseudoClassStateChanged(sumarioSelected, false)
+                    } else {
+                        text = item
+                        graphic = root
+
+                        val imgFile = File(mCaminhoOrigem, item)
+                        if (imgFile.exists()) {
+                            val img = mImageCache.computeIfAbsent(imgFile.absolutePath) {
+                                Image("file:${imgFile.absolutePath}", 100.0, 140.0, true, true, true)
+                            }
+                            imageView.image = img
+                        } else {
+                            imageView.image = null
+                        }
+
+                        val isCapa = contemTipoSelecionado(TipoCapa.CAPA, item)
+                        val isCapaCompleta = contemTipoSelecionado(TipoCapa.CAPA_COMPLETA, item)
+                        val isSumario = contemTipoSelecionado(TipoCapa.SUMARIO, item)
+
+                        pseudoClassStateChanged(capaSelected, isCapa)
+                        pseudoClassStateChanged(capaCompletaSelected, isCapaCompleta)
+                        pseudoClassStateChanged(sumarioSelected, isSumario)
+
+                        lblCapa.isVisible = isCapa || isCapaCompleta
+                        lblCapa.text = if (isCapaCompleta) "CAPA COMPLETA" else "CAPA"
+                        lblCapa.style = if (isCapaCompleta)
+                            "-fx-background-color: #b30000; -fx-text-fill: white; -fx-padding: 2 5; -fx-font-weight: bold; -fx-background-radius: 3; -fx-font-size: 10px;"
+                        else
+                            "-fx-background-color: #00cc00; -fx-text-fill: white; -fx-padding: 2 5; -fx-font-weight: bold; -fx-background-radius: 3; -fx-font-size: 10px;"
+
+                        lblSumario.isVisible = isSumario
+
+                        // Verificar se esta imagem possui um badge via mBadgePositions
+                        updateBadgeState()
+
+                        graphic = root
+                    }
                 }
             }
-            val listenerCapa = InvalidationListener {
-                cell.pseudoClassStateChanged(
-                    capaSelected,
-                    cell.item != null && contemTipoSelecionado(TipoCapa.CAPA, cell.item)
-                )
-            }
-            val listenerCapaCompleta = InvalidationListener {
-                cell.pseudoClassStateChanged(
-                    capaCompletaSelected,
-                    cell.item != null && contemTipoSelecionado(TipoCapa.CAPA_COMPLETA, cell.item)
-                )
-                simulaNome()
-            }
-            val listenerSumario = InvalidationListener {
-                cell.pseudoClassStateChanged(
-                    sumarioSelected,
-                    cell.item != null && contemTipoSelecionado(TipoCapa.SUMARIO, cell.item)
-                )
-            }
-            cell.itemProperty().addListener(listenerCapa)
-            cell.itemProperty().addListener(listenerCapaCompleta)
-            cell.itemProperty().addListener(listenerSumario)
-            mObsListaImagesSelected.addListener(listenerCapa)
-            mObsListaImagesSelected.addListener(listenerCapaCompleta)
-            mObsListaImagesSelected.addListener(listenerSumario)
-            cell
         }
     }
 
@@ -2202,19 +2421,23 @@ class AbaArquivoController : Initializable {
         clCapitulo.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
             e.tableView.items[e.tablePosition.row].capitulo = e.newValue
             e.tableView.items[e.tablePosition.row].nomePasta = txtNomePastaCapitulo.text.trim { it <= ' ' } + " " + e.newValue
+            lsVwImagens.refresh()
         }
         clNumeroPagina.cellFactory = TextFieldTableCell.forTableColumn()
         clNumeroPagina.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
             e.tableView.items[e.tablePosition.row].addNumero(e.newValue)
+            recalculateBadgePositions()
         }
         clNomePasta.cellFactory = TextFieldTableCell.forTableColumn()
         clNomePasta.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
             e.tableView.items[e.tablePosition.row].nomePasta = e.newValue
+            lsVwImagens.refresh()
         }
 
         clTag.cellFactory = TextFieldTableCell.forTableColumn()
         clTag.setOnEditCommit { e: TableColumn.CellEditEvent<Caminhos, String> ->
             e.tableView.items[e.tablePosition.row].tag = e.newValue
+            lsVwImagens.refresh()
         }
     }
 
@@ -2284,15 +2507,11 @@ class AbaArquivoController : Initializable {
                     tbViewTabela.refresh()
                     tbViewMal.refresh()
 
-                    mSelecionado = if (item.selecionado.isNotEmpty() && mObsListaItens.contains(item.selecionado))
-                        item.selecionado
-                    else
-                        mObsListaItens.firstOrNull()
+                    mBadgePositions.clear()
+                    mBadgePositions.putAll(item.badgePositions)
+                    lsVwImagens.refresh()
 
-                    if (item.selecionado.isNotEmpty())
-                        lsVwImagens.selectionModel.select(lsVwImagens.items.indexOf(item.selecionado))
-                    else
-                        lsVwImagens.selectionModel.selectFirst()
+                    lsVwImagens.selectionModel.selectFirst()
 
                     simulaNome()
                     acdArquivos.expandedPane = ttpArquivos
@@ -3018,8 +3237,6 @@ class AbaArquivoController : Initializable {
         scene.addMnemonic(mnProcessarAlter)
 
         scene.addEventFilter(KeyEvent.KEY_PRESSED) { ke: KeyEvent ->
-            if (ke.isControlDown && lsVwImagens.selectionModel.selectedItem != null)
-                mSelecionado = lsVwImagens.selectionModel.selectedItem
 
             if (kcInicioFocus.match(ke))
                 txtGerarInicio.requestFocus()
@@ -3811,6 +4028,52 @@ class AbaArquivoController : Initializable {
 
         cbAgeRating.valueProperty().addListener { _, _, _ -> salvarConfDestino() }
         cbLinguagem.valueProperty().addListener { _, _, _ -> salvarConfDestino() }
+    }
+
+    private fun recalculateBadgePositions() {
+        mBadgePositions.clear()
+        for ((idx, caminho) in mListaCaminhos.withIndex()) {
+            mBadgePositions[idx] = caminho.numero - 1
+        }
+        lsVwImagens.refresh()
+    }
+
+    private fun abrirPopupVisualizarImagem(imageFile: File) {
+        try {
+            val loader = FXMLLoader(javaClass.getResource("/view/PopupImagem.fxml"))
+            val root = loader.load<AnchorPane>()
+            val controller = loader.getController<PopupImagemController>()
+
+            val blur = BoxBlur(3.0, 3.0, 3)
+            val dialogLayout = JFXDialogLayout()
+            dialogLayout.setBody(root)
+            val dialog = JFXDialog(controllerPai.rootStack, dialogLayout, JFXDialog.DialogTransition.CENTER)
+            dialog.isOverlayClose = true
+
+            val titulo = Label("Visualizar Imagem")
+            titulo.font = Font.font(20.0)
+            titulo.textFill = Color.web("#ffffff", 0.8)
+            dialogLayout.setHeading(titulo)
+
+            val btnFechar = JFXButton("FECHAR")
+            btnFechar.setOnAction { dialog.close() }
+            btnFechar.styleClass.addAll("background-Green2", "texto-stilo-1")
+            dialogLayout.setActions(listOf(btnFechar))
+
+            controller.setDados(imageFile)
+
+            dialog.setOnDialogClosed {
+                controllerPai.rootTab.effect = null
+                controllerPai.rootTab.isDisable = false
+            }
+
+            controllerPai.rootTab.effect = blur
+            controllerPai.rootTab.isDisable = true
+            dialogLayout.styleClass.add("dialog-black")
+            dialog.show()
+        } catch (e: Exception) {
+            AlertasModal.erro("Erro", "Erro ao abrir visualizador: ${e.message}")
+        }
     }
 
     companion object {

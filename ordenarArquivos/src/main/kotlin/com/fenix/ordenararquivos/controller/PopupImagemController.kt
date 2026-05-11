@@ -1,9 +1,9 @@
 package com.fenix.ordenararquivos.controller
 
-import com.fenix.ordenararquivos.model.entities.Processar
 import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXSlider
 import javafx.animation.Interpolator
+import javafx.application.Platform
 import javafx.beans.Observable
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
@@ -18,7 +18,7 @@ import java.io.File
 import java.net.URL
 import java.util.*
 
-class PopupVisualizarSumarioController : Initializable {
+class PopupImagemController : Initializable {
 
     @FXML
     private lateinit var apImage: AnchorPane
@@ -26,32 +26,26 @@ class PopupVisualizarSumarioController : Initializable {
     @FXML
     private lateinit var sliderZoom: JFXSlider
 
-    @FXML
-    private lateinit var btnCancelar: JFXButton
-
-    @FXML
-    private lateinit var btnOcr: JFXButton
-
     private lateinit var mImageView: ImageView
     private lateinit var mGesturePane: GesturePane
 
-    private var mItem: Processar? = null
     private var mImageFile: File? = null
 
-    var onProcessar: (() -> Unit)? = null
-    var onFechar: (() -> Unit)? = null
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         mImageView = ImageView()
         mGesturePane = configuraZoom(apImage, mImageView, sliderZoom)
     }
 
-    fun setDados(item: Processar, imageFile: File) {
-        this.mItem = item
+    fun setDados(imageFile: File) {
         this.mImageFile = imageFile
         
-        if (imageFile.exists())
+        if (imageFile.exists()) {
             mImageView.image = Image(imageFile.toURI().toString())
+            Platform.runLater {
+                mGesturePane.zoomTo(0.0, mGesturePane.targetPointAtViewportCentre())
+            }
+        }
     }
 
     private fun configuraZoom(root: AnchorPane, imageView: ImageView, slider: JFXSlider): GesturePane {
@@ -107,13 +101,4 @@ class PopupVisualizarSumarioController : Initializable {
         return pane
     }
 
-    @FXML
-    private fun onBtnCancelar() {
-        onFechar?.invoke()
-    }
-
-    @FXML
-    private fun onBtnOcr() {
-        onProcessar?.invoke()
-    }
 }

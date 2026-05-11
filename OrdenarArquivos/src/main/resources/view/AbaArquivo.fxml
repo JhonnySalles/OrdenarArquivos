@@ -297,6 +297,7 @@
                                           <HBox alignment="CENTER" spacing="10.0">
                                              <children>
                                                 <JFXButton fx:id="btnOcr" onAction="#onBtnOcr" prefHeight="30.0" prefWidth="110.0" styleClass="background-Green2" text="OCR" textFill="WHITE" />
+                                                 <JFXButton fx:id="btnGerarBadge" onAction="#onBtnGerarBadge" prefHeight="30.0" prefWidth="110.0" styleClass="background-Orange1" text="Gerar marcadores" textFill="WHITE" />
                                                 <JFXButton fx:id="btnLimpar" onAction="#onBtnLimpar" prefHeight="25.0" prefWidth="110.0" styleClass="background-Blue3" text="Limpar" textFill="WHITE" />
                                                 <JFXButton fx:id="btnImportar" onAction="#onBtnImporta" prefHeight="25.0" prefWidth="120.0" styleClass="background-Purple2" text="Importar" textFill="WHITE">
                                                    <tooltip>

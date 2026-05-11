@@ -39,6 +39,7 @@ import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
 import javafx.util.Callback
 import javafx.scene.effect.BoxBlur
+import javafx.scene.text.Font
 import com.fenix.ordenararquivos.util.GridHistoryManager
 import com.fenix.ordenararquivos.util.PropertyChangeAction
 import com.fenix.ordenararquivos.util.CompositeAction
@@ -902,9 +903,9 @@ class AbaComicInfoController : Initializable {
 
     private fun abrirPopupVisualizarSumario(item: Processar, sumarioFile: File, extractDir: File) {
         try {
-            val loader = FXMLLoader(javaClass.getResource("/view/PopupVisualizarSumario.fxml"))
+            val loader = FXMLLoader(javaClass.getResource("/view/PopupSumario.fxml"))
             val root = loader.load<AnchorPane>()
-            val controller = loader.getController<PopupVisualizarSumarioController>()
+            val controller = loader.getController<PopupSumarioController>()
 
             val blur = BoxBlur(3.0, 3.0, 3)
             val dialogLayout = JFXDialogLayout()
@@ -912,12 +913,25 @@ class AbaComicInfoController : Initializable {
             val dialog = JFXDialog(controllerPai.rootStack, dialogLayout, JFXDialog.DialogTransition.CENTER)
             dialog.isOverlayClose = true
 
-            controller.setDados(item, sumarioFile)
-            controller.onFechar = { dialog.close() }
-            controller.onProcessar = {
+            val titulo = Label("Visualizar Sumário")
+            titulo.font = Font.font(20.0)
+            titulo.textFill = Color.web("#ffffff", 0.8)
+            dialogLayout.setHeading(titulo)
+
+            val btnProcessar = JFXButton("PROCESSAR OCR")
+            btnProcessar.setOnAction {
                 dialog.close()
                 executarOcrItem(item, sumarioFile, extractDir)
             }
+            btnProcessar.styleClass.addAll("background-Blue3", "texto-stilo-1")
+
+            val btnCancelar = JFXButton("CANCELAR")
+            btnCancelar.setOnAction { dialog.close() }
+            btnCancelar.styleClass.addAll("background-Red2", "texto-stilo-1")
+
+            dialogLayout.setActions(listOf(btnProcessar, btnCancelar))
+
+            controller.setDados(item, sumarioFile)
 
             dialog.setOnDialogClosed {
                 controllerPai.rootTab.effect = null
@@ -932,6 +946,7 @@ class AbaComicInfoController : Initializable {
 
             controllerPai.rootTab.effect = blur
             controllerPai.rootTab.isDisable = true
+            dialogLayout.styleClass.add("dialog-black")
             dialog.show()
         } catch (e: Exception) {
             extractDir.deleteRecursively()
