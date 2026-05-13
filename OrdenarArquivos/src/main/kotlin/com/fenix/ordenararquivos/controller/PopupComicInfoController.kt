@@ -1,26 +1,34 @@
 package com.fenix.ordenararquivos.controller
 
+import com.fenix.ordenararquivos.configuration.Configuracao
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
 import com.fenix.ordenararquivos.model.enums.Linguagem
+import com.fenix.ordenararquivos.notification.AlertasModal
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXComboBox
 import com.jfoenix.controls.JFXTextArea
 import com.jfoenix.controls.JFXTextField
+import javafx.application.Platform
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import javafx.concurrent.Task
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
+import javafx.scene.control.Label
+import javafx.scene.control.ProgressIndicator
+import javafx.scene.control.ScrollBar
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.image.ImageView
+import javafx.scene.layout.AnchorPane
+import javafx.scene.layout.StackPane
+import javafx.scene.layout.VBox
+import javafx.geometry.Pos
 import javafx.stage.Stage
-import javafx.application.Platform
-import com.fenix.ordenararquivos.notification.AlertasModal
 import java.net.URL
 import java.util.*
 
@@ -99,6 +107,9 @@ class PopupComicInfoController : Initializable {
     @FXML
     private lateinit var btnCancelar: JFXButton
 
+    @FXML
+    private lateinit var apRoot: AnchorPane
+
     var onClose: (() -> Unit)? = null
     var onSave: ((ComicInfo) -> Unit)? = null
     private lateinit var mComicInfo: ComicInfo
@@ -108,6 +119,20 @@ class PopupComicInfoController : Initializable {
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         initTable()
         initCombos()
+
+        tbViewMal.skinProperty().addListener { _, _, newSkin ->
+            if (newSkin != null) {
+                val flow = tbViewMal.lookup(".virtual-flow")
+                if (flow != null) {
+                    val vbar = flow.lookup(".scroll-bar:vertical") as ScrollBar?
+                    vbar?.valueProperty()?.addListener { _, _, newValue ->
+                        if (newValue.toDouble() == vbar.max && !isConsultandoMal && txtMalId.text.isEmpty() && mObsListaMal.size >= (Configuracao.registrosConsultaMal - 1)) {
+                            onBtnMalConsultar(mObsListaMal.size)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun initTable() {
@@ -170,30 +195,80 @@ class PopupComicInfoController : Initializable {
         mComicInfo.notes = txtNotes.text
     }
 
-    @FXML
-    private fun onBtnMalConsultar() {
-        val id = txtMalId.text.toLongOrNull()
-        val nome = txtMalNome.text.replace(Regex("[^\\w\\s-]"), "")
+    private var isConsultandoMal = false
+    private var progressOverlay: StackPane? = null
 
-        if (nome.isEmpty() && id == null) return
+    private fun showProgress() {
+        if (progressOverlay == null) {
+            val progress = ProgressIndicator()
+            val label = Label("Consultando MyAnimeList...").apply {
+                style = "-fx-text-fill: white; -fx-font-weight: bold;"
+            }
+            val vbox = VBox(10.0, progress, label).apply {
+                alignment = Pos.CENTER
+            }
+            progressOverlay = StackPane(vbox)
+            progressOverlay?.style = "-fx-background-color: rgba(0, 0, 0, 0.6); -fx-background-radius: 5;"
+            AnchorPane.setTopAnchor(progressOverlay, 0.0)
+            AnchorPane.setBottomAnchor(progressOverlay, 0.0)
+            AnchorPane.setLeftAnchor(progressOverlay, 0.0)
+            AnchorPane.setRightAnchor(progressOverlay, 0.0)
+        }
+        if (!apRoot.children.contains(progressOverlay)) {
+            apRoot.children.add(progressOverlay)
+        }
+    }
+
+    private fun hideProgress() {
+        apRoot.children.remove(progressOverlay)
+    }
+
+    @FXML
+    private fun onBtnMalConsultar(offset: Int = 0) {
+        if (isConsultandoMal) return
+        isConsultandoMal = true
+
+        val id = txtMalId.text.toLongOrNull()
+        val nome = txtMalNome.text.replace(Regex("[^\\p{L}\\p{N}\\s_\\-]"), "")
+
+        if (nome.isEmpty() && id == null) {
+            isConsultandoMal = false
+            return
+        }
 
         btnMalConsultar.isDisable = true
+        showProgress()
+
         val task = object : Task<List<Mal>>() {
             override fun call(): List<Mal> {
-                return mServiceComicInfo.getMal(id, nome)
+                return mServiceComicInfo.getMal(id, nome, offset)
             }
 
             override fun succeeded() {
-                mObsListaMal.setAll(value)
+                if (offset == 0)
+                    mObsListaMal.setAll(value)
+                else
+                    mObsListaMal.addAll(value)
+
                 btnMalConsultar.isDisable = false
+                isConsultandoMal = false
+                hideProgress()
             }
 
             override fun failed() {
                 btnMalConsultar.isDisable = false
+                isConsultandoMal = false
+                hideProgress()
                 Platform.runLater {
                     AlertasModal.erro("Erro na Consulta MAL", exception.message ?: "Erro desconhecido")
                 }
                 exception.printStackTrace()
+            }
+
+            override fun cancelled() {
+                btnMalConsultar.isDisable = false
+                isConsultandoMal = false
+                hideProgress()
             }
         }
         Thread(task).start()

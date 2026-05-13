@@ -284,7 +284,7 @@ class ComicInfoServices {
     }
 
     private var MyAnimeLis: MyAnimeList? = null
-    fun getMal(id: Long?, nome : String) : List<Mal> {
+    fun getMal(id: Long?, nome : String, offset: Int = 0) : List<Mal> {
         if (Configuracao.myAnimeListClient.isBlank())
             throw Exception("Não possui o client id do MyAnimeList configurado.")
 
@@ -295,20 +295,13 @@ class ComicInfoServices {
         if (id != null)
             lista.add(toMal(MyAnimeLis!!.getManga(id)))
         else {
-            val max = 0
-            var page = 0
-            do {
-                mLOG.info("Realizando a consulta $page")
-                val query = if (nome.length > 64) nome.substring(0, 64) else nome
-                val consulta = MyAnimeLis!!.manga.withQuery(query).withLimit(Configuracao.registrosConsultaMal).withOffset(page).search()
-                if (consulta != null && consulta.isNotEmpty()) {
-                    for (item in consulta)
-                        lista.add(toMal(item))
-                }
-                page++
-                if (page > max)
-                    break
-            } while (consulta != null && consulta.isNotEmpty())
+            val query = if (nome.length > 64) nome.substring(0, 64) else nome
+            val limit = Configuracao.registrosConsultaMal
+            val consulta = MyAnimeLis!!.manga.withQuery(query).withLimit(limit).withOffset(offset).search()
+            if (consulta != null && consulta.isNotEmpty()) {
+                for (item in consulta)
+                    lista.add(toMal(item))
+            }
         }
         return lista.toList()
     }

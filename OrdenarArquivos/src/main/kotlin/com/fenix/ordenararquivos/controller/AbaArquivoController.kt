@@ -1,6 +1,7 @@
 package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.exceptions.LibException
+import com.fenix.ordenararquivos.configuration.Configuracao
 import com.fenix.ordenararquivos.model.entities.Caminhos
 import com.fenix.ordenararquivos.model.entities.Capa
 import com.fenix.ordenararquivos.model.entities.Historico
@@ -123,6 +124,9 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private lateinit var btnPesquisarPastaOrigem: JFXButton
+
+    @FXML
+    private lateinit var btnProximaPastaOrigem: JFXButton
 
     @FXML
     private lateinit var txtPastaDestino: JFXTextField
@@ -709,6 +713,7 @@ class AbaArquivoController : Initializable {
         btnAjustarNomes.isDisable = true
         txtPastaOrigem.isDisable = true
         btnPesquisarPastaOrigem.isDisable = true
+        btnProximaPastaOrigem.isDisable = true
         txtPastaDestino.isDisable = true
         btnPesquisarPastaDestino.isDisable = true
         btnProximaPastaDestino.isDisable = true
@@ -729,6 +734,7 @@ class AbaArquivoController : Initializable {
         btnAjustarNomes.isDisable = false
         txtPastaOrigem.isDisable = false
         btnPesquisarPastaOrigem.isDisable = false
+        btnProximaPastaOrigem.isDisable = false
         txtPastaDestino.isDisable = false
         btnPesquisarPastaDestino.isDisable = false
         btnProximaPastaDestino.isDisable = false
@@ -864,6 +870,7 @@ class AbaArquivoController : Initializable {
         val ocr: Task<Void> = object : Task<Void>() {
             override fun call(): Void? {
                 try {
+                    updateProgress(-1.0, 1.0)
                     if (!Ocr.mGemini && !Ocr.mLibs)
                         throw LibException("Bibliotecas OCR não instânciadas.")
 
@@ -885,9 +892,21 @@ class AbaArquivoController : Initializable {
                 return null
             }
 
-            override fun succeeded() {}
+            override fun succeeded() {
+                controllerPai.setCursor(null)
+                controllerPai.rootProgress.progressProperty().unbind()
+                controllerPai.rootProgress.progress = 0.0
+            }
+
+            override fun failed() {
+                controllerPai.setCursor(null)
+                controllerPai.rootProgress.progressProperty().unbind()
+                controllerPai.rootProgress.progress = 0.0
+            }
         }
 
+        controllerPai.setCursor(Cursor.WAIT)
+        controllerPai.rootProgress.progressProperty().bind(ocr.progressProperty())
         Thread(ocr).start()
     }
 
@@ -911,25 +930,29 @@ class AbaArquivoController : Initializable {
     }
 
     private var isConsultandoMal = false
-    private fun consultarMal() {
+    private fun consultarMal(offset: Int = 0) {
         if (isConsultandoMal)
             return
         isConsultandoMal = true
 
         if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
-            val id: Long? = if (txtIdMal.text.isNotEmpty()) txtIdMal.text.toLong() else null
-            val nome = txtMalNome.text.replace(Regex("[^\\w\\s-]"), "")
+            val id: Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLongOrNull() else null
+            val nome = txtMalNome.text.replace(Regex("[^\\p{L}\\p{N}\\s_\\-]"), "")
             val linguagem = cbLinguagem.value ?: Linguagem.JAPANESE
             val comicInfo = ComicInfo(mComicInfo)
 
             btnMalConsultar.isDisable = true
+            controllerPai.setCursor(Cursor.WAIT)
+            controllerPai.rootProgress.progress = -1.0
+            controllerPai.rootMessage.text = "Consultando MyAnimeList..."
+
             val consulta: Task<Void> = object : Task<Void>() {
                 private var listaResults = listOf<Mal>()
                 private var atualizado = false
 
                 override fun call(): Void? {
                     try {
-                        listaResults = mServiceComicInfo.getMal(id, nome)
+                        listaResults = mServiceComicInfo.getMal(id, nome, offset)
                         if (id != null && listaResults.size == 1) {
                             mServiceComicInfo.updateMal(comicInfo, listaResults.first(), linguagem)
                             atualizado = true
@@ -944,26 +967,36 @@ class AbaArquivoController : Initializable {
                 }
 
                 override fun succeeded() {
-                    mObsListaMal = FXCollections.observableArrayList(listaResults)
+                    if (offset == 0)
+                        mObsListaMal.setAll(listaResults)
+                    else
+                        mObsListaMal.addAll(listaResults)
+
                     tbViewMal.items = mObsListaMal
 
-                    if (listaResults.isEmpty())
+                    if (mObsListaMal.isEmpty())
                         Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
                     else if (atualizado)
                         mComicInfo = comicInfo
 
                     btnMalConsultar.isDisable = false
                     isConsultandoMal = false
+                    controllerPai.setCursor(null)
+                    controllerPai.clearProgress()
                 }
 
                 override fun failed() {
                     btnMalConsultar.isDisable = false
                     isConsultandoMal = false
+                    controllerPai.setCursor(null)
+                    controllerPai.clearProgress()
                 }
 
                 override fun cancelled() {
                     btnMalConsultar.isDisable = false
                     isConsultandoMal = false
+                    controllerPai.setCursor(null)
+                    controllerPai.clearProgress()
                 }
             }
             Thread(consulta).start()
@@ -1535,7 +1568,7 @@ class AbaArquivoController : Initializable {
                         return false
                     }
 
-                    val sortedFiles = filesProcessar.sorted()
+                    val sortedFiles = filesProcessar.toList().sortedNaturally()
                     for ((fileIdx, arquivos) in sortedFiles.withIndex()) {
                         if (mCANCELAR)
                             return true
@@ -1852,6 +1885,28 @@ class AbaArquivoController : Initializable {
         listaItens()
     }
 
+    @FXML
+    private fun onBtnProximaPastaOrigem() {
+        if (txtPastaOrigem.text.isNullOrBlank())
+            return
+
+        val pastaAtual = File(txtPastaOrigem.text)
+        val pastaPai = pastaAtual.parentFile
+
+        if (pastaPai != null && pastaPai.exists() && pastaPai.isDirectory) {
+            val pastas = pastaPai.listFiles { file -> file.isDirectory }?.toList()?.sortedNaturally() ?: emptyList()
+            val indexAtual = pastas.indexOfFirst { it.absolutePath == pastaAtual.absolutePath }
+            if (indexAtual in 0 until pastas.lastIndex) {
+                val proximaPasta = pastas[indexAtual + 1]
+                mCaminhoOrigem = proximaPasta
+                txtPastaOrigem.text = proximaPasta.absolutePath
+                carregaPastaOrigem()
+                onBtnVolumeMais()
+            } else
+                Notificacoes.notificacao(Notificacao.ALERTA, "Última pasta", "Esta já é a última pasta do diretório.")
+        }
+    }
+
     private fun carregaPastaOrigem() {
         mCaminhoOrigem = File(txtPastaOrigem.text)
         limparCapas()
@@ -2107,6 +2162,9 @@ class AbaArquivoController : Initializable {
     private var mDelayDescer: Timer? = null
     private fun selecionaImagens() {
         mObsListaImagesSelected = FXCollections.observableArrayList()
+        mObsListaImagesSelected.addListener(ListChangeListener {
+            simulaNome()
+        })
         lsVwImagens.addEventFilter(ScrollEvent.ANY) { e: ScrollEvent ->
             if (e.deltaY > 0) {
                 if (e.deltaY > 10) {
@@ -2334,7 +2392,20 @@ class AbaArquivoController : Initializable {
                         if (db.hasString()) {
                             val draggedIdx = db.string.toIntOrNull()
                             if (draggedIdx != null && draggedIdx >= 0 && draggedIdx < tbViewTabela.items.size) {
+                                val oldPos = mBadgePositions[draggedIdx] ?: index
+                                val diff = index - oldPos
+
                                 mBadgePositions[draggedIdx] = index
+
+                                // Propagar o deslocamento para todos os posteriores
+                                for (i in draggedIdx + 1 until tbViewTabela.items.size) {
+                                    if (mBadgePositions.containsKey(i)) {
+                                        val currentPos = mBadgePositions[i]!!
+                                        val newPos = (currentPos + diff).coerceIn(0, lsVwImagens.items.size - 1)
+                                        mBadgePositions[i] = newPos
+                                    }
+                                }
+
                                 lsVwImagens.refresh()
                                 success = true
                             }
@@ -3361,6 +3432,20 @@ class AbaArquivoController : Initializable {
         configuraDragAndDrop()
         setupConfListeners()
         habilita()
+
+        tbViewMal.skinProperty().addListener { _, _, newSkin ->
+            if (newSkin != null) {
+                val flow = tbViewMal.lookup(".virtual-flow")
+                if (flow != null) {
+                    val vbar = flow.lookup(".scroll-bar:vertical") as ScrollBar?
+                    vbar?.valueProperty()?.addListener { _, _, newValue ->
+                        if (newValue.toDouble() == vbar.max && !isConsultandoMal && txtMalId.text.isEmpty() && mObsListaMal.size >= (Configuracao.registrosConsultaMal - 1)) {
+                            consultarMal(mObsListaMal.size)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun setupSincronizacao() {
@@ -3391,7 +3476,7 @@ class AbaArquivoController : Initializable {
         val caretPos = txtAreaImportar.caretPosition
 
         val pipe = Utils.SEPARADOR_PAGINA
-        val regex = Regex("^([第巻話]?\\s*\\d+\\s*[第巻話]?\\s+)")
+        val regex = Regex("^\\s*([第巻話]?\\s*\\d+\\s*[第巻話]?\\s*)")
         val texto = mutableListOf<String>()
 
         for (linha in txt.split("\n")) {

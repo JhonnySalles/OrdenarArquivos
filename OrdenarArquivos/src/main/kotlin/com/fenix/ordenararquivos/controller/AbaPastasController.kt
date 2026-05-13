@@ -1,6 +1,7 @@
 package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.components.NumberTextFieldTableCell
+import com.fenix.ordenararquivos.configuration.Configuracao
 import com.fenix.ordenararquivos.model.entities.Caminhos
 import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.Pasta
@@ -840,25 +841,29 @@ class AbaPastasController : Initializable {
         mComicInfo = comic
     }
 
-    private fun consultarMal() {
+    private fun consultarMal(offset: Int = 0) {
         if (isConsultandoMal)
             return
         isConsultandoMal = true
 
         if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
-            val id: Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLong() else null
-            val nome = txtMalNome.text.replace(Regex("[^\\w\\s-]"), "")
+            val id: Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLongOrNull() else null
+            val nome = txtMalNome.text.replace(Regex("[^\\p{L}\\p{N}\\s_\\-]"), "")
             val linguagem = cbLinguagem.value ?: Linguagem.JAPANESE
             val comicInfo = ComicInfo(mComicInfo)
 
             btnMalConsultar.isDisable = true
+            controllerPai.setCursor(Cursor.WAIT)
+            controllerPai.rootProgress.progress = -1.0
+            controllerPai.rootMessage.text = "Consultando MyAnimeList..."
+
             val consulta: Task<Void> = object : Task<Void>() {
                 private var listaResults = listOf<Mal>()
                 private var atualizado = false
 
                 override fun call(): Void? {
                     try {
-                        listaResults = mServiceComicInfo.getMal(id, nome)
+                        listaResults = mServiceComicInfo.getMal(id, nome, offset)
                         if (id != null && listaResults.size == 1) {
                             mServiceComicInfo.updateMal(comicInfo, listaResults.first(), linguagem)
                             atualizado = true
@@ -871,27 +876,37 @@ class AbaPastasController : Initializable {
                 }
 
                 override fun succeeded() {
-                    mObsListaMal = FXCollections.observableArrayList(listaResults)
+                    if (offset == 0)
+                        mObsListaMal.setAll(listaResults)
+                    else
+                        mObsListaMal.addAll(listaResults)
+
                     tbViewMal.items = mObsListaMal
                     tbViewMal.refresh()
 
-                    if (listaResults.isEmpty())
+                    if (mObsListaMal.isEmpty())
                         Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
                     else if (atualizado)
                         mComicInfo = comicInfo
 
                     btnMalConsultar.isDisable = false
                     isConsultandoMal = false
+                    controllerPai.setCursor(null)
+                    controllerPai.clearProgress()
                 }
 
                 override fun failed() {
                     btnMalConsultar.isDisable = false
                     isConsultandoMal = false
+                    controllerPai.setCursor(null)
+                    controllerPai.clearProgress()
                 }
 
                 override fun cancelled() {
                     btnMalConsultar.isDisable = false
                     isConsultandoMal = false
+                    controllerPai.setCursor(null)
+                    controllerPai.clearProgress()
                 }
             }
             Thread(consulta).start()
@@ -2191,6 +2206,20 @@ class AbaPastasController : Initializable {
         btnAjustarPastas.accessibleText = "AJUSTAR"
         
         habilita()
+
+        tbViewMal.skinProperty().addListener { _, _, newSkin ->
+            if (newSkin != null) {
+                val flow = tbViewMal.lookup(".virtual-flow")
+                if (flow != null) {
+                    val vbar = flow.lookup(".scroll-bar:vertical") as ScrollBar?
+                    vbar?.valueProperty()?.addListener { _, _, newValue ->
+                        if (newValue.toDouble() == vbar.max && !isConsultandoMal && txtMalId.text.isEmpty() && mObsListaMal.size >= (Configuracao.registrosConsultaMal - 1)) {
+                            consultarMal(mObsListaMal.size)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun validarRegistros() {

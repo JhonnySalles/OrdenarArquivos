@@ -79,6 +79,15 @@
                                           </ImageView>
                                        </graphic>
                                     </JFXButton>
+                                    <JFXButton fx:id="btnProximaPastaOrigem" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnProximaPastaOrigem" styleClass="background-Black3">
+                                       <graphic>
+                                          <ImageView fitHeight="17.0" fitWidth="17.0" pickOnBounds="true" preserveRatio="true">
+                                             <image>
+                                                <Image url="@../images/icoProximaPasta_48.png" />
+                                             </image>
+                                          </ImageView>
+                                       </graphic>
+                                    </JFXButton>
                                  </children>
                               </HBox>
                               <HBox alignment="CENTER" minWidth="260.0" prefHeight="40.0" spacing="2.0" HBox.hgrow="ALWAYS">
