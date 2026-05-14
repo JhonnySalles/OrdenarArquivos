@@ -28,6 +28,9 @@ import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.StackPane
 import javafx.scene.layout.VBox
 import javafx.geometry.Pos
+import javafx.scene.control.ContextMenu
+import javafx.scene.control.MenuItem
+import javafx.scene.image.Image
 import javafx.stage.Stage
 import java.net.URL
 import java.util.*
