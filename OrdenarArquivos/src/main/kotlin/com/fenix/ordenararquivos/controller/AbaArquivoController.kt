@@ -943,8 +943,11 @@ class AbaArquivoController : Initializable {
 
             btnMalConsultar.isDisable = true
             controllerPai.setCursor(Cursor.WAIT)
-            controllerPai.rootProgress.progress = -1.0
-            controllerPai.rootMessage.text = "Consultando MyAnimeList..."
+            val useProgress = !controllerPai.rootProgress.progressProperty().isBound
+            if (useProgress) {
+                controllerPai.rootProgress.progress = -1.0
+                controllerPai.rootMessage.text = "Consultando MyAnimeList..."
+            }
 
             val consulta: Task<Void> = object : Task<Void>() {
                 private var listaResults = listOf<Mal>()
@@ -982,21 +985,21 @@ class AbaArquivoController : Initializable {
                     btnMalConsultar.isDisable = false
                     isConsultandoMal = false
                     controllerPai.setCursor(null)
-                    controllerPai.clearProgress()
+                    if (useProgress) controllerPai.clearProgress()
                 }
 
                 override fun failed() {
                     btnMalConsultar.isDisable = false
                     isConsultandoMal = false
                     controllerPai.setCursor(null)
-                    controllerPai.clearProgress()
+                    if (useProgress) controllerPai.clearProgress()
                 }
 
                 override fun cancelled() {
                     btnMalConsultar.isDisable = false
                     isConsultandoMal = false
                     controllerPai.setCursor(null)
-                    controllerPai.clearProgress()
+                    if (useProgress) controllerPai.clearProgress()
                 }
             }
             Thread(consulta).start()
@@ -2532,6 +2535,31 @@ class AbaArquivoController : Initializable {
                 carregaMal(tbViewMal.selectionModel.selectedItem)
         }
 
+        val contextMenuMal = ContextMenu()
+        val itemRecarregar = MenuItem("Recarregar imagem")
+        itemRecarregar.setOnAction {
+            val selected = tbViewMal.selectionModel.selectedItem
+            if (selected != null && selected.imagem != null) {
+                val mal = selected.mal
+                val url = when {
+                    mal.mainPicture.largeURL != null -> mal.mainPicture.largeURL
+                    mal.mainPicture.mediumURL != null -> mal.mainPicture.mediumURL
+                    mal.pictures.isNotEmpty() -> {
+                        when {
+                            mal.pictures[0].largeURL != null -> mal.pictures[0].largeURL
+                            else -> mal.pictures[0].mediumURL
+                        }
+                    }
+                    else -> null
+                }
+                if (url != null) {
+                    selected.imagem!!.image = Image(url, true)
+                }
+            }
+        }
+        contextMenuMal.items.add(itemRecarregar)
+        tbViewMal.contextMenu = contextMenuMal
+
         lsVwHistorico.setCellFactory {
             object : ListCell<Historico?>() {
                 override fun updateItem(historico: Historico?, empty: Boolean) {
@@ -3475,7 +3503,7 @@ class AbaArquivoController : Initializable {
         val scroll = txtAreaImportar.scrollTopProperty().value
         val caretPos = txtAreaImportar.caretPosition
 
-        val pipe = Utils.SEPARADOR_PAGINA
+        val pipe = Utils.SEPARADOR_CAPITULO
         val regex = Regex("^\\s*([第巻話]?\\s*\\d+\\s*[第巻話]?\\s*)")
         val texto = mutableListOf<String>()
 
@@ -3987,6 +4015,21 @@ class AbaArquivoController : Initializable {
                 controllerPai.rootProgress.progressProperty().unbind()
                 controllerPai.rootMessage.textProperty().unbind()
                 controllerPai.clearProgress()
+                habilita()
+            }
+
+            override fun failed() {
+                controllerPai.rootProgress.progressProperty().unbind()
+                controllerPai.rootMessage.textProperty().unbind()
+                controllerPai.clearProgress()
+                habilita()
+            }
+
+            override fun cancelled() {
+                controllerPai.rootProgress.progressProperty().unbind()
+                controllerPai.rootMessage.textProperty().unbind()
+                controllerPai.clearProgress()
+                habilita()
             }
         }
 

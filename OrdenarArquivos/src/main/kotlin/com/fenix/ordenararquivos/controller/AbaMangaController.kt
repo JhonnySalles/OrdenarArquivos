@@ -195,8 +195,14 @@ class AbaMangaController : Initializable {
             mMangas.clear()
         }
 
+        val useProgress = !controllerPai.rootProgress.progressProperty().isBound
+
         val task = object : Task<List<Manga>>() {
             override fun call(): List<Manga> {
+                if (useProgress) {
+                    updateProgress(-1.0, 1.0)
+                    updateMessage("Carregando mangas...")
+                }
                 return mServiceManga.findAll(txtFiltro.text, mLimit, mOffset)
             }
 
@@ -209,12 +215,36 @@ class AbaMangaController : Initializable {
                     mOffset += mLimit
                 }
                 mCarregando = false
+                if (useProgress) {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    controllerPai.clearProgress()
+                }
             }
 
             override fun failed() {
                 mCarregando = false
+                if (useProgress) {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    controllerPai.clearProgress()
+                }
                 Platform.runLater { AlertasModal.erro("Erro ao carregar dados", exception.message ?: "Erro desconhecido") }
             }
+
+            override fun cancelled() {
+                mCarregando = false
+                if (useProgress) {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    controllerPai.clearProgress()
+                }
+            }
+        }
+        
+        if (useProgress) {
+            controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
+            controllerPai.rootMessage.textProperty().bind(task.messageProperty())
         }
         Thread(task).start()
     }

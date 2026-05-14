@@ -15,8 +15,10 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.jfoenix.controls.JFXButton
 import dev.katsute.mal4j.MyAnimeList
+import javafx.animation.PauseTransition
 import javafx.scene.image.Image
 import javafx.scene.image.ImageView
+import javafx.util.Duration
 import org.slf4j.LoggerFactory
 import java.awt.Desktop
 import java.io.IOException
@@ -278,6 +280,17 @@ class ComicInfoServices {
             imageView.fitWidth = 170.0
             imageView.fitHeight = 300.0
             imageView.isPreserveRatio = true
+
+            val pause = PauseTransition(Duration.millis(600.0))
+            pause.setOnFinished {
+                if (url != null) {
+                    imageView.image = Image(url, true)
+                }
+            }
+            imageView.setOnMousePressed { e -> if (e.isPrimaryButtonDown) pause.playFromStart() }
+            imageView.setOnMouseReleased { pause.stop() }
+            imageView.setOnMouseExited { pause.stop() }
+            imageView.setOnDragDetected { pause.stop() }
         }
 
         return Mal(manga.id, manga.title, manga.alternativeTitles.japanese + "\n" + manga.alternativeTitles.english, buton, imageView, manga)

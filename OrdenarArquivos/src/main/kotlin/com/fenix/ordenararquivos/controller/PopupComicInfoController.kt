@@ -148,6 +148,31 @@ class PopupComicInfoController : Initializable {
                 onBtnMalAplicar()
             }
         }
+
+        val contextMenuMal = ContextMenu()
+        val itemRecarregar = MenuItem("Recarregar imagem")
+        itemRecarregar.setOnAction {
+            val selected = tbViewMal.selectionModel.selectedItem
+            if (selected != null && selected.imagem != null) {
+                val mal = selected.mal
+                val url = when {
+                    mal.mainPicture.largeURL != null -> mal.mainPicture.largeURL
+                    mal.mainPicture.mediumURL != null -> mal.mainPicture.mediumURL
+                    mal.pictures.isNotEmpty() -> {
+                        when {
+                            mal.pictures[0].largeURL != null -> mal.pictures[0].largeURL
+                            else -> mal.pictures[0].mediumURL
+                        }
+                    }
+                    else -> null
+                }
+                if (url != null) {
+                    selected.imagem!!.image = Image(url, true)
+                }
+            }
+        }
+        contextMenuMal.items.add(itemRecarregar)
+        tbViewMal.contextMenu = contextMenuMal
     }
 
     private fun initCombos() {

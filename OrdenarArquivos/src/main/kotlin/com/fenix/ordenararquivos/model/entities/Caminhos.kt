@@ -19,13 +19,13 @@ data class Caminhos(
         }
 
     fun addNumero(numero: String) {
-        this.numero = if (numero.isEmpty()) 0 else Integer.valueOf(numero)
+        this.numero = numero.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
     }
 
     var numeroPagina: String = _numeroPagina
         private set
 
-    constructor(capitulo: String, numero: String, nomePasta: String, tag: String) : this(capitulo = capitulo, nomePasta = nomePasta, _numero = if (numero.isEmpty()) 0 else Integer.valueOf(numero), tag = tag) { }
+    constructor(capitulo: String, numero: String, nomePasta: String, tag: String) : this(capitulo = capitulo, nomePasta = nomePasta, _numero = numero.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0, tag = tag) { }
 
     constructor(manga: Manga, capitulo: String, pagina: Int, pasta: String, tag: String?) : this(0, manga, capitulo, pagina, pagina.toString(), pasta, tag = tag ?: "") {}
 

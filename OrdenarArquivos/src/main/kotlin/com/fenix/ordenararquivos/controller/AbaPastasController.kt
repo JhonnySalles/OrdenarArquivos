@@ -1101,8 +1101,12 @@ class AbaPastasController : Initializable {
                                 val target = path.resolveSibling(pasta)
 
                                 if (path != target) {
-                                    item.pasta = Files.move(path, target, StandardCopyOption.REPLACE_EXISTING).toFile()
-                                    item.arquivo = item.pasta.name
+                                    if (Files.exists(target)) {
+                                        falhas.add(item.arquivo + " (Destino já existe)")
+                                    } else {
+                                        item.pasta = Files.move(path, target, StandardCopyOption.REPLACE_EXISTING).toFile()
+                                        item.arquivo = item.pasta.name
+                                    }
                                 }
                             } catch (e: Exception) {
                                 falhas.add(item.arquivo)
@@ -1748,6 +1752,31 @@ class AbaPastasController : Initializable {
             if (click.clickCount > 1 && tbViewMal.items.isNotEmpty())
                 carregaMal(tbViewMal.selectionModel.selectedItem)
         }
+
+        val contextMenuMal = ContextMenu()
+        val itemRecarregar = MenuItem("Recarregar imagem")
+        itemRecarregar.setOnAction {
+            val selected = tbViewMal.selectionModel.selectedItem
+            if (selected != null && selected.imagem != null) {
+                val mal = selected.mal
+                val url = when {
+                    mal.mainPicture.largeURL != null -> mal.mainPicture.largeURL
+                    mal.mainPicture.mediumURL != null -> mal.mainPicture.mediumURL
+                    mal.pictures.isNotEmpty() -> {
+                        when {
+                            mal.pictures[0].largeURL != null -> mal.pictures[0].largeURL
+                            else -> mal.pictures[0].mediumURL
+                        }
+                    }
+                    else -> null
+                }
+                if (url != null) {
+                    selected.imagem!!.image = Image(url, true)
+                }
+            }
+        }
+        contextMenuMal.items.add(itemRecarregar)
+        tbViewMal.contextMenu = contextMenuMal
 
         editaColunas()
         configurarDragAndDrop()

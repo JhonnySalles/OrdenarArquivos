@@ -149,7 +149,10 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
     var processados: String = ""
 
     private fun getIdCloud(manga: Manga) : String = manga.nome + " - " + manga.volume
-    private fun getIdCloud(comic: ComicInfo) : String = comic.comic
+    private fun getIdCloud(comic: ComicInfo) : String {
+        val id = comic.comic
+        return if (!id.isNullOrEmpty()) id else comic.series.takeIf { !it.isNullOrEmpty() } ?: "UNKNOWN_${comic.hashCode()}"
+    }
 
     private fun envia(): Boolean {
         var notificacao = ""
