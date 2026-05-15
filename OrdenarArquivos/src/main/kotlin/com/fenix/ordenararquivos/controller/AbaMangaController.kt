@@ -24,6 +24,7 @@ import javafx.scene.image.Image
 import javafx.scene.image.ImageView
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.HBox
+import javafx.scene.paint.Color
 import javafx.util.converter.IntegerStringConverter
 import java.net.URL
 import java.util.*
@@ -159,6 +160,7 @@ class AbaMangaController : Initializable {
                 private val btnConfirmar =
                     JFXButton("Salvar").apply {
                         styleClass.add("background-Green2")
+                        textFill = Color.WHITE
                         setOnAction {
                             val manga = tableView.items[index]
                             salvarManga(manga)
@@ -168,6 +170,7 @@ class AbaMangaController : Initializable {
                 private val btnExcluir =
                     JFXButton("Cancelar").apply {
                         styleClass.add("background-Red2")
+                        textFill = Color.WHITE
                         setOnAction {
                             val manga = tableView.items[index]
                             excluirManga(manga)
