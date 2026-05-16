@@ -4167,41 +4167,7 @@ class AbaArquivoController : Initializable {
     }
 
     private fun abrirPopupVisualizarImagem(imageFile: File) {
-        try {
-            val loader = FXMLLoader(javaClass.getResource("/view/PopupImagem.fxml"))
-            val root = loader.load<AnchorPane>()
-            val controller = loader.getController<PopupImagemController>()
-
-            val blur = BoxBlur(3.0, 3.0, 3)
-            val dialogLayout = JFXDialogLayout()
-            dialogLayout.setBody(root)
-            val dialog = JFXDialog(controllerPai.rootStack, dialogLayout, JFXDialog.DialogTransition.CENTER)
-            dialog.isOverlayClose = true
-
-            val titulo = Label("Visualizar Imagem")
-            titulo.font = Font.font(20.0)
-            titulo.textFill = Color.web("#ffffff", 0.8)
-            dialogLayout.setHeading(titulo)
-
-            val btnFechar = JFXButton("FECHAR")
-            btnFechar.setOnAction { dialog.close() }
-            btnFechar.styleClass.addAll("background-Green2", "texto-stilo-1")
-            dialogLayout.setActions(listOf(btnFechar))
-
-            controller.setDados(imageFile)
-
-            dialog.setOnDialogClosed {
-                controllerPai.rootTab.effect = null
-                controllerPai.rootTab.isDisable = false
-            }
-
-            controllerPai.rootTab.effect = blur
-            controllerPai.rootTab.isDisable = true
-            dialogLayout.styleClass.add("dialog-black")
-            dialog.show()
-        } catch (e: Exception) {
-            AlertasModal.erro("Erro", "Erro ao abrir visualizador: ${e.message}")
-        }
+        PopupImagemController.abreTelaImagem(controllerPai.rootStack, controllerPai.rootTab, imageFile)
     }
 
     companion object {

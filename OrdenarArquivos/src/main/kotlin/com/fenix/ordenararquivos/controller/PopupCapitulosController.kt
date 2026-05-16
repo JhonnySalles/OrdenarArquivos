@@ -528,59 +528,27 @@ class PopupCapitulosController : Initializable {
         val volume = tbViewTabela.selectionModel.selectedItem ?: return
         if (volume.capitulos.isEmpty()) return
 
-        try {
-            val dialogLayout = JFXDialogLayout()
-            val subDialog = JFXDialog(stackPane, dialogLayout, JFXDialog.DialogTransition.CENTER)
-
-            val loader = FXMLLoader(PopupCapitulosController::class.java.getResource("/view/PopupCapitulosDividir.fxml"))
-            val newAnchorPane: Parent = loader.load()
-            val cnt: PopupCapitulosDividirController = loader.getController()
-
-            cnt.setRange(
-                volume.capitulos.minByOrNull { it.capitulo }?.capitulo ?: 0.0,
-                volume.capitulos.maxByOrNull { it.capitulo }?.capitulo ?: 0.0
-            )
-
-            val titulo = Label("Dividir Volume")
-            titulo.style = "-fx-text-fill: white; -fx-font-size: 18px;"
-            dialogLayout.setHeading(titulo)
-            dialogLayout.setBody(newAnchorPane)
-
-            val btnConfirmarSplit = JFXButton("Confirmar")
-            btnConfirmarSplit.styleClass.addAll("background-Green2", "texto-stilo-1")
-            btnConfirmarSplit.setOnAction {
-                val inicio = cnt.getInicio()
-                val fim = cnt.getFim()
-
-                val extraidos = volume.capitulos.filter { it.capitulo in inicio..fim }
-                if (extraidos.isNotEmpty()) {
-                    volume.capitulos.removeAll(extraidos)
-                    val novoVolume = Volume(
-                        marcado = volume.marcado,
-                        arquivo = "Não Localizados",
-                        volume = 0.0,
-                        capitulos = extraidos.toMutableList()
-                    )
-                    atualizarTags(volume)
-                    atualizarTags(novoVolume)
-                    val index = mLista.indexOf(volume)
-                    mLista.add(index + 1, novoVolume)
-                    tbViewTabela.refresh()
-                }
-                subDialog.close()
+        PopupCapitulosDividirController.abreTelaDividir(
+            stackPane,
+            apRoot,
+            volume.capitulos.minByOrNull { it.capitulo }?.capitulo ?: 0.0,
+            volume.capitulos.maxByOrNull { it.capitulo }?.capitulo ?: 0.0
+        ) { inicio, fim ->
+            val extraidos = volume.capitulos.filter { it.capitulo in inicio..fim }
+            if (extraidos.isNotEmpty()) {
+                volume.capitulos.removeAll(extraidos)
+                val novoVolume = Volume(
+                    marcado = volume.marcado,
+                    arquivo = "Não Localizados",
+                    volume = 0.0,
+                    capitulos = extraidos.toMutableList()
+                )
+                atualizarTags(volume)
+                atualizarTags(novoVolume)
+                val index = mLista.indexOf(volume)
+                mLista.add(index + 1, novoVolume)
+                tbViewTabela.refresh()
             }
-
-            val btnCancelarSplit = JFXButton("Cancelar")
-            btnCancelarSplit.styleClass.addAll("background-White1")
-            btnCancelarSplit.setOnAction { subDialog.close() }
-
-            dialogLayout.setActions(btnConfirmarSplit, btnCancelarSplit)
-            dialogLayout.styleClass.add("dialog-black")
-            subDialog.stylesheets.add(STYLE_SHEET)
-            subDialog.isOverlayClose = true
-            subDialog.show()
-        } catch (e: Exception) {
-            mLOG.error(e.message, e)
         }
     }
 
@@ -1353,6 +1321,10 @@ class PopupCapitulosController : Initializable {
                 hbTitulo.maxWidth = Double.MAX_VALUE
 
                 val botoes = mutableListOf<JFXButton>()
+                btnVoltar = JFXButton("Voltar")
+                btnVoltar.setOnAction { dialog.close() }
+                btnVoltar.styleClass.add("background-White1")
+                botoes.add(btnVoltar)
                 btnConfirmar = JFXButton("Confirmar")
                 btnConfirmar.setOnAction {
                     callback.call(cnt.mLista)
@@ -1361,10 +1333,6 @@ class PopupCapitulosController : Initializable {
                 btnConfirmar.styleClass.add("background-Green2")
                 btnConfirmar.styleClass.add("texto-stilo-1")
                 botoes.add(btnConfirmar)
-                btnVoltar = JFXButton("Voltar")
-                btnVoltar.setOnAction { dialog.close() }
-                btnVoltar.styleClass.add("background-White1")
-                botoes.add(btnVoltar)
 
                 dialogLayout.setHeading(hbTitulo)
                 dialogLayout.setBody(newAnchorPane)

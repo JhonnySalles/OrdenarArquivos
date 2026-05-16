@@ -8,11 +8,13 @@ import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.fxml.Initializable
 import javafx.geometry.Insets
+import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.Parent
 import javafx.scene.control.Label
 import javafx.scene.effect.BoxBlur
 import javafx.scene.input.KeyCode
+import javafx.scene.layout.HBox
 import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.scene.robot.Robot
@@ -421,10 +423,20 @@ class PopupAmazonController : Initializable {
                 val cnt: PopupAmazonController = loader.getController()
                 cnt.objeto = item ?: ComicInfo()
                 cnt.setLinguagem(linguagem)
+
                 val titulo = Label("Consulta de dados do site da amazon")
                 titulo.font = Font.font(20.0)
-                titulo.textFill = Color.web("#ffffff", 0.8)
+                titulo.textFill = Color.WHITE
+                val hbTitulo = HBox(titulo)
+                hbTitulo.alignment = Pos.CENTER
+                hbTitulo.maxWidth = Double.MAX_VALUE
+                dialogLayout.setHeading(hbTitulo)
+
                 val botoes = mutableListOf<JFXButton>()
+                btnVoltar = JFXButton("Voltar")
+                btnVoltar.setOnAction { dialog.close() }
+                btnVoltar.styleClass.add("background-White1")
+                botoes.add(btnVoltar)
                 btnConfirmar = JFXButton("Confirmar")
                 btnConfirmar.setOnAction {
                     callback.call(cnt.objeto)
@@ -433,11 +445,7 @@ class PopupAmazonController : Initializable {
                 btnConfirmar.styleClass.add("background-Green2")
                 btnConfirmar.styleClass.add("texto-stilo-1")
                 botoes.add(btnConfirmar)
-                btnVoltar = JFXButton("Voltar")
-                btnVoltar.setOnAction { dialog.close() }
-                btnVoltar.styleClass.add("background-White1")
-                botoes.add(btnVoltar)
-                dialogLayout.setHeading(titulo)
+
                 dialogLayout.setBody(newAnchorPane)
                 dialogLayout.setActions(botoes)
                 dialogLayout.styleClass.add("dialog-black")

@@ -1,6 +1,7 @@
 package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.configuration.Configuracao
+import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
@@ -9,6 +10,8 @@ import com.fenix.ordenararquivos.notification.AlertasModal
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXComboBox
+import com.jfoenix.controls.JFXDialog
+import com.jfoenix.controls.JFXDialogLayout
 import com.jfoenix.controls.JFXTextArea
 import com.jfoenix.controls.JFXTextField
 import javafx.application.Platform
@@ -16,21 +19,28 @@ import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import javafx.concurrent.Task
 import javafx.fxml.FXML
+import javafx.fxml.FXMLLoader
 import javafx.fxml.Initializable
+import javafx.geometry.Pos
+import javafx.scene.Node
+import javafx.scene.Parent
+import javafx.scene.control.ContextMenu
 import javafx.scene.control.Label
+import javafx.scene.control.MenuItem
 import javafx.scene.control.ProgressIndicator
 import javafx.scene.control.ScrollBar
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.control.cell.PropertyValueFactory
+import javafx.scene.effect.BoxBlur
+import javafx.scene.image.Image
 import javafx.scene.image.ImageView
 import javafx.scene.layout.AnchorPane
+import javafx.scene.layout.HBox
 import javafx.scene.layout.StackPane
 import javafx.scene.layout.VBox
-import javafx.geometry.Pos
-import javafx.scene.control.ContextMenu
-import javafx.scene.control.MenuItem
-import javafx.scene.image.Image
+import javafx.scene.paint.Color
+import javafx.scene.text.Font
 import javafx.stage.Stage
 import java.net.URL
 import java.util.*
@@ -105,19 +115,101 @@ class PopupComicInfoController : Initializable {
     private lateinit var clMalImagem: TableColumn<Mal, ImageView>
 
     @FXML
-    private lateinit var btnConfirmar: JFXButton
-
-    @FXML
-    private lateinit var btnCancelar: JFXButton
-
-    @FXML
     private lateinit var apRoot: AnchorPane
+
+    @FXML
+    private fun onBtnMalConsultar() {
+        onBtnMalConsultar(0)
+    }
+
+    @FXML
+    private fun onBtnMalAplicar() {
+        val selected = tbViewMal.selectionModel.selectedItem ?: return
+        atualizaObjeto()
+        mServiceComicInfo.updateMal(mComicInfo, selected, cbLinguagem.value ?: Linguagem.JAPANESE)
+        carregaCampos()
+    }
+
+    fun onBtnConfirmar() {
+        atualizaObjeto()
+        try {
+            mServiceComicInfo.save(mComicInfo)
+            onSave?.invoke(mComicInfo)
+            fechar()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun onBtnCancelar() {
+        fechar()
+    }
+
+    private fun fechar() {
+        onClose?.invoke() ?: run {
+            val stage = apRoot.scene.window as Stage
+            stage.close()
+        }
+    }
 
     var onClose: (() -> Unit)? = null
     var onSave: ((ComicInfo) -> Unit)? = null
     private lateinit var mComicInfo: ComicInfo
     private val mServiceComicInfo = ComicInfoServices()
     private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
+
+
+    private fun onBtnMalConsultar(offset: Int) {
+        if (isConsultandoMal)
+            return
+
+        isConsultandoMal = true
+
+        val id = txtMalId.text.toLongOrNull()
+        val nome = txtMalNome.text.replace(Regex("[^\\p{L}\\p{N}\\s_\\-]"), "")
+
+        if (nome.isEmpty() && id == null) {
+            isConsultandoMal = false
+            return
+        }
+
+        btnMalConsultar.isDisable = true
+        showProgress()
+
+        val task = object : Task<List<Mal>>() {
+            override fun call(): List<Mal> {
+                return mServiceComicInfo.getMal(id, nome, offset)
+            }
+
+            override fun succeeded() {
+                if (offset == 0)
+                    mObsListaMal.setAll(value)
+                else
+                    mObsListaMal.addAll(value)
+
+                btnMalConsultar.isDisable = false
+                isConsultandoMal = false
+                hideProgress()
+            }
+
+            override fun failed() {
+                btnMalConsultar.isDisable = false
+                isConsultandoMal = false
+                hideProgress()
+                Platform.runLater {
+                    AlertasModal.erro("Erro na Consulta MAL", exception.message ?: "Erro desconhecido")
+                }
+                exception.printStackTrace()
+            }
+
+            override fun cancelled() {
+                btnMalConsultar.isDisable = false
+                isConsultandoMal = false
+                hideProgress()
+            }
+        }
+        Thread(task).start()
+    }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         initTable()
@@ -251,86 +343,76 @@ class PopupComicInfoController : Initializable {
         apRoot.children.remove(progressOverlay)
     }
 
-    @FXML
-    private fun onBtnMalConsultar(offset: Int = 0) {
-        if (isConsultandoMal) return
-        isConsultandoMal = true
+    companion object {
+        @JvmStatic
+        fun abreTelaComicInfo(stackPane: StackPane, nodeBlur: Node, itens: List<Processar>, onSave: (ComicInfo) -> Unit) {
+            if (itens.isEmpty()) return
 
-        val id = txtMalId.text.toLongOrNull()
-        val nome = txtMalNome.text.replace(Regex("[^\\p{L}\\p{N}\\s_\\-]"), "")
+            try {
+                val itemPrimeiro = itens.first()
+                val loader = FXMLLoader(PopupComicInfoController::class.java.getResource("/view/PopupComicInfo.fxml"))
+                val root = loader.load<AnchorPane>()
+                val controller = loader.getController<PopupComicInfoController>()
 
-        if (nome.isEmpty() && id == null) {
-            isConsultandoMal = false
-            return
-        }
+                // Se o item não tem ComicInfo, cria um novo
+                if (itemPrimeiro.comicInfo == null)
+                    itemPrimeiro.comicInfo = ComicInfo()
 
-        btnMalConsultar.isDisable = true
-        showProgress()
+                controller.setComicInfo(itemPrimeiro.comicInfo)
 
-        val task = object : Task<List<Mal>>() {
-            override fun call(): List<Mal> {
-                return mServiceComicInfo.getMal(id, nome, offset)
-            }
+                val blur = BoxBlur(3.0, 3.0, 3)
+                val dialogLayout = JFXDialogLayout()
 
-            override fun succeeded() {
-                if (offset == 0)
-                    mObsListaMal.setAll(value)
-                else
-                    mObsListaMal.addAll(value)
+                val titulo = Label("Editar ComicInfo")
+                titulo.font = Font.font(20.0)
+                titulo.textFill = Color.WHITE
+                val hbTitulo = HBox(titulo)
+                hbTitulo.alignment = Pos.CENTER
+                hbTitulo.maxWidth = Double.MAX_VALUE
+                dialogLayout.setHeading(hbTitulo)
+                dialogLayout.setBody(root)
+                val dialog = JFXDialog(stackPane, dialogLayout, JFXDialog.DialogTransition.CENTER)
+                dialog.isOverlayClose = false
 
-                btnMalConsultar.isDisable = false
-                isConsultandoMal = false
-                hideProgress()
-            }
-
-            override fun failed() {
-                btnMalConsultar.isDisable = false
-                isConsultandoMal = false
-                hideProgress()
-                Platform.runLater {
-                    AlertasModal.erro("Erro na Consulta MAL", exception.message ?: "Erro desconhecido")
+                controller.onClose = { dialog.close() }
+                controller.onSave = { ci ->
+                    // Se houver mais de um registro, atualiza todos os selecionados
+                    if (itens.size > 1) {
+                        itens.forEach { item ->
+                            if (item != itemPrimeiro) {
+                                if (item.comicInfo == null)
+                                    item.comicInfo = ComicInfo()
+                                item.comicInfo!!.merge(ci)
+                            }
+                        }
+                    }
+                    onSave(ci)
                 }
-                exception.printStackTrace()
+
+                val btnCancelar = JFXButton("Cancelar")
+                btnCancelar.styleClass.add("background-Red2")
+                btnCancelar.styleClass.add("texto-stilo-1")
+                btnCancelar.setOnAction { controller.onBtnCancelar() }
+
+                val btnConfirmar = JFXButton("Confirmar")
+                btnConfirmar.styleClass.add("background-Green2")
+                btnConfirmar.styleClass.add("texto-stilo-1")
+                btnConfirmar.setOnAction { controller.onBtnConfirmar() }
+
+                dialogLayout.setActions(listOf(btnCancelar, btnConfirmar))
+
+                dialog.setOnDialogClosed {
+                    nodeBlur.effect = null
+                    nodeBlur.isDisable = false
+                }
+
+                nodeBlur.effect = blur
+                nodeBlur.isDisable = true
+                dialogLayout.styleClass.add("dialog-black")
+                dialog.show()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-
-            override fun cancelled() {
-                btnMalConsultar.isDisable = false
-                isConsultandoMal = false
-                hideProgress()
-            }
-        }
-        Thread(task).start()
-    }
-
-    @FXML
-    private fun onBtnMalAplicar() {
-        val selected = tbViewMal.selectionModel.selectedItem ?: return
-        atualizaObjeto()
-        mServiceComicInfo.updateMal(mComicInfo, selected, cbLinguagem.value ?: Linguagem.JAPANESE)
-        carregaCampos()
-    }
-
-    @FXML
-    private fun onBtnConfirmar() {
-        atualizaObjeto()
-        try {
-            mServiceComicInfo.save(mComicInfo)
-            onSave?.invoke(mComicInfo)
-            fechar()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    @FXML
-    private fun onBtnCancelar() {
-        fechar()
-    }
-
-    private fun fechar() {
-        onClose?.invoke() ?: run {
-            val stage = btnConfirmar.scene.window as Stage
-            stage.close()
         }
     }
 }

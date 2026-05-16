@@ -133,7 +133,7 @@ class AbaMangaController : Initializable {
             }
 
             val menu = ContextMenu()
-            val itemEditar = MenuItem("Editar ComicInfo / Pesquisar MAL").apply {
+            val itemEditar = MenuItem("Editar ComicInfo").apply {
                 setOnAction {
                     val selected = tbViewManga.selectionModel.selectedItems
                     if (selected.isNotEmpty())

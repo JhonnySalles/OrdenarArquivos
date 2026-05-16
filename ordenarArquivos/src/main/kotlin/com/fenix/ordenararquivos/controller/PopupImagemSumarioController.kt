@@ -1,5 +1,6 @@
 package com.fenix.ordenararquivos.controller
 
+import com.fenix.ordenararquivos.model.entities.Processar
 import com.jfoenix.controls.JFXButton
 import com.jfoenix.controls.JFXDialog
 import com.jfoenix.controls.JFXDialogLayout
@@ -29,7 +30,7 @@ import java.io.File
 import java.net.URL
 import java.util.*
 
-class PopupImagemController : Initializable {
+class PopupImagemSumarioController : Initializable {
 
     @FXML
     private lateinit var apImage: AnchorPane
@@ -40,15 +41,16 @@ class PopupImagemController : Initializable {
     private lateinit var mImageView: ImageView
     private lateinit var mGesturePane: GesturePane
 
+    private var mItem: Processar? = null
     private var mImageFile: File? = null
-
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         mImageView = ImageView()
         mGesturePane = configuraZoom(apImage, mImageView, sliderZoom)
     }
 
-    fun setDados(imageFile: File) {
+    fun setDados(item: Processar, imageFile: File) {
+        this.mItem = item
         this.mImageFile = imageFile
         
         if (imageFile.exists()) {
@@ -114,11 +116,11 @@ class PopupImagemController : Initializable {
 
     companion object {
         @JvmStatic
-        fun abreTelaImagem(stackPane: StackPane, nodeBlur: Node, imageFile: File) {
+        fun abreTelaImagemSumario(stackPane: StackPane, nodeBlur: Node, item: Processar, imageFile: File, onProcessar: (File, File) -> Unit, onDialogClosed: (() -> Unit)? = null) {
             try {
-                val loader = FXMLLoader(PopupImagemController::class.java.getResource("/view/PopupImagem.fxml"))
+                val loader = FXMLLoader(PopupImagemSumarioController::class.java.getResource("/view/PopupImagemSumario.fxml"))
                 val root = loader.load<AnchorPane>()
-                val controller = loader.getController<PopupImagemController>()
+                val controller = loader.getController<PopupImagemSumarioController>()
 
                 val blur = BoxBlur(3.0, 3.0, 3)
                 val dialogLayout = JFXDialogLayout()
@@ -126,7 +128,7 @@ class PopupImagemController : Initializable {
                 val dialog = JFXDialog(stackPane, dialogLayout, JFXDialog.DialogTransition.CENTER)
                 dialog.isOverlayClose = true
 
-                val titulo = Label("Visualizar Imagem")
+                val titulo = Label("Visualizar Sumário")
                 titulo.font = Font.font(20.0)
                 titulo.textFill = Color.WHITE
                 val hbTitulo = HBox(titulo)
@@ -139,16 +141,20 @@ class PopupImagemController : Initializable {
                 btnVoltar.styleClass.add("background-White1")
 
                 val btnConfirmar = JFXButton("Confirmar")
-                btnConfirmar.setOnAction { dialog.close() }
+                btnConfirmar.setOnAction {
+                    dialog.close()
+                    onProcessar(imageFile, imageFile.parentFile)
+                }
                 btnConfirmar.styleClass.addAll("background-Green2", "texto-stilo-1")
 
                 dialogLayout.setActions(listOf(btnVoltar, btnConfirmar))
 
-                controller.setDados(imageFile)
+                controller.setDados(item, imageFile)
 
                 dialog.setOnDialogClosed {
                     nodeBlur.effect = null
                     nodeBlur.isDisable = false
+                    onDialogClosed?.invoke()
                 }
 
                 nodeBlur.effect = blur

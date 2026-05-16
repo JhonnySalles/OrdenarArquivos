@@ -722,15 +722,15 @@ class AbaComicInfoController : Initializable {
             }
 
             if (temTitulo) {
-                val sumarioFinal = "*Chapter Titles Manual*\n" + sbSumario.toString()
+                val separator = "*Chapter Titles Manual*"
+                val sumarioFinal = "$separator\n" + sbSumario.toString()
                 item.comicInfo?.run {
-                    summary = if (summary.isNullOrEmpty())
-                        sumarioFinal
-                    else {
-                        if (summary!!.lowercase().contains("*chapter titles manual*"))
-                            summary!!.substring(0, summary!!.lowercase().indexOf("*chapter titles manual*")).trim() + "\n\n" + sumarioFinal
-                        else
-                            summary!! + "\n\n" + sumarioFinal
+                    val currentSummary = summary ?: ""
+                    val idx = currentSummary.lowercase().indexOf(separator.lowercase())
+                    summary = if (idx != -1) {
+                        currentSummary.substring(0, idx).trim() + "\n\n" + sumarioFinal
+                    } else {
+                        if (currentSummary.isEmpty()) sumarioFinal else currentSummary.trim() + "\n\n" + sumarioFinal
                     }
                 }
             }
@@ -902,56 +902,16 @@ class AbaComicInfoController : Initializable {
     }
 
     private fun abrirPopupVisualizarSumario(item: Processar, sumarioFile: File, extractDir: File) {
-        try {
-            val loader = FXMLLoader(javaClass.getResource("/view/PopupSumario.fxml"))
-            val root = loader.load<AnchorPane>()
-            val controller = loader.getController<PopupSumarioController>()
-
-            val blur = BoxBlur(3.0, 3.0, 3)
-            val dialogLayout = JFXDialogLayout()
-            dialogLayout.setBody(root)
-            val dialog = JFXDialog(controllerPai.rootStack, dialogLayout, JFXDialog.DialogTransition.CENTER)
-            dialog.isOverlayClose = true
-
-            val titulo = Label("Visualizar Sumário")
-            titulo.font = Font.font(20.0)
-            titulo.textFill = Color.web("#ffffff", 0.8)
-            dialogLayout.setHeading(titulo)
-
-            val btnProcessar = JFXButton("PROCESSAR OCR")
-            btnProcessar.setOnAction {
-                dialog.close()
-                executarOcrItem(item, sumarioFile, extractDir)
+        PopupImagemSumarioController.abreTelaImagemSumario(controllerPai.rootStack, controllerPai.rootTab, item, sumarioFile, { file, dir ->
+            executarOcrItem(item, file, dir)
+        }, {
+            if (extractDir.exists()) {
+                Thread {
+                    Thread.sleep(500)
+                    extractDir.deleteRecursively()
+                }.start()
             }
-            btnProcessar.styleClass.addAll("background-Blue3", "texto-stilo-1")
-
-            val btnCancelar = JFXButton("CANCELAR")
-            btnCancelar.setOnAction { dialog.close() }
-            btnCancelar.styleClass.addAll("background-Red2", "texto-stilo-1")
-
-            dialogLayout.setActions(listOf(btnProcessar, btnCancelar))
-
-            controller.setDados(item, sumarioFile)
-
-            dialog.setOnDialogClosed {
-                controllerPai.rootTab.effect = null
-                controllerPai.rootTab.isDisable = false
-                if (extractDir.exists()) {
-                     Thread {
-                         Thread.sleep(500)
-                         extractDir.deleteRecursively()
-                     }.start()
-                }
-            }
-
-            controllerPai.rootTab.effect = blur
-            controllerPai.rootTab.isDisable = true
-            dialogLayout.styleClass.add("dialog-black")
-            dialog.show()
-        } catch (e: Exception) {
-            extractDir.deleteRecursively()
-            AlertasModal.erro("Erro", "Erro ao abrir visualizador: ${e.message}")
-        }
+        })
     }
 
     private fun executarOcrItem(item: Processar, sumario: File, extractDir: File) {
@@ -1326,9 +1286,18 @@ class AbaComicInfoController : Initializable {
             setOnAction { popupAmazon(tbViewProcessar.selectionModel.selectedItem) }
         }
 
+        val chamarImportarSumario = MenuItem("Importar Sumário").apply {
+            setOnAction {
+                val selected = tbViewProcessar.selectionModel.selectedItems
+                if (selected.isNotEmpty())
+                    abrirPopupSumario(selected.toList())
+            }
+        }
+
         menu.items.addAll(
             editarComicInfo,
             chamarCapitulos,
+            chamarImportarSumario,
             chamarAmazon,
             SeparatorMenuItem(),
             atualizarPaginaTag,
@@ -2017,53 +1986,8 @@ class AbaComicInfoController : Initializable {
 
 
     private fun abrirPopupComicInfo(itens: List<Processar>) {
-        if (itens.isEmpty()) return
-
-        try {
-            val itemPrimeiro = itens.first()
-            val loader = javafx.fxml.FXMLLoader(javaClass.getResource("/view/PopupComicInfo.fxml"))
-            val root = loader.load<AnchorPane>()
-            val controller = loader.getController<PopupComicInfoController>()
-
-            // Se o item não tem ComicInfo, cria um novo
-            if (itemPrimeiro.comicInfo == null)
-                itemPrimeiro.comicInfo = ComicInfo()
-
-            controller.setComicInfo(itemPrimeiro.comicInfo)
-
-            val blur = BoxBlur(3.0, 3.0, 3)
-            val dialogLayout = com.jfoenix.controls.JFXDialogLayout()
-            dialogLayout.setBody(root)
-            val dialog = com.jfoenix.controls.JFXDialog(controllerPai.rootStack, dialogLayout, com.jfoenix.controls.JFXDialog.DialogTransition.CENTER)
-            dialog.isOverlayClose = false
-
-            controller.onClose = { dialog.close() }
-            controller.onSave = { ci ->
-                // Se houver mais de um registro, atualiza todos os selecionados
-                if (itens.size > 1) {
-                    itens.forEach { item ->
-                        if (item != itemPrimeiro) {
-                            if (item.comicInfo == null)
-                                item.comicInfo = ComicInfo()
-                            item.comicInfo!!.merge(ci)
-                        }
-                    }
-                }
-                tbViewProcessar.refresh()
-            }
-
-            dialog.setOnDialogClosed {
-                controllerPai.rootTab.effect = null
-                controllerPai.rootTab.isDisable = false
-            }
-
-            controllerPai.rootTab.effect = blur
-            controllerPai.rootTab.isDisable = true
-            dialog.show()
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-            mLOG.error("Erro ao abrir popup de ComicInfo: ${e.message}", e)
+        PopupComicInfoController.abreTelaComicInfo(controllerPai.rootStack, controllerPai.rootTab, itens) {
+            tbViewProcessar.refresh()
         }
     }
 
@@ -2078,6 +2002,13 @@ class AbaComicInfoController : Initializable {
         configuraTextEdit()
         configurarDragAndDrop()
         habilita()
+    }
+
+    private fun abrirPopupSumario(itens: List<Processar>) {
+        PopupSumarioController.abreTelaSumario(controllerPai.rootStack, controllerPai.rootTab, itens) {
+            tbViewProcessar.refresh()
+            null
+        }
     }
 
     companion object {
