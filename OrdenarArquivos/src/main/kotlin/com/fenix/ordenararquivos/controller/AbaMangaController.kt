@@ -307,55 +307,40 @@ class AbaMangaController : Initializable {
 
         try {
             val mangaPrimeiro = mangas.first()
-            val loader = FXMLLoader(javaClass.getResource("/view/PopupComicInfo.fxml"))
-            val root = loader.load<AnchorPane>()
-            val controller = loader.getController<PopupComicInfoController>()
-
-            // Busca o ComicInfo associado ao primeiro manga selecionado
-            val comicInfo = mServiceComicInfo.find(mangaPrimeiro.nome, "pt") ?: mServiceComicInfo.find(mangaPrimeiro.nome, "ja") ?: ComicInfo().apply {
-                series = mangaPrimeiro.nome
-                comic = mangaPrimeiro.comic
+            
+            // Busca ou cria o ComicInfo para cada manga
+            val itens = mangas.map { m ->
+                val ci = mServiceComicInfo.find(m.nome, "pt") ?: mServiceComicInfo.find(m.nome, "ja") ?: ComicInfo().apply {
+                    series = m.nome
+                    comic = m.comic
+                }
+                com.fenix.ordenararquivos.model.entities.Processar(arquivo = m.nome, comicInfo = ci)
             }
 
-            controller.setComicInfo(comicInfo)
-
-            val blur = BoxBlur(3.0, 3.0, 3)
-            val dialogLayout = com.jfoenix.controls.JFXDialogLayout()
-            dialogLayout.setBody(root)
-            val dialog = JFXDialog(controllerPai.rootStack, dialogLayout, JFXDialog.DialogTransition.CENTER)
-            dialog.isOverlayClose = false
-
-            controller.onClose = { dialog.close() }
-            controller.onSave = { ci ->
-                // Se houver mais de um registro, atualiza todos os selecionados
+            PopupComicInfoController.abreTelaComicInfo(controllerPai.rootStack, controllerPai.rootTab, itens) { ci ->
+                // O PopupComicInfoController já salvou o ci do primeiro item.
+                // Agora precisamos atualizar os outros mangas selecionados se houver mais de um.
                 if (mangas.size > 1) {
-                    mangas.forEach { m ->
-                        if (m != mangaPrimeiro) {
-                            val ciManga = mServiceComicInfo.find(m.nome, "pt") ?: mServiceComicInfo.find(m.nome, "ja") ?: ComicInfo().apply {
-                                series = m.nome
-                                comic = m.comic
+                    itens.forEachIndexed { index, item ->
+                        if (index > 0) { // Pula o primeiro pois já foi tratado pelo popup
+                            val m = mangas[index]
+                            item.comicInfo?.let {
+                                mServiceComicInfo.save(it)
                             }
-                            ciManga.merge(ci)
-                            mServiceComicInfo.save(ciManga)
                         }
                     }
                 }
+                
                 // Após salvar, atualiza os nomes na grid caso tenham mudado
-                mangas.forEach { m ->
-                    m.nome = ci.series ?: ci.title ?: m.nome
-                    m.comic = ci.comic
+                mangas.forEachIndexed { index, m ->
+                    val ciItem = itens[index].comicInfo
+                    if (ciItem != null) {
+                        m.nome = ciItem.series ?: ciItem.title ?: m.nome
+                        m.comic = ciItem.comic
+                    }
                 }
                 tbViewManga.refresh()
             }
-
-            dialog.setOnDialogClosed {
-                controllerPai.rootTab.effect = null
-                controllerPai.rootTab.isDisable = false
-            }
-
-            controllerPai.rootTab.effect = blur
-            controllerPai.rootTab.isDisable = true
-            dialog.show()
 
         } catch (e: Exception) {
             Platform.runLater { AlertasModal.erro("Erro ao processar", e.message ?: "Erro desconhecido") }
