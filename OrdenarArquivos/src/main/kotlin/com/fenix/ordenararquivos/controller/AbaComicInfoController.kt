@@ -96,6 +96,9 @@ class AbaComicInfoController : Initializable {
     private lateinit var btnCapitulos: JFXButton
 
     @FXML
+    private lateinit var btnSumario: JFXButton
+
+    @FXML
     private lateinit var btnProcessar: JFXButton
 
     @FXML
@@ -197,6 +200,26 @@ class AbaComicInfoController : Initializable {
             null
         }
         PopupCapitulosController.abreTelaCapitulos(controllerPai.rootStack, controllerPai.rootTab, callback, cbLinguagem.value, listToProcess, textoInicial)
+    }
+
+    @FXML
+    private fun onBtnSumario() {
+        val selected = tbViewProcessar.selectionModel.selectedItems
+        if (selected.isEmpty()) {
+            AlertasModal.alerta("Alerta", "Nenhum item selecionado.")
+            return
+        }
+
+        val callback = Callback<List<Processar>, Void?> { param ->
+            for (atualizado in param) {
+                val item = mObsListaProcessar.find { it.arquivo == atualizado.arquivo } ?: continue
+                item.comicInfo?.summary = atualizado.comicInfo?.summary
+            }
+            tbViewProcessar.refresh()
+            null
+        }
+
+        PopupSumarioController.abreTelaSumario(controllerPai.rootStack, controllerPai.rootTab,selected.toList(), callback)
     }
 
     @FXML

@@ -8,13 +8,13 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<?import javafx.scene.control.Tooltip?>
 <AnchorPane fx:id="apRoot" minHeight="0.0" minWidth="0.0" prefHeight="500.0" prefWidth="900.0" styleClass="background-Black3" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.AbaComicInfoController">
    <children>
       <VBox prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
@@ -54,6 +54,7 @@
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                <children>
                   <JFXButton fx:id="btnCapitulos" buttonType="RAISED" minWidth="70.0" onAction="#onBtnCapitulos" prefHeight="30.0" prefWidth="150.0" styleClass="background-White1" text="Capítulos" />
+                  <JFXButton fx:id="btnSumario" buttonType="RAISED" minWidth="70.0" onAction="#onBtnSumario" prefHeight="30.0" prefWidth="150.0" styleClass="background-White1" text="Sumários" />
                   <JFXButton fx:id="btnOcrProcessar" accessibleText="PROCESSA" buttonType="RAISED" minWidth="120.0" onAction="#onBtnOcrProcessar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Blue4" text="OCR proximos 10" textFill="WHITE" />
                   <JFXButton fx:id="btnTagsProcessar" buttonType="RAISED" minWidth="90.0" onAction="#onBtnTagsProcessar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Purple2" text="Gerar tags" textFill="WHITE" />
                   <JFXButton fx:id="btnTagsNormaliza" buttonType="RAISED" minWidth="90.0" onAction="#onBtnTagsNormaliza" prefHeight="30.0" prefWidth="150.0" styleClass="background-Orange1" text="Normaliza tag" textFill="WHITE" />
