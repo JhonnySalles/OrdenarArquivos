@@ -246,6 +246,8 @@ class AbaMangaController : Initializable {
         }
         
         if (useProgress) {
+            controllerPai.rootProgress.progressProperty().unbind()
+            controllerPai.rootMessage.textProperty().unbind()
             controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
             controllerPai.rootMessage.textProperty().bind(task.messageProperty())
         }

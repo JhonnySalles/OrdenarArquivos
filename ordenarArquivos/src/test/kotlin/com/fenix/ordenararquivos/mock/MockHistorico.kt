@@ -26,7 +26,7 @@ class MockHistorico {
             inicio = "1",
             fim = "10",
             importar = "Sim",
-            selecionado = "Sim",
+            badgePositions = emptyMap(),
             manga = mockManga.mockEntity(),
             comicInfo = mockComicInfo.mockEntity(),
             caminhos = mockCaminhos.mockEntities(),

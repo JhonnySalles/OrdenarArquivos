@@ -57,11 +57,16 @@
             </HBox>
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                <children>
-                  <JFXButton fx:id="btnValidar" minWidth="80.0" onAction="#onBtnValidar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Black2" text="Validar" textFill="WHITE" />
-                  <JFXButton fx:id="btnGerarCapas" minWidth="90.0" onAction="#onBtnGerarCapas" prefHeight="30.0" prefWidth="150.0" styleClass="background-Purple2" text="Gerar Capas" textFill="WHITE" />
-                  <JFXButton fx:id="btnImportarVolumes" minWidth="120.0" onAction="#onBtnImportarVolumes" prefHeight="30.0" prefWidth="150.0" styleClass="background-Orange1" text="Importar Volumes" textFill="WHITE" />
-                  <JFXButton fx:id="btnAjustarPastas" minWidth="120.0" onAction="#onBtnAjustarPastas" prefHeight="30.0" prefWidth="150.0" styleClass="background-Yellow1" text="Ajustar Pastas" />
-                  <JFXButton fx:id="btnCapitulos" buttonType="RAISED" minWidth="70.0" onAction="#onBtnCapitulos" prefHeight="30.0" prefWidth="150.0" styleClass="background-White1" text="Capítulos" />
+                  <JFXButton fx:id="btnValidar" minWidth="80.0" onAction="#onBtnValidar" prefHeight="30.0" prefWidth="135.0" styleClass="background-Black2" text="Validar" textFill="WHITE" />
+                  <JFXButton fx:id="btnGerarCapas" minWidth="90.0" onAction="#onBtnGerarCapas" prefHeight="30.0" prefWidth="135.0" styleClass="background-Purple2" text="Gerar Capas" textFill="WHITE" />
+                  <JFXButton fx:id="btnImportarVolumes" minWidth="120.0" onAction="#onBtnImportarVolumes" prefHeight="30.0" prefWidth="135.0" styleClass="background-Orange1" text="Importar Volumes" textFill="WHITE" />
+                  <JFXButton fx:id="btnAjustarPastas" minWidth="120.0" onAction="#onBtnAjustarPastas" prefHeight="30.0" prefWidth="135.0" styleClass="background-Yellow1" text="Ajustar Pastas" />
+                  <JFXButton fx:id="btnCapitulos" buttonType="RAISED" minWidth="70.0" onAction="#onBtnCapitulos" prefHeight="30.0" prefWidth="135.0" styleClass="background-White1" text="Capítulos" />
+                  <JFXButton fx:id="btnSubstituir" buttonType="RAISED" minWidth="110.0" onAction="#onBtnSubstituirTitulo" prefHeight="30.0" prefWidth="135.0" styleClass="background-White1" text="Substituir Título">
+                     <tooltip>
+                        <Tooltip text="Ctrl + R" />
+                     </tooltip>
+                  </JFXButton>
                </children>
                <VBox.margin>
                   <Insets bottom="10.0" left="10.0" right="10.0" top="5.0" />

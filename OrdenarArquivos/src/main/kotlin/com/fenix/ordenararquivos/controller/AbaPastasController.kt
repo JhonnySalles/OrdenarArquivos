@@ -117,6 +117,9 @@ class AbaPastasController : Initializable {
     @FXML
     private lateinit var btnCapitulos: JFXButton
 
+    @FXML
+    private lateinit var btnSubstituir: JFXButton
+
     //<--------------------------  Arquivos   -------------------------->
 
     @FXML
@@ -315,6 +318,53 @@ class AbaPastasController : Initializable {
     }
 
     @FXML
+    private fun onBtnSubstituirTitulo() {
+        val selecionados = mObsListaProcessar.filter { it.isSelecionado }.ifEmpty { tbViewProcessar.selectionModel.selectedItems.toList() }
+        val listToProcess = if (selecionados.size > 1) selecionados else mObsListaProcessar
+
+        if (listToProcess.isEmpty()) {
+            AlertasModal.alerta("Alerta", "Nenhum item carregado para processar.")
+            return
+        }
+
+        val titulos = listToProcess.map { it.titulo }
+        PopupSubstituirController.abreTelaSubstituir(controllerPai.rootStack, apRoot, titulos) { localizar, substituir, isRegex ->
+            try {
+                val actions = mutableListOf<ReversibleAction>()
+
+                if (isRegex) {
+                    val regex = Regex(localizar)
+                    for (item in listToProcess) {
+                        val original = item.titulo
+                        val novo = original.replace(regex, substituir)
+                        if (original != novo) {
+                            actions.add(PropertyChangeAction(item, item.titulo, novo) { it, v -> it.titulo = v })
+                            item.titulo = novo
+                        }
+                    }
+                } else {
+                    for (item in listToProcess) {
+                        val original = item.titulo
+                        val novo = original.replace(localizar, substituir)
+                        if (original != novo) {
+                            actions.add(PropertyChangeAction(item, item.titulo, novo) { it, v -> it.titulo = v })
+                            item.titulo = novo
+                        }
+                    }
+                }
+
+                if (actions.isNotEmpty()) {
+                    mHistory.pushAction(CompositeAction(actions))
+                }
+                tbViewProcessar.refresh()
+                Notificacoes.notificacao(Notificacao.SUCESSO, "Substituir Título", "Substituição concluída.")
+            } catch (e: Exception) {
+                AlertasModal.erro("Erro Regex", "Expressão regular inválida: ${e.message}")
+            }
+        }
+    }
+
+    @FXML
     private fun onBtnGerarCapas() {
         if (btnGerarCapas.accessibleTextProperty().value.equals("GERAR", ignoreCase = true)) {
             val decimal = DecimalFormat("00.##", DecimalFormatSymbols(Locale.US))
@@ -375,6 +425,8 @@ class AbaPastasController : Initializable {
                     habilita(btnGerarCapas, "Gerar Capas")
                 }
             }
+            controllerPai.rootProgress.progressProperty().unbind()
+            controllerPai.rootMessage.textProperty().unbind()
             controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
             controllerPai.rootMessage.textProperty().bind(task.messageProperty())
             Thread(task).start()
@@ -586,6 +638,8 @@ class AbaPastasController : Initializable {
                     habilita(btnCompactar, "Compactar")
                 }
             }
+            controllerPai.rootProgress.progressProperty().unbind()
+            controllerPai.rootMessage.textProperty().unbind()
             controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
             controllerPai.rootMessage.textProperty().bind(task.messageProperty())
             Thread(task).start()
@@ -658,6 +712,8 @@ class AbaPastasController : Initializable {
                 }
             }
 
+            controllerPai.rootProgress.progressProperty().unbind()
+            controllerPai.rootMessage.textProperty().unbind()
             controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
             controllerPai.rootMessage.textProperty().bind(task.messageProperty())
             Thread(task).start()
@@ -855,62 +911,87 @@ class AbaPastasController : Initializable {
 
             btnMalConsultar.isDisable = true
             controllerPai.setCursor(Cursor.WAIT)
-            controllerPai.rootProgress.progress = -1.0
-            controllerPai.rootMessage.text = "Consultando MyAnimeList..."
 
-            val consulta: Task<Void> = object : Task<Void>() {
-                private var listaResults = listOf<Mal>()
-                private var atualizado = false
+            val progressBound = controllerPai.rootProgress.progressProperty().isBound
+            val messageBound = controllerPai.rootMessage.textProperty().isBound
 
-                override fun call(): Void? {
-                    try {
-                        listaResults = mServiceComicInfo.getMal(id, nome, offset)
-                        if (id != null && listaResults.size == 1) {
-                            mServiceComicInfo.updateMal(comicInfo, listaResults.first(), linguagem)
-                            atualizado = true
+            try {
+                if (!progressBound) {
+                    controllerPai.rootProgress.progress = -1.0
+                }
+                if (!messageBound) {
+                    controllerPai.rootMessage.text = "Consultando MyAnimeList..."
+                }
+
+                val consulta: Task<Void> = object : Task<Void>() {
+                    private var listaResults = listOf<Mal>()
+                    private var atualizado = false
+
+                    override fun call(): Void? {
+                        try {
+                            listaResults = mServiceComicInfo.getMal(id, nome, offset)
+                            if (id != null && listaResults.size == 1) {
+                                mServiceComicInfo.updateMal(comicInfo, listaResults.first(), linguagem)
+                                atualizado = true
+                            }
+                        } catch (e: Exception) {
+                            mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
+                            Platform.runLater { AlertasModal.erro("Erro no My Anime List", e.message ?: "Erro desconhecido") }
                         }
-                    } catch (e: Exception) {
-                        mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
-                        Platform.runLater { AlertasModal.erro("Erro no My Anime List", e.message ?: "Erro desconhecido") }
+                        return null
                     }
-                    return null
+
+                    override fun succeeded() {
+                        if (offset == 0)
+                            mObsListaMal.setAll(listaResults)
+                        else
+                            mObsListaMal.addAll(listaResults)
+
+                        tbViewMal.items = mObsListaMal
+                        tbViewMal.refresh()
+
+                        if (mObsListaMal.isEmpty())
+                            Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
+                        else if (atualizado)
+                            mComicInfo = comicInfo
+
+                        btnMalConsultar.isDisable = false
+                        isConsultandoMal = false
+                        controllerPai.setCursor(null)
+                        if (!progressBound) {
+                            controllerPai.clearProgress()
+                        }
+                    }
+
+                    override fun failed() {
+                        btnMalConsultar.isDisable = false
+                        isConsultandoMal = false
+                        controllerPai.setCursor(null)
+                        if (!progressBound) {
+                            controllerPai.clearProgress()
+                        }
+                    }
+
+                    override fun cancelled() {
+                        btnMalConsultar.isDisable = false
+                        isConsultandoMal = false
+                        controllerPai.setCursor(null)
+                        if (!progressBound) {
+                            controllerPai.clearProgress()
+                        }
+                    }
                 }
-
-                override fun succeeded() {
-                    if (offset == 0)
-                        mObsListaMal.setAll(listaResults)
-                    else
-                        mObsListaMal.addAll(listaResults)
-
-                    tbViewMal.items = mObsListaMal
-                    tbViewMal.refresh()
-
-                    if (mObsListaMal.isEmpty())
-                        Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
-                    else if (atualizado)
-                        mComicInfo = comicInfo
-
-                    btnMalConsultar.isDisable = false
-                    isConsultandoMal = false
-                    controllerPai.setCursor(null)
+                Thread(consulta).start()
+            } catch (e: Exception) {
+                mLOG.error("Erro ao iniciar a consulta do MyAnimeList.", e)
+                btnMalConsultar.isDisable = false
+                isConsultandoMal = false
+                controllerPai.setCursor(null)
+                if (!progressBound) {
                     controllerPai.clearProgress()
                 }
-
-                override fun failed() {
-                    btnMalConsultar.isDisable = false
-                    isConsultandoMal = false
-                    controllerPai.setCursor(null)
-                    controllerPai.clearProgress()
-                }
-
-                override fun cancelled() {
-                    btnMalConsultar.isDisable = false
-                    isConsultandoMal = false
-                    controllerPai.setCursor(null)
-                    controllerPai.clearProgress()
-                }
+                AlertasModal.erro("Erro ao iniciar a consulta", e.message ?: "Erro desconhecido")
             }
-            Thread(consulta).start()
         } else {
             AlertasModal.alerta("Alerta", "Necessário informar um id ou nome.")
             txtMalNome.requestFocus()
@@ -1051,6 +1132,8 @@ class AbaPastasController : Initializable {
                     habilita(btnCarregar, "Carregar")
                 }
             }
+            controllerPai.rootProgress.progressProperty().unbind()
+            controllerPai.rootMessage.textProperty().unbind()
             controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
             controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
             Thread(processar).start()
@@ -1147,6 +1230,8 @@ class AbaPastasController : Initializable {
                     habilita(btnRenomear, "Renomear")
                 }
             }
+            controllerPai.rootProgress.progressProperty().unbind()
+            controllerPai.rootMessage.textProperty().unbind()
             controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
             controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
             Thread(processar).start()
@@ -1203,14 +1288,7 @@ class AbaPastasController : Initializable {
     }
 
     private fun configuraTextEdit() {
-        var oldPasta = ""
         txtPasta.focusedProperty().addListener { _: ObservableValue<out Boolean>?, oldPropertyValue: Boolean, newPropertyValue: Boolean ->
-            if (newPropertyValue)
-                oldPasta = txtPasta.text
-
-            if (oldPropertyValue && txtPasta.text.compareTo(oldPasta, ignoreCase = true) != 0)
-                carregarItens()
-
             txtPasta.unFocusColor = Color.web("#4059a9")
         }
 
@@ -1710,6 +1788,9 @@ class AbaPastasController : Initializable {
         val normalizarTitulo = MenuItem("Normalizar título (Ctrl + N)")
         normalizarTitulo.setOnAction { normalizarTitulos() }
 
+        val substituirTitulo = MenuItem("Substituir título (Ctrl + R)")
+        substituirTitulo.setOnAction { onBtnSubstituirTitulo() }
+
         val remover = MenuItem("Remover registro (Del)")
         remover.setOnAction { removerRegistro() }
         menu.items.addAll(
@@ -1733,6 +1814,7 @@ class AbaPastasController : Initializable {
             ajustarTitulos,
             ajustarTodosTitulos,
             normalizarTitulo,
+            substituirTitulo,
             SeparatorMenuItem(),
             remover
         )
@@ -1926,6 +2008,12 @@ class AbaPastasController : Initializable {
                 KeyCode.N -> {
                     if (e.isControlDown) {
                         normalizarTitulos()
+                        e.consume()
+                    }
+                }
+                KeyCode.R -> {
+                    if (e.isControlDown) {
+                        onBtnSubstituirTitulo()
                         e.consume()
                     }
                 }
@@ -2177,7 +2265,7 @@ class AbaPastasController : Initializable {
                 controllerPai.rootMessage.textProperty().unbind()
                 controllerPai.clearProgress()
                 habilita()
-                Notificacoes.notificacao(Notificacao.SUCESSO, "Drag & Drop", "Processamento de capas concluído.")
+                Notificacoes.notificacao(Notificacao.SUCESSO, "Extrair Capas e ComicInfo", "Processamento de capas concluído.")
             }
 
             override fun failed() {
@@ -2187,6 +2275,8 @@ class AbaPastasController : Initializable {
                 habilita()
             }
         }
+        controllerPai.rootProgress.progressProperty().unbind()
+        controllerPai.rootMessage.textProperty().unbind()
         controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
         controllerPai.rootMessage.textProperty().bind(task.messageProperty())
         Thread(task).start()

@@ -293,6 +293,8 @@ class AbaComicInfoController : Initializable {
                 }
             }
 
+            controllerPai.rootProgress.progressProperty().unbind()
+            controllerPai.rootMessage.textProperty().unbind()
             controllerPai.rootProgress.progressProperty().bind(processa.progressProperty())
             controllerPai.rootMessage.textProperty().bind(processa.messageProperty())
             val t = Thread(processa)
@@ -593,6 +595,8 @@ class AbaComicInfoController : Initializable {
                 tbViewProcessar.refresh()
             }
         }
+        controllerPai.rootProgress.progressProperty().unbind()
+        controllerPai.rootMessage.textProperty().unbind()
         controllerPai.rootProgress.progressProperty().bind(processaOCR.progressProperty())
         controllerPai.rootMessage.textProperty().bind(processaOCR.messageProperty())
         val t = Thread(processaOCR)
@@ -689,6 +693,8 @@ class AbaComicInfoController : Initializable {
                     btnCarregar.isDisable = false
                 }
             }
+            controllerPai.rootProgress.progressProperty().unbind()
+            controllerPai.rootMessage.textProperty().unbind()
             controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
             controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
             Thread(processar).start()
@@ -803,6 +809,8 @@ class AbaComicInfoController : Initializable {
                 habilita()
             }
         }
+        controllerPai.rootProgress.progressProperty().unbind()
+        controllerPai.rootMessage.textProperty().unbind()
         controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
         controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
         Thread(processar).start()
@@ -838,6 +846,8 @@ class AbaComicInfoController : Initializable {
                 habilita()
             }
         }
+        controllerPai.rootProgress.progressProperty().unbind()
+        controllerPai.rootMessage.textProperty().unbind()
         controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
         controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
         Thread(processar).start()

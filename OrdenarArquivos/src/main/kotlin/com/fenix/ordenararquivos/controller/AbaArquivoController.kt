@@ -906,6 +906,8 @@ class AbaArquivoController : Initializable {
         }
 
         controllerPai.setCursor(Cursor.WAIT)
+        controllerPai.rootProgress.progressProperty().unbind()
+        controllerPai.rootMessage.textProperty().unbind()
         controllerPai.rootProgress.progressProperty().bind(ocr.progressProperty())
         Thread(ocr).start()
     }
@@ -943,66 +945,88 @@ class AbaArquivoController : Initializable {
 
             btnMalConsultar.isDisable = true
             controllerPai.setCursor(Cursor.WAIT)
-            val useProgress = !controllerPai.rootProgress.progressProperty().isBound
-            if (useProgress) {
-                controllerPai.rootProgress.progress = -1.0
-                controllerPai.rootMessage.text = "Consultando MyAnimeList..."
-            }
 
-            val consulta: Task<Void> = object : Task<Void>() {
-                private var listaResults = listOf<Mal>()
-                private var atualizado = false
+            val progressBound = controllerPai.rootProgress.progressProperty().isBound
+            val messageBound = controllerPai.rootMessage.textProperty().isBound
 
-                override fun call(): Void? {
-                    try {
-                        listaResults = mServiceComicInfo.getMal(id, nome, offset)
-                        if (id != null && listaResults.size == 1) {
-                            mServiceComicInfo.updateMal(comicInfo, listaResults.first(), linguagem)
-                            atualizado = true
+            try {
+                if (!progressBound) {
+                    controllerPai.rootProgress.progress = -1.0
+                }
+                if (!messageBound) {
+                    controllerPai.rootMessage.text = "Consultando MyAnimeList..."
+                }
+
+                val consulta: Task<Void> = object : Task<Void>() {
+                    private var listaResults = listOf<Mal>()
+                    private var atualizado = false
+
+                    override fun call(): Void? {
+                        try {
+                            listaResults = mServiceComicInfo.getMal(id, nome, offset)
+                            if (id != null && listaResults.size == 1) {
+                                mServiceComicInfo.updateMal(comicInfo, listaResults.first(), linguagem)
+                                atualizado = true
+                            }
+                        } catch (e: Exception) {
+                            mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
+                            Platform.runLater {
+                                Notificacoes.notificacao(Notificacao.ERRO, "My Anime List", "Erro ao realizar a consulta do MyAnimeList. " + e.message)
+                            }
                         }
-                    } catch (e: Exception) {
-                        mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
-                        Platform.runLater {
-                            Notificacoes.notificacao(Notificacao.ERRO, "My Anime List", "Erro ao realizar a consulta do MyAnimeList. " + e.message)
+                        return null
+                    }
+
+                    override fun succeeded() {
+                        if (offset == 0)
+                            mObsListaMal.setAll(listaResults)
+                        else
+                            mObsListaMal.addAll(listaResults)
+
+                        tbViewMal.items = mObsListaMal
+
+                        if (mObsListaMal.isEmpty())
+                            Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
+                        else if (atualizado)
+                            mComicInfo = comicInfo
+
+                        btnMalConsultar.isDisable = false
+                        isConsultandoMal = false
+                        controllerPai.setCursor(null)
+                        if (!progressBound) {
+                            controllerPai.clearProgress()
                         }
                     }
-                    return null
+
+                    override fun failed() {
+                        btnMalConsultar.isDisable = false
+                        isConsultandoMal = false
+                        controllerPai.setCursor(null)
+                        if (!progressBound) {
+                            controllerPai.clearProgress()
+                        }
+                    }
+
+                    override fun cancelled() {
+                        btnMalConsultar.isDisable = false
+                        isConsultandoMal = false
+                        controllerPai.setCursor(null)
+                        if (!progressBound) {
+                            controllerPai.clearProgress()
+                        }
+                    }
                 }
-
-                override fun succeeded() {
-                    if (offset == 0)
-                        mObsListaMal.setAll(listaResults)
-                    else
-                        mObsListaMal.addAll(listaResults)
-
-                    tbViewMal.items = mObsListaMal
-
-                    if (mObsListaMal.isEmpty())
-                        Notificacoes.notificacao(Notificacao.ALERTA, "My Anime List", "Nenhum item encontrado.")
-                    else if (atualizado)
-                        mComicInfo = comicInfo
-
-                    btnMalConsultar.isDisable = false
-                    isConsultandoMal = false
-                    controllerPai.setCursor(null)
-                    if (useProgress) controllerPai.clearProgress()
+                Thread(consulta).start()
+            } catch (e: Exception) {
+                mLOG.error("Erro ao iniciar a consulta do MyAnimeList.", e)
+                btnMalConsultar.isDisable = false
+                isConsultandoMal = false
+                controllerPai.setCursor(null)
+                if (!progressBound) {
+                    controllerPai.clearProgress()
                 }
-
-                override fun failed() {
-                    btnMalConsultar.isDisable = false
-                    isConsultandoMal = false
-                    controllerPai.setCursor(null)
-                    if (useProgress) controllerPai.clearProgress()
-                }
-
-                override fun cancelled() {
-                    btnMalConsultar.isDisable = false
-                    isConsultandoMal = false
-                    controllerPai.setCursor(null)
-                    if (useProgress) controllerPai.clearProgress()
-                }
+                AlertasModal.erro("Erro ao iniciar a consulta", e.message ?: "Erro desconhecido")
             }
-            Thread(consulta).start()
         } else {
             AlertasModal.alerta("Alerta", "Necessário informar um id ou nome.")
             txtMalNome.requestFocus()
@@ -4033,6 +4057,8 @@ class AbaArquivoController : Initializable {
             }
         }
 
+        controllerPai.rootProgress.progressProperty().unbind()
+        controllerPai.rootMessage.textProperty().unbind()
         controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
         controllerPai.rootMessage.textProperty().bind(task.messageProperty())
         Thread(task).start()
