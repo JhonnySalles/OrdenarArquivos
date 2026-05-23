@@ -21,17 +21,19 @@ class TarParse : Parse {
 
     @Throws(IOException::class)
     override fun parse(file: File) {
-        val fis = BufferedInputStream(FileInputStream(file))
-        val `is` = TarArchiveInputStream(fis)
-        var entry = `is`.nextTarEntry
-        while (entry != null) {
-            if (entry.isDirectory)
-                continue
+        BufferedInputStream(FileInputStream(file)).use { fis ->
+            TarArchiveInputStream(fis).use { `is` ->
+                var entry = `is`.nextTarEntry
+                while (entry != null) {
+                    if (entry.isDirectory)
+                        continue
 
-            if (Utils.isImage(entry.name))
-                mEntradas.add(TarEntry(entry, Utils.toByteArray(`is`)))
+                    if (Utils.isImage(entry.name))
+                        mEntradas.add(TarEntry(entry, Utils.toByteArray(`is`)))
 
-            entry = `is`.nextTarEntry
+                    entry = `is`.nextTarEntry
+                }
+            }
         }
         Collections.sort(mEntradas, object : NaturalOrderComparator<TarEntry>() {
             override fun stringValue(o: TarEntry): String = o.entry.name

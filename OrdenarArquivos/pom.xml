@@ -41,8 +41,8 @@
         <ocr.tess4j.version>5.15.0</ocr.tess4j.version>
         <ocr.opencv.version>3.2.0-1</ocr.opencv.version>
         <ocr.libsvm.version>3.35</ocr.libsvm.version>
-        <junrar.version>7.5.2</junrar.version>
-        <apache-commons.version>1.21</apache-commons.version>
+        <junrar.version>7.5.10</junrar.version>
+        <apache-commons.version>1.26.0</apache-commons.version>
         <ocr.colt.version>1.2.0</ocr.colt.version>
         <ocr.okhttp.version>2.7.5</ocr.okhttp.version>
         <ocr.json.version>20240303</ocr.json.version>
