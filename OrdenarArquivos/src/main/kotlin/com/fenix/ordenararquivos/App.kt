@@ -3,9 +3,12 @@ package com.fenix.ordenararquivos
 import com.fenix.ordenararquivos.model.enums.Argumentos
 import com.fenix.ordenararquivos.process.CopiarOpfEpub
 import io.sentry.Sentry
+import io.sentry.SentryOptions
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileNotFoundException
+import java.nio.file.FileSystemException
 import java.util.*
 
 object App {
@@ -34,6 +37,14 @@ object App {
                     options.dsn = dsn
                     options.environment = if (!environment.isNullOrBlank()) environment else "development"
                     options.tracesSampleRate = 1.0
+                    options.beforeSend = SentryOptions.BeforeSendCallback { event, _ ->
+                        val throwable = event.throwable
+                        if (throwable != null && isFileOrFolderException(throwable)) {
+                            null
+                        } else {
+                            event
+                        }
+                    }
                 }
                 Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
                     mLog.error("Erro fatal não capturado na thread ${thread.name} -- ${throwable.message}", throwable)
@@ -44,6 +55,17 @@ object App {
         } catch (e: Exception) {
             mLog.error("Falha ao inicializar o Sentry: ${e.message}")
         }
+    }
+
+    internal fun isFileOrFolderException(throwable: Throwable?): Boolean {
+        var current: Throwable? = throwable
+        while (current != null) {
+            if (current is FileSystemException || current is FileNotFoundException) {
+                return true
+            }
+            current = current.cause
+        }
+        return false
     }
 
     @JvmStatic

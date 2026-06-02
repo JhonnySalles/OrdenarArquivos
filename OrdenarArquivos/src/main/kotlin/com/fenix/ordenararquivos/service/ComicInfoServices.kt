@@ -434,21 +434,27 @@ class ComicInfoServices {
                 val gson = Gson()
                 val element: JsonElement = gson.fromJson(responseBody, JsonElement::class.java)
                 val jsonObject: JsonObject = element.asJsonObject
-                val list: JsonArray = jsonObject.getAsJsonArray("data")
+                val list: JsonArray? = jsonObject.getAsJsonArray("data")
 
-                var characters = ""
-                for (item in list) {
-                    val obj: JsonObject = item.asJsonObject
-                    var character: String = obj.getAsJsonObject("character").get("name").asString
-                    if (character.contains(", "))
-                        character = character.replace(",", "")
-                    else if (character.contains(","))
-                        character = character.replace(",", " ")
+                if (list != null) {
+                    var characters = ""
+                    for (item in list) {
+                        val obj: JsonObject? = item?.asJsonObject
+                        val characterObj = obj?.getAsJsonObject("character")
+                        var character: String? = characterObj?.get("name")?.asString
+                        if (character != null) {
+                            if (character.contains(", "))
+                                character = character.replace(",", "")
+                            else if (character.contains(","))
+                                character = character.replace(",", " ")
 
-                    characters += character + if (obj.get("role").asString.equals("main", true)) " (" + obj.get("role").asString + "), " else ", "
+                            val role = obj?.get("role")?.asString ?: ""
+                            characters += character + if (role.equals("main", true)) " ($role), " else ", "
+                        }
+                    }
+                    if (characters.isNotEmpty())
+                        comic.characters = characters.substring(0, characters.lastIndexOf(", ")) + "."
                 }
-                if (characters.isNotEmpty())
-                    comic.characters = characters.substring(0, characters.lastIndexOf(", ")) + "."
             }
         } catch (e: Exception) {
             mLOG.error("Erro ao consultar os personagens. " + e.message, e)

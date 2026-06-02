@@ -148,10 +148,15 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
     var registros = 0
     var processados: String = ""
 
-    private fun getIdCloud(manga: Manga) : String = manga.nome + " - " + manga.volume
+    private fun getIdCloud(manga: Manga) : String = sanitizeId(manga.nome + " - " + manga.volume)
     private fun getIdCloud(comic: ComicInfo) : String {
         val id = comic.comic
-        return if (!id.isNullOrEmpty()) id else comic.series.takeIf { !it.isNullOrEmpty() } ?: "UNKNOWN_${comic.hashCode()}"
+        val finalId = if (!id.isNullOrEmpty()) id else comic.series.takeIf { !it.isNullOrEmpty() } ?: "UNKNOWN_${comic.hashCode()}"
+        return sanitizeId(finalId)
+    }
+
+    fun sanitizeId(id: String): String {
+        return id.replace("/", "-").replace("\\", "-")
     }
 
     private fun envia(): Boolean {
@@ -220,12 +225,20 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
                 val docRefExcluir = DB.collection(collectExclusao)
 
                 for (ex in exclusoes) {
-                    val id = ex.first
+                    val id = sanitizeId(ex.first)
                     docRefOrdenar.document(id).delete().get()
                     indexOrdenar.remove(id)
 
                     val data = mutableMapOf<String, Any>()
                     data["sincronizacao"] = LocalDateTime.now().format(formaterDataHora)
+                    val parts = ex.first.split(" - ")
+                    if (parts.size >= 2) {
+                        data["nome"] = parts.subList(0, parts.size - 1).joinToString(" - ")
+                        data["volume"] = parts.last()
+                    } else {
+                        data["nome"] = ex.first
+                        data["volume"] = ""
+                    }
                     docRefExcluir.document(id).set(data).get()
                 }
                 
@@ -347,8 +360,8 @@ class SincronizacaoServices(private val controller: TelaInicialController) : Tim
                 val data = LocalDateTime.parse(sync, formaterDataHora)
                 if (data.isAfter(sincronizacao!!.recebimento)) {
                     val arquivo = doc.id
-                    val nome = arquivo.substringBeforeLast("-").trim()
-                    val volume = arquivo.substringAfterLast("-").trim()
+                    val nome = doc.getString("nome") ?: arquivo.substringBeforeLast("-").trim()
+                    val volume = doc.getString("volume") ?: arquivo.substringAfterLast("-").trim()
                     val manga = serviceManga.find(nome, volume)
                     if (manga != null) {
                         serviceManga.insereExclusao(arquivo, dataEnvioBloqueio)

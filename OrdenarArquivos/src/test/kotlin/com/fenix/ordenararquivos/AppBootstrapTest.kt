@@ -3,6 +3,7 @@ package com.fenix.ordenararquivos
 import com.fenix.ordenararquivos.process.CopiarOpfEpub
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -11,7 +12,12 @@ import org.mockito.MockedStatic
 import org.mockito.Mockito.atLeastOnce
 import org.mockito.Mockito.mockStatic
 import java.io.File
+import java.io.FileNotFoundException
+import java.io.IOException
+import java.nio.file.AccessDeniedException
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
+import java.nio.file.Paths
 
 class AppBootstrapTest {
 
@@ -61,5 +67,38 @@ class AppBootstrapTest {
         }
         
         assertTrue(secretsFile.exists(), "Arquivo de segredos deveria existir para o teste.")
+    }
+
+    @Test
+    fun testIsFileOrFolderExceptionFiltering() {
+        // Exceções que devem ser filtradas (retornar true)
+        val accessDenied = AccessDeniedException("L:\\some\\path")
+        val noSuchFile = NoSuchFileException("D:\\some\\path")
+        val fileNotFound = FileNotFoundException("File not found")
+        val wrappedException = RuntimeException("Wrapped error", accessDenied)
+
+        assertTrue(App.isFileOrFolderException(accessDenied))
+        assertTrue(App.isFileOrFolderException(noSuchFile))
+        assertTrue(App.isFileOrFolderException(fileNotFound))
+        assertTrue(App.isFileOrFolderException(wrappedException))
+
+        // Exceções que não devem ser filtradas (retornar false)
+        val genericIo = IOException("Generic IO issue")
+        val genericRuntime = RuntimeException("Generic runtime issue")
+
+        assertFalse(App.isFileOrFolderException(genericIo))
+        assertFalse(App.isFileOrFolderException(genericRuntime))
+        assertFalse(App.isFileOrFolderException(null))
+    }
+
+    @Test
+    fun testSanitizeId() {
+        val mockController = org.mockito.Mockito.mock(com.fenix.ordenararquivos.controller.TelaInicialController::class.java)
+        com.fenix.ordenararquivos.database.DataBase.isTeste = true
+        val service = com.fenix.ordenararquivos.service.SincronizacaoServices(mockController)
+        
+        org.junit.jupiter.api.Assertions.assertEquals("pt-Tomodachi", service.sanitizeId("pt/Tomodachi"))
+        org.junit.jupiter.api.Assertions.assertEquals("Manga - Name", service.sanitizeId("Manga \\ Name"))
+        org.junit.jupiter.api.Assertions.assertEquals("clean-id-123", service.sanitizeId("clean-id-123"))
     }
 }
