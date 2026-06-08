@@ -1248,8 +1248,10 @@ class AbaPastasController : Initializable {
         mangas.forEach { m -> volumes.putAll(m.caminhos.associate { c -> c.capitulo to m.volume }) }
         val formater = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
         val letras = Utils.NOT_NUMBER_PATTERN.toRegex()
+        val actions = mutableListOf<ReversibleAction>()
         for (item in mObsListaProcessar) {
-            item.volume = if (item.capitulo > 0) {
+            val oldVal = item.volume
+            val newVal = if (item.capitulo > 0) {
                 val capStr = formater.format(item.capitulo)
                 val vol = volumes[capStr]
                 if (vol != null) {
@@ -1259,6 +1261,13 @@ class AbaPastasController : Initializable {
                     volumes[capInteiroStr]?.replace(letras, "")?.toFloatOrNull() ?: 0f
                 }
             } else 0f
+            if (oldVal != newVal) {
+                actions.add(PropertyChangeAction(item, oldVal, newVal) { it, v -> it.volume = v })
+                item.volume = newVal
+            }
+        }
+        if (actions.isNotEmpty()) {
+            mHistory.pushAction(CompositeAction(actions))
         }
         mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
         tbViewProcessar.refresh()
@@ -1761,8 +1770,15 @@ class AbaPastasController : Initializable {
             tbViewProcessar.selectionModel.selectedItem?.run {
                 val index = mObsListaProcessar.indexOf(this)
                 if (index != -1) {
-                    for (i in index until mObsListaProcessar.size)
-                        mObsListaProcessar[i].titulo = ""
+                    val actions = mutableListOf<ReversibleAction>()
+                    for (i in index until mObsListaProcessar.size) {
+                        val item = mObsListaProcessar[i]
+                        if (item.titulo.isNotEmpty()) {
+                            actions.add(PropertyChangeAction(item, item.titulo, "") { it, v -> it.titulo = v })
+                            item.titulo = ""
+                        }
+                    }
+                    if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                     tbViewProcessar.refresh()
                 }
             }
@@ -1772,8 +1788,15 @@ class AbaPastasController : Initializable {
             tbViewProcessar.selectionModel.selectedItem?.run {
                 val index = mObsListaProcessar.indexOf(this)
                 if (index != -1) {
-                    for (i in index downTo 0)
-                        mObsListaProcessar[i].titulo = ""
+                    val actions = mutableListOf<ReversibleAction>()
+                    for (i in index downTo 0) {
+                        val item = mObsListaProcessar[i]
+                        if (item.titulo.isNotEmpty()) {
+                            actions.add(PropertyChangeAction(item, item.titulo, "") { it, v -> it.titulo = v })
+                            item.titulo = ""
+                        }
+                    }
+                    if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                     tbViewProcessar.refresh()
                 }
             }
@@ -1961,7 +1984,7 @@ class AbaPastasController : Initializable {
             when (e.code) {
                 KeyCode.Z -> {
                     if (e.isControlDown) {
-                        val action = mHistory.undo()
+                        val action = if (e.isShiftDown) mHistory.redo() else mHistory.undo()
                         if (action != null) {
                             tbViewProcessar.refresh()
                             (action.getFirstAffectedItem() as? Pasta)?.let { item ->

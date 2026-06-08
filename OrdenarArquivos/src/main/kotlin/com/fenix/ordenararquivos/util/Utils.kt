@@ -228,6 +228,46 @@ class Utils {
             return sb.toString()
         }
 
+        fun normalizaSentenca(texto: String, locale: Locale = Locale.getDefault()): String {
+            val trim = texto.trim()
+            if (trim.isEmpty()) return texto
+            
+            val lower = trim.lowercase(locale)
+            val formatado = lower.replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+            
+            return if (formatado.endsWith(".")) formatado else "$formatado."
+        }
+
+        fun toTitleCaseInteligente(texto: String, locale: Locale = Locale.getDefault()): String {
+            val trim = texto.trim()
+            if (trim.isEmpty()) return texto
+
+            val palavras = trim.split(Regex("\\s+"))
+            val ignoreWords = setOf("o", "a", "os", "as", "um", "uns", "uma", "umas", "de", "do", "da", "dos", "das", "em", "no", "na", "nos", "nas", "por", "para", "com", "e", "ou")
+            
+            val sb = java.lang.StringBuilder()
+            for (i in palavras.indices) {
+                val palavra = palavras[i].lowercase(locale)
+                if (palavra.isEmpty()) continue
+                
+                if (i > 0) {
+                    sb.append(" ")
+                }
+                
+                if (i == 0) {
+                    sb.append(palavra.replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() })
+                } else {
+                    if (palavra.length <= 2 || ignoreWords.contains(palavra)) {
+                        sb.append(palavra)
+                    } else {
+                        sb.append(palavra.replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() })
+                    }
+                }
+            }
+            val result = sb.toString()
+            return if (result.endsWith(".")) result else "$result."
+        }
+
         fun MD5(string: String): String {
             return try {
                 val digest = MessageDigest.getInstance("MD5")

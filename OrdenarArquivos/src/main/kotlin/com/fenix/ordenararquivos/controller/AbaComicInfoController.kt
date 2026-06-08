@@ -1058,25 +1058,90 @@ class AbaComicInfoController : Initializable {
         Thread(task).start()
     }
 
-    private fun gerarTagItem(item: Processar, language: Linguagem, isAjustar: Boolean = false) {
+    private fun gerarTagItem(item: Processar, language: Linguagem, isAjustar: Boolean = false): PropertyChangeAction<Processar, String>? {
+        val oldTags = item.tags
+        
+        val mapTitulosExistentes = if (isAjustar && oldTags.isNotEmpty()) {
+            oldTags.split("\n").associate { linha ->
+                val imagem = linha.substringBefore(Utils.SEPARADOR_IMAGEM)
+                val resto = linha.substringAfter(Utils.SEPARADOR_IMAGEM)
+                val tagSemImportacao = if (resto.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                    resto.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
+                } else {
+                    resto.trim()
+                }
+                val titulo = if (tagSemImportacao.contains("第") || tagSemImportacao.contains("capítulo") || tagSemImportacao.contains("capitulo") || tagSemImportacao.contains("chapter")) {
+                    val partes = tagSemImportacao.split(Regex("—|-"), 2)
+                    if (partes.size > 1) partes[1].trim() else ""
+                } else {
+                    tagSemImportacao
+                }
+                imagem to titulo
+            }
+        } else {
+            emptyMap()
+        }
+
+        val mapImportacoesExistentes = if (isAjustar && oldTags.isNotEmpty()) {
+            oldTags.split("\n").associate { linha ->
+                val imagem = linha.substringBefore(Utils.SEPARADOR_IMAGEM)
+                val resto = linha.substringAfter(Utils.SEPARADOR_IMAGEM)
+                val importacao = if (resto.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                    Utils.SEPARADOR_IMPORTACAO + " " + resto.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim()
+                } else {
+                    ""
+                }
+                imagem to importacao
+            }
+        } else {
+            emptyMap()
+        }
+
         val tags = item.comicInfo?.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { p ->
             val b = p.bookmark!!.split("-", "—")[0].trim()
             val mark = b.lowercase()
-            val prefix = if (mark.contains("第") || mark.contains("capítulo") || mark.contains("capitulo") || mark.contains("chapter")) {
+            var prefix = if (mark.contains("第") || mark.contains("capítulo") || mark.contains("capitulo") || mark.contains("chapter")) {
                 val capitulo = Utils.getNumber(if (mark.contains("第")) Utils.fromNumberJapanese(b) else b) ?: 0.0
-                when (language) {
+                val formattedCap = when (language) {
                     Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(mDecimal.format(capitulo))}話"
                     Linguagem.PORTUGUESE -> "Capítulo ${mDecimal.format(capitulo)}"
                     else -> "Chapter ${mDecimal.format(capitulo)}"
-                } + if (isAjustar) " — " + p.bookmark!!.substringAfterLast("-").substringAfterLast("—").trim() else ""
+                }
+                var tagFinal = formattedCap
+                if (isAjustar) {
+                    var titulo = mapTitulosExistentes[p.image.toString()] ?: ""
+                    if (titulo.isEmpty() && !p.bookmark.isNullOrEmpty()) {
+                        val parts = p.bookmark!!.split(Regex("—|-"), 2)
+                        if (parts.size > 1) {
+                            titulo = parts[1].trim()
+                        }
+                    }
+                    if (titulo.isNotEmpty()) {
+                        tagFinal += " — $titulo"
+                    }
+                }
+                tagFinal
             } else b
+
+            if (isAjustar) {
+                val importacao = mapImportacoesExistentes[p.image.toString()] ?: ""
+                if (importacao.isNotEmpty()) {
+                    prefix += " $importacao"
+                }
+            }
 
             p.image.toString() + Utils.SEPARADOR_IMAGEM + prefix
         }?.toList() ?: emptyList()
-        item.tags = tags.joinToString(separator = "\n")
+        val newTags = tags.joinToString(separator = "\n")
+        if (oldTags != newTags) {
+            item.tags = newTags
+            return PropertyChangeAction(item, oldTags, newTags) { i, v -> i.tags = v }
+        }
+        return null
     }
 
-    private fun normalizarTagItem(item: Processar, language: Linguagem) {
+    private fun normalizarTagItem(item: Processar, language: Linguagem): PropertyChangeAction<Processar, String>? {
+        val oldTags = item.tags
         val linhas = item.tags.split("\n")
         val tags = mutableListOf<String>()
         for (linha in linhas) {
@@ -1107,7 +1172,7 @@ class AbaComicInfoController : Initializable {
                 
                 var resultLine = "$imagem${Utils.SEPARADOR_IMAGEM}$formattedCap"
                 if (originalTitle.isNotEmpty()) {
-                    resultLine += " — ${Utils.normaliza(originalTitle)}"
+                    resultLine += " — ${Utils.normalizaSentenca(originalTitle)}"
                 }
                 
                 // Processa importPart ($# Número|Título Importado)
@@ -1117,7 +1182,7 @@ class AbaComicInfoController : Initializable {
                     
                     resultLine += " ${Utils.SEPARADOR_IMPORTACAO} $importNum"
                     if (importTitle.isNotEmpty()) {
-                        resultLine += "${Utils.SEPARADOR_CAPITULO}${Utils.normaliza(importTitle)}"
+                        resultLine += "${Utils.SEPARADOR_CAPITULO}${Utils.normalizaSentenca(importTitle)}"
                     }
                 }
                 
@@ -1125,8 +1190,72 @@ class AbaComicInfoController : Initializable {
             } else
                 tags.add(linha)
         }
-        item.tags = tags.joinToString(separator = "\n")
+        val newTags = tags.joinToString(separator = "\n")
+        if (oldTags != newTags) {
+            item.tags = newTags
+            return PropertyChangeAction(item, oldTags, newTags) { i, v -> i.tags = v }
+        }
+        return null
     }
+
+    private fun formatarTitleCaseTagItem(item: Processar, language: Linguagem): PropertyChangeAction<Processar, String>? {
+        val oldTags = item.tags
+        val linhas = item.tags.split("\n")
+        val tags = mutableListOf<String>()
+        for (linha in linhas) {
+            val ln = linha.lowercase()
+            if (ln.contains("第") || ln.contains("capítulo") || ln.contains("capitulo") || ln.contains("chapter")) {
+                val imagem = linha.substringBefore(Utils.SEPARADOR_IMAGEM)
+                val resto = linha.substringAfter(Utils.SEPARADOR_IMAGEM)
+                
+                var prefixPart = resto
+                var importPart = ""
+                
+                if (resto.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                    prefixPart = resto.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
+                    importPart = resto.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim()
+                }
+                
+                // Processa prefixPart (Capítulo + Título Original)
+                val capParts = prefixPart.split(Regex("—|-"), 2)
+                val capLabel = capParts[0].trim()
+                val originalTitle = if (capParts.size > 1) capParts[1].trim() else ""
+                
+                val numero = Utils.getNumber(if (capLabel.contains("第")) Utils.fromNumberJapanese(capLabel) else capLabel) ?: 0.0
+                val formattedCap = when (language) {
+                    Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(mDecimal.format(numero))}話"
+                    Linguagem.PORTUGUESE -> "Capítulo ${mDecimal.format(numero)}"
+                    else -> "Chapter ${mDecimal.format(numero)}"
+                }
+                
+                var resultLine = "$imagem${Utils.SEPARADOR_IMAGEM}$formattedCap"
+                if (originalTitle.isNotEmpty()) {
+                    resultLine += " — ${Utils.toTitleCaseInteligente(originalTitle)}"
+                }
+                
+                // Processa importPart ($# Número|Título Importado)
+                if (importPart.isNotEmpty()) {
+                    val importNum = importPart.substringBefore(Utils.SEPARADOR_CAPITULO).trim()
+                    val importTitle = if (importPart.contains(Utils.SEPARADOR_CAPITULO)) importPart.substringAfter(Utils.SEPARADOR_CAPITULO).trim() else ""
+                    
+                    resultLine += " ${Utils.SEPARADOR_IMPORTACAO} $importNum"
+                    if (importTitle.isNotEmpty()) {
+                        resultLine += "${Utils.SEPARADOR_CAPITULO}${Utils.toTitleCaseInteligente(importTitle)}"
+                    }
+                }
+                
+                tags.add(resultLine)
+            } else
+                tags.add(linha)
+        }
+        val newTags = tags.joinToString(separator = "\n")
+        if (oldTags != newTags) {
+            item.tags = newTags
+            return PropertyChangeAction(item, oldTags, newTags) { i, v -> i.tags = v }
+        }
+        return null
+    }
+
 
     private fun popupAmazon(item: Processar) {
         val callback: Callback<ComicInfo, Boolean> = Callback<ComicInfo, Boolean> { param ->
@@ -1248,8 +1377,11 @@ class AbaComicInfoController : Initializable {
                 controllerPai.setCursor(Cursor.WAIT)
                 val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
                 val index = mObsListaProcessar.indexOf(tbViewProcessar.selectionModel.selectedItem)
-                for (i in 0 until index + 1)
-                    gerarTagItem(mObsListaProcessar[i], language)
+                val actions = mutableListOf<ReversibleAction>()
+                for (i in 0 until index + 1) {
+                    gerarTagItem(mObsListaProcessar[i], language)?.let { actions.add(it) }
+                }
+                if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                 tbViewProcessar.refresh()
                 controllerPai.setCursor(null)
             }
@@ -1259,7 +1391,7 @@ class AbaComicInfoController : Initializable {
         gerarTagsAtual.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
-                gerarTagItem(tbViewProcessar.selectionModel.selectedItem, language)
+                gerarTagItem(tbViewProcessar.selectionModel.selectedItem, language)?.let { mHistory.pushAction(it) }
                 tbViewProcessar.refresh()
             }
         }
@@ -1268,7 +1400,7 @@ class AbaComicInfoController : Initializable {
         tagsAjustar.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
-                gerarTagItem(tbViewProcessar.selectionModel.selectedItem, language, isAjustar = true)
+                gerarTagItem(tbViewProcessar.selectionModel.selectedItem, language, isAjustar = true)?.let { mHistory.pushAction(it) }
                 tbViewProcessar.refresh()
             }
         }
@@ -1277,7 +1409,16 @@ class AbaComicInfoController : Initializable {
         tagsNormalizar.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
-                normalizarTagItem(tbViewProcessar.selectionModel.selectedItem, language)
+                normalizarTagItem(tbViewProcessar.selectionModel.selectedItem, language)?.let { mHistory.pushAction(it) }
+                tbViewProcessar.refresh()
+            }
+        }
+
+        val tagsTitleCase = MenuItem("Formatar Title Case (Ctrl + Shift + N)")
+        tagsTitleCase.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null) {
+                val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+                formatarTitleCaseTagItem(tbViewProcessar.selectionModel.selectedItem, language)?.let { mHistory.pushAction(it) }
                 tbViewProcessar.refresh()
             }
         }
@@ -1405,7 +1546,9 @@ class AbaComicInfoController : Initializable {
             gerarTagsAtual,
             tagsAjustar,
             tagsNormalizar,
+            tagsTitleCase,
             SeparatorMenuItem(),
+
             processarOcr,
             visualizarSumario,
             SeparatorMenuItem(),
@@ -1426,7 +1569,7 @@ class AbaComicInfoController : Initializable {
             if (event.isControlDown) {
                 when (event.code) {
                     KeyCode.Z -> {
-                        val action = mHistory.undo()
+                        val action = if (event.isShiftDown) mHistory.redo() else mHistory.undo()
                         if (action != null) {
                             tbViewProcessar.refresh()
                             (action.getFirstAffectedItem() as? Processar)?.let { item ->
@@ -1739,7 +1882,7 @@ class AbaComicInfoController : Initializable {
 
                 KeyCode.T -> {
                     if (e.isControlDown) {
-                        gerarTagItem(selecionado, language)
+                        gerarTagItem(selecionado, language)?.let { mHistory.pushAction(it) }
                         tbViewProcessar.refresh()
                         e.consume()
                     }
@@ -1754,7 +1897,7 @@ class AbaComicInfoController : Initializable {
 
                 KeyCode.A -> {
                     if (e.isControlDown) {
-                        gerarTagItem(selecionado, language, isAjustar = true)
+                        gerarTagItem(selecionado, language, isAjustar = true)?.let { mHistory.pushAction(it) }
                         tbViewProcessar.refresh()
                         e.consume()
                     }
@@ -1762,7 +1905,11 @@ class AbaComicInfoController : Initializable {
 
                 KeyCode.N -> {
                     if (e.isControlDown) {
-                        normalizarTagItem(selecionado, language)
+                        if (e.isShiftDown) {
+                            formatarTitleCaseTagItem(selecionado, language)?.let { mHistory.pushAction(it) }
+                        } else {
+                            normalizarTagItem(selecionado, language)?.let { mHistory.pushAction(it) }
+                        }
                         tbViewProcessar.refresh()
                         e.consume()
                     }
@@ -1910,7 +2057,23 @@ class AbaComicInfoController : Initializable {
                 newTags.add("-1${Utils.SEPARADOR_IMAGEM} Capítulo novo $num ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$prefix — $titulo")
             }
 
-            item.tags = newTags.joinToString("\n")
+            val oldTags = item.tags
+            val oldProcessado = item.isProcessado
+            val newTagsStr = if (newTags.isNotEmpty()) newTags.joinToString(separator = "\n") else item.tags
+            val newProcessado = true
+
+            val actions = mutableListOf<ReversibleAction>()
+            if (oldTags != newTagsStr) {
+                actions.add(PropertyChangeAction(item, oldTags, newTagsStr) { i, v -> i.tags = v })
+                item.tags = newTagsStr
+            }
+            if (oldProcessado != newProcessado) {
+                actions.add(PropertyChangeAction(item, oldProcessado, newProcessado) { i, v -> i.isProcessado = v })
+                item.isProcessado = newProcessado
+            }
+            if (actions.isNotEmpty()) {
+                mHistory.pushAction(CompositeAction(actions))
+            }
             tbViewProcessar.refresh()
 
         } catch (e: Exception) {
@@ -2002,7 +2165,12 @@ class AbaComicInfoController : Initializable {
                 }
             }
 
-            item.tags = updatedTags.joinToString("\n")
+            val oldTags = item.tags
+            val newTagsStr = updatedTags.joinToString("\n")
+            if (oldTags != newTagsStr) {
+                mHistory.pushAction(PropertyChangeAction(item, oldTags, newTagsStr) { i, v -> i.tags = v })
+                item.tags = newTagsStr
+            }
             tbViewProcessar.refresh()
 
         } catch (e: Exception) {
