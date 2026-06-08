@@ -71,6 +71,19 @@ object ComicInfo {
         }
     }
 
+    fun processaArquivo(linguagem: Linguagem, arquivo: File, marcaCapitulo: String) {
+        nCancelar = false
+        mMarcarCapitulo = marcaCapitulo
+        try {
+            mJaxBc = JAXBContext.newInstance(Comic::class.java)
+            mService = ComicInfoServices()
+            processa(linguagem, arquivo)
+        } finally {
+            mJaxBc = null
+            mService = null
+        }
+    }
+
     private fun processa(linguagem: Linguagem, arquivo: File) {
         try {
             if (arquivo.name.lowercase(Locale.getDefault()).matches(PATTERN)) {

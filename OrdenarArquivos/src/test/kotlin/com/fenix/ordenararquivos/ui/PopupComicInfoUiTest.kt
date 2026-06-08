@@ -71,6 +71,24 @@ class PopupComicInfoUiTest : BaseTest() {
         }
 
         val root = loader.load<AnchorPane>()
+        
+        // Crie os botões programaticamente para fins do teste de UI
+        val btnCancelar = JFXButton("Cancelar").apply {
+            id = "btnCancelar"
+            setOnAction { controller.onBtnCancelar() }
+        }
+        val btnConfirmar = JFXButton("Confirmar").apply {
+            id = "btnConfirmar"
+            setOnAction { controller.onBtnConfirmar() }
+        }
+        
+        // Adiciona ao root AnchorPane para que o teste encontre e possa interagir
+        val hboxAcoes = javafx.scene.layout.HBox(10.0, btnCancelar, btnConfirmar).apply {
+            AnchorPane.setBottomAnchor(this, 10.0)
+            AnchorPane.setRightAnchor(this, 10.0)
+        }
+        root.children.add(hboxAcoes)
+
         stage.scene = Scene(root)
         applyJFoenixFix(stage.scene)
         stage.show()
@@ -105,7 +123,7 @@ class PopupComicInfoUiTest : BaseTest() {
         val tbViewMal = robot.lookup("#tbViewMal").queryAs(TableView::class.java)
 
         val malResult = Mal(123L, "MAL Title", "Alt Title", null, null, mock())
-        whenever(mockComicInfoService.getMal(anyOrNull(), anyString())).thenReturn(listOf(malResult))
+        whenever(mockComicInfoService.getMal(anyOrNull(), any(), any())).thenReturn(listOf(malResult))
 
         robot.interact {
             txtMalNome.text = "Naruto"

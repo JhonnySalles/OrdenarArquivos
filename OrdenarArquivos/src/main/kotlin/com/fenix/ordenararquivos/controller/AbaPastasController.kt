@@ -1927,7 +1927,7 @@ class AbaPastasController : Initializable {
 
     private fun configurarAtalhosGrid() {
         tbViewProcessar.addEventFilter(KeyEvent.KEY_PRESSED) { e ->
-            if (e.target is javafx.scene.control.TextInputControl) return@addEventFilter
+            if (tbViewProcessar.editingCellProperty().get() != null || e.target is javafx.scene.control.TextInputControl) return@addEventFilter
             
             if (e.code.isLetterKey && !e.isControlDown && !e.isAltDown) {
                 val selecionado = tbViewProcessar.selectionModel.selectedItem

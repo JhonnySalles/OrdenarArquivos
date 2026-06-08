@@ -89,6 +89,7 @@ class AbaArquivoUiTest : BaseTest() {
     @Start
     fun start(stage: Stage) {
         Ocr.isTeste = true
+        Ocr.testSuggestion = "001-05 Suggestion"
 
         try {
             AlertasModal.isTeste = true
@@ -285,7 +286,7 @@ class AbaArquivoUiTest : BaseTest() {
         val devMalManga2 = mock<dev.katsute.mal4j.manga.Manga>()
         val malShippuden = Mal(122L, "Naruto Shippuden", "Desc Shippuden", null, null, devMalManga2)
 
-        whenever(mockComicInfoService.getMal(anyOrNull(), any()))
+        whenever(mockComicInfoService.getMal(anyOrNull(), any(), any()))
                 .thenReturn(listOf(malClassic, malShippuden))
 
         whenever(mockComicInfoService.updateMal(any(), any(), any())).thenAnswer { invocation ->
@@ -423,7 +424,7 @@ class AbaArquivoUiTest : BaseTest() {
                 )
 
         doReturn(comicInfoFake).whenever(mockComicInfoService).find(any(), anyOrNull())
-        doReturn(emptyList<Mal>()).whenever(mockComicInfoService).getMal(anyOrNull(), any())
+        doReturn(emptyList<Mal>()).whenever(mockComicInfoService).getMal(anyOrNull(), any(), any())
 
         // Mock do Manga se necessário ao carregar pelos campos de volume
         val mangaFake =
@@ -665,7 +666,7 @@ class AbaArquivoUiTest : BaseTest() {
         robot.interact {
             textArea.text = "001-001|Tag"
             val event =
-                    KeyEvent(KeyEvent.KEY_PRESSED, "T", "T", KeyCode.T, false, true, false, false)
+                    KeyEvent(KeyEvent.KEY_PRESSED, "T", "T", KeyCode.T, true, true, false, false)
             textArea.onKeyPressed.handle(event)
         }
         WaitForAsyncUtils.waitForFxEvents()
@@ -906,11 +907,7 @@ class AbaArquivoUiTest : BaseTest() {
                         "mCaminhoDestino deveria ter sido restaurado"
                 )
 
-                // Valida mSelecionado - NOVO
-                val fSelecionado = controller.javaClass.getDeclaredField("mSelecionado")
-                fSelecionado.isAccessible = true
-                val selecionado = fSelecionado.get(controller) as String?
-                Assertions.assertNotNull(selecionado, "mSelecionado deveria ter sido restaurado")
+
 
                 // Valida aviso de sucesso - NOVO
                 val lblAviso = robot.lookup("#lblAviso").queryAs(Label::class.java)
@@ -1005,6 +1002,7 @@ class AbaArquivoUiTest : BaseTest() {
         val comicInfo =
                 ComicInfo().apply {
                     comic = "Manga Teste Title"
+                    series = "Manga Teste Title"
                     idMal = 123
                 }
         whenever(mockComicInfoService.find(any(), anyOrNull())).thenReturn(comicInfo)

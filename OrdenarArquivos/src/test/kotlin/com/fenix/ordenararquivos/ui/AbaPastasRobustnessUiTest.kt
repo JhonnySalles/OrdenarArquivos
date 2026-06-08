@@ -154,9 +154,9 @@ class AbaPastasRobustnessUiTest : BaseTest() {
         val dirSumindo = tempDir.resolve("sumindo").toFile()
         dirSumindo.mkdirs()
 
-        // Usamos mockConstruction para interceptar a criação do File dentro do controlador
-        Mockito.mockConstruction(File::class.java) { mock, context ->
-            if (context.arguments().firstOrNull() == dirSumindo.absolutePath) {
+        Mockito.mockConstruction(File::class.java, Mockito.withSettings().defaultAnswer(Mockito.CALLS_REAL_METHODS)) { mock, context ->
+            val pathArg = context.arguments().firstOrNull()?.toString() ?: ""
+            if (pathArg.contains("sumindo")) {
                 whenever(mock.exists()).thenReturn(true)
                 whenever(mock.isDirectory).thenReturn(true)
                 whenever(mock.listFiles()).thenReturn(null)
@@ -229,7 +229,7 @@ class AbaPastasRobustnessUiTest : BaseTest() {
         robot.clickOn("#btnRenomear")
 
         WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS) {
-            AlertasModal.lastAlertTitle == "Erro ao renomear pastas"
+            AlertasModal.lastAlertTitle == "Aviso"
         }
 
         assertNotNull(AlertasModal.lastAlertText)

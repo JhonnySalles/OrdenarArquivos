@@ -125,6 +125,10 @@ class AbaMangaController : Initializable {
 
         initAcoes()
 
+        tbViewManga.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED) { event ->
+            if (tbViewManga.editingCellProperty().get() != null || event.target is javafx.scene.control.TextInputControl) return@addEventFilter
+        }
+
         tbViewManga.setRowFactory {
             val row = TableRow<Manga>()
             row.setOnMouseClicked { event ->

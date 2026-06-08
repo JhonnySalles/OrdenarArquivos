@@ -30,6 +30,8 @@ import javafx.scene.control.cell.ComboBoxTableCell
 import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.effect.BoxBlur
 import javafx.scene.input.DragEvent
+import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyEvent
 import javafx.scene.input.TransferMode
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.HBox
@@ -136,6 +138,102 @@ class PopupCapitulosController : Initializable {
     private var mLista: ObservableList<Volume> = FXCollections.observableArrayList()
     private var mArquivos: List<String> = listOf()
     private var mProcessar: List<Processar> = listOf()
+    private val mImportedChapters = mutableListOf<Volume>()
+
+    fun extractExistingChapters(): List<Volume> {
+        val volumesMap = mutableMapOf<Double, Volume>()
+        val capRegex = Regex("(?:(?:Chapter|Capítulo|Ch\\.?|Cap\\.?|第)\\s*)?(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE)
+        
+        for (p in mProcessar) {
+            val volNum = p.comicInfo?.volume?.toDouble() ?: -1.0
+            val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
+            
+            if (p.tags.isNotEmpty()) {
+                p.tags.split("\n").forEach { tagLine ->
+                    if (tagLine.contains(Utils.SEPARADOR_IMAGEM)) {
+                        var tagContent = tagLine.substringAfter(Utils.SEPARADOR_IMAGEM).trim()
+                        if (tagContent.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                            tagContent = tagContent.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
+                        }
+                        
+                        // Parse chapter number
+                        val match = capRegex.find(tagContent)
+                        if (match != null) {
+                            val chapNum = match.groupValues[1].toDoubleOrNull()
+                            if (chapNum != null) {
+                                // Parse title: e.g. "Capítulo 100 — O Começo" -> "O Começo"
+                                val title = if (tagContent.contains("-")) {
+                                    tagContent.substringAfter("-").trim()
+                                } else if (tagContent.contains("—")) {
+                                    tagContent.substringAfter("—").trim()
+                                } else if (tagContent.contains(":")) {
+                                    tagContent.substringAfter(":").trim()
+                                } else {
+                                    ""
+                                }
+                                val cleanTitle = Utils.limparTitulo(title)
+                                if (volume.capitulos.none { it.capitulo == chapNum }) {
+                                    volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = cleanTitle, japones = ""))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        volumesMap.values.forEach { it.capitulos.sortBy { c -> c.capitulo } }
+        return volumesMap.values.toList().sortedBy { it.volume }
+    }
+
+    private fun mergeImportedChapters(newVolumes: List<Volume>) {
+        for (newVol in newVolumes) {
+            val existingVol = mImportedChapters.find { it.volume == newVol.volume }
+            if (existingVol != null) {
+                for (newCap in newVol.capitulos) {
+                    val existingCap = existingVol.capitulos.find { it.capitulo == newCap.capitulo }
+                    if (existingCap == null) {
+                        existingVol.capitulos.add(newCap)
+                    } else {
+                        // Option C: Mesclar títulos apenas se estiverem vazios/em branco
+                        var needUpdate = false
+                        var newIngles = existingCap.ingles
+                        var newJapones = existingCap.japones
+                        if (existingCap.ingles.isBlank() && newCap.ingles.isNotBlank()) {
+                            newIngles = newCap.ingles
+                            needUpdate = true
+                        }
+                        if (existingCap.japones.isBlank() && newCap.japones.isNotBlank()) {
+                            newJapones = newCap.japones
+                            needUpdate = true
+                        }
+                        if (needUpdate) {
+                            val updatedCap = existingCap.copy(ingles = newIngles, japones = newJapones)
+                            val idx = existingVol.capitulos.indexOf(existingCap)
+                            if (idx != -1) {
+                                existingVol.capitulos[idx] = updatedCap
+                            }
+                        }
+                    }
+                }
+                existingVol.capitulos.sortBy { it.capitulo }
+            } else {
+                newVol.capitulos.sortBy { it.capitulo }
+                mImportedChapters.add(newVol)
+            }
+        }
+        mImportedChapters.sortBy { it.volume }
+    }
+
+    fun limparImportacao() {
+        txtEndereco.text = ""
+        val defaultList = extractExistingChapters()
+        mImportedChapters.clear()
+        mImportedChapters.addAll(defaultList)
+        preparar(mImportedChapters)
+        cbMarcarTodos.isSelected = false
+        marcarTodos()
+    }
 
     @FXML
     private fun onBtnExecutar() {
@@ -225,7 +323,7 @@ class PopupCapitulosController : Initializable {
         cbMarcarTodos.isSelected = mLista.isNotEmpty() && mLista.all { it.marcado }
     }
 
-    internal fun extractManualText(texto: String) {
+    private fun extractManualText(texto: String) {
         val volumesMap = mutableMapOf<Double, Volume>()
 
         // Regex para capturar Volume e Capítulo de forma flexível (prefixos opcionais)
@@ -261,7 +359,8 @@ class PopupCapitulosController : Initializable {
                 volumesMap.values.toList()
             }
 
-            preparar(lista)
+            mergeImportedChapters(lista)
+            preparar(mImportedChapters)
             cbMarcarTodos.isSelected = true
             marcarTodos()
         }
@@ -297,6 +396,10 @@ class PopupCapitulosController : Initializable {
 
     fun setProcessar(processar: List<Processar>) {
         mProcessar = processar
+        val defaultList = extractExistingChapters()
+        mImportedChapters.clear()
+        mImportedChapters.addAll(defaultList)
+        preparar(mImportedChapters)
     }
 
     private fun consulta() {
@@ -310,7 +413,8 @@ class PopupCapitulosController : Initializable {
             if (isUrl && site.contains("comick" , ignoreCase = true)) {
                 val slug = site.substringAfter("/comic/").substringBefore("?").substringBefore("#").trim('/')
                 val list = extractComickApi(slug)
-                preparar(list)
+                mergeImportedChapters(list)
+                preparar(mImportedChapters)
                 return
             }
 
@@ -384,7 +488,8 @@ class PopupCapitulosController : Initializable {
                 else
                     mLista.toList()
 
-                preparar(list)
+                mergeImportedChapters(list)
+                preparar(mImportedChapters)
             }
         } catch (e: Exception) {
             mLOG.error(e.message, e)
@@ -471,6 +576,8 @@ class PopupCapitulosController : Initializable {
                     sourcePool.removeAll(proximos)
                 }
 
+                capitulosEncontrados.sortBy { it.capitulo }
+
                 val tags = capitulosEncontrados.sortedBy { it.capitulo }.joinToString(separator = "\n") {
                     val num = formatar(it.capitulo)
                     val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
@@ -496,6 +603,7 @@ class PopupCapitulosController : Initializable {
         } else {
             // Se mProcessar estiver vazio, apenas exibe o que veio da lista
             for (item in lista) {
+                item.capitulos.sortBy { it.capitulo }
                 item.tags = item.capitulos.joinToString(separator = "\n") {
                     val num = formatar(it.capitulo)
                     val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
@@ -508,7 +616,7 @@ class PopupCapitulosController : Initializable {
             }
         }
 
-        mLista = FXCollections.observableArrayList(volumesResult)
+        mLista.setAll(volumesResult)
         tbViewTabela.items = mLista
         tbViewTabela.refresh()
     }
@@ -1195,6 +1303,20 @@ class PopupCapitulosController : Initializable {
                 popupDividir()
             }
         }
+
+        tbViewTabela.setOnKeyPressed { event ->
+            if (event.code == KeyCode.SPACE) {
+                val selectedItems = tbViewTabela.selectionModel.selectedItems
+                if (selectedItems.isNotEmpty()) {
+                    selectedItems.forEach { item ->
+                        item.marcado = !item.marcado
+                    }
+                    atualizaCheckMarcarTodos()
+                    tbViewTabela.refresh()
+                    event.consume()
+                }
+            }
+        }
     }
 
     private fun editaColunas() {
@@ -1325,6 +1447,14 @@ class PopupCapitulosController : Initializable {
                 btnVoltar.setOnAction { dialog.close() }
                 btnVoltar.styleClass.add("background-White1")
                 botoes.add(btnVoltar)
+
+                val btnLimpar = JFXButton("Limpar")
+                btnLimpar.setOnAction {
+                    cnt.limparImportacao()
+                }
+                btnLimpar.styleClass.add("background-White1")
+                botoes.add(btnLimpar)
+
                 btnConfirmar = JFXButton("Confirmar")
                 btnConfirmar.setOnAction {
                     callback.call(cnt.mLista)

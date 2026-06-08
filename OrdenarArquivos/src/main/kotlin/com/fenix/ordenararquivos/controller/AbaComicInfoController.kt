@@ -156,7 +156,11 @@ class AbaComicInfoController : Initializable {
 
     private fun abrirPopupCapitulos(textoInicial: String? = null) {
         val selected = tbViewProcessar.selectionModel.selectedItems
-        val listToProcess = if (selected.size > 1) selected.toList() else mObsListaProcessar
+        if (selected.isEmpty()) {
+            Notificacoes.notificacao(Notificacao.ALERTA, "Importar capítulos", "Selecione pelo menos um registro na tabela para abrir os capítulos.")
+            return
+        }
+        val listToProcess = selected.toList()
 
         val callback: Callback<ObservableList<Volume>, Boolean> = Callback<ObservableList<Volume>, Boolean> { param ->
             val linguagem = cbLinguagem.value
@@ -874,6 +878,63 @@ class AbaComicInfoController : Initializable {
         tbViewProcessar.refresh()
     }
 
+    private fun processarComicInfoItem(item: Processar) {
+        if (item.file == null || !item.file!!.exists()) {
+            AlertasModal.alerta("Alerta", "Arquivo não encontrado para processar.")
+            return
+        }
+
+        controllerPai.setCursor(Cursor.WAIT)
+        desabilita()
+
+        val linguagem = cbLinguagem.value ?: Linguagem.PORTUGUESE
+        val marcaCapitulo = when (linguagem) {
+            Linguagem.PORTUGUESE -> "Capítulo"
+            Linguagem.ENGLISH -> "Chapter"
+            Linguagem.JAPANESE -> "第%s話"
+            else -> ""
+        }
+
+        val processa: Task<Boolean> = object : Task<Boolean>() {
+            override fun call(): Boolean {
+                updateMessage("Processando ComicInfo do item ${item.arquivo}...")
+                com.fenix.ordenararquivos.process.ComicInfo.processaArquivo(linguagem, item.file!!, marcaCapitulo)
+                return true
+            }
+
+            override fun succeeded() {
+                updateMessage("Processamento do item finalizado.")
+                controllerPai.rootProgress.progressProperty().unbind()
+                controllerPai.rootMessage.textProperty().unbind()
+                controllerPai.clearProgress()
+                controllerPai.setCursor(null)
+                habilita()
+                recarregarComicInfoItem(item)
+                Notificacoes.notificacao(Notificacao.SUCESSO, "Processamento ComicInfo", "ComicInfo do item processado com sucesso.")
+            }
+
+            override fun failed() {
+                super.failed()
+                mLOG.error("Erro na Task de processamento do item ${item.arquivo}", exception)
+                updateMessage("Erro ao processar o ComicInfo do item.")
+                controllerPai.rootProgress.progressProperty().unbind()
+                controllerPai.rootMessage.textProperty().unbind()
+                controllerPai.clearProgress()
+                controllerPai.setCursor(null)
+                habilita()
+                AlertasModal.erro("Erro ao processar o ComicInfo", exception?.message ?: "Erro desconhecido")
+            }
+        }
+
+        controllerPai.rootProgress.progressProperty().unbind()
+        controllerPai.rootMessage.textProperty().unbind()
+        controllerPai.rootProgress.progressProperty().bind(processa.progressProperty())
+        controllerPai.rootMessage.textProperty().bind(processa.messageProperty())
+        val t = Thread(processa)
+        t.isDaemon = true
+        t.start()
+    }
+
     private fun processarOcrItem(item: Processar) {
         controllerPai.setCursor(Cursor.WAIT)
         val extractDir = File(mPASTA_TEMPORARIA, "ocr_direto_${System.currentTimeMillis()}")
@@ -1154,6 +1215,11 @@ class AbaComicInfoController : Initializable {
 
         clAcoes.setCellFactory {
             object : TableCell<Processar, Void>() {
+                private val btnProcessar = JFXButton("Processar").apply {
+                    styleClass.add("background-Black2")
+                    textFill = Color.WHITE
+                    setOnAction { processarComicInfoItem(tableView.items[index]) }
+                }
                 private val btnOcr = JFXButton("OCR").apply {
                     styleClass.add("background-White1")
                     setOnAction { visualizarSumarioItem(tableView.items[index]) }
@@ -1162,7 +1228,7 @@ class AbaComicInfoController : Initializable {
                     styleClass.add("background-Green3")
                     setOnAction { salvarComicInfoItem(tableView.items[index]) }
                 }
-                private val hbox = HBox(5.0, btnOcr, btnSalvar).apply {
+                private val hbox = HBox(5.0, btnProcessar, btnOcr, btnSalvar).apply {
                     alignment = Pos.CENTER
                 }
 
@@ -1356,6 +1422,7 @@ class AbaComicInfoController : Initializable {
         tbViewProcessar.contextMenu = menu
         
         tbViewProcessar.addEventFilter(KeyEvent.KEY_PRESSED) { event ->
+            if (tbViewProcessar.editingCellProperty().get() != null || event.target is javafx.scene.control.TextInputControl) return@addEventFilter
             if (event.isControlDown) {
                 when (event.code) {
                     KeyCode.Z -> {
@@ -1625,7 +1692,7 @@ class AbaComicInfoController : Initializable {
 
     private fun configurarAtalhosGrid() {
         tbViewProcessar.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED) { e ->
-            if (e.target is javafx.scene.control.TextInputControl) return@addEventFilter
+            if (tbViewProcessar.editingCellProperty().get() != null || e.target is javafx.scene.control.TextInputControl) return@addEventFilter
 
             val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
             val selecionado = tbViewProcessar.selectionModel.selectedItem

@@ -59,7 +59,7 @@ class PopupCapitulosUiTest : BaseTest() {
                 controllerClass.getDeclaredConstructor().newInstance()
             }
         }
-        val root: AnchorPane = loader.load()
+        val root: StackPane = loader.load()
 
         stage.scene = Scene(root)
         applyJFoenixFix(stage.scene)
@@ -94,13 +94,13 @@ class PopupCapitulosUiTest : BaseTest() {
         assertNotNull(robot.lookup("#txtEndereco").queryAs(JFXTextField::class.java))
     }
 
-    private fun executaScraping(robot: FxRobot, fixturePath: String) {
+    private fun executaScraping(robot: FxRobot, fixturePath: String, arquivos: List<String> = listOf("Manga Chapter 01.zip")) {
         val txtEndereco = robot.lookup("#txtEndereco").queryAs(JFXTextField::class.java)
         val btnExecutar = robot.lookup("#btnExecutar").queryAs(JFXButton::class.java)
         val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java) as TableView<Volume>
 
         // Garantir que temos ao menos um arquivo para o mapeamento automático funcionar
-        robot.interact { popupController.setArquivos(listOf("Manga Chapter 01.zip")) }
+        robot.interact { popupController.setArquivos(arquivos) }
 
         val file = File(fixturePath)
         assertTrue(file.exists(), "Fixture $fixturePath não encontrada")
@@ -176,15 +176,20 @@ class PopupCapitulosUiTest : BaseTest() {
         val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java) as TableView<Volume>
         val cbMarcarTodos = robot.lookup("#cbMarcarTodos").queryAs(com.jfoenix.controls.JFXCheckBox::class.java)
 
-        // Marcar todos
-        robot.interact { cbMarcarTodos.isSelected = true }
-        WaitForAsyncUtils.waitForFxEvents()
-        tbViewTabela.items.forEach { assertTrue(it.marcado, "Item deveria estar marcado") }
+        // Inicialmente, todos os itens vieram marcados (true), então cbMarcarTodos deve estar selecionado
+        assertTrue(cbMarcarTodos.isSelected)
 
-        // Desmarcar todos
-        robot.interact { cbMarcarTodos.isSelected = false }
+        // Desmarcar todos clicando
+        robot.clickOn(cbMarcarTodos)
         WaitForAsyncUtils.waitForFxEvents()
+        assertFalse(cbMarcarTodos.isSelected)
         tbViewTabela.items.forEach { assertFalse(it.marcado, "Item deveria estar desmarcado") }
+
+        // Marcar todos clicando novamente
+        robot.clickOn(cbMarcarTodos)
+        WaitForAsyncUtils.waitForFxEvents()
+        assertTrue(cbMarcarTodos.isSelected)
+        tbViewTabela.items.forEach { assertTrue(it.marcado, "Item deveria estar marcado") }
     }
 
     @Test
@@ -193,9 +198,7 @@ class PopupCapitulosUiTest : BaseTest() {
         val tbViewTabela = robot.lookup("#tbViewTabela").queryAs(TableView::class.java) as TableView<Volume>
 
         val arquivos = listOf("Manga Volume 01.zip", "Manga Volume 02.zip")
-        robot.interact { popupController.setArquivos(arquivos) }
-
-        executaScraping(robot, "src/test/resources/fixtures/mangaplanet.html")
+        executaScraping(robot, "src/test/resources/fixtures/mangaplanet.html", arquivos)
         
         val vol1 = tbViewTabela.items.find { it.volume == 1.0 }
         assertNotNull(vol1)

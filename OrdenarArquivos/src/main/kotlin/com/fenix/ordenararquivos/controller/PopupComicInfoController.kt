@@ -389,12 +389,12 @@ class PopupComicInfoController : Initializable {
                     onSave(ci)
                 }
 
-                val btnCancelar = JFXButton("Cancelar")
+                val btnCancelar = JFXButton("Cancelar").apply { id = "btnCancelar" }
                 btnCancelar.styleClass.add("background-Red2")
                 btnCancelar.styleClass.add("texto-stilo-1")
                 btnCancelar.setOnAction { controller.onBtnCancelar() }
 
-                val btnConfirmar = JFXButton("Confirmar")
+                val btnConfirmar = JFXButton("Confirmar").apply { id = "btnConfirmar" }
                 btnConfirmar.styleClass.add("background-Green2")
                 btnConfirmar.styleClass.add("texto-stilo-1")
                 btnConfirmar.setOnAction { controller.onBtnConfirmar() }
@@ -402,12 +402,16 @@ class PopupComicInfoController : Initializable {
                 dialogLayout.setActions(listOf(btnCancelar, btnConfirmar))
 
                 dialog.setOnDialogClosed {
-                    nodeBlur.effect = null
-                    nodeBlur.isDisable = false
+                    Platform.runLater {
+                        nodeBlur.effect = null
+                        nodeBlur.isDisable = false
+                    }
                 }
 
-                nodeBlur.effect = blur
-                nodeBlur.isDisable = true
+                Platform.runLater {
+                    nodeBlur.effect = blur
+                    nodeBlur.isDisable = true
+                }
                 dialogLayout.styleClass.add("dialog-black")
                 dialog.show()
             } catch (e: Exception) {

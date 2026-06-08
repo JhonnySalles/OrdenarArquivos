@@ -47,7 +47,6 @@ class PopupComicInfoControllerUnitTest : BaseJfxTest() {
         setField("txtMalId", JFXTextField())
         setField("txtMalNome", JFXTextField())
         setField("btnMalConsultar", JFXButton())
-        setField("btnConfirmar", JFXButton())
         setField("tbViewMal", TableView<Mal>())
     }
 
@@ -103,7 +102,7 @@ class PopupComicInfoControllerUnitTest : BaseJfxTest() {
     fun testOnBtnMalConsultar() {
         (getField("txtMalNome") as JFXTextField).text = "Bleach"
 
-        whenever(comicInfoService.getMal(anyOrNull(), any())).thenReturn(listOf(mock()))
+        whenever(comicInfoService.getMal(anyOrNull(), any(), any())).thenReturn(listOf(mock()))
 
         val method = controller.javaClass.getDeclaredMethod("onBtnMalConsultar")
         method.isAccessible = true
