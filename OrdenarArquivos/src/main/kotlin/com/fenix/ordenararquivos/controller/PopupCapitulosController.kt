@@ -139,6 +139,7 @@ class PopupCapitulosController : Initializable {
     private var mArquivos: List<String> = listOf()
     private var mProcessar: List<Processar> = listOf()
     private val mImportedChapters = mutableListOf<Volume>()
+    private var mTagsGeradas = false
 
     fun extractExistingChapters(): List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
@@ -152,7 +153,13 @@ class PopupCapitulosController : Initializable {
                 p.tags.split("\n").forEach { tagLine ->
                     if (tagLine.contains(Utils.SEPARADOR_IMAGEM)) {
                         var tagContent = tagLine.substringAfter(Utils.SEPARADOR_IMAGEM).trim()
+                        
+                        var title = ""
                         if (tagContent.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                            val importedPart = tagContent.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim()
+                            if (importedPart.contains(Utils.SEPARADOR_CAPITULO)) {
+                                title = importedPart.substringAfter(Utils.SEPARADOR_CAPITULO).trim()
+                            }
                             tagContent = tagContent.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
                         }
                         
@@ -161,15 +168,17 @@ class PopupCapitulosController : Initializable {
                         if (match != null) {
                             val chapNum = match.groupValues[1].toDoubleOrNull()
                             if (chapNum != null) {
-                                // Parse title: e.g. "Capítulo 100 — O Começo" -> "O Começo"
-                                val title = if (tagContent.contains("-")) {
-                                    tagContent.substringAfter("-").trim()
-                                } else if (tagContent.contains("—")) {
-                                    tagContent.substringAfter("—").trim()
-                                } else if (tagContent.contains(":")) {
-                                    tagContent.substringAfter(":").trim()
-                                } else {
-                                    ""
+                                // Fallback: if title was not extracted from importedPart, try from tagContent
+                                if (title.isEmpty()) {
+                                    title = if (tagContent.contains("-")) {
+                                        tagContent.substringAfter("-").trim()
+                                    } else if (tagContent.contains("—")) {
+                                        tagContent.substringAfter("—").trim()
+                                    } else if (tagContent.contains(":")) {
+                                        tagContent.substringAfter(":").trim()
+                                    } else {
+                                        ""
+                                    }
                                 }
                                 val cleanTitle = Utils.limparTitulo(title)
                                 if (volume.capitulos.none { it.capitulo == chapNum }) {
@@ -569,57 +578,7 @@ class PopupCapitulosController : Initializable {
                     }
                 }
 
-                // 2.3 - Localizar por proximidade (capítulos entre os valores do volume/arquivo)
-                if (info.min <= info.max) {
-                    val proximos = sourcePool.filter { it.cap.capitulo >= info.min && it.cap.capitulo <= info.max }
-                    capitulosEncontrados.addAll(proximos.map { it.cap })
-                    sourcePool.removeAll(proximos)
-                }
 
-                capitulosEncontrados.sortBy { it.capitulo }
-
-                val tags = capitulosEncontrados.sortedBy { it.capitulo }.joinToString(separator = "\n") {
-                    val num = formatar(it.capitulo)
-                    val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
-                    val cleanTitle = Utils.limparTitulo(title)
-                    val label = "Capítulo $num"
-                    "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
-                }
-                volumesResult.add(Volume(arquivo = info.processar.arquivo, volume = info.volume, capitulos = capitulosEncontrados, tags = tags))
-            }
-
-            // Capítulos não localizados vão para o volume 0
-            if (sourcePool.isNotEmpty()) {
-                val caps = sourcePool.map { it.cap }.sortedBy { it.capitulo }
-                val tags = caps.joinToString(separator = "\n") {
-                    val num = formatar(it.capitulo)
-                    val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
-                    val cleanTitle = Utils.limparTitulo(title)
-                    val label = "Capítulo $num"
-                    "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
-                }
-                volumesResult.add(Volume(arquivo = "Não Localizados", volume = 0.0, capitulos = caps.toMutableList(), tags = tags))
-            }
-        } else {
-            // Se mProcessar estiver vazio, apenas exibe o que veio da lista
-            for (item in lista) {
-                item.capitulos.sortBy { it.capitulo }
-                item.tags = item.capitulos.joinToString(separator = "\n") {
-                    val num = formatar(it.capitulo)
-                    val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
-                    val cleanTitle = Utils.limparTitulo(title)
-                    val label = "Capítulo $num"
-                    "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
-                }
-                item.arquivo = mArquivos.find { it.lowercase().contains("volume " + formatar(item.volume)) } ?: ""
-                volumesResult.add(item)
-            }
-        }
-
-        mLista.setAll(volumesResult)
-        tbViewTabela.items = mLista
-        tbViewTabela.refresh()
-    }
 
     private fun atualizarTags(volume: Volume) {
         val linguagem = cbLinguagem.value
@@ -863,41 +822,39 @@ class PopupCapitulosController : Initializable {
         val chapterRows = pagina.select("table tbody tr.group")
 
         chapterRows.forEachIndexed { index, row ->
-            val linkElement = row.selectFirst("td a div.truncate")
-            if (linkElement != null) {
-                val chapNumString = linkElement.selectFirst("span.font-semibold[title^=Chapter]")?.text()
-                    ?.replace("Ch.", "", ignoreCase = true)?.trim()
-                val chapNum = chapNumString?.toDoubleOrNull()
+            val chapSpan = row.selectFirst("td span.font-bold, td span.font-semibold")
+            if (chapSpan != null) {
+                val parentDiv = chapSpan.parent()
+                if (parentDiv != null) {
+                    val spans = parentDiv.children().filterIsInstance<Element>().filter { it.tagName() == "span" }
+                    if (spans.isNotEmpty()) {
+                        val chapSpanText = spans.first().text().trim()
+                        val chapNumString = chapSpanText.removeSuffix(",").trim()
 
-                if (chapNum != null) {
-                    var volNum: Double? = null
-                    var title = ""
+                        val capRegex = Regex("(?:(?:Chapter|Capítulo|Ch\\.?|Cap\\.?|第)\\s*)?(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE)
+                        val match = capRegex.find(chapNumString)
+                        val chapNum = match?.groupValues?.get(1)?.toDoubleOrNull()
 
-                    val spans = linkElement.children().filterIsInstance<Element>().filter { it.tagName() == "span" }
-                    // O primeiro span é o número do capítulo, já processado.
-                    // O segundo span PODE ser o volume.
-                    if (spans.size > 1) {
-                        val potentialVolSpan = spans[1]
-                        if (potentialVolSpan.text().contains("Vol.", ignoreCase = true)) {
-                            volNum = potentialVolSpan.text().replace("Vol.", "", ignoreCase = true)
-                                .trim().toDoubleOrNull()
-                            // Se há span de volume, o título é o próximo span, se existir
-                            if (spans.size > 2 && spans[2].hasClass("text-xs"))
-                                title = spans[2].text().trim()
-                        } else if (potentialVolSpan.hasClass("text-xs")) {
-                            // Não há span de volume, este é o span do título
-                            title = potentialVolSpan.text().trim()
+                        if (chapNum != null) {
+                            var volNum: Double? = null
+                            var title = ""
+
+                            if (spans.size > 1) {
+                                for (i in 1 until spans.size) {
+                                    val spanText = spans[i].text().trim()
+                                    if (spanText.contains("Vol.", ignoreCase = true) || spanText.contains("Volume", ignoreCase = true)) {
+                                        val volMatch = Regex("(?:Vol|Volume)\\.?\\s*(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE).find(spanText)
+                                        if (volMatch != null) {
+                                            volNum = volMatch.groupValues[1].toDoubleOrNull()
+                                        }
+                                    } else if (spanText.isNotBlank()) {
+                                        title = spanText
+                                    }
+                                }
+                            }
+                            rawChapterEntries.add(TempCapInfo(volNum, chapNum, title, index))
                         }
                     }
-                    // Se o título ainda estiver vazio e houver um terceiro span (sem span de volume no meio)
-                    // Isso pode acontecer se o span de volume não for detectado corretamente ou não existir
-                    // e o título estiver no terceiro span (após o span do número do capítulo e um span vazio/diferente).
-                    // Neste HTML específico, o título está no span com classe "text-xs".
-                    val titleSpan = linkElement.selectFirst("span.text-xs")
-                    if (title.isBlank() && titleSpan != null)
-                        title = titleSpan.text().trim()
-
-                    rawChapterEntries.add(TempCapInfo(volNum, chapNum, title, index))
                 }
             }
         }

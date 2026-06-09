@@ -1344,7 +1344,7 @@ class AbaComicInfoController : Initializable {
 
         clAcoes.setCellFactory {
             object : TableCell<Processar, Void>() {
-                private val btnProcessar = JFXButton("Processar").apply {
+                private val btnProcessar = JFXButton("ComicInfo").apply {
                     styleClass.add("background-Black2")
                     textFill = Color.WHITE
                     setOnAction { processarComicInfoItem(tableView.items[index]) }
