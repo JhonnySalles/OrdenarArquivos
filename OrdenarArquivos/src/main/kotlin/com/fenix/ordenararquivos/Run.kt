@@ -1,7 +1,9 @@
 package com.fenix.ordenararquivos
 
+import com.fenix.ordenararquivos.controller.PopupCapitulosWebController
 import com.fenix.ordenararquivos.controller.TelaInicialController
 import com.fenix.ordenararquivos.database.DataBase
+import com.fenix.ordenararquivos.webview.WebViewSessionManager
 import javafx.application.Application
 import javafx.event.EventHandler
 import javafx.fxml.FXMLLoader
@@ -44,7 +46,10 @@ class Run : Application() {
                 primaryStage.height = 600.0
             }
 
+            PopupCapitulosWebController.inicializarMotorWeb()
+
             primaryStage.onCloseRequest = EventHandler {
+                WebViewSessionManager.salvarCookies()
                 DataBase.closeConnection()
                 exitProcess(0)
             }

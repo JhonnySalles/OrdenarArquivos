@@ -3,6 +3,7 @@ package com.fenix.ordenararquivos.controller
 import com.fenix.ordenararquivos.BaseJfxTest
 import org.jsoup.Jsoup
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
 
@@ -37,5 +38,30 @@ class PopupCapitulosLogicTest : BaseJfxTest() {
         assertEquals(1, volumes[0].capitulos.size)
         assertEquals(1.0, volumes[0].capitulos[0].capitulo)
         assertEquals("First Chapter", volumes[0].capitulos[0].ingles)
+    }
+
+    @Test
+    fun testExtractComickDevLayout() {
+        val htmlFile = File("src/test/resources/fixtures/comick-dev.html")
+        val doc = Jsoup.parse(htmlFile, "UTF-8")
+
+        val volumes = controller.extractComick(doc)
+
+        assertEquals(1, volumes.size)
+        assertEquals(2, volumes[0].capitulos.size)
+        val titulos = volumes[0].capitulos.map { it.ingles }.toSet()
+        assertTrue(titulos.contains("First Chapter"))
+        assertTrue(titulos.contains("Second Chapter"))
+    }
+
+    @Test
+    fun testExtractComickFromEmbeddedJson() {
+        val html = """{"chap":"5","vol":"2","title":"Offline Chapter"}"""
+        val entries = controller.extractComickFromEmbeddedJson(html)
+
+        assertEquals(1, entries.size)
+        assertEquals(5.0, entries[0].chap)
+        assertEquals(2.0, entries[0].vol)
+        assertEquals("Offline Chapter", entries[0].title)
     }
 }

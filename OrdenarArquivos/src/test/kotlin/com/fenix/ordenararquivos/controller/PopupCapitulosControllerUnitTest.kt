@@ -276,4 +276,52 @@ class PopupCapitulosControllerUnitTest : BaseJfxTest() {
         assertFalse(pane.isDisable)
         assertNull(pane.effect)
     }
+
+    @Test
+    fun testIsComickComicUrl() {
+        assertTrue(controller.isComickComicUrl("https://comick.dev/comic/foo-bar"))
+        assertTrue(controller.isComickComicUrl("https://comick.io/comic/example"))
+        assertFalse(controller.isComickComicUrl("https://comick.dev/search"))
+    }
+
+    @Test
+    fun testExtrairSlugComick() {
+        assertEquals(
+            "apocalypse-bringer",
+            controller.extrairSlugComick(
+                "https://comick.dev/comic/apocalypse-bringer?lang=pt-br&page=1#chapter-header"
+            )
+        )
+    }
+
+    @Test
+    fun testProcessarHtmlComickDev() {
+        val htmlFile = File("src/test/resources/fixtures/comick-dev.html")
+        controller.processarHtml("https://comick.dev/comic/test-comic", htmlFile.readText(Charsets.UTF_8))
+
+        val imported = getField("mImportedChapters") as List<Volume>
+        assertTrue(imported.any { it.capitulos.size >= 2 })
+    }
+
+    @Test
+    fun testProcessarUrlComickArquivoLocalUsaApi() {
+        setField("mImportedChapters", mutableListOf<Volume>())
+        controller.comickFetcher = { url ->
+            when {
+                url.endsWith("/comic/test-comic") ->
+                    """{"comic":{"hid":"hid123"}}"""
+                url.contains("/comic/hid123/chapters") ->
+                    """{"total":1,"chapters":[{"chap":"1","vol":null,"title":"API Chapter"}]}"""
+                else -> null
+            }
+        }
+
+        val htmlFile = File("src/test/resources/fixtures/comick-local.html")
+        controller.processarUrl(htmlFile.absolutePath)
+
+        val imported = getField("mImportedChapters") as List<Volume>
+        assertEquals(1, imported.sumOf { it.capitulos.size })
+        assertEquals("API Chapter", imported.flatMap { it.capitulos }.first().ingles)
+        controller.comickFetcher = null
+    }
 }

@@ -488,17 +488,34 @@ class PopupCapitulosController : Initializable {
 
     private fun consulta() = processarUrl(txtEndereco.text)
 
+    internal var comickFetcher: ((String) -> String?)? = null
+
+    internal fun isComickComicUrl(site: String): Boolean =
+        site.contains("comick", ignoreCase = true) && site.contains("/comic/")
+
+    internal fun extrairSlugComick(site: String): String =
+        site.substringAfter("/comic/").substringBefore("?").substringBefore("#").trim('/')
+
     private fun processarComickApi(site: String) {
-        val slug = site.substringAfter("/comic/").substringBefore("?").substringBefore("#").trim('/')
-        mergeImportedChapters(extractComickApi(slug))
+        finalizarImportacao(extractComickApi(extrairSlugComick(site)))
+    }
+
+    private fun finalizarImportacao(importados: List<Volume>) {
+        mergeImportedChapters(importados)
         isImportado = true
         preparar(mImportedChapters)
+        if (importados.sumOf { it.capitulos.size } == 0) {
+            AlertasModal.alerta(
+                "Importação",
+                "Nenhum capítulo encontrado. Para ComicK, verifique a conexão (API) ou salve a página completa com capítulos visíveis."
+            )
+        }
     }
 
     private fun processarDocumento(site: String, pagina: Document) {
         val list = when {
             site.lowercase().contains("mangaplanet.com") -> extractMangaPlanet(pagina)
-            site.lowercase().contains("comick.io") || site.lowercase().contains("comickfan.com") -> extractComick(pagina)
+            isComickComicUrl(site) -> extractComick(pagina)
             site.lowercase().contains("mangafire.to") -> extractMangaFire(pagina)
             site.lowercase().contains("taiyo.moe") -> extractTayo(pagina)
             site.lowercase().contains("mangapark.net") -> extractMangaPark(pagina)
@@ -509,9 +526,7 @@ class PopupCapitulosController : Initializable {
             site.lowercase().contains("mangadex.org") -> extractMangaDex(pagina)
             else -> mLista.toList()
         }
-        mergeImportedChapters(list)
-        isImportado = true
-        preparar(mImportedChapters)
+        finalizarImportacao(list)
     }
 
     internal fun processarHtml(site: String, html: String) {
@@ -519,7 +534,7 @@ class PopupCapitulosController : Initializable {
     }
 
     internal fun processarConteudoWeb(site: String, html: String) {
-        if (site.contains("comick", ignoreCase = true) && site.contains("/comic/")) {
+        if (isComickComicUrl(site)) {
             processarComickApi(site)
         } else {
             processarHtml(site, html)
@@ -550,7 +565,7 @@ class PopupCapitulosController : Initializable {
                 txtEndereco.text = site
 
             val isUrl = site.contains("https:") || site.contains("http:")
-            if (isUrl && site.contains("comick", ignoreCase = true)) {
+            if (isUrl && isComickComicUrl(site)) {
                 processarComickApi(site)
                 return
             }
@@ -558,7 +573,7 @@ class PopupCapitulosController : Initializable {
             val pagina: Document = try {
                 if (isUrl)
                     Jsoup.connect(site)
-                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+                        .userAgent(Utils.SCRAPING_USER_AGENT)
                         .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
                         .header("Accept-Language", "en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7")
                         .header("Connection", "keep-alive")
@@ -580,7 +595,7 @@ class PopupCapitulosController : Initializable {
                     if (!site.startsWith("http")) {
                         val fileName = file.name.lowercase()
                         if (fileName.contains("mangaplanet")) site = "https://mangaplanet.com"
-                        else if (fileName.contains("comick")) site = "https://comick.io"
+                        else if (fileName.contains("comick")) site = "https://comick.dev"
                         else if (fileName.contains("mangafire")) site = "https://mangafire.to"
                         else if (fileName.contains("taiyo")) site = "https://taiyo.moe"
                         else if (fileName.contains("mangapark")) site = "https://mangapark.net"
@@ -600,6 +615,11 @@ class PopupCapitulosController : Initializable {
             } catch (e: Exception) {
                 mLOG.error(e.message, e)
                 AlertasModal.erro("Erro ao carregar o site", e.message.toString())
+                return
+            }
+
+            if (isComickComicUrl(site)) {
+                processarComickApi(site)
                 return
             }
 
@@ -840,6 +860,7 @@ class PopupCapitulosController : Initializable {
     }
 
     private fun fetchFromUrl(url: String): String? {
+        comickFetcher?.let { return it(url) }
         return try {
             val connection = URL(url).openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
@@ -945,85 +966,111 @@ class PopupCapitulosController : Initializable {
     //<--------------------------  Comick  -------------------------->
     internal fun extractComick(pagina: Document): List<Volume> {
         val rawChapterEntries = mutableListOf<TempCapInfo>()
-        val chapterRows = pagina.select("table tbody tr.group")
+        var chapterRows = pagina.select("table tbody tr.group")
+        if (chapterRows.isEmpty())
+            chapterRows = pagina.select("tr.group")
 
         chapterRows.forEachIndexed { index, row ->
-            val chapSpan = row.selectFirst("td span.font-bold, td span.font-semibold")
-            if (chapSpan != null) {
-                val parentDiv = chapSpan.parent()
-                if (parentDiv != null) {
-                    val spans = parentDiv.children().filterIsInstance<Element>().filter { it.tagName() == "span" }
-                    if (spans.isNotEmpty()) {
-                        val chapSpanText = spans.first().text().trim()
-                        val chapNumString = chapSpanText.removeSuffix(",").trim()
+            parseComickRow(row, index)?.let { rawChapterEntries.add(it) }
+        }
 
-                        val capRegex = Regex("(?:(?:Chapter|Capítulo|Ch\\.?|Cap\\.?|第)\\s*)?(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE)
-                        val match = capRegex.find(chapNumString)
-                        val chapNum = match?.groupValues?.get(1)?.toDoubleOrNull()
+        if (rawChapterEntries.isEmpty())
+            rawChapterEntries.addAll(extractComickFromEmbeddedJson(pagina.html()))
 
-                        if (chapNum != null) {
-                            var volNum: Double? = null
-                            var title = ""
+        return buildVolumesFromTempCaps(rawChapterEntries)
+    }
 
-                            if (spans.size > 1) {
-                                for (i in 1 until spans.size) {
-                                    val spanText = spans[i].text().trim()
-                                    if (spanText.contains("Vol.", ignoreCase = true) || spanText.contains("Volume", ignoreCase = true)) {
-                                        val volMatch = Regex("(?:Vol|Volume)\\.?\\s*(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE).find(spanText)
-                                        if (volMatch != null) {
-                                            volNum = volMatch.groupValues[1].toDoubleOrNull()
-                                        }
-                                    } else if (spanText.isNotBlank()) {
-                                        title = spanText
-                                    }
-                                }
-                            }
-                            rawChapterEntries.add(TempCapInfo(volNum, chapNum, title, index))
-                        }
-                    }
+    private fun parseComickRow(row: Element, index: Int): TempCapInfo? {
+        val chapSpan = row.selectFirst(
+            "td span.font-bold, td span.font-semibold, td span.font-medium, " +
+                "span.font-bold, span.font-semibold, span.font-medium"
+        ) ?: return null
+
+        val container = chapSpan.parent() ?: return null
+        val spans = container.children().filterIsInstance<Element>().filter { it.tagName() == "span" }
+        if (spans.isEmpty()) return null
+
+        val chapSpanText = spans.first().text().trim().removeSuffix(",")
+        val capRegex = Regex(
+            "(?:(?:Chapter|Capítulo|Ch\\.?|Cap\\.?|第)\\s*)?(\\d+(?:\\.\\d+)?)",
+            RegexOption.IGNORE_CASE
+        )
+        val chapNum = capRegex.find(chapSpanText)?.groupValues?.get(1)?.toDoubleOrNull() ?: return null
+
+        var volNum: Double? = null
+        var title = ""
+        if (spans.size > 1) {
+            for (i in 1 until spans.size) {
+                val spanText = spans[i].text().trim()
+                if (spanText.contains("Vol.", ignoreCase = true) || spanText.contains("Volume", ignoreCase = true)) {
+                    val volMatch = Regex(
+                        "(?:Vol|Volume)\\.?\\s*(\\d+(?:\\.\\d+)?)",
+                        RegexOption.IGNORE_CASE
+                    ).find(spanText)
+                    if (volMatch != null)
+                        volNum = volMatch.groupValues[1].toDoubleOrNull()
+                } else if (spanText.isNotBlank()) {
+                    title = spanText
                 }
             }
         }
 
-        // Deduplicar capítulos, priorizando aqueles com descrição e depois com número de volume
-        val finalChapterMap = mutableMapOf<Double, TempCapInfo>() // Key: chapNum
-        for (currentEntry in rawChapterEntries.sortedBy { it.sortKey }) { // Manter ordem original para desempate
-            val existingEntry = finalChapterMap[currentEntry.chap]
+        if (title.isBlank()) {
+            title = row.selectFirst("a.link, a[href*='/comic/']")?.text()?.trim().orEmpty()
+        }
 
+        return TempCapInfo(volNum, chapNum, title, index)
+    }
+
+    internal fun extractComickFromEmbeddedJson(html: String): List<TempCapInfo> {
+        val regex = Regex(
+            """"chap"\s*:\s*"(\d+(?:\.\d+)?)"(?:[^{}]{0,1200})?"title"\s*:\s*(?:"((?:\\.|[^"\\])*)"|null)"""
+        )
+        val volRegex = Regex(""""vol"\s*:\s*(?:"(\d+(?:\.\d+)?)"|null)""")
+        val entries = mutableListOf<TempCapInfo>()
+        regex.findAll(html).forEachIndexed { index, match ->
+            val chapNum = match.groupValues[1].toDoubleOrNull() ?: return@forEachIndexed
+            val titleRaw = match.groupValues.getOrNull(2)?.replace("\\\"", "\"")?.trim().orEmpty()
+            val chunk = match.value
+            val volNum = volRegex.find(chunk)?.groupValues?.get(1)?.toDoubleOrNull()
+            entries.add(TempCapInfo(volNum, chapNum, titleRaw, index))
+        }
+        return entries
+    }
+
+    private fun buildVolumesFromTempCaps(rawChapterEntries: List<TempCapInfo>): List<Volume> {
+        val finalChapterMap = mutableMapOf<Double, TempCapInfo>()
+        for (currentEntry in rawChapterEntries.sortedBy { it.sortKey }) {
+            val existingEntry = finalChapterMap[currentEntry.chap]
             if (existingEntry == null) {
                 finalChapterMap[currentEntry.chap] = currentEntry
             } else {
-                // Priorizar entrada com título
                 val currentHasTitle = currentEntry.title.isNotBlank()
                 val existingHasTitle = existingEntry.title.isNotBlank()
-
                 if (currentHasTitle && !existingHasTitle) {
                     finalChapterMap[currentEntry.chap] = currentEntry
                 } else if (currentHasTitle == existingHasTitle) {
-                    // Se ambos têm título (ou ambos não têm), priorizar o que tem volume
-                    if (currentEntry.vol != null && existingEntry.vol == null) {
+                    if (currentEntry.vol != null && existingEntry.vol == null)
                         finalChapterMap[currentEntry.chap] = currentEntry
-                    }
-                    // Se ambos têm título e volume (ou nenhum tem volume), o primeiro encontrado (mantido pela ordenação por sortKey) é mantido.
                 }
             }
         }
 
-        // Agrupar capítulos finais por volume
         val volumesMap = mutableMapOf<Double, Volume>()
-        for (finalEntry in finalChapterMap.values.sortedBy { it.chap }) { // Processar em ordem de capítulo
+        for (finalEntry in finalChapterMap.values.sortedBy { it.chap }) {
             val volNum = finalEntry.vol ?: -1.0
             val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
-            volume.capitulos.add(Capitulo(capitulo = finalEntry.chap, ingles = finalEntry.title.replace(mReplace, "").trim(), ""))
+            volume.capitulos.add(
+                Capitulo(capitulo = finalEntry.chap, ingles = finalEntry.title.replace(mReplace, "").trim(), "")
+            )
         }
 
-        // Ordenar capítulos dentro de cada volume e os próprios volumes
         volumesMap.values.forEach { it.capitulos.sortBy { chap -> chap.capitulo } }
         return volumesMap.values.toList().sortedBy { it.volume }
     }
 
     // Data class temporária para ajudar no processamento e deduplicação
-    private data class TempCapInfo(
+    internal data class TempCapInfo(
         val vol: Double?,
         val chap: Double,
         val title: String,

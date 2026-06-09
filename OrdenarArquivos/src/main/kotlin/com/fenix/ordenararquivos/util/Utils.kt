@@ -27,6 +27,13 @@ class Utils {
         const val SEPARADOR_PAGINA = "-"
         const val SEPARADOR_CAPITULO = "|"
 
+        const val SCRAPING_USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+
+        /** User-Agent alinhado ao WebKit do JavaFX 17 (evita inconsistência com anti-bot). */
+        const val WEBVIEW_USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+
         const val IMAGE_PATTERN = "(.*/)*.+\\.(png|jpg|gif|bmp|jpeg|PNG|JPG|GIF|BMP|JPEG)$"
         const val NUMBER_PATTERN = "[\\d.]+"
         const val NOT_NUMBER_PATTERN = "[^\\d.]+"
