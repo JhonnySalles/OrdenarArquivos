@@ -28,11 +28,9 @@
                                              <children>
                                                 <Hyperlink fx:id="hplComick" text="https://comick.io/" />
                                                 <Hyperlink fx:id="hplMangaFire" text="https://mangafire.to/" />
-                                                <Hyperlink fx:id="hplMangaForest" text="https://mangaforest.me/" />
+                                                <Hyperlink fx:id="hplMangak" text="https://mangak.io/" />
                                                 <Hyperlink fx:id="hplMangaRead" text="https://www.mangaread.org/" />
                                                 <Hyperlink fx:id="hplMangaDex" text="https://mangadex.org/" />
-                                                <Hyperlink fx:id="hplZBato" text="https://zbato.org/" />
-                                                <Hyperlink fx:id="hplMangaPlanet" text="https://mangaplanet.com/" />
                                                 <Hyperlink fx:id="hplTaiyo" text="https://taiyo.moe/" />
                                                 <Hyperlink fx:id="hplMangaPark" text="https://mangapark.net/" />
                                              </children>

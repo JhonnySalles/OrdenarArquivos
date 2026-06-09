@@ -139,7 +139,6 @@ class PopupCapitulosController : Initializable {
     private var mArquivos: List<String> = listOf()
     private var mProcessar: List<Processar> = listOf()
     private val mImportedChapters = mutableListOf<Volume>()
-    private var mTagsGeradas = false
 
     fun extractExistingChapters(): List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
@@ -153,13 +152,7 @@ class PopupCapitulosController : Initializable {
                 p.tags.split("\n").forEach { tagLine ->
                     if (tagLine.contains(Utils.SEPARADOR_IMAGEM)) {
                         var tagContent = tagLine.substringAfter(Utils.SEPARADOR_IMAGEM).trim()
-                        
-                        var title = ""
                         if (tagContent.contains(Utils.SEPARADOR_IMPORTACAO)) {
-                            val importedPart = tagContent.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim()
-                            if (importedPart.contains(Utils.SEPARADOR_CAPITULO)) {
-                                title = importedPart.substringAfter(Utils.SEPARADOR_CAPITULO).trim()
-                            }
                             tagContent = tagContent.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
                         }
                         
@@ -168,17 +161,15 @@ class PopupCapitulosController : Initializable {
                         if (match != null) {
                             val chapNum = match.groupValues[1].toDoubleOrNull()
                             if (chapNum != null) {
-                                // Fallback: if title was not extracted from importedPart, try from tagContent
-                                if (title.isEmpty()) {
-                                    title = if (tagContent.contains("-")) {
-                                        tagContent.substringAfter("-").trim()
-                                    } else if (tagContent.contains("—")) {
-                                        tagContent.substringAfter("—").trim()
-                                    } else if (tagContent.contains(":")) {
-                                        tagContent.substringAfter(":").trim()
-                                    } else {
-                                        ""
-                                    }
+                                // Parse title: e.g. "Capítulo 100 — O Começo" -> "O Começo"
+                                val title = if (tagContent.contains("-")) {
+                                    tagContent.substringAfter("-").trim()
+                                } else if (tagContent.contains("—")) {
+                                    tagContent.substringAfter("—").trim()
+                                } else if (tagContent.contains(":")) {
+                                    tagContent.substringAfter(":").trim()
+                                } else {
+                                    ""
                                 }
                                 val cleanTitle = Utils.limparTitulo(title)
                                 if (volume.capitulos.none { it.capitulo == chapNum }) {
@@ -578,7 +569,57 @@ class PopupCapitulosController : Initializable {
                     }
                 }
 
+                // 2.3 - Localizar por proximidade (capítulos entre os valores do volume/arquivo)
+                if (info.min <= info.max) {
+                    val proximos = sourcePool.filter { it.cap.capitulo >= info.min && it.cap.capitulo <= info.max }
+                    capitulosEncontrados.addAll(proximos.map { it.cap })
+                    sourcePool.removeAll(proximos)
+                }
 
+                capitulosEncontrados.sortBy { it.capitulo }
+
+                val tags = capitulosEncontrados.sortedBy { it.capitulo }.joinToString(separator = "\n") {
+                    val num = formatar(it.capitulo)
+                    val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
+                    val cleanTitle = Utils.limparTitulo(title)
+                    val label = "Capítulo $num"
+                    "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
+                }
+                volumesResult.add(Volume(arquivo = info.processar.arquivo, volume = info.volume, capitulos = capitulosEncontrados, tags = tags))
+            }
+
+            // Capítulos não localizados vão para o volume 0
+            if (sourcePool.isNotEmpty()) {
+                val caps = sourcePool.map { it.cap }.sortedBy { it.capitulo }
+                val tags = caps.joinToString(separator = "\n") {
+                    val num = formatar(it.capitulo)
+                    val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
+                    val cleanTitle = Utils.limparTitulo(title)
+                    val label = "Capítulo $num"
+                    "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
+                }
+                volumesResult.add(Volume(arquivo = "Não Localizados", volume = 0.0, capitulos = caps.toMutableList(), tags = tags))
+            }
+        } else {
+            // Se mProcessar estiver vazio, apenas exibe o que veio da lista
+            for (item in lista) {
+                item.capitulos.sortBy { it.capitulo }
+                item.tags = item.capitulos.joinToString(separator = "\n") {
+                    val num = formatar(it.capitulo)
+                    val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
+                    val cleanTitle = Utils.limparTitulo(title)
+                    val label = "Capítulo $num"
+                    "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
+                }
+                item.arquivo = mArquivos.find { it.lowercase().contains("volume " + formatar(item.volume)) } ?: ""
+                volumesResult.add(item)
+            }
+        }
+
+        mLista.setAll(volumesResult)
+        tbViewTabela.items = mLista
+        tbViewTabela.refresh()
+    }
 
     private fun atualizarTags(volume: Volume) {
         val linguagem = cbLinguagem.value
