@@ -1607,6 +1607,76 @@ class PopupCapitulosController : Initializable {
         private lateinit var dialog: JFXDialog
         private lateinit var stackPane: StackPane
 
+        internal fun aplicarVolumesConfirmados(
+            volumes: List<Volume>,
+            itens: List<Processar>,
+            linguagem: Linguagem,
+            decimalFormat: DecimalFormat
+        ): Map<String, String> {
+            val result = mutableMapOf<String, String>()
+            val separador = Utils.SEPARADOR_CAPITULO
+
+            for (volume in volumes) {
+                if (!volume.marcado || volume.arquivo.isEmpty())
+                    continue
+                if (itens.none { it.arquivo == volume.arquivo })
+                    continue
+
+                result[volume.arquivo] = if (volume.tags.isNotBlank()) {
+                    volume.tags
+                } else {
+                    val item = itens.first { it.arquivo == volume.arquivo }
+                    enriquecerTagsLegado(item.tags, volume.capitulos, linguagem, decimalFormat, separador)
+                }
+            }
+            return result
+        }
+
+        private fun enriquecerTagsLegado(
+            tagsOriginais: String,
+            capitulosVolume: List<Capitulo>,
+            linguagem: Linguagem,
+            decimalFormat: DecimalFormat,
+            separador: String
+        ): String {
+            val capitulos = capitulosVolume.toMutableList()
+            val tags = mutableListOf<String>()
+            for (tag in tagsOriginais.split("\n")) {
+                var capitulo = if (tag.contains(Utils.SEPARADOR_IMPORTACAO))
+                    tag.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
+                else
+                    tag
+
+                capitulo.lowercase().substringAfter(Utils.SEPARADOR_IMAGEM).let {
+                    if (it.contains("第") || it.contains("chapter") || it.contains("capítulo")) {
+                        val numero = Utils.getNumber(
+                            if (it.lowercase().contains("第")) Utils.fromNumberJapanese(it) else it
+                        )
+                        capitulos.find { c -> c.capitulo == numero }?.run {
+                            capitulos.remove(this)
+                            capitulo += " ${Utils.SEPARADOR_IMPORTACAO} " + decimalFormat.format(this.capitulo) +
+                                separador + if (linguagem == Linguagem.JAPANESE && japones.isNotEmpty()) japones else ingles
+                        }
+                    }
+                }
+                tags.add(capitulo)
+            }
+
+            if (capitulos.isNotEmpty()) {
+                for (capitulo in capitulos) {
+                    val num = decimalFormat.format(capitulo.capitulo)
+                    val titulo = if (linguagem == Linguagem.JAPANESE && capitulo.japones.isNotEmpty())
+                        capitulo.japones
+                    else
+                        capitulo.ingles
+                    tags.add(
+                        "-1${Utils.SEPARADOR_IMAGEM} Capítulo novo $num ${Utils.SEPARADOR_IMPORTACAO} $num$separador$titulo"
+                    )
+                }
+            }
+            return tags.joinToString(separator = "\n")
+        }
+
         @JvmStatic
         fun abreTelaCapitulos(rootStackPane: StackPane, nodeBlur: Node, callback: Callback<ObservableList<Volume>, Boolean>, linguagem: Linguagem, processar: List<Processar>, textoInicial: String? = null) {
             try {

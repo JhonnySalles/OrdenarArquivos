@@ -5,6 +5,7 @@ import com.fenix.ordenararquivos.components.TextAreaTableCell
 import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.entities.capitulos.Volume
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
+import com.fenix.ordenararquivos.model.entities.comicinfo.Manga
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.notification.AlertasModal
@@ -30,6 +31,7 @@ import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.geometry.Pos
 import javafx.scene.Cursor
+import javafx.css.PseudoClass
 import javafx.scene.control.*
 import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.input.KeyCode
@@ -59,6 +61,7 @@ import java.util.*
 class AbaComicInfoController : Initializable {
 
     private val mLOG = LoggerFactory.getLogger(AbaComicInfoController::class.java)
+    private val ALERTA_PSEUDO_CLASS = PseudoClass.getPseudoClass("alerta")
 
     //<--------------------------  PRINCIPAL   -------------------------->
 
@@ -163,42 +166,22 @@ class AbaComicInfoController : Initializable {
         val listToProcess = selected.toList()
 
         val callback: Callback<ObservableList<Volume>, Boolean> = Callback<ObservableList<Volume>, Boolean> { param ->
-            val linguagem = cbLinguagem.value
-            val separador = Utils.SEPARADOR_CAPITULO
+            val linguagem = cbLinguagem.value ?: Linguagem.PORTUGUESE
+            val novasTags = PopupCapitulosController.aplicarVolumesConfirmados(
+                param.toList(),
+                listToProcess,
+                linguagem,
+                mDecimal
+            )
             val actions = mutableListOf<ReversibleAction>()
-            for (volume in param)
-                if (volume.marcado && volume.arquivo.isNotEmpty()) {
-                    val item = mObsListaProcessar.find { it.arquivo == volume.arquivo } ?: continue
-                    val oldTags = item.tags
-                    val capitulos = volume.capitulos.toMutableList()
-                    val tags = mutableListOf<String>()
-                    for (tag in item.tags.split("\n")) {
-                        var capitulo = if (tag.contains(Utils.SEPARADOR_IMPORTACAO)) tag.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim() else tag
-
-                        capitulo.lowercase().substringAfter(Utils.SEPARADOR_IMAGEM).let {
-                            if (it.contains("第") || it.contains("chapter") || it.contains("capítulo")) {
-                                val numero = Utils.getNumber(if (it.lowercase().contains("第")) Utils.fromNumberJapanese(it) else it)
-                                capitulos.find { c -> c.capitulo == numero }?.run {
-                                    capitulos.remove(this)
-                                    capitulo += " ${Utils.SEPARADOR_IMPORTACAO} " + mDecimal.format(this.capitulo) + separador + if (linguagem == Linguagem.JAPANESE && this.japones.isNotEmpty()) this.japones else this.ingles
-                                }
-                            }
-                        }
-                        tags.add(capitulo)
-                    }
-
-                    if (capitulos.isNotEmpty())
-                        for (capitulo in capitulos) {
-                            val num = mDecimal.format(capitulo.capitulo)
-                            tags.add("-1${Utils.SEPARADOR_IMAGEM} Capítulo novo $num ${Utils.SEPARADOR_IMPORTACAO} $num$separador${if (linguagem == Linguagem.JAPANESE && capitulo.japones.isNotEmpty()) capitulo.japones else capitulo.ingles}")
-                        }
-
-                    val newTags = tags.joinToString("\n")
-                    if (oldTags != newTags) {
-                        actions.add(PropertyChangeAction(item, oldTags, newTags) { i, v -> i.tags = v })
-                        item.tags = newTags
-                    }
+            for ((arquivo, newTags) in novasTags) {
+                val item = mObsListaProcessar.find { it.arquivo == arquivo } ?: continue
+                val oldTags = item.tags
+                if (oldTags != newTags) {
+                    actions.add(PropertyChangeAction(item, oldTags, newTags) { i, v -> i.tags = v })
+                    item.tags = newTags
                 }
+            }
             if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
             tbViewProcessar.refresh()
             null
@@ -614,6 +597,7 @@ class AbaComicInfoController : Initializable {
         if (path.isNotEmpty() && pasta.exists() && pasta.isDirectory) {
             btnCarregar.isDisable = true
             controllerPai.setCursor(Cursor.WAIT)
+            val linguagemCarregamento = cbLinguagem.value ?: Linguagem.PORTUGUESE
 
             val processar: Task<Void> = object : Task<Void>() {
                 override fun call(): Void? {
@@ -623,7 +607,7 @@ class AbaComicInfoController : Initializable {
                         var i = 0
                         updateMessage("Carregando arquivos...")
 
-                        val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
+                        val linguagem = linguagemCarregamento
                         for (arquivo in pasta.listFiles()!!) {
                             if (!Utils.isRar(arquivo.name))
                                 continue
@@ -634,28 +618,41 @@ class AbaComicInfoController : Initializable {
 
                             val extractDir = File(mPASTA_TEMPORARIA, "load_${i}_${System.currentTimeMillis()}")
                             extractDir.mkdirs()
+                            var semComicInfo = !arquivoPossuiComicInfo(arquivo)
                             val comic: ComicInfo = try {
-                                val info: File? = mRarService.extraiComicInfo(arquivo, extractDir)
-                                if (info != null && info.exists()) {
-                                    val unmarshaller = jaxb.createUnmarshaller()
-                                    unmarshaller.unmarshal(info) as ComicInfo
+                                if (semComicInfo) {
+                                    val basico = criarComicInfoBasico(arquivo, linguagem)
+                                    if (inserirComicInfoNoArquivo(arquivo, basico)) {
+                                        semComicInfo = false
+                                        lerComicInfoDoArquivo(arquivo, extractDir) ?: basico
+                                    } else
+                                        basico
                                 } else {
-                                    ComicInfo()
+                                    lerComicInfoDoArquivo(arquivo, extractDir)?.also {
+                                        semComicInfo = false
+                                    } ?: ComicInfo().also { semComicInfo = true }
                                 }
                             } catch (e: Exception) {
                                 mLOG.error(e.message, e)
-                                ComicInfo()
+                                ComicInfo().also { semComicInfo = true }
                             } finally {
                                 extractDir.deleteRecursively()
                             }
 
-                            val bookMarks =
-                                comic.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toSet() ?: emptySet()
+                            val tags = tagsFromComic(comic)
                             val processar = JFXButton("Processar").apply { id = "btnProcessar_${i}" }
                             val amazon = JFXButton("Amazon").apply { id = "btnAmazon_${i}" }
                             val salvar = JFXButton("Salvar").apply { id = "btnSalvar_${i}" }
-                            val tags = bookMarks.joinToString(separator = "\n")
-                            val item = Processar(arquivo.name, tags, arquivo, comic, processar, amazon, salvar)
+                            val item = Processar(
+                                arquivo.name,
+                                tags,
+                                arquivo,
+                                comic,
+                                processar,
+                                amazon,
+                                salvar,
+                                semComicInfo = semComicInfo
+                            )
 
                             processar.styleClass.add("background-White1")
                             processar.setOnAction { processarOcrItem(item) }
@@ -857,24 +854,57 @@ class AbaComicInfoController : Initializable {
         Thread(processar).start()
     }
 
-    private fun recarregarComicInfoItem(item: Processar) {
-        val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
-        val info: File? = mRarService.extraiComicInfo(item.file!!)
-        val comic: ComicInfo = if (info != null && info.exists()) {
-            try {
-                val unmarshaller = jaxb.createUnmarshaller()
-                unmarshaller.unmarshal(info) as ComicInfo
-            } catch (e: Exception) {
-                mLOG.error(e.message, e)
-                ComicInfo()
-            }
-        } else {
-            ComicInfo()
+    internal fun arquivoPossuiComicInfo(arquivo: File): Boolean =
+        arquivoPossuiComicInfoNaListagem(mRarService.listarConteudo(arquivo))
+
+    private fun lerComicInfoDoArquivo(arquivo: File, extractDir: File): ComicInfo? {
+        val info = mRarService.extraiComicInfo(arquivo, extractDir) ?: return null
+        if (!info.exists())
+            return null
+        return try {
+            val unmarshaller = JAXBContext.newInstance(ComicInfo::class.java).createUnmarshaller()
+            unmarshaller.unmarshal(info) as ComicInfo
+        } catch (e: Exception) {
+            mLOG.error(e.message, e)
+            null
         }
-        item.comicInfo = comic
-        val bookMarks = comic.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toSet() ?: emptySet()
-        item.tags = bookMarks.joinToString(separator = "\n")
-        item.arquivo = item.file!!.name
+    }
+
+    private fun inserirComicInfoNoArquivo(arquivo: File, comic: ComicInfo): Boolean {
+        val tempDir = File(mPASTA_TEMPORARIA, "comicinfo_insert_${System.currentTimeMillis()}")
+        tempDir.mkdirs()
+        return try {
+            val info = File(tempDir, Utils.COMICINFO)
+            val marshaller = JAXBContext.newInstance(ComicInfo::class.java).createMarshaller()
+            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
+            FileOutputStream(info).use { marshaller.marshal(comic, it) }
+            mRarService.insereComicInfo(arquivo, info)
+        } catch (e: Exception) {
+            mLOG.error("Erro ao inserir ComicInfo em ${arquivo.name}", e)
+            false
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
+
+    private fun recarregarComicInfoItem(item: Processar) {
+        val arquivo = item.file ?: return
+        val extractDir = File(mPASTA_TEMPORARIA, "reload_${System.currentTimeMillis()}_${arquivo.name.hashCode()}")
+        extractDir.mkdirs()
+        try {
+            val possuiComicInfo = arquivoPossuiComicInfo(arquivo)
+            val comic = lerComicInfoDoArquivo(arquivo, extractDir)
+            item.semComicInfo = !possuiComicInfo || comic == null
+            item.comicInfo = comic ?: ComicInfo()
+            item.tags = if (comic != null) tagsFromComic(comic) else ""
+            item.arquivo = arquivo.name
+        } finally {
+            extractDir.deleteRecursively()
+        }
+    }
+
+    private fun recarregarComicInfoItens(itens: List<Processar>) {
+        itens.forEach { recarregarComicInfoItem(it) }
         tbViewProcessar.refresh()
     }
 
@@ -923,12 +953,14 @@ class AbaComicInfoController : Initializable {
                 controllerPai.clearProgress()
                 controllerPai.setCursor(null)
                 habilita()
-                validos.forEach { recarregarComicInfoItem(it) }
-                val mensagem = if (validos.size == 1)
-                    "ComicInfo do item processado com sucesso."
-                else
-                    "${validos.size} itens processados com sucesso."
-                Notificacoes.notificacao(Notificacao.SUCESSO, "Processamento ComicInfo", mensagem)
+                Platform.runLater {
+                    recarregarComicInfoItens(validos)
+                    val mensagem = if (validos.size == 1)
+                        "ComicInfo do item processado com sucesso."
+                    else
+                        "${validos.size} itens processados com sucesso."
+                    Notificacoes.notificacao(Notificacao.SUCESSO, "Processamento ComicInfo", mensagem)
+                }
             }
 
             override fun failed() {
@@ -1432,7 +1464,7 @@ class AbaComicInfoController : Initializable {
             }
         }
 
-        val tagsTitleCase = MenuItem("Formatar Title Case (Ctrl + Shift + N)")
+        val tagsTitleCase = MenuItem("Tags Como TÍtulo (Ctrl + Shift + N)")
         tagsTitleCase.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
@@ -1497,7 +1529,7 @@ class AbaComicInfoController : Initializable {
         // GRUPO RECARREGAR
         val recarregarTodos = MenuItem("Recarregar todos ComicInfo")
         recarregarTodos.setOnAction {
-            mObsListaProcessar.forEach { recarregarComicInfoItem(it) }
+            recarregarComicInfoItens(mObsListaProcessar.toList())
             mHistory.clear()
         }
 
@@ -1505,13 +1537,11 @@ class AbaComicInfoController : Initializable {
         recarregarSelecionados.setOnAction {
             val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
             if (selecionados.isNotEmpty()) {
-                selecionados.forEach { 
-                    recarregarComicInfoItem(it)
-                    mHistory.removeHistoryForItem(it)
-                }
+                recarregarComicInfoItens(selecionados)
+                selecionados.forEach { mHistory.removeHistoryForItem(it) }
             } else if (tbViewProcessar.selectionModel.selectedItem != null) {
                 val item = tbViewProcessar.selectionModel.selectedItem
-                recarregarComicInfoItem(item)
+                recarregarComicInfoItens(listOf(item))
                 mHistory.removeHistoryForItem(item)
             }
         }
@@ -1642,12 +1672,19 @@ class AbaComicInfoController : Initializable {
         }
 
         tbViewProcessar.setRowFactory {
-            val row = TableRow<Processar>()
-            row.setOnMouseClicked { event ->
-                if (event.clickCount == 2 && !row.isEmpty)
-                    abrirPopupComicInfo(listOf(row.item))
+            object : TableRow<Processar>() {
+                init {
+                    setOnMouseClicked { event ->
+                        if (event.clickCount == 2 && !isEmpty)
+                            abrirPopupComicInfo(listOf(item))
+                    }
+                }
+
+                override fun updateItem(item: Processar?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    pseudoClassStateChanged(ALERTA_PSEUDO_CLASS, item?.semComicInfo == true)
+                }
             }
-            row
         }
 
         TextAreaTableCell.setOnKeyPress { pair ->
@@ -2309,6 +2346,41 @@ class AbaComicInfoController : Initializable {
 
     companion object {
         val fxmlLocate: URL get() = TelaInicialController::class.java.getResource("/view/AbaComicInfo.fxml")
+
+        internal fun arquivoPossuiComicInfoNaListagem(conteudo: List<String>): Boolean =
+            conteudo.any { entrada ->
+                entrada.equals(Utils.COMICINFO, ignoreCase = true) ||
+                    entrada.endsWith("/${Utils.COMICINFO}", ignoreCase = true) ||
+                    entrada.endsWith("\\${Utils.COMICINFO}", ignoreCase = true)
+            }
+
+        internal fun criarComicInfoBasico(arquivo: File, linguagem: Linguagem): ComicInfo {
+            val nome = arquivo.name.substringBeforeLast(".")
+            val titulo = nome.substringBeforeLast("-").trim().ifEmpty { nome }
+            val volume = Regex("volume\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                .find(nome)
+                ?.groupValues
+                ?.get(1)
+                ?.toIntOrNull() ?: 0
+            return ComicInfo(
+                id = UUID.randomUUID(),
+                comic = titulo,
+                title = titulo,
+                series = titulo,
+                volume = volume,
+                languageISO = linguagem.sigla,
+                manga = Manga.Yes
+            )
+        }
+
+        internal fun tagsFromComic(comic: ComicInfo): String {
+            val bookMarks = comic.pages
+                ?.filter { !it.bookmark.isNullOrEmpty() }
+                ?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }
+                ?.toSet()
+                ?: emptySet()
+            return bookMarks.joinToString(separator = "\n")
+        }
     }
 
 }

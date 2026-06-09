@@ -7,12 +7,14 @@ import com.fenix.ordenararquivos.model.entities.comicinfo.Pages
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.service.OcrServices
 import com.fenix.ordenararquivos.service.WinrarServices
+import com.fenix.ordenararquivos.util.Utils
 import javafx.collections.FXCollections
 import javafx.scene.control.TableView
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
+import java.io.File
 import java.lang.reflect.Field
 
 class AbaComicInfoControllerUnitTest : BaseJfxTest() {
@@ -66,7 +68,11 @@ class AbaComicInfoControllerUnitTest : BaseJfxTest() {
 
     @Test
     fun testOnBtnTagsAplicar() {
-        val item = Processar(arquivo = "test.rar", tags = "0 : Capítulo 001 # 001 - Título")
+        val item = Processar(
+            arquivo = "test.rar",
+            tags = "0${Utils.SEPARADOR_IMAGEM} Capítulo 001 ${Utils.SEPARADOR_IMPORTACAO} 001${Utils.SEPARADOR_CAPITULO}Título\n" +
+                "1${Utils.SEPARADOR_IMAGEM} Capítulo 002 ${Utils.SEPARADOR_IMPORTACAO} 002${Utils.SEPARADOR_CAPITULO}Outro"
+        )
         val lista = FXCollections.observableArrayList(item)
         setField("mObsListaProcessar", lista)
 
@@ -74,8 +80,74 @@ class AbaComicInfoControllerUnitTest : BaseJfxTest() {
         method.isAccessible = true
         method.invoke(controller)
 
-        // O separador de importação é ' # ' e o separador de capítulo é ' - ' (pelo que vi no código)
-        // O método onBtnTagsAplicar deveria limpar a tag para o formato "imagem : capítulo - título"
-        assertEquals("0 - Título", item.tags)
+        assertEquals(
+            "0${Utils.SEPARADOR_IMAGEM} Capítulo 001 - Título\n1${Utils.SEPARADOR_IMAGEM} Capítulo 002 - Outro",
+            item.tags
+        )
+    }
+
+    @Test
+    fun testCriarComicInfoBasicoDerivaTituloDoArquivo() {
+        val arquivo = File("Serie - Volume 01.cbz")
+        val comic = AbaComicInfoController.criarComicInfoBasico(arquivo, Linguagem.PORTUGUESE)
+
+        assertEquals("Serie", comic.comic)
+        assertEquals("Serie", comic.title)
+        assertEquals("Serie", comic.series)
+        assertEquals(1, comic.volume)
+        assertEquals(Linguagem.PORTUGUESE.sigla, comic.languageISO)
+    }
+
+    @Test
+    fun testArquivoPossuiComicInfoDetectaXml() {
+        assertTrue(
+            AbaComicInfoController.arquivoPossuiComicInfoNaListagem(listOf("ComicInfo.xml", "cap001.jpg"))
+        )
+        assertTrue(
+            AbaComicInfoController.arquivoPossuiComicInfoNaListagem(listOf("folder/ComicInfo.xml"))
+        )
+        assertFalse(
+            AbaComicInfoController.arquivoPossuiComicInfoNaListagem(listOf("cap001.jpg", "CoMet.xml"))
+        )
+    }
+
+    @Test
+    fun testTagsFromComicRefleteBookmarks() {
+        val comic = ComicInfo(
+            pages = listOf(
+                Pages(image = 0, bookmark = "Capítulo 001"),
+                Pages(image = 5, bookmark = "Capítulo 002")
+            )
+        )
+
+        val tags = AbaComicInfoController.tagsFromComic(comic)
+
+        assertTrue(tags.contains("0${Utils.SEPARADOR_IMAGEM}Capítulo 001"))
+        assertTrue(tags.contains("5${Utils.SEPARADOR_IMAGEM}Capítulo 002"))
+    }
+
+    @Test
+    fun testRecarregarItemAtualizaTagsSemRecarregarLista() {
+        val comic = ComicInfo(
+            pages = listOf(Pages(image = 3, bookmark = "Capítulo 010"))
+        )
+        val arquivo = File("temp_test_comic.rar")
+        val item = Processar(arquivo = arquivo.name, file = arquivo, comicInfo = ComicInfo(), tags = "")
+
+        whenever(rarService.listarConteudo(arquivo)).thenReturn(listOf("ComicInfo.xml"))
+        val xmlTemp = File.createTempFile("comicinfo_reload", ".xml")
+        xmlTemp.deleteOnExit()
+        whenever(rarService.extraiComicInfo(eq(arquivo), any())).thenReturn(xmlTemp)
+
+        val jaxb = jakarta.xml.bind.JAXBContext.newInstance(ComicInfo::class.java)
+        jaxb.createMarshaller().marshal(comic, xmlTemp)
+
+        val method = controller.javaClass.getDeclaredMethod("recarregarComicInfoItem", Processar::class.java)
+        method.isAccessible = true
+        method.invoke(controller, item)
+
+        assertFalse(item.semComicInfo)
+        assertTrue(item.tags.contains("3${Utils.SEPARADOR_IMAGEM}Capítulo 010"))
+        assertEquals("Capítulo 010", item.comicInfo?.pages?.first()?.bookmark)
     }
 }

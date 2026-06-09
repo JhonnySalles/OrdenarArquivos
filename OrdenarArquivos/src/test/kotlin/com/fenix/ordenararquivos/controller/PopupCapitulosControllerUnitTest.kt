@@ -19,6 +19,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.lang.reflect.Field
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 
 class PopupCapitulosControllerUnitTest : BaseJfxTest() {
 
@@ -323,5 +326,76 @@ class PopupCapitulosControllerUnitTest : BaseJfxTest() {
         assertEquals(1, imported.sumOf { it.capitulos.size })
         assertEquals("API Chapter", imported.flatMap { it.capitulos }.first().ingles)
         controller.comickFetcher = null
+    }
+
+    private val decimalFormat = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
+
+    @Test
+    fun testAplicarVolumesConfirmadosUsaTagsDaGrid() {
+        val tagsGrid = "12${Utils.SEPARADOR_IMAGEM}Capítulo 01 ${Utils.SEPARADOR_IMPORTACAO}01.00|Título Editado"
+        val volume = Volume(
+            arquivo = "vol1.cbz",
+            volume = 1.0,
+            tags = tagsGrid,
+            capitulos = mutableListOf(Capitulo(capitulo = 1.0, ingles = "Título HTML", japones = ""))
+        )
+        val item = Processar(
+            arquivo = "vol1.cbz",
+            tags = "12${Utils.SEPARADOR_IMAGEM}Capítulo 01 ${Utils.SEPARADOR_IMPORTACAO}01.00|Antigo"
+        )
+
+        val result = PopupCapitulosController.aplicarVolumesConfirmados(
+            listOf(volume),
+            listOf(item),
+            Linguagem.PORTUGUESE,
+            decimalFormat
+        )
+
+        assertEquals(tagsGrid, result["vol1.cbz"])
+    }
+
+    @Test
+    fun testAplicarVolumesConfirmadosFallbackSemTags() {
+        val tagsOriginais = "5${Utils.SEPARADOR_IMAGEM}Capítulo 01"
+        val volume = Volume(
+            arquivo = "vol1.cbz",
+            volume = 1.0,
+            tags = "",
+            capitulos = mutableListOf(Capitulo(capitulo = 1.0, ingles = "Título Importado", japones = ""))
+        )
+        val item = Processar(arquivo = "vol1.cbz", tags = tagsOriginais)
+
+        val result = PopupCapitulosController.aplicarVolumesConfirmados(
+            listOf(volume),
+            listOf(item),
+            Linguagem.PORTUGUESE,
+            decimalFormat
+        )
+
+        val novasTags = result["vol1.cbz"].orEmpty()
+        assertTrue(novasTags.contains(Utils.SEPARADOR_IMPORTACAO))
+        assertTrue(novasTags.contains("Título Importado"))
+        assertTrue(novasTags.startsWith("5${Utils.SEPARADOR_IMAGEM}"))
+    }
+
+    @Test
+    fun testAplicarVolumesConfirmadosIgnoraNaoMarcados() {
+        val volume = Volume(
+            marcado = false,
+            arquivo = "vol1.cbz",
+            volume = 1.0,
+            tags = "editado",
+            capitulos = mutableListOf()
+        )
+        val item = Processar(arquivo = "vol1.cbz", tags = "original")
+
+        val result = PopupCapitulosController.aplicarVolumesConfirmados(
+            listOf(volume),
+            listOf(item),
+            Linguagem.PORTUGUESE,
+            decimalFormat
+        )
+
+        assertTrue(result.isEmpty())
     }
 }

@@ -235,6 +235,11 @@ class Utils {
             return sb.toString()
         }
 
+        private fun terminaComPontuacaoFinal(texto: String): Boolean {
+            val ultimo = texto.trim().lastOrNull() ?: return false
+            return ultimo in setOf('.', '?', '!')
+        }
+
         fun normalizaSentenca(texto: String, locale: Locale = Locale.getDefault()): String {
             val trim = texto.trim()
             if (trim.isEmpty()) return texto
@@ -242,7 +247,7 @@ class Utils {
             val lower = trim.lowercase(locale)
             val formatado = lower.replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
             
-            return if (formatado.endsWith(".")) formatado else "$formatado."
+            return if (terminaComPontuacaoFinal(formatado)) formatado else "$formatado."
         }
 
         fun toTitleCaseInteligente(texto: String, locale: Locale = Locale.getDefault()): String {
@@ -272,7 +277,7 @@ class Utils {
                 }
             }
             val result = sb.toString()
-            return if (result.endsWith(".")) result else "$result."
+            return if (terminaComPontuacaoFinal(result)) result else "$result."
         }
 
         fun MD5(string: String): String {

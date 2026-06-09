@@ -78,6 +78,19 @@ class UtilsTest {
     }
 
     @Test
+    fun testNormalizaSentencaPreservaInterrogacaoExclamacao() {
+        assertEquals("O fim?", Utils.normalizaSentenca("o fim?"))
+        assertEquals("Socorro!", Utils.normalizaSentenca("socorro!"))
+        assertEquals("Continua.", Utils.normalizaSentenca("continua"))
+    }
+
+    @Test
+    fun testToTitleCaseInteligentePreservaInterrogacaoExclamacao() {
+        assertEquals("What Now?", Utils.toTitleCaseInteligente("what now?"))
+        assertEquals("Hello World.", Utils.toTitleCaseInteligente("hello world"))
+    }
+
+    @Test
     fun testMD5() {
         val hash = Utils.MD5("test string")
         assertNotNull(hash)

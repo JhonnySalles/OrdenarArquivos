@@ -12,5 +12,6 @@ data class Processar(
     var processar: JFXButton? = null,
     var amazon: JFXButton? = null,
     var salvar: JFXButton? = null,
-    var isProcessado: Boolean = false
+    var isProcessado: Boolean = false,
+    var semComicInfo: Boolean = false
 )
