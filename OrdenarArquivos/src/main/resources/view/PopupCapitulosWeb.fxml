@@ -39,6 +39,7 @@
                                     <Hyperlink fx:id="hplMangaDex" text="https://mangadex.org/" />
                                     <Hyperlink fx:id="hplTaiyo" text="https://taiyo.moe/" />
                                     <Hyperlink fx:id="hplMangaPark" text="https://mangapark.net/" />
+                                    <Hyperlink fx:id="hplZazaManga" text="https://www.zazamanga.com/" />
                                     <Hyperlink fx:id="hplMangaKatana" text="https://mangakatana.com/" />
                                     <Hyperlink fx:id="hplVyManga" text="https://vymanga.net/" />
                                     <Hyperlink fx:id="hplMangaTown1" text="https://www.mangatown.com/" />

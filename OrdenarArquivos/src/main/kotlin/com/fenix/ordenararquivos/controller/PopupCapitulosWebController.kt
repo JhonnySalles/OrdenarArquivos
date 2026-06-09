@@ -93,6 +93,9 @@ class PopupCapitulosWebController : Initializable {
     @FXML
     private lateinit var hplKMangaKodansha: Hyperlink
 
+    @FXML
+    private lateinit var hplZazaManga: Hyperlink
+
     private var sincronizandoEndereco = false
     private var ultimaUrlCarregada: String? = null
     private lateinit var webView: WebView
@@ -118,7 +121,7 @@ class PopupCapitulosWebController : Initializable {
 
         siteLinks = arrayOf(
             hplComickIO, hplComickFan, hplTaiyo, hplMangaDex, hplMangaFire, hplMangaRead,
-            hplMangak, hplMangaPark, hplMangaKatana, hplVyManga, hplMangaTown1, hplMangaTown2,
+            hplMangak, hplMangaPark, hplZazaManga, hplMangaKatana, hplVyManga, hplMangaTown1, hplMangaTown2,
             hplMangaHere, hplKMangaKodansha
         )
         for (link in siteLinks) {

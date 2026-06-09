@@ -104,6 +104,9 @@ class PopupCapitulosController : Initializable {
     private lateinit var hplKMangaKodansha: Hyperlink
 
     @FXML
+    private lateinit var hplZazaManga: Hyperlink
+
+    @FXML
     private lateinit var cbLinguagem: JFXComboBox<Linguagem>
 
     @FXML
@@ -245,7 +248,8 @@ class PopupCapitulosController : Initializable {
 
     private fun gerarTagImportada(tagRef: TagCapituloRef?, cap: Capitulo, linguagem: Linguagem): String {
         val num = formatar(cap.capitulo)
-        val title = if (linguagem == Linguagem.JAPANESE && cap.japones.isNotEmpty()) cap.japones else cap.ingles
+        val capTitle = if (linguagem == Linguagem.JAPANESE && cap.japones.isNotEmpty()) cap.japones else cap.ingles
+        val title = capTitle.ifBlank { tagRef?.tituloImportado.orEmpty() }
         val cleanTitle = Utils.limparTitulo(title)
         val label = tagRef?.bookmark?.takeIf { it.isNotBlank() } ?: "Capítulo $num"
         val pagina = tagRef?.pagina?.takeIf { it.isNotBlank() } ?: "-1"
@@ -257,6 +261,7 @@ class PopupCapitulosController : Initializable {
 
     fun extractExistingChapters(): List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
+        val linguagem = cbLinguagem.value ?: Linguagem.PORTUGUESE
 
         for (p in mProcessar) {
             val volNum = p.comicInfo?.volume?.toDouble() ?: -1.0
@@ -264,8 +269,16 @@ class PopupCapitulosController : Initializable {
 
             parseTagsProcessar(p.tags).forEach { tagRef ->
                 val cleanTitle = Utils.limparTitulo(tagRef.tituloImportado)
-                if (volume.capitulos.none { capitulosEquivalentes(it.capitulo, tagRef.capitulo) }) {
+                val existingCap = volume.capitulos.find { capitulosEquivalentes(it.capitulo, tagRef.capitulo) }
+                if (existingCap == null) {
                     volume.capitulos.add(Capitulo(capitulo = tagRef.capitulo, ingles = cleanTitle, japones = ""))
+                } else {
+                    val novo = Capitulo(capitulo = tagRef.capitulo, ingles = cleanTitle, japones = "")
+                    val merged = preferCapitulo(existingCap, novo, linguagem)
+                    if (merged != existingCap) {
+                        val idx = volume.capitulos.indexOf(existingCap)
+                        if (idx != -1) volume.capitulos[idx] = merged
+                    }
                 }
             }
         }
@@ -274,28 +287,50 @@ class PopupCapitulosController : Initializable {
         return volumesMap.values.toList().sortedBy { it.volume }
     }
 
+    private fun comicTargetVolumes(): List<Double> =
+        if (mProcessar.isNotEmpty()) {
+            mProcessar.map { it.comicInfo?.volume?.toDouble() ?: -1.0 }.distinct()
+        } else {
+            emptyList()
+        }
+
+    private fun mergeCapIntoVolume(targetVol: Double, newCap: Capitulo, linguagem: Linguagem) {
+        val existingVol = mImportedChapters.find { it.volume == targetVol }
+            ?: Volume(volume = targetVol, capitulos = mutableListOf()).also { mImportedChapters.add(it) }
+        val existingCap = existingVol.capitulos.find { capitulosEquivalentes(it.capitulo, newCap.capitulo) }
+        if (existingCap == null) {
+            existingVol.capitulos.add(newCap)
+        } else {
+            val merged = preferCapitulo(existingCap, newCap, linguagem)
+            if (merged != existingCap) {
+                val idx = existingVol.capitulos.indexOf(existingCap)
+                if (idx != -1) existingVol.capitulos[idx] = merged
+            }
+        }
+        existingVol.capitulos.sortBy { it.capitulo }
+    }
+
     private fun mergeImportedChapters(newVolumes: List<Volume>) {
         val linguagem = cbLinguagem.value ?: Linguagem.PORTUGUESE
+        val targetVols = comicTargetVolumes()
+
         for (newVol in newVolumes) {
-            val existingVol = mImportedChapters.find { it.volume == newVol.volume }
-            if (existingVol != null) {
+            if (targetVols.isNotEmpty()) {
                 for (newCap in newVol.capitulos) {
-                    val existingCap = existingVol.capitulos.find { capitulosEquivalentes(it.capitulo, newCap.capitulo) }
-                    if (existingCap == null) {
-                        existingVol.capitulos.add(newCap)
-                    } else {
-                        val merged = preferCapitulo(existingCap, newCap, linguagem)
-                        if (merged != existingCap) {
-                            val idx = existingVol.capitulos.indexOf(existingCap)
-                            if (idx != -1)
-                                existingVol.capitulos[idx] = merged
-                        }
+                    for (targetVol in targetVols) {
+                        mergeCapIntoVolume(targetVol, newCap, linguagem)
                     }
                 }
-                existingVol.capitulos.sortBy { it.capitulo }
             } else {
-                newVol.capitulos.sortBy { it.capitulo }
-                mImportedChapters.add(newVol)
+                val existingVol = mImportedChapters.find { it.volume == newVol.volume }
+                if (existingVol != null) {
+                    for (newCap in newVol.capitulos) {
+                        mergeCapIntoVolume(existingVol.volume, newCap, linguagem)
+                    }
+                } else {
+                    newVol.capitulos.sortBy { it.capitulo }
+                    mImportedChapters.add(newVol)
+                }
             }
         }
         mImportedChapters.sortBy { it.volume }
@@ -496,10 +531,6 @@ class PopupCapitulosController : Initializable {
     internal fun extrairSlugComick(site: String): String =
         site.substringAfter("/comic/").substringBefore("?").substringBefore("#").trim('/')
 
-    private fun processarComickApi(site: String) {
-        finalizarImportacao(extractComickApi(extrairSlugComick(site)))
-    }
-
     private fun finalizarImportacao(importados: List<Volume>) {
         mergeImportedChapters(importados)
         isImportado = true
@@ -507,7 +538,7 @@ class PopupCapitulosController : Initializable {
         if (importados.sumOf { it.capitulos.size } == 0) {
             AlertasModal.alerta(
                 "Importação",
-                "Nenhum capítulo encontrado. Para ComicK, verifique a conexão (API) ou salve a página completa com capítulos visíveis."
+                "Nenhum capítulo encontrado. Salve a página completa com a lista de capítulos visível antes de importar."
             )
         }
     }
@@ -515,10 +546,12 @@ class PopupCapitulosController : Initializable {
     private fun processarDocumento(site: String, pagina: Document) {
         val list = when {
             site.lowercase().contains("mangaplanet.com") -> extractMangaPlanet(pagina)
+            site.lowercase().contains("comickfan.com") -> extractComickFan(pagina)
             isComickComicUrl(site) -> extractComick(pagina)
             site.lowercase().contains("mangafire.to") -> extractMangaFire(pagina)
             site.lowercase().contains("taiyo.moe") -> extractTayo(pagina)
             site.lowercase().contains("mangapark.net") -> extractMangaPark(pagina)
+            site.lowercase().contains("zazamanga.com") -> extractZazaManga(pagina)
             site.lowercase().contains("mangaforest.me") -> extractMangaForest(pagina)
             site.lowercase().contains("mangaread.org") -> extractMangaRead(pagina)
             site.lowercase().contains("mangak.io") -> extractMangaK(pagina)
@@ -538,11 +571,7 @@ class PopupCapitulosController : Initializable {
     }
 
     internal fun processarConteudoWeb(site: String, html: String) {
-        if (isComickComicUrl(site)) {
-            processarComickApi(site)
-        } else {
-            processarHtml(site, html)
-        }
+        processarHtml(site, html)
     }
 
     internal fun normalizarEndereco(endereco: String): String {
@@ -558,10 +587,8 @@ class PopupCapitulosController : Initializable {
     }
 
     internal fun processarUrl(endereco: String) {
-        if (endereco.isBlank()) {
-            AlertasModal.alerta("Endereço", "Informe uma URL ou arquivo HTML antes de executar.")
+        if (endereco.isBlank())
             return
-        }
 
         try {
             var site = normalizarEndereco(endereco)
@@ -569,10 +596,6 @@ class PopupCapitulosController : Initializable {
                 txtEndereco.text = site
 
             val isUrl = site.contains("https:") || site.contains("http:")
-            if (isUrl && isComickComicUrl(site)) {
-                processarComickApi(site)
-                return
-            }
 
             val pagina: Document = try {
                 if (isUrl)
@@ -599,10 +622,12 @@ class PopupCapitulosController : Initializable {
                     if (!site.startsWith("http")) {
                         val fileName = file.name.lowercase()
                         if (fileName.contains("mangaplanet")) site = "https://mangaplanet.com"
+                        else if (fileName.contains("comick fanmade") || fileName.contains("comickfan")) site = "https://comickfan.com"
                         else if (fileName.contains("comick")) site = "https://comick.dev"
                         else if (fileName.contains("mangafire")) site = "https://mangafire.to"
                         else if (fileName.contains("taiyo")) site = "https://taiyo.moe"
                         else if (fileName.contains("mangapark")) site = "https://mangapark.net"
+                        else if (fileName.contains("zazamanga")) site = "https://www.zazamanga.com"
                         else if (fileName.contains("mangaforest")) site = "https://mangaforest.me"
                         else if (fileName.contains("mangaread")) site = "https://mangaread.org"
                         else if (fileName.contains("mangadex")) site = "https://mangadex.org"
@@ -626,11 +651,6 @@ class PopupCapitulosController : Initializable {
                 return
             }
 
-            if (isComickComicUrl(site)) {
-                processarComickApi(site)
-                return
-            }
-
             processarDocumento(site, pagina)
         } catch (e: Exception) {
             mLOG.error(e.message, e)
@@ -651,6 +671,62 @@ class PopupCapitulosController : Initializable {
 
     //Regex case insentive, no qual pode começar com capítulo, numero ou formato japoneas.
     private val mReplace = "(?i)^(ch|chapter|episode|第|[0-9])[0-9０-９ .]+(話|:)?".toRegex()
+
+    internal fun cleanImportedTitle(rawTitle: String): String {
+        val trimmed = rawTitle.trim()
+        if (trimmed.isBlank()) return ""
+        var cleaned = trimmed.replace(mReplace, "").trim()
+        if (cleaned.isBlank()) {
+            cleaned = Utils.limparTitulo(trimmed).replace(mReplace, "").trim()
+        }
+        if (cleaned.isBlank()) {
+            val suffixMatch = Regex(
+                """(?i)(?:Chapter|Capítulo|Ch\.?)\s*[\d.]+\s*[:\-—]?\s*(.+)"""
+            ).find(trimmed)
+            cleaned = suffixMatch?.groupValues?.get(1)?.trim().orEmpty()
+        }
+        return cleaned
+    }
+
+    private fun volumeChapterKey(volume: Double, chapter: Double): String = "$volume:$chapter"
+
+    private fun addCapituloSeValido(
+        volume: Volume,
+        num: Double,
+        title: String,
+        requireTitle: Boolean = true,
+        processed: MutableSet<String>? = null,
+        volumeNum: Double? = null
+    ): Boolean {
+        val vol = volumeNum ?: volume.volume
+        if (processed != null) {
+            val key = volumeChapterKey(vol, num)
+            if (key in processed) return false
+            processed.add(key)
+        }
+        val cleaned = cleanImportedTitle(title)
+        if (requireTitle && cleaned.isBlank()) return false
+        volume.capitulos.add(Capitulo(capitulo = num, ingles = cleaned, japones = ""))
+        return true
+    }
+
+    private enum class MangaDexLangTier { PORTUGUESE, ENGLISH, SPANISH }
+
+    private fun mangadexLangTier(langImg: Element?): MangaDexLangTier? {
+        if (langImg == null) return null
+        val title = langImg.attr("title").lowercase()
+        val alt = langImg.attr("alt").lowercase()
+        val src = langImg.attr("src").lowercase()
+        val combined = "$title $alt $src"
+        return when {
+            combined.contains("brazil") || combined.contains("portuguese") ||
+                src.contains("br.svg") || src.contains("pt.svg") -> MangaDexLangTier.PORTUGUESE
+            combined.contains("english") || src.contains("gb.svg") || src.contains("us.svg") ->
+                MangaDexLangTier.ENGLISH
+            combined.contains("spanish") || src.contains("es.svg") -> MangaDexLangTier.SPANISH
+            else -> null
+        }
+    }
 
     internal data class ParsedChapterLine(
         val volume: Double?,
@@ -699,21 +775,47 @@ class PopupCapitulosController : Initializable {
         cleanTitle: Boolean = true
     ) {
         if (processed.contains(parsed.chapter)) return
-        processed.add(parsed.chapter)
-        val volNum = parsed.volume ?: -1.0
-        val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
-        val title = if (cleanTitle) {
-            Utils.limparTitulo(parsed.title).replace(mReplace, "").trim()
+        val cleaned = if (cleanTitle) {
+            cleanImportedTitle(parsed.title)
         } else {
             parsed.title.replace(mReplace, "").trim()
         }
-        volume.capitulos.add(Capitulo(capitulo = parsed.chapter, ingles = title, japones = ""))
+        if (cleaned.isBlank()) return
+        processed.add(parsed.chapter)
+        val volNum = parsed.volume ?: -1.0
+        val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
+        volume.capitulos.add(Capitulo(capitulo = parsed.chapter, ingles = cleaned, japones = ""))
     }
+
+    private data class SourceItem(val vol: Double, val cap: Capitulo)
+
+    private fun bestSourceMatch(
+        pool: Iterable<SourceItem>,
+        chapter: Double,
+        preferredVol: Double?,
+        linguagem: Linguagem
+    ): SourceItem? {
+        val candidates = pool.filter { capitulosEquivalentes(it.cap.capitulo, chapter) }
+        if (candidates.isEmpty()) return null
+        return candidates.maxWithOrNull(
+            compareBy<SourceItem> { scoreCapitulo(it.cap, linguagem) }
+                .thenByDescending { if (preferredVol != null && it.vol == preferredVol) 1 else 0 }
+        )
+    }
+
+    private fun tagRefMatchPriority(tagRef: TagCapituloRef): Int =
+        if (tagRef.pagina == "-1" || tagRef.pagina.isBlank()) 1 else 0
+
+    private fun deduplicarTagRefsPorCapitulo(tagRefs: List<TagCapituloRef>): List<TagCapituloRef> =
+        tagRefs.groupBy { it.capitulo }.values.map { group ->
+            val best = group.minBy { tagRefMatchPriority(it) }
+            val mergedTitle = group.map { it.tituloImportado.trim() }.firstOrNull { it.isNotBlank() }
+                ?: best.tituloImportado
+            best.copy(tituloImportado = mergedTitle)
+        }.sortedBy { it.capitulo }
 
     internal fun preparar(lista: List<Volume>) {
         val linguagem = cbLinguagem.value ?: Linguagem.PORTUGUESE
-
-        data class SourceItem(val vol: Double, val cap: Capitulo)
 
         val sourcePool = mutableListOf<SourceItem>()
         lista.forEach { v ->
@@ -727,27 +829,30 @@ class PopupCapitulosController : Initializable {
         if (mProcessar.isNotEmpty()) {
             for (p in mProcessar) {
                 val vol = p.comicInfo?.volume?.toDouble() ?: -1.0
-                val tagRefs = parseTagsProcessar(p.tags)
+                val tagRefs = deduplicarTagRefsPorCapitulo(parseTagsProcessar(p.tags))
                 val matches = mutableListOf<MatchedChapter>()
                 val matchedTagRefs = mutableSetOf<TagCapituloRef>()
+                val matchedChapters = mutableSetOf<Double>()
 
                 tagRefs.forEach { tagRef ->
-                    val found = sourcePool.find {
-                        it.vol == vol && capitulosEquivalentes(it.cap.capitulo, tagRef.capitulo)
-                    }
+                    if (matchedChapters.any { capitulosEquivalentes(it, tagRef.capitulo) }) return@forEach
+                    val found = bestSourceMatch(sourcePool, tagRef.capitulo, vol, linguagem)
                     if (found != null) {
                         matches.add(MatchedChapter(tagRef, found.cap))
                         matchedTagRefs.add(tagRef)
-                        sourcePool.remove(found)
+                        matchedChapters.add(tagRef.capitulo)
+                        sourcePool.removeAll { capitulosEquivalentes(it.cap.capitulo, tagRef.capitulo) }
                     }
                 }
 
                 tagRefs.filter { it !in matchedTagRefs }.forEach { tagRef ->
-                    val found = sourcePool.find { capitulosEquivalentes(it.cap.capitulo, tagRef.capitulo) }
+                    if (matchedChapters.any { capitulosEquivalentes(it, tagRef.capitulo) }) return@forEach
+                    val found = bestSourceMatch(sourcePool, tagRef.capitulo, null, linguagem)
                     if (found != null) {
                         matches.add(MatchedChapter(tagRef, found.cap))
                         matchedTagRefs.add(tagRef)
-                        sourcePool.remove(found)
+                        matchedChapters.add(tagRef.capitulo)
+                        sourcePool.removeAll { capitulosEquivalentes(it.cap.capitulo, tagRef.capitulo) }
                     }
                 }
 
@@ -755,7 +860,10 @@ class PopupCapitulosController : Initializable {
                 val min = numeros.minOrNull() ?: Double.MAX_VALUE
                 val max = numeros.maxOrNull() ?: Double.MIN_VALUE
                 if (min <= max) {
-                    val proximos = sourcePool.filter { it.cap.capitulo >= min && it.cap.capitulo <= max }.toList()
+                    val proximos = sourcePool.filter {
+                        it.cap.capitulo >= min && it.cap.capitulo <= max &&
+                            matchedChapters.none { ch -> capitulosEquivalentes(ch, it.cap.capitulo) }
+                    }.toList()
                     proximos.forEach { item ->
                         matches.add(MatchedChapter(null, item.cap))
                         sourcePool.remove(item)
@@ -947,6 +1055,7 @@ class PopupCapitulosController : Initializable {
         }
     }
 
+    @Deprecated("Use extractComick via HTML; API no longer used in import flow")
     internal fun extractComickApi(slug: String): List<Volume> {
         val lang = when (cbLinguagem.value) {
             Linguagem.PORTUGUESE -> "pt-br"
@@ -1041,9 +1150,91 @@ class PopupCapitulosController : Initializable {
         }
 
         if (rawChapterEntries.isEmpty())
+            rawChapterEntries.addAll(extractComickFromLinks(pagina))
+
+        if (rawChapterEntries.isEmpty())
             rawChapterEntries.addAll(extractComickFromEmbeddedJson(pagina.html()))
 
+        val nextData = pagina.selectFirst("script#__NEXT_DATA__")?.html()
+        if (rawChapterEntries.isEmpty() && nextData != null)
+            rawChapterEntries.addAll(extractComickFromEmbeddedJson(nextData))
+
         return buildVolumesFromTempCaps(rawChapterEntries)
+    }
+
+    internal fun extractComickFromLinks(pagina: Document): List<TempCapInfo> {
+        val capRegex = Regex(
+            "(?:(?:Chapter|Capítulo|Ch\\.?|Cap\\.?|第)\\s*)?(\\d+(?:\\.\\d+)?)",
+            RegexOption.IGNORE_CASE
+        )
+        val volRegex = Regex("(?:Vol|Volume)\\.?\\s*(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE)
+        val entries = mutableListOf<TempCapInfo>()
+        val seen = mutableSetOf<Double>()
+
+        pagina.select("a[href*='/comic/'][href*='/chapter'], a[href*='/chapter-']").forEachIndexed { index, link ->
+            val href = link.attr("href")
+            if (!href.contains("/chapter", ignoreCase = true)) return@forEachIndexed
+
+            val linkText = link.text().trim()
+            val chapNum = capRegex.find(linkText)?.groupValues?.get(1)?.toDoubleOrNull()
+                ?: capRegex.find(href)?.groupValues?.get(1)?.toDoubleOrNull()
+                ?: return@forEachIndexed
+            if (chapNum in seen) return@forEachIndexed
+
+            var volNum: Double? = null
+            var title = ""
+            for (span in link.select("span")) {
+                val spanText = span.text().trim()
+                volRegex.find(spanText)?.let { volNum = it.groupValues[1].toDoubleOrNull() }
+                if (span.hasClass("text-xs") ||
+                    (spanText.isNotBlank() && capRegex.find(spanText)?.value != spanText &&
+                        !volRegex.containsMatchIn(spanText))
+                ) {
+                    if (title.isBlank()) title = spanText
+                }
+            }
+            if (title.isBlank()) {
+                val attrTitle = link.attr("title").trim()
+                title = when {
+                    attrTitle.contains(" - ") -> attrTitle.substringAfter(" - ").trim()
+                    attrTitle.isNotBlank() ->
+                        attrTitle.replace(Regex("""(?i)^Chapter\s*[\d.]+\s*[-:]?\s*"""), "").trim()
+                    else -> linkText.replace(Regex("""(?i)^(?:Chapter|Ch\.?)\s*[\d.]+\s*"""), "").trim()
+                }
+            }
+            if (cleanImportedTitle(title).isBlank()) return@forEachIndexed
+
+            seen.add(chapNum)
+            entries.add(TempCapInfo(volNum, chapNum, title, index))
+        }
+        return entries
+    }
+
+    internal fun extractComickFan(pagina: Document): List<Volume> {
+        val volumesMap = mutableMapOf<Double, Volume>()
+        val processed = mutableSetOf<String>()
+        val titleStripRegex = Regex("""(?i)^Chapter\s*[\d.]+\s*[-:]?\s*""")
+
+        pagina.select("#chapterList .chapter-items[data-chapter-num], .chapter-items[data-chapter-num]").forEach { item ->
+            val chapNum = item.attr("data-chapter-num").toDoubleOrNull() ?: return@forEach
+
+            val link = item.selectFirst("a")
+            var title = ""
+            link?.attr("title")?.trim()?.let { attr ->
+                title = if (attr.contains(" - ")) attr.substringAfter(" - ").trim()
+                else attr.replace(titleStripRegex, "").trim()
+            }
+            if (title.isBlank()) {
+                val textEl = item.selectFirst(".font-medium font, .font-medium, a")
+                val text = textEl?.text()?.trim().orEmpty()
+                title = text.replace(titleStripRegex, "").trim()
+            }
+            val volume = volumesMap.getOrPut(-1.0) { Volume(volume = -1.0) }
+            addCapituloSeValido(volume, chapNum, title, processed = processed, volumeNum = -1.0)
+        }
+
+        volumesMap.values.forEach { it.capitulos.sortBy { c -> c.capitulo } }
+        return volumesMap.values.toList().sortedBy { it.volume }
     }
 
     private fun parseComickRow(row: Element, index: Int): TempCapInfo? {
@@ -1124,11 +1315,11 @@ class PopupCapitulosController : Initializable {
 
         val volumesMap = mutableMapOf<Double, Volume>()
         for (finalEntry in finalChapterMap.values.sortedBy { it.chap }) {
+            val cleanedTitle = cleanImportedTitle(finalEntry.title)
+            if (cleanedTitle.isBlank()) continue
             val volNum = finalEntry.vol ?: -1.0
             val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
-            volume.capitulos.add(
-                Capitulo(capitulo = finalEntry.chap, ingles = finalEntry.title.replace(mReplace, "").trim(), "")
-            )
+            volume.capitulos.add(Capitulo(capitulo = finalEntry.chap, ingles = cleanedTitle, japones = ""))
         }
 
         volumesMap.values.forEach { it.capitulos.sortBy { chap -> chap.capitulo } }
@@ -1146,6 +1337,7 @@ class PopupCapitulosController : Initializable {
     //<--------------------------  Manga Fire  -------------------------->
     internal fun extractMangaFire(pagina: Document): List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
+        val processed = mutableSetOf<String>()
         val volRegex = Regex("(?:Volume|Vol\\.?)\\s*(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE)
 
         val chapterListContainer = pagina.selectFirst("ul.scroll-sm")
@@ -1154,31 +1346,29 @@ class PopupCapitulosController : Initializable {
 
             for (itemElement in chapterItems) {
                 val chapNumString = itemElement.attr("data-number")
-                val chapNum = chapNumString.toDoubleOrNull()
+                val chapNum = chapNumString.toDoubleOrNull() ?: continue
 
-                if (chapNum != null) {
-                    var title = ""
-                    var volNum = -1.0
-                    val linkElement = itemElement.selectFirst("a")
-                    if (linkElement != null) {
-                        val firstSpan = linkElement.selectFirst("span:first-child")
-                        val fullText = firstSpan?.text()?.trim() ?: ""
+                var title = ""
+                var volNum = -1.0
+                val linkElement = itemElement.selectFirst("a")
+                if (linkElement != null) {
+                    val firstSpan = linkElement.selectFirst("span:first-child")
+                    val fullText = firstSpan?.text()?.trim() ?: ""
 
-                        volRegex.find(fullText)?.let {
-                            volNum = it.groupValues[1].toDoubleOrNull() ?: -1.0
-                        }
-
-                        val titleRegex = """^.*?(?:Chapter|Ch\.?|Ch)\s*[\d.]+(?::\s*|\s+)(.*)""".toRegex(RegexOption.IGNORE_CASE)
-                        val matchResult = titleRegex.find(fullText)
-                        title = matchResult?.groupValues?.get(1)?.trim() ?: ""
-
-                        if (title.isEmpty() && !fullText.matches("""(?i)^.*?(?:Chapter|Ch\.?|Ch)\s*[\d.]+$""".toRegex())) {
-                            title = fullText
-                        }
+                    volRegex.find(fullText)?.let {
+                        volNum = it.groupValues[1].toDoubleOrNull() ?: -1.0
                     }
-                    val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
-                    volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = title.replace(mReplace, "").trim(), japones = ""))
+
+                    val titleRegex = """^.*?(?:Chapter|Ch\.?|Ch)\s*[\d.]+(?::\s*|\s+)(.*)""".toRegex(RegexOption.IGNORE_CASE)
+                    val matchResult = titleRegex.find(fullText)
+                    title = matchResult?.groupValues?.get(1)?.trim() ?: ""
+
+                    if (title.isEmpty() && !fullText.matches("""(?i)^.*?(?:Chapter|Ch\.?|Ch)\s*[\d.]+$""".toRegex())) {
+                        title = fullText
+                    }
                 }
+                val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
+                addCapituloSeValido(volume, chapNum, title, requireTitle = false, processed = processed, volumeNum = volNum)
             }
         }
 
@@ -1202,6 +1392,7 @@ class PopupCapitulosController : Initializable {
         if (volumeSections.isEmpty()) {
             // Se ainda assim não encontrar, tenta pegar todos os capítulos e colocar num volume genérico
             val volume = Volume(volume = -1.0)
+            val processed = mutableSetOf<String>()
             val chapterContainers = pagina.select("div.flex.flex-col.gap-1:has(p.line-clamp-1)")
             for (container in chapterContainers) {
                 val pElement = container.selectFirst("p.line-clamp-1")
@@ -1213,7 +1404,7 @@ class PopupCapitulosController : Initializable {
 
                 if (chapNum != null) {
                     val title = cleanTaiyoTitle(fullText, chapNum.toString())
-                    volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = title, japones = ""))
+                    addCapituloSeValido(volume, chapNum, title, processed = processed, volumeNum = -1.0)
                 }
             }
             if (volume.capitulos.isNotEmpty()) {
@@ -1230,6 +1421,7 @@ class PopupCapitulosController : Initializable {
                     val volumeNum = volumeNumberString.toDoubleOrNull() ?: 0.0
 
                     val currentVolume = Volume(volume = volumeNum)
+                    val processed = mutableSetOf<String>()
                     val chapterContainers = volumeSectionDiv.select("section > div.py-2 > div.flex.flex-col.gap-1, div.flex.flex-col.gap-1:has(p.line-clamp-1)")
 
                     for (chapterContainer in chapterContainers) {
@@ -1242,7 +1434,7 @@ class PopupCapitulosController : Initializable {
 
                         if (chapNum != null) {
                             val title = cleanTaiyoTitle(fullText, chapNum.toString())
-                            currentVolume.capitulos.add(Capitulo(capitulo = chapNum, ingles = title, japones = ""))
+                            addCapituloSeValido(currentVolume, chapNum, title, processed = processed, volumeNum = volumeNum)
                         }
                     }
                     if (currentVolume.capitulos.isNotEmpty()) {
@@ -1277,10 +1469,10 @@ class PopupCapitulosController : Initializable {
     //<--------------------------  MangaForest -------------------------->
     internal fun extractMangaForest(pagina: Document): List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
+        val processed = mutableSetOf<String>()
         val chapterList = pagina.getElementById("chapter-list-inner")
         val chapters = chapterList?.getElementsByTag("li")
 
-        // Regex para capturar o número do volume (opcional), número do capítulo e descrição
         val regex = Regex("(?:Vol(?:ume)?\\s?(\\d+(?:\\.\\d+)?))?\\s?(?:Chapter|Chap|Extra)\\s?([\\d.]+|Extra(?: V\\d+)?)\\s?:?\\s?(.*)", RegexOption.IGNORE_CASE)
 
         chapters?.forEach { li ->
@@ -1291,17 +1483,11 @@ class PopupCapitulosController : Initializable {
                     val (volumeStr, chapterStr, description) = matchResult.destructured
 
                     val volumeNumber = volumeStr.toDoubleOrNull() ?: -1.0
-
-                    // Tratamento especial para casos como "Extra V2"
                     val chapterNumberCleaned = chapterStr.replace(Regex("[^\\d.]"), "")
                     val chapterNumber = chapterNumberCleaned.toDoubleOrNull() ?: 0.0
 
-                    val volume = volumesMap.getOrPut(volumeNumber) {
-                        Volume(volume = volumeNumber)
-                    }
-
-                    val capitulo = Capitulo(capitulo = chapterNumber, ingles = description.trim(), japones = "")
-                    volume.capitulos.add(capitulo)
+                    val volume = volumesMap.getOrPut(volumeNumber) { Volume(volume = volumeNumber) }
+                    addCapituloSeValido(volume, chapterNumber, description.trim(), processed = processed, volumeNum = volumeNumber)
                 }
             }
         }
@@ -1332,9 +1518,9 @@ class PopupCapitulosController : Initializable {
 
                             val volumeNumber = volumeStr.toDoubleOrNull() ?: -1.0
                             val volume = volumesMap.getOrPut(volumeNumber) { Volume(volume = volumeNumber) }
-                            val cleanedDescription = Utils.limparTitulo(description.trim())
-                            val capitulo = Capitulo(capitulo = chapterNumber, ingles = cleanedDescription, japones = "")
-                            volume.capitulos.add(capitulo)
+                            val cleanedDescription = cleanImportedTitle(Utils.limparTitulo(description.trim()))
+                            if (cleanedDescription.isBlank()) continue
+                            volume.capitulos.add(Capitulo(capitulo = chapterNumber, ingles = cleanedDescription, japones = ""))
                         }
                     }
                 }
@@ -1361,9 +1547,9 @@ class PopupCapitulosController : Initializable {
                         volRegex.find(text)?.let { volNum = it.groupValues[1].toDoubleOrNull() ?: -1.0 }
 
                         val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
-                        val cleanedDescription = Utils.limparTitulo(description.trim())
-                        val capitulo = Capitulo(capitulo = chapterNumber, ingles = cleanedDescription, japones = "")
-                        volume.capitulos.add(capitulo)
+                        val cleanedDescription = cleanImportedTitle(Utils.limparTitulo(description.trim()))
+                        if (cleanedDescription.isBlank()) return@let
+                        volume.capitulos.add(Capitulo(capitulo = chapterNumber, ingles = cleanedDescription, japones = ""))
                     }
                 }
             }
@@ -1397,10 +1583,10 @@ class PopupCapitulosController : Initializable {
 
                         val volumeNumber = volumeStr.toDoubleOrNull() ?: -1.0
                         val volume = volumesMap.getOrPut(volumeNumber) { Volume(volume = volumeNumber) }
-                        
-                        val cleanedTitle = Utils.limparTitulo(description.trim())
-                        val capitulo = Capitulo(capitulo = chapterNumber, ingles = cleanedTitle, japones = "")
-                        volume.capitulos.add(capitulo)
+
+                        val cleanedTitle = cleanImportedTitle(Utils.limparTitulo(description.trim()))
+                        if (cleanedTitle.isBlank()) continue
+                        volume.capitulos.add(Capitulo(capitulo = chapterNumber, ingles = cleanedTitle, japones = ""))
                     }
                 }
             }
@@ -1413,31 +1599,26 @@ class PopupCapitulosController : Initializable {
     //<--------------------------  MangaKatana -------------------------->
     internal fun extractMangaKatana(pagina: Document): List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
-        val processedChapters = mutableSetOf<Double>()
-        
-        val chapterLinks = pagina.select("div.chapters div.chapter a")
+        val processed = mutableSetOf<String>()
         val regex = Regex("(?:Vol(?:ume)?\\s*(\\d+(?:\\.\\d+)?))?\\s*(?:Chapter|ch\\.|Chap)\\s*([\\d.]+)\\s*:?\\s*(.*)", RegexOption.IGNORE_CASE)
 
-        for (link in chapterLinks) {
+        for (link in pagina.select("div.chapters div.chapter a")) {
             val linkText = link.text().trim()
-            if (linkText.isNotEmpty()) {
-                val matchResult = regex.find(linkText)
-                if (matchResult != null) {
-                    val (volumeStr, chapterStr, description) = matchResult.destructured
-                    val chapterNumber = chapterStr.toDoubleOrNull()
-                    if (chapterNumber != null) {
-                        if (processedChapters.contains(chapterNumber)) continue
-                        processedChapters.add(chapterNumber)
+            if (linkText.isEmpty()) continue
+            val matchResult = regex.find(linkText) ?: continue
+            val (volumeStr, chapterStr, description) = matchResult.destructured
+            val chapterNumber = chapterStr.toDoubleOrNull() ?: continue
 
-                        val volumeNumber = volumeStr.toDoubleOrNull() ?: -1.0
-                        val volume = volumesMap.getOrPut(volumeNumber) { Volume(volume = volumeNumber) }
-                        
-                        val cleanedTitle = Utils.limparTitulo(description.trim())
-                        val capitulo = Capitulo(capitulo = chapterNumber, ingles = cleanedTitle, japones = "")
-                        volume.capitulos.add(capitulo)
-                    }
-                }
-            }
+            val volumeNumber = volumeStr.toDoubleOrNull() ?: -1.0
+            val volume = volumesMap.getOrPut(volumeNumber) { Volume(volume = volumeNumber) }
+            addCapituloSeValido(
+                volume,
+                chapterNumber,
+                description.trim(),
+                requireTitle = false,
+                processed = processed,
+                volumeNum = volumeNumber
+            )
         }
 
         volumesMap.values.forEach { it.capitulos.sortBy { it.capitulo } }
@@ -1447,18 +1628,12 @@ class PopupCapitulosController : Initializable {
     //<--------------------------  MangaDex -------------------------->
     internal fun extractMangaDex(pagina: Document): List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
+        val processedKeys = mutableSetOf<String>()
         val numberRegex = Regex("""[\d.]+""")
-        val selectedLang = cbLinguagem.selectionModel.selectedItem
-        val langNameRequested = selectedLang?.name?.lowercase() ?: "portuguese"
 
-        // Localiza todos os cabeçalhos de capítulos
-        val chapterHeaders = pagina.select(".chapter-header")
-
-        for (header in chapterHeaders) {
-            // Extrai o número do capítulo (ex: "Chapter 118")
+        for (header in pagina.select(".chapter-header")) {
             val chapterNumber = numberRegex.find(header.text())?.value?.toDoubleOrNull() ?: continue
 
-            // Tenta localizar o volume associado percorrendo os pais até encontrar algo com "Volume"
             var volumeNumber = -1.0
             var currentParent = header.parent()
             while (currentParent != null) {
@@ -1470,39 +1645,37 @@ class PopupCapitulosController : Initializable {
                 currentParent = currentParent.parent()
             }
 
-            val currentVolume = volumesMap.getOrPut(volumeNumber) { Volume(volume = volumeNumber) }
+            val key = volumeChapterKey(volumeNumber, chapterNumber)
+            if (key in processedKeys) continue
 
-            // O contêiner pai do header geralmente contém as versões de línguas
             val container = header.parent()
             val languageVersions = container?.select(".chapter.relative.read") ?: emptyList()
 
-            var extractedTitle = ""
-            var fallbackTitle = ""
+            var ptTitle = ""
+            var enTitle = ""
+            var esTitle = ""
 
             for (version in languageVersions) {
                 val langImg = version.selectFirst("img")
-                val langTitle = langImg?.attr("title")?.lowercase() ?: ""
                 val description = version.selectFirst(".line-clamp-1")?.text()?.trim() ?: ""
-
-                // Se for a língua selecionada, prioriza
-                if (langTitle.contains(langNameRequested) || (langNameRequested == "portuguese" && langTitle.contains("brazil"))) {
-                    extractedTitle = description
-                    break
-                }
-
-                // Mantém a primeira versão encontrada como fallback caso a selecionada não exista
-                if (fallbackTitle.isEmpty()) {
-                    fallbackTitle = description
+                if (description.isBlank()) continue
+                when (mangadexLangTier(langImg)) {
+                    MangaDexLangTier.PORTUGUESE -> if (ptTitle.isBlank()) ptTitle = description
+                    MangaDexLangTier.ENGLISH -> if (enTitle.isBlank()) enTitle = description
+                    MangaDexLangTier.SPANISH -> if (esTitle.isBlank()) esTitle = description
+                    null -> { /* idiomas não suportados ignorados */ }
                 }
             }
 
-            // Se não encontrou a língua solicitada, usa o fallback ("mantenha o selecionado" / disponível)
-            val finalTitle = if (extractedTitle.isNotEmpty()) extractedTitle else fallbackTitle
+            val rawTitle = ptTitle.ifBlank { enTitle.ifBlank { esTitle } }
+            val finalTitle = cleanImportedTitle(rawTitle)
+            if (finalTitle.isBlank()) continue
 
-            currentVolume.capitulos.add(Capitulo(chapterNumber, finalTitle.replace(mReplace, "").trim(), ""))
+            processedKeys.add(key)
+            val currentVolume = volumesMap.getOrPut(volumeNumber) { Volume(volume = volumeNumber) }
+            currentVolume.capitulos.add(Capitulo(chapterNumber, finalTitle, ""))
         }
 
-        // Ordena os capítulos dentro de cada volume e depois os próprios volumes.
         volumesMap.values.forEach { it.capitulos.sortByDescending { cap -> cap.capitulo } }
         return volumesMap.values.sortedByDescending { it.volume }
     }
@@ -1510,6 +1683,7 @@ class PopupCapitulosController : Initializable {
     //<--------------------------  MangaPark -------------------------->
     internal fun extractMangaPark(pagina: Document): List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
+        val processed = mutableSetOf<String>()
         val volRegex = Regex("(?:Volume|Vol\\.?)\\s*(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE)
         val chapterRegex = """(?:Chapter|Ch\.)\s*([\d.]+)""".toRegex(RegexOption.IGNORE_CASE)
 
@@ -1541,8 +1715,87 @@ class PopupCapitulosController : Initializable {
                     }
 
                     val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
-                    volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = description.replace(mReplace, "").trim(), japones = ""))
+                    addCapituloSeValido(volume, chapNum, description, processed = processed, volumeNum = volNum)
                 }
+            }
+        }
+
+        volumesMap.values.forEach { it.capitulos.sortBy { it.capitulo } }
+        return volumesMap.values.sortedBy { it.volume }
+    }
+
+    //<--------------------------  ZazaManga -------------------------->
+    internal fun extractZazaManga(pagina: Document): List<Volume> {
+        val volumesMap = mutableMapOf<Double, Volume>()
+        val processed = mutableSetOf<String>()
+        val volRegex = Regex("(?:Volume|Vol\\.?)\\s*(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE)
+        val chapterRegex = Regex("(?:Chapter|Ch\\.?)\\s*([\\d.]+)", RegexOption.IGNORE_CASE)
+        val hrefChapterRegex = Regex("""/chapter-([\d.]+)(?:/|$|\?)""", RegexOption.IGNORE_CASE)
+
+        fun parseChapterLink(link: Element, text: String): Triple<Double, Double, String>? {
+            var chapNum = chapterRegex.find(text)?.groupValues?.get(1)?.toDoubleOrNull()
+            if (chapNum == null) {
+                val href = link.attr("href")
+                chapNum = hrefChapterRegex.find(href)?.groupValues?.get(1)?.toDoubleOrNull()
+            }
+            if (chapNum == null) return null
+
+            var volNum = -1.0
+            volRegex.find(text)?.let { volNum = it.groupValues[1].toDoubleOrNull() ?: -1.0 }
+
+            var description = ""
+            if (text.contains(":")) description = text.substringAfter(":").trim()
+            else {
+                val afterChapter = chapterRegex.find(text)?.let { text.substringAfter(it.value).trim() } ?: ""
+                if (afterChapter.isNotEmpty()) description = afterChapter.removePrefix(":").removePrefix("-").trim()
+            }
+
+            return Triple(volNum, chapNum, description)
+        }
+
+        fun processLinks(links: List<Element>) {
+            for (link in links) {
+                val text = link.text().trim()
+                if (text.isEmpty()) continue
+                val parsed = parseChapterLink(link, text) ?: continue
+                val (volNum, chapNum, description) = parsed
+                val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
+                addCapituloSeValido(
+                    volume,
+                    chapNum,
+                    description,
+                    requireTitle = false,
+                    processed = processed,
+                    volumeNum = volNum
+                )
+            }
+        }
+
+        var chapterLinks = pagina.select("li.wp-manga-chapter a")
+        if (chapterLinks.isEmpty()) chapterLinks = pagina.select("#manga-chapters-holder li.wp-manga-chapter a")
+        if (chapterLinks.isNotEmpty()) {
+            processLinks(chapterLinks)
+        } else {
+            val chapterSelector = pagina.selectFirst("div.c-selectpicker.selectpicker_chapter, div.selectpicker_chapter")
+            val chapterOptions = chapterSelector?.select("option") ?: emptyList()
+            for (option in chapterOptions) {
+                val text = option.text().trim()
+                if (text.isEmpty()) continue
+                val matchResult = chapterRegex.find(text) ?: continue
+                val chapNum = matchResult.groupValues[1].toDoubleOrNull() ?: continue
+                var volNum = -1.0
+                volRegex.find(text)?.let { volNum = it.groupValues[1].toDoubleOrNull() ?: -1.0 }
+                var description = ""
+                if (text.contains(":")) description = text.substringAfter(":").trim()
+                val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
+                addCapituloSeValido(
+                    volume,
+                    chapNum,
+                    description,
+                    requireTitle = false,
+                    processed = processed,
+                    volumeNum = volNum
+                )
             }
         }
 
@@ -1553,7 +1806,7 @@ class PopupCapitulosController : Initializable {
     //<--------------------------  MangaTown -------------------------->
     internal fun extractMangaTown(pagina: Document): List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
-        val processed = mutableSetOf<Double>()
+        val processed = mutableSetOf<String>()
 
         val desktopItems = pagina.select("ul.chapter_list > li")
         if (desktopItems.isNotEmpty()) {
@@ -1562,8 +1815,6 @@ class PopupCapitulosController : Initializable {
                 val linkText = link.text().trim()
                 val chapMatch = MANGATOWN_DESKTOP_CHAPTER_REGEX.find(linkText) ?: continue
                 val chapNum = chapMatch.groupValues[1].toDoubleOrNull() ?: continue
-                if (processed.contains(chapNum)) continue
-                processed.add(chapNum)
 
                 var title = ""
                 for (span in li.select("span")) {
@@ -1572,15 +1823,12 @@ class PopupCapitulosController : Initializable {
                         if (spanText.isNotEmpty()) title = spanText
                     }
                 }
+                if (title.isBlank()) {
+                    title = linkText.replace(MANGATOWN_DESKTOP_CHAPTER_REGEX, "").trim()
+                }
 
                 val volume = volumesMap.getOrPut(-1.0) { Volume(volume = -1.0) }
-                volume.capitulos.add(
-                    Capitulo(
-                        capitulo = chapNum,
-                        ingles = title.replace(mReplace, "").trim(),
-                        japones = ""
-                    )
-                )
+                addCapituloSeValido(volume, chapNum, title, processed = processed, volumeNum = -1.0)
             }
         } else {
             for (li in pagina.select("ul.detail-ch-list > li")) {
@@ -1588,18 +1836,10 @@ class PopupCapitulosController : Initializable {
                 val linkText = link.text().trim()
                 val chapMatch = MANGATOWN_MOBILE_CHAPTER_REGEX.find(linkText) ?: continue
                 val chapNum = chapMatch.groupValues[1].toDoubleOrNull() ?: continue
-                if (processed.contains(chapNum)) continue
-                processed.add(chapNum)
 
                 val title = link.selectFirst("span.vol")?.text()?.trim().orEmpty()
                 val volume = volumesMap.getOrPut(-1.0) { Volume(volume = -1.0) }
-                volume.capitulos.add(
-                    Capitulo(
-                        capitulo = chapNum,
-                        ingles = title.replace(mReplace, "").trim(),
-                        japones = ""
-                    )
-                )
+                addCapituloSeValido(volume, chapNum, title, processed = processed, volumeNum = -1.0)
             }
         }
 
@@ -1758,7 +1998,7 @@ class PopupCapitulosController : Initializable {
             iconColor = Color.WHITE
         }
 
-        for (button in arrayOf(hplComickIO, hplComickFan, hplTaiyo, hplMangaDex, hplMangaFire, hplMangaRead, hplMangak, hplMangaPark, hplMangaKatana, hplVyManga, hplMangaTown1, hplMangaTown2, hplMangaHere, hplKMangaKodansha)) {
+        for (button in arrayOf(hplComickIO, hplComickFan, hplTaiyo, hplMangaDex, hplMangaFire, hplMangaPark, hplZazaManga, hplMangaKatana, hplVyManga, hplMangaTown1, hplMangaTown2, hplMangaHere, hplKMangaKodansha, hplMangaRead, hplMangak)) {
             button.setOnAction { openSite(button.text) }
         }
 
@@ -1815,6 +2055,19 @@ class PopupCapitulosController : Initializable {
             return result
         }
 
+        private data class TagCapituloLegado(val capitulo: Double, val pagina: String)
+
+        private fun parseTagCapituloLegado(tag: String): TagCapituloLegado? {
+            val pagina = tag.substringBefore(Utils.SEPARADOR_IMAGEM).trim()
+            val bookmark = tag.substringAfter(Utils.SEPARADOR_IMAGEM).trim()
+            val capitulo = if (bookmark.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                Utils.getNumber(bookmark.substringAfter(Utils.SEPARADOR_IMPORTACAO).substringBefore(Utils.SEPARADOR_CAPITULO))
+            } else {
+                Utils.getNumber(bookmark)
+            }
+            return capitulo?.takeIf { it > 0 }?.let { TagCapituloLegado(it, pagina) }
+        }
+
         private fun enriquecerTagsLegado(
             tagsOriginais: String,
             capitulosVolume: List<Capitulo>,
@@ -1824,7 +2077,26 @@ class PopupCapitulosController : Initializable {
         ): String {
             val capitulos = capitulosVolume.toMutableList()
             val tags = mutableListOf<String>()
-            for (tag in tagsOriginais.split("\n")) {
+
+            val canonicalLines = tagsOriginais.lines()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .groupBy { line ->
+                    parseTagCapituloLegado(line)?.capitulo
+                }
+                .flatMap { (_, lines) ->
+                    if (lines.size == 1) {
+                        lines
+                    } else {
+                        val withPage = lines.filter { line ->
+                            val pagina = line.substringBefore(Utils.SEPARADOR_IMAGEM).trim()
+                            pagina != "-1" && pagina.isNotBlank()
+                        }
+                        if (withPage.isNotEmpty()) withPage else lines.take(1)
+                    }
+                }
+
+            for (tag in canonicalLines) {
                 var capitulo = if (tag.contains(Utils.SEPARADOR_IMPORTACAO))
                     tag.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
                 else

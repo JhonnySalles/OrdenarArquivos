@@ -29,17 +29,18 @@
                                                 <Hyperlink fx:id="hplComickIO" text="https://comick.io/" />
                                                 <Hyperlink fx:id="hplComickFan" text="https://comickfan.com/" />
                                                 <Hyperlink fx:id="hplMangaFire" text="https://mangafire.to/" />
-                                                <Hyperlink fx:id="hplMangak" text="https://mangak.io/" />
-                                                <Hyperlink fx:id="hplMangaRead" text="https://www.mangaread.org/" />
                                                 <Hyperlink fx:id="hplMangaDex" text="https://mangadex.org/" />
                                                 <Hyperlink fx:id="hplTaiyo" text="https://taiyo.moe/" />
-                                                <Hyperlink fx:id="hplMangaPark" text="https://mangapark.net/" />
+                                                <Hyperlink fx:id="hplMangaPark" text="https://mangapark.page/" />
+                                                <Hyperlink fx:id="hplZazaManga" text="https://www.zazamanga.com/" />
                                                 <Hyperlink fx:id="hplMangaKatana" text="https://mangakatana.com/" />
                                                 <Hyperlink fx:id="hplVyManga" text="https://vymanga.net/" />
                                                 <Hyperlink fx:id="hplMangaTown1" text="https://www.mangatown.com/" />
                                                 <Hyperlink fx:id="hplMangaTown2" text="https://m.mangatown.com/" />
                                                 <Hyperlink fx:id="hplMangaHere" text="https://www.mangahere.cc/" />
                                                 <Hyperlink fx:id="hplKMangaKodansha" text="https://kmanga.kodansha.com/" />
+                                                <Hyperlink fx:id="hplMangak" text="https://mangak.io/" />
+                                                <Hyperlink fx:id="hplMangaRead" text="https://www.mangaread.org/" />
                                              </children>
                                           </HBox>
                                        </children>

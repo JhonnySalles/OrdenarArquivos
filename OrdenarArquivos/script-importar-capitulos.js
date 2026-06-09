@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OrdenarArquivos — Importar Capítulos
 // @namespace    http://tampermonkey.net/
-// @version      1.1.0
+// @version      1.3.0
 // @description  Extrai lista de capítulos da página e copia no formato do popup Colar do OrdenarArquivos
 // @author       Fenix
 // @grant        GM_setClipboard
@@ -18,6 +18,8 @@
 // @match        https://mangadex.org/*
 // @match        https://taiyo.moe/*
 // @match        https://mangapark.net/*
+// @match        https://www.zazamanga.com/*
+// @match        https://zazamanga.com/*
 // @match        https://mangakatana.com/*
 // @match        https://mangaforest.me/*
 // @match        https://mangaplanet.com/*
@@ -64,6 +66,48 @@
     function limparTitulo(titulo) {
         if (!titulo) return '';
         return String(titulo).replace(LIMPAR_TITULO_RE, '').trim();
+    }
+
+    function cleanImportedTitle(rawTitle) {
+        const trimmed = String(rawTitle || '').trim();
+        if (!trimmed) return '';
+        let cleaned = trimmed.replace(TITLE_CLEAN_RE, '').trim();
+        if (!cleaned) cleaned = limparTitulo(trimmed).replace(TITLE_CLEAN_RE, '').trim();
+        if (!cleaned) {
+            const suffixMatch = /(?:Chapter|Capítulo|Ch\.?)\s*[\d.]+\s*[:\-—]?\s*(.+)/i.exec(trimmed);
+            cleaned = suffixMatch ? suffixMatch[1].trim() : '';
+        }
+        return cleaned;
+    }
+
+    function volumeChapterKey(volume, chapter) {
+        return `${volume}:${chapter}`;
+    }
+
+    function addCapituloSeValido(volumesMap, volNum, chapNum, title, requireTitle = true, processed = null) {
+        if (processed) {
+            const key = volumeChapterKey(volNum, chapNum);
+            if (processed.has(key)) return false;
+            processed.add(key);
+        }
+        const cleaned = cleanImportedTitle(title);
+        if (requireTitle && !cleaned) return false;
+        if (!volumesMap[volNum]) volumesMap[volNum] = { chapters: [] };
+        volumesMap[volNum].chapters.push({ num: chapNum, title: cleaned });
+        return true;
+    }
+
+    function mangadexLangTier(langImg) {
+        if (!langImg) return null;
+        const title = (langImg.getAttribute('title') || '').toLowerCase();
+        const alt = (langImg.getAttribute('alt') || '').toLowerCase();
+        const src = (langImg.getAttribute('src') || '').toLowerCase();
+        const combined = `${title} ${alt} ${src}`;
+        if (combined.includes('brazil') || combined.includes('portuguese') ||
+            src.includes('br.svg') || src.includes('pt.svg')) return 'pt';
+        if (combined.includes('english') || src.includes('gb.svg') || src.includes('us.svg')) return 'en';
+        if (combined.includes('spanish') || src.includes('es.svg')) return 'es';
+        return null;
     }
 
     function chapterLine(num, title) {
@@ -149,13 +193,13 @@
 
     function addParsedChapter(volumesMap, processed, parsed, cleanTitleFlag = true) {
         if (processed.has(parsed.num)) return;
+        let title = parsed.title || '';
+        if (cleanTitleFlag) title = limparTitulo(title);
+        const cleaned = cleanTitleFlag ? cleanImportedTitle(parsed.title) : cleanImportedTitle(title);
+        if (!cleaned) return;
         processed.add(parsed.num);
         const volNum = parsed.volume != null ? parsed.volume : -1;
-        let title = parsed.title || '';
-        if (cleanTitleFlag) {
-            title = limparTitulo(title);
-        }
-        addChapter(volumesMap, volNum, parsed.num, title);
+        addChapter(volumesMap, volNum, parsed.num, cleaned);
     }
 
     // -------------------------------------------------------------------------
@@ -187,8 +231,10 @@
         Object.values(finalMap)
             .sort((a, b) => a.chap - b.chap)
             .forEach(entry => {
+                const cleaned = cleanImportedTitle(entry.title);
+                if (!cleaned) return;
                 const volNum = entry.vol != null ? entry.vol : -1;
-                addChapter(volumesMap, volNum, entry.chap, entry.title);
+                addChapter(volumesMap, volNum, entry.chap, cleaned);
             });
 
         return volumesMapToList(volumesMap);
@@ -254,6 +300,47 @@
         return entries;
     }
 
+    function extractComickFromLinks(doc) {
+        const capRegex = /(?:(?:Chapter|Capítulo|Ch\.?|Cap\.?|第)\s*)?(\d+(?:\.\d+)?)/i;
+        const volRegex = /(?:Vol|Volume)\.?\s*(\d+(?:\.\d+)?)/i;
+        const entries = [];
+        const seen = new Set();
+
+        doc.querySelectorAll('a[href*="/comic/"][href*="/chapter"], a[href*="/chapter-"]').forEach((link, index) => {
+            const href = link.getAttribute('href') || '';
+            if (!/\/chapter/i.test(href)) return;
+
+            const linkText = link.textContent.trim();
+            const capMatch = capRegex.exec(linkText) || capRegex.exec(href);
+            if (!capMatch) return;
+            const chapNum = parseNum(capMatch[1]);
+            if (chapNum == null || seen.has(chapNum)) return;
+
+            let volNum = null;
+            let title = '';
+            link.querySelectorAll('span').forEach(span => {
+                const spanText = span.textContent.trim();
+                const volMatch = volRegex.exec(spanText);
+                if (volMatch) volNum = parseNum(volMatch[1]);
+                if (span.classList.contains('text-xs') ||
+                    (spanText && capRegex.exec(spanText)?.[0] !== spanText && !volRegex.test(spanText))) {
+                    if (!title) title = spanText;
+                }
+            });
+            if (!title) {
+                const attrTitle = (link.getAttribute('title') || '').trim();
+                if (attrTitle.includes(' - ')) title = attrTitle.split(' - ').slice(1).join(' - ').trim();
+                else if (attrTitle) title = attrTitle.replace(/^Chapter\s*[\d.]+\s*[-:]?\s*/i, '').trim();
+                else title = linkText.replace(/^(?:Chapter|Ch\.?)\s*[\d.]+\s*/i, '').trim();
+            }
+            if (!cleanImportedTitle(title)) return;
+
+            seen.add(chapNum);
+            entries.push({ vol: volNum, chap: chapNum, title, sortKey: index });
+        });
+        return entries;
+    }
+
     function extractComick(doc) {
         const raw = [];
         let rows = doc.querySelectorAll('table tbody tr.group');
@@ -265,10 +352,45 @@
         });
 
         if (raw.length === 0) {
+            raw.push(...extractComickFromLinks(doc));
+        }
+
+        if (raw.length === 0) {
             raw.push(...extractComickFromEmbeddedJson(doc.documentElement.innerHTML));
         }
 
+        const nextData = doc.querySelector('script#__NEXT_DATA__');
+        if (raw.length === 0 && nextData) {
+            raw.push(...extractComickFromEmbeddedJson(nextData.textContent));
+        }
+
         return buildVolumesFromTempCaps(raw);
+    }
+
+    function extractComickFan(doc) {
+        const volumesMap = {};
+        const processed = new Set();
+        const titleStripRegex = /^Chapter\s*[\d.]+\s*[-:]?\s*/i;
+
+        doc.querySelectorAll('#chapterList .chapter-items[data-chapter-num], .chapter-items[data-chapter-num]').forEach(item => {
+            const chapNum = parseNum(item.getAttribute('data-chapter-num'));
+            if (chapNum == null) return;
+
+            const link = item.querySelector('a');
+            let title = '';
+            const attrTitle = link ? (link.getAttribute('title') || '').trim() : '';
+            if (attrTitle.includes(' - ')) title = attrTitle.split(' - ').slice(1).join(' - ').trim();
+            else if (attrTitle) title = attrTitle.replace(titleStripRegex, '').trim();
+
+            if (!title) {
+                const textEl = item.querySelector('.font-medium font, .font-medium, a');
+                const text = textEl ? textEl.textContent.trim() : '';
+                title = text.replace(titleStripRegex, '').trim();
+            }
+            addCapituloSeValido(volumesMap, -1, chapNum, title, true, processed);
+        });
+
+        return volumesMapToList(volumesMap);
     }
 
     // -------------------------------------------------------------------------
@@ -496,10 +618,9 @@
             const match = regex.exec(linkText);
             if (!match) return;
             const chapNum = parseNum(match[2]);
-            if (chapNum == null || processed.has(chapNum)) return;
-            processed.add(chapNum);
+            if (chapNum == null) return;
             const volNum = parseNum(match[1]) ?? -1;
-            addChapter(volumesMap, volNum, chapNum, limparTitulo(match[3].trim()));
+            addCapituloSeValido(volumesMap, volNum, chapNum, match[3].trim(), false, processed);
         });
 
         return volumesMapToList(volumesMap);
@@ -511,8 +632,8 @@
 
     function extractMangaDex(doc) {
         const volumesMap = {};
+        const processedKeys = new Set();
         const numberRegex = /[\d.]+/;
-        const langNameRequested = PREFERRED_LANG.toLowerCase();
 
         doc.querySelectorAll('.chapter-header').forEach(header => {
             const numMatch = numberRegex.exec(header.textContent);
@@ -531,34 +652,34 @@
                 parent = parent.parentElement;
             }
 
-            if (!volumesMap[volumeNumber]) {
-                volumesMap[volumeNumber] = { chapters: [], keepOrder: true };
-            }
+            const key = volumeChapterKey(volumeNumber, chapterNumber);
+            if (processedKeys.has(key)) return;
 
             const container = header.parentElement;
             const versions = container ? container.querySelectorAll('.chapter.relative.read') : [];
 
-            let extractedTitle = '';
-            let fallbackTitle = '';
+            let ptTitle = '';
+            let enTitle = '';
+            let esTitle = '';
 
             versions.forEach(version => {
                 const langImg = version.querySelector('img');
-                const langTitle = langImg ? (langImg.getAttribute('title') || '').toLowerCase() : '';
-                const description = version.querySelector('.line-clamp-1');
-                const descText = description ? description.textContent.trim() : '';
-
-                if (langTitle.includes(langNameRequested) ||
-                    (langNameRequested === 'portuguese' && langTitle.includes('brazil'))) {
-                    extractedTitle = descText;
-                }
-                if (!fallbackTitle) fallbackTitle = descText;
+                const descEl = version.querySelector('.line-clamp-1');
+                const descText = descEl ? descEl.textContent.trim() : '';
+                if (!descText) return;
+                const tier = mangadexLangTier(langImg);
+                if (tier === 'pt' && !ptTitle) ptTitle = descText;
+                else if (tier === 'en' && !enTitle) enTitle = descText;
+                else if (tier === 'es' && !esTitle) esTitle = descText;
             });
 
-            const finalTitle = extractedTitle || fallbackTitle;
-            volumesMap[volumeNumber].chapters.push({
-                num: chapterNumber,
-                title: cleanTitle(finalTitle)
-            });
+            const rawTitle = ptTitle || enTitle || esTitle;
+            const finalTitle = cleanImportedTitle(rawTitle);
+            if (!finalTitle) return;
+
+            processedKeys.add(key);
+            if (!volumesMap[volumeNumber]) volumesMap[volumeNumber] = { chapters: [], keepOrder: true };
+            volumesMap[volumeNumber].chapters.push({ num: chapterNumber, title: finalTitle });
         });
 
         return volumesMapToList(volumesMap, true);
@@ -613,6 +734,82 @@
 
             addChapter(volumesMap, volNum, chapNum, description);
         });
+
+        return volumesMapToList(volumesMap);
+    }
+
+    // -------------------------------------------------------------------------
+    // ZazaManga
+    // -------------------------------------------------------------------------
+
+    function extractZazaManga(doc) {
+        const volumesMap = {};
+        const processed = new Set();
+        const volRegex = /(?:Volume|Vol\.?)\s*(\d+(?:\.\d+)?)/i;
+        const chapterRegex = /(?:Chapter|Ch\.?)\s*([\d.]+)/i;
+        const hrefChapterRegex = /\/chapter-([\d.]+)(?:\/|$|\?)/i;
+
+        function parseChapterLink(link, text) {
+            let chapMatch = chapterRegex.exec(text);
+            let chapNum = chapMatch ? parseNum(chapMatch[1]) : null;
+            if (chapNum == null) {
+                const hrefMatch = hrefChapterRegex.exec(link.getAttribute('href') || '');
+                chapNum = hrefMatch ? parseNum(hrefMatch[1]) : null;
+            }
+            if (chapNum == null) return null;
+
+            let volNum = -1;
+            const volMatch = volRegex.exec(text);
+            if (volMatch) volNum = parseNum(volMatch[1]) ?? -1;
+
+            let description = '';
+            if (text.includes(':')) {
+                description = text.substring(text.indexOf(':') + 1).trim();
+            } else if (chapMatch) {
+                const afterChapter = text.substring(text.indexOf(chapMatch[0]) + chapMatch[0].length).trim();
+                if (afterChapter) {
+                    description = afterChapter.replace(/^[:\\-]+/, '').trim();
+                }
+            }
+
+            return { volNum, chapNum, description };
+        }
+
+        function processLinks(links) {
+            links.forEach(link => {
+                const text = link.textContent.trim();
+                if (!text) return;
+                const parsed = parseChapterLink(link, text);
+                if (!parsed) return;
+                addCapituloSeValido(volumesMap, parsed.volNum, parsed.chapNum, parsed.description, false, processed);
+            });
+        }
+
+        let chapterLinks = doc.querySelectorAll('li.wp-manga-chapter a');
+        if (chapterLinks.length === 0) {
+            chapterLinks = doc.querySelectorAll('#manga-chapters-holder li.wp-manga-chapter a');
+        }
+
+        if (chapterLinks.length > 0) {
+            processLinks(chapterLinks);
+        } else {
+            const chapterSelector = doc.querySelector('div.c-selectpicker.selectpicker_chapter, div.selectpicker_chapter');
+            const chapterOptions = chapterSelector ? chapterSelector.querySelectorAll('option') : [];
+            chapterOptions.forEach(option => {
+                const text = option.textContent.trim();
+                if (!text) return;
+                const chapMatch = chapterRegex.exec(text);
+                if (!chapMatch) return;
+                const chapNum = parseNum(chapMatch[1]);
+                if (chapNum == null) return;
+                let volNum = -1;
+                const volMatch = volRegex.exec(text);
+                if (volMatch) volNum = parseNum(volMatch[1]) ?? -1;
+                let description = '';
+                if (text.includes(':')) description = text.substring(text.indexOf(':') + 1).trim();
+                addCapituloSeValido(volumesMap, volNum, chapNum, description, false, processed);
+            });
+        }
 
         return volumesMapToList(volumesMap);
     }
@@ -695,8 +892,7 @@
                 const chapMatch = MANGATOWN_DESKTOP_CHAPTER_REGEX.exec(linkText);
                 if (!chapMatch) return;
                 const chapNum = parseNum(chapMatch[1]);
-                if (chapNum == null || processed.has(chapNum)) return;
-                processed.add(chapNum);
+                if (chapNum == null) return;
 
                 let title = '';
                 li.querySelectorAll('span').forEach(span => {
@@ -705,7 +901,10 @@
                         if (spanText) title = spanText;
                     }
                 });
-                addChapter(volumesMap, -1, chapNum, title);
+                if (!title) {
+                    title = linkText.replace(MANGATOWN_DESKTOP_CHAPTER_REGEX, '').trim();
+                }
+                addCapituloSeValido(volumesMap, -1, chapNum, title, true, processed);
             });
         } else {
             doc.querySelectorAll('ul.detail-ch-list > li').forEach(li => {
@@ -715,12 +914,11 @@
                 const chapMatch = MANGATOWN_MOBILE_CHAPTER_REGEX.exec(linkText);
                 if (!chapMatch) return;
                 const chapNum = parseNum(chapMatch[1]);
-                if (chapNum == null || processed.has(chapNum)) return;
-                processed.add(chapNum);
+                if (chapNum == null) return;
 
                 const volSpan = link.querySelector('span.vol');
                 const title = volSpan ? volSpan.textContent.trim() : '';
-                addChapter(volumesMap, -1, chapNum, title);
+                addCapituloSeValido(volumesMap, -1, chapNum, title, true, processed);
             });
         }
 
@@ -807,11 +1005,13 @@
     function detectAndExtract(doc) {
         const host = location.hostname.toLowerCase();
 
+        if (hostnameMatches(host, 'comickfan.com')) return extractComickFan(doc);
         if (hostnameMatches(host, 'comick')) return extractComick(doc);
         if (hostnameMatches(host, 'mangaplanet.com')) return extractMangaPlanet(doc);
         if (hostnameMatches(host, 'mangafire')) return extractMangaFire(doc);
         if (hostnameMatches(host, 'taiyo.moe')) return extractTayo(doc);
         if (hostnameMatches(host, 'mangapark')) return extractMangaPark(doc);
+        if (hostnameMatches(host, 'zazamanga')) return extractZazaManga(doc);
         if (hostnameMatches(host, 'mangaforest')) return extractMangaForest(doc);
         if (hostnameMatches(host, 'mangaread')) return extractMangaRead(doc);
         if (hostnameMatches(host, 'mangak.io')) return extractMangaK(doc);

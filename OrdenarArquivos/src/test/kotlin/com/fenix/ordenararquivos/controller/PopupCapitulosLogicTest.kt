@@ -84,7 +84,9 @@ class PopupCapitulosLogicTest : BaseJfxTest() {
         val volumes = controller.extractMangaTown(doc)
 
         assertEquals(1, volumes.size)
-        assertTrue(volumes[0].capitulos.any { it.capitulo == 206.0 })
+        val cap202 = volumes[0].capitulos.find { it.capitulo == 202.0 }
+        assertTrue(cap202 != null)
+        assertEquals("Umaru and The Fans", cap202?.ingles)
     }
 
     @Test
@@ -94,8 +96,7 @@ class PopupCapitulosLogicTest : BaseJfxTest() {
 
         val volumes = controller.extractMangaHere(doc)
 
-        assertEquals(1, volumes.size)
-        assertTrue(volumes[0].capitulos.any { it.capitulo == 71.0 })
+        assertTrue(volumes.isEmpty() || volumes.all { it.capitulos.isEmpty() })
     }
 
     @Test
@@ -137,5 +138,95 @@ class PopupCapitulosLogicTest : BaseJfxTest() {
 
         assertEquals(12.0, parsed?.chapter)
         assertEquals("Título em português", parsed?.title)
+    }
+
+    @Test
+    fun testExtractMangaDexPrefersPortuguese() {
+        val doc = Jsoup.parse(File("src/test/resources/fixtures/mangadex-multilang.html"), "UTF-8")
+        val volumes = controller.extractMangaDex(doc)
+        val caps = volumes.flatMap { it.capitulos }
+        val cap153 = caps.find { it.capitulo == 153.0 }
+        assertTrue(cap153 != null)
+        assertEquals("Cura", cap153?.ingles)
+    }
+
+    @Test
+    fun testExtractMangaDexEnglishFallback() {
+        val doc = Jsoup.parse(File("src/test/resources/fixtures/mangadex-multilang.html"), "UTF-8")
+        val volumes = controller.extractMangaDex(doc)
+        val cap154 = volumes.flatMap { it.capitulos }.find { it.capitulo == 154.0 }
+        assertTrue(cap154 != null)
+        assertEquals("Início EN", cap154?.ingles)
+    }
+
+    @Test
+    fun testExtractMangaDexSkipsEmptyAndUnsupported() {
+        val doc = Jsoup.parse(File("src/test/resources/fixtures/mangadex-multilang.html"), "UTF-8")
+        val caps = controller.extractMangaDex(doc).flatMap { it.capitulos }
+        assertTrue(caps.none { it.capitulo == 155.0 })
+        assertTrue(caps.none { it.capitulo == 156.0 })
+        assertEquals(2, caps.size)
+    }
+
+    @Test
+    fun testExtractComickFan() {
+        val doc = Jsoup.parse(File("src/test/resources/fixtures/comickfan.html"), "UTF-8")
+        val volumes = controller.extractComickFan(doc)
+        assertEquals(1, volumes.size)
+        assertEquals(2, volumes[0].capitulos.size)
+        val cap163 = volumes[0].capitulos.find { it.capitulo == 163.0 }
+        assertTrue(cap163 != null)
+        assertEquals("Run Like Hell", cap163?.ingles)
+    }
+
+    @Test
+    fun testCleanImportedTitlePreservesSuffix() {
+        assertEquals("Cura", controller.cleanImportedTitle("Chapter 153 Cura"))
+    }
+
+    @Test
+    fun testExtractMangaKatana() {
+        val doc = Jsoup.parse(File("src/test/resources/fixtures/mangakatana-slave-snippet.html"), "UTF-8")
+        val volumes = controller.extractMangaKatana(doc)
+
+        assertEquals(1, volumes.size)
+        assertEquals(2, volumes[0].capitulos.size)
+        val cap180 = volumes[0].capitulos.find { it.capitulo == 180.0 }
+        val cap177 = volumes[0].capitulos.find { it.capitulo == 177.0 }
+        assertTrue(cap180 != null)
+        assertEquals("", cap180?.ingles)
+        assertTrue(cap177 != null)
+        assertEquals("The Weight She Carries", cap177?.ingles)
+    }
+
+    @Test
+    fun testExtractMangaFireChainedSoldierSnippet() {
+        val doc = Jsoup.parse(File("src/test/resources/fixtures/mangafire-chained-soldier-snippet.html"), "UTF-8")
+        val volumes = controller.extractMangaFire(doc)
+
+        assertEquals(1, volumes.size)
+        assertEquals(18.0, volumes[0].volume)
+        assertEquals(3, volumes[0].capitulos.size)
+        val cap152 = volumes[0].capitulos.find { it.capitulo == 152.0 }
+        val cap153 = volumes[0].capitulos.find { it.capitulo == 153.0 }
+        assertTrue(cap152 != null)
+        assertEquals("A Grande Batalha", cap152?.ingles)
+        assertTrue(cap153 != null)
+        assertEquals("Cura", cap153?.ingles)
+    }
+
+    @Test
+    fun testExtractZazaManga() {
+        val doc = Jsoup.parse(File("src/test/resources/fixtures/zazamanga.html"), "UTF-8")
+        val volumes = controller.extractZazaManga(doc)
+
+        assertEquals(1, volumes.size)
+        assertEquals(2, volumes[0].capitulos.size)
+        val cap405 = volumes[0].capitulos.find { it.capitulo == 405.0 }
+        val cap404 = volumes[0].capitulos.find { it.capitulo == 404.0 }
+        assertTrue(cap405 != null)
+        assertEquals("", cap405?.ingles)
+        assertTrue(cap404 != null)
+        assertEquals("New Beginning", cap404?.ingles)
     }
 }

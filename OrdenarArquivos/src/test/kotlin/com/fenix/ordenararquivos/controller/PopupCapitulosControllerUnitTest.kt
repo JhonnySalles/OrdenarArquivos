@@ -150,6 +150,32 @@ class PopupCapitulosControllerUnitTest : BaseJfxTest() {
     }
 
     @Test
+    fun testPrepararMergePrefersTitledCapAcrossVolumes() {
+        val tagsOriginais = listOf(
+            "2;Capítulo 116${Utils.SEPARADOR_IMPORTACAO}116|",
+            "-1;Capítulo 116${Utils.SEPARADOR_IMPORTACAO}116|"
+        ).joinToString("\n")
+        setupProcessar(tagsOriginais)
+
+        val importPool = listOf(
+            Volume(volume = 1.0, capitulos = mutableListOf(
+                Capitulo(capitulo = 116.0, ingles = "", japones = "")
+            )),
+            Volume(volume = -1.0, capitulos = mutableListOf(
+                Capitulo(capitulo = 116.0, ingles = "Photos", japones = "")
+            ))
+        )
+
+        invokePreparar(importPool)
+
+        val lista = getField("mLista") as List<Volume>
+        assertEquals(1, lista.size)
+        assertTrue(lista[0].tags.startsWith("2${Utils.SEPARADOR_IMAGEM}"))
+        assertTrue(lista[0].tags.contains("Photos"))
+        assertFalse(lista[0].tags.contains("-1${Utils.SEPARADOR_IMAGEM}Capítulo 116"))
+    }
+
+    @Test
     fun testPrepararCapituloSemTagCorrespondenteUsaMenosUm() {
         setupProcessar("5;Capítulo 01${Utils.SEPARADOR_IMPORTACAO}01.00|Existente")
 
@@ -170,6 +196,88 @@ class PopupCapitulosControllerUnitTest : BaseJfxTest() {
         assertNotNull(naoLocalizados)
         assertTrue(naoLocalizados!!.tags.startsWith("-1${Utils.SEPARADOR_IMAGEM}"))
         assertTrue(naoLocalizados.tags.contains("Cap Extra"))
+    }
+
+    @Test
+    fun testExtractExistingChaptersMergeDualTags() {
+        val tagsOriginais = listOf(
+            "2;Capítulo 107${Utils.SEPARADOR_IMPORTACAO}107|",
+            "-1;Capítulo 107${Utils.SEPARADOR_IMPORTACAO}107|Towards Shangri-La"
+        ).joinToString("\n")
+        setupProcessar(tagsOriginais)
+
+        val volumes = controller.extractExistingChapters()
+
+        assertEquals(1, volumes.size)
+        val cap107 = volumes[0].capitulos.find { it.capitulo == 107.0 }
+        assertNotNull(cap107)
+        assertEquals("Towards Shangri-La", cap107!!.ingles)
+    }
+
+    @Test
+    fun testPrepararDualTagsWithTitleOnMinusOne() {
+        val tagsOriginais = listOf(
+            "2;Capítulo 107${Utils.SEPARADOR_IMPORTACAO}107|",
+            "-1;Capítulo 107${Utils.SEPARADOR_IMPORTACAO}107|Towards Shangri-La"
+        ).joinToString("\n")
+        setupProcessar(tagsOriginais)
+
+        val importPool = listOf(
+            Volume(volume = 18.0, capitulos = mutableListOf(
+                Capitulo(capitulo = 107.0, ingles = "Towards Shangri-La", japones = "")
+            ))
+        )
+
+        invokePreparar(importPool)
+
+        val lista = getField("mLista") as List<Volume>
+        assertEquals(1, lista.size)
+        val tagLines = lista[0].tags.lines().filter { it.isNotBlank() }
+        assertEquals(1, tagLines.size)
+        assertTrue(lista[0].tags.startsWith("2${Utils.SEPARADOR_IMAGEM}"))
+        assertTrue(lista[0].tags.contains("Towards Shangri-La"))
+        assertFalse(lista[0].tags.contains("-1${Utils.SEPARADOR_IMAGEM}Capítulo 107"))
+    }
+
+    @Test
+    fun testMergeImportedChaptersIntoComicVolume() {
+        setupProcessar("2;Capítulo 152${Utils.SEPARADOR_IMPORTACAO}152|")
+        setField("isImportado", true)
+        setField("mImportedChapters", mutableListOf<Volume>())
+
+        val novos = listOf(
+            Volume(volume = 18.0, capitulos = mutableListOf(
+                Capitulo(capitulo = 152.0, ingles = "A Grande Batalha", japones = "")
+            ))
+        )
+
+        val method = controller.javaClass.getDeclaredMethod("mergeImportedChapters", List::class.java)
+        method.isAccessible = true
+        method.invoke(controller, novos)
+
+        val imported = getField("mImportedChapters") as List<Volume>
+        val vol1 = imported.find { it.volume == 1.0 }
+        assertNotNull(vol1)
+        assertEquals("A Grande Batalha", vol1!!.capitulos.find { it.capitulo == 152.0 }?.ingles)
+        assertNull(imported.find { it.volume == 18.0 })
+    }
+
+    @Test
+    fun testProcessarHtmlMangaKatanaSlaveSnippet() {
+        val tagsOriginais = listOf(
+            "5;Capítulo 177${Utils.SEPARADOR_IMPORTACAO}177|",
+            "-1;Capítulo 177${Utils.SEPARADOR_IMPORTACAO}177|The Weight She Carries"
+        ).joinToString("\n")
+        setupProcessar(tagsOriginais)
+        setField("mImportedChapters", controller.extractExistingChapters().toMutableList())
+
+        val html = File("src/test/resources/fixtures/mangakatana-slave-snippet.html").readText(Charsets.UTF_8)
+        controller.processarHtml("https://mangakatana.com", html)
+
+        val lista = getField("mLista") as List<Volume>
+        assertEquals(1, lista.size)
+        assertTrue(lista[0].tags.contains("The Weight She Carries"))
+        assertFalse(lista[0].tags.contains("-1${Utils.SEPARADOR_IMAGEM}Capítulo 177"))
     }
 
     @Test
