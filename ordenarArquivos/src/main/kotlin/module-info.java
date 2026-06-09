@@ -10,6 +10,7 @@ module com.fenix.ordenararquivos {
     exports com.fenix.ordenararquivos.logback;
 
     requires transitive javafx.controls;
+    requires javafx.web;
     requires javafx.fxml;
     requires transitive javafx.graphics;
     requires javafx.base;

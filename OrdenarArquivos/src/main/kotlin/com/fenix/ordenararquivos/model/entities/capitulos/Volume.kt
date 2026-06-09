@@ -5,5 +5,6 @@ data class Volume(
     var arquivo : String = "",
     val volume : Double,
     val capitulos : MutableList<Capitulo> = mutableListOf(),
-    var tags : String = ""
+    var tags : String = "",
+    var descricoes : String = ""
 )

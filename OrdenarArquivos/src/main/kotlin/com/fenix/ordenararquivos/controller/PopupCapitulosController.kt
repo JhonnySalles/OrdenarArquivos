@@ -40,6 +40,8 @@ import javafx.scene.text.Font
 import javafx.stage.FileChooser
 import javafx.util.Callback
 import org.jsoup.Jsoup
+import org.kordamp.ikonli.javafx.FontIcon
+import org.kordamp.ikonli.materialdesign2.MaterialDesignW
 import org.jsoup.nodes.Comment
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -114,6 +116,9 @@ class PopupCapitulosController : Initializable {
     private lateinit var btnArquivo: JFXButton
 
     @FXML
+    private lateinit var btnWeb: JFXButton
+
+    @FXML
     private lateinit var cbMarcarTodos: JFXCheckBox
 
     @FXML
@@ -155,97 +160,135 @@ class PopupCapitulosController : Initializable {
     private val mImportedChapters = mutableListOf<Volume>()
     private var isImportado = false
 
-    fun extractExistingChapters(): List<Volume> {
-        val volumesMap = mutableMapOf<Double, Volume>()
-        val capRegex = Regex("(?:(?:Chapter|Capítulo|Ch\\.?|Cap\\.?|第)\\s*)?(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE)
-        
-        for (p in mProcessar) {
-            val volNum = p.comicInfo?.volume?.toDouble() ?: -1.0
-            val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
-            
-            if (p.tags.isNotEmpty()) {
-                p.tags.split("\n").forEach { tagLine ->
-                    if (tagLine.contains(Utils.SEPARADOR_IMAGEM)) {
-                        var tagContent = tagLine.substringAfter(Utils.SEPARADOR_IMAGEM).trim()
-                        var importContent = ""
-                        if (tagContent.contains(Utils.SEPARADOR_IMPORTACAO)) {
-                            importContent = tagContent.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim()
-                            tagContent = tagContent.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
-                        }
-                        
-                        var chapNum: Double? = null
-                        var title = ""
-                        
-                        if (importContent.isNotEmpty()) {
-                            val parts = importContent.split(Utils.SEPARADOR_CAPITULO)
-                            if (parts.isNotEmpty()) {
-                                chapNum = parts[0].trim().toDoubleOrNull()
-                                if (parts.size > 1) {
-                                    title = parts[1].trim()
-                                }
-                            }
-                        }
-                        
-                        if (chapNum == null) {
-                            val match = capRegex.find(tagContent)
-                            if (match != null) {
-                                chapNum = match.groupValues[1].toDoubleOrNull()
-                                if (chapNum != null) {
-                                    title = if (tagContent.contains("-")) {
-                                        tagContent.substringAfter("-").trim()
-                                    } else if (tagContent.contains("—")) {
-                                        tagContent.substringAfter("—").trim()
-                                    } else if (tagContent.contains(":")) {
-                                        tagContent.substringAfter(":").trim()
-                                    } else {
-                                        ""
-                                    }
-                                }
-                            }
-                        }
-                        
-                        if (chapNum != null) {
-                            val cleanTitle = Utils.limparTitulo(title)
-                            if (volume.capitulos.none { it.capitulo == chapNum }) {
-                                volume.capitulos.add(Capitulo(capitulo = chapNum, ingles = cleanTitle, japones = ""))
-                            }
-                        }
+    internal data class TagCapituloRef(
+        val pagina: String,
+        val capitulo: Double,
+        val bookmark: String,
+        val tituloImportado: String,
+        val linhaOriginal: String
+    )
+
+    private data class MatchedChapter(val tagRef: TagCapituloRef?, val cap: Capitulo)
+
+    private val mCapRegex = Regex("(?:(?:Chapter|Capítulo|Ch\\.?|Cap\\.?|第)\\s*)?(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE)
+
+    internal fun parseTagCapitulo(tagLine: String): TagCapituloRef? {
+        if (!tagLine.contains(Utils.SEPARADOR_IMAGEM)) return null
+
+        val pagina = tagLine.substringBefore(Utils.SEPARADOR_IMAGEM).trim()
+        var tagContent = tagLine.substringAfter(Utils.SEPARADOR_IMAGEM).trim()
+        var importContent = ""
+        if (tagContent.contains(Utils.SEPARADOR_IMPORTACAO)) {
+            importContent = tagContent.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim()
+            tagContent = tagContent.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
+        }
+
+        var chapNum: Double? = null
+        var title = ""
+
+        if (importContent.isNotEmpty()) {
+            val parts = importContent.split(Utils.SEPARADOR_CAPITULO, limit = 2)
+            chapNum = parts[0].trim().toDoubleOrNull()
+            if (parts.size > 1)
+                title = parts[1].trim()
+        }
+
+        if (chapNum == null) {
+            val match = mCapRegex.find(tagContent)
+            if (match != null) {
+                chapNum = match.groupValues[1].toDoubleOrNull()
+                if (chapNum != null) {
+                    title = when {
+                        tagContent.contains("—") -> tagContent.substringAfter("—").trim()
+                        tagContent.contains("-") -> tagContent.substringAfter("-").trim()
+                        tagContent.contains(":") -> tagContent.substringAfter(":").trim()
+                        else -> ""
                     }
                 }
             }
         }
-        
+
+        return chapNum?.let {
+            TagCapituloRef(
+                pagina = pagina,
+                capitulo = it,
+                bookmark = tagContent,
+                tituloImportado = title,
+                linhaOriginal = tagLine
+            )
+        }
+    }
+
+    private fun capitulosEquivalentes(a: Double, b: Double): Boolean =
+        a == b || a.toInt() == b.toInt()
+
+    private fun scoreCapitulo(cap: Capitulo, linguagem: Linguagem): Int {
+        val title = if (linguagem == Linguagem.JAPANESE) cap.japones else cap.ingles
+        return if (title.isNotBlank()) 1 else 0
+    }
+
+    private fun preferCapitulo(existing: Capitulo, novo: Capitulo, linguagem: Linguagem): Capitulo {
+        val existingScore = scoreCapitulo(existing, linguagem)
+        val novoScore = scoreCapitulo(novo, linguagem)
+        return when {
+            novoScore > existingScore -> novo.copy(capitulo = existing.capitulo)
+            existingScore > novoScore -> existing
+            else -> existing.copy(
+                ingles = existing.ingles.ifBlank { novo.ingles },
+                japones = existing.japones.ifBlank { novo.japones }
+            )
+        }
+    }
+
+    private fun parseTagsProcessar(tags: String): List<TagCapituloRef> =
+        tags.lines().mapNotNull { parseTagCapitulo(it.trim()) }
+
+    private fun gerarTagImportada(tagRef: TagCapituloRef?, cap: Capitulo, linguagem: Linguagem): String {
+        val num = formatar(cap.capitulo)
+        val title = if (linguagem == Linguagem.JAPANESE && cap.japones.isNotEmpty()) cap.japones else cap.ingles
+        val cleanTitle = Utils.limparTitulo(title)
+        val label = tagRef?.bookmark?.takeIf { it.isNotBlank() } ?: "Capítulo $num"
+        val pagina = tagRef?.pagina?.takeIf { it.isNotBlank() } ?: "-1"
+        return "$pagina${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
+    }
+
+    private fun gerarTagsNaoLocalizadas(caps: List<Capitulo>, linguagem: Linguagem): String =
+        caps.joinToString(separator = "\n") { gerarTagImportada(null, it, linguagem) }
+
+    fun extractExistingChapters(): List<Volume> {
+        val volumesMap = mutableMapOf<Double, Volume>()
+
+        for (p in mProcessar) {
+            val volNum = p.comicInfo?.volume?.toDouble() ?: -1.0
+            val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
+
+            parseTagsProcessar(p.tags).forEach { tagRef ->
+                val cleanTitle = Utils.limparTitulo(tagRef.tituloImportado)
+                if (volume.capitulos.none { capitulosEquivalentes(it.capitulo, tagRef.capitulo) }) {
+                    volume.capitulos.add(Capitulo(capitulo = tagRef.capitulo, ingles = cleanTitle, japones = ""))
+                }
+            }
+        }
+
         volumesMap.values.forEach { it.capitulos.sortBy { c -> c.capitulo } }
         return volumesMap.values.toList().sortedBy { it.volume }
     }
 
     private fun mergeImportedChapters(newVolumes: List<Volume>) {
+        val linguagem = cbLinguagem.value ?: Linguagem.PORTUGUESE
         for (newVol in newVolumes) {
             val existingVol = mImportedChapters.find { it.volume == newVol.volume }
             if (existingVol != null) {
                 for (newCap in newVol.capitulos) {
-                    val existingCap = existingVol.capitulos.find { it.capitulo == newCap.capitulo }
+                    val existingCap = existingVol.capitulos.find { capitulosEquivalentes(it.capitulo, newCap.capitulo) }
                     if (existingCap == null) {
                         existingVol.capitulos.add(newCap)
                     } else {
-                        // Option C: Mesclar títulos apenas se estiverem vazios/em branco
-                        var needUpdate = false
-                        var newIngles = existingCap.ingles
-                        var newJapones = existingCap.japones
-                        if (existingCap.ingles.isBlank() && newCap.ingles.isNotBlank()) {
-                            newIngles = newCap.ingles
-                            needUpdate = true
-                        }
-                        if (existingCap.japones.isBlank() && newCap.japones.isNotBlank()) {
-                            newJapones = newCap.japones
-                            needUpdate = true
-                        }
-                        if (needUpdate) {
-                            val updatedCap = existingCap.copy(ingles = newIngles, japones = newJapones)
+                        val merged = preferCapitulo(existingCap, newCap, linguagem)
+                        if (merged != existingCap) {
                             val idx = existingVol.capitulos.indexOf(existingCap)
-                            if (idx != -1) {
-                                existingVol.capitulos[idx] = updatedCap
-                            }
+                            if (idx != -1)
+                                existingVol.capitulos[idx] = merged
                         }
                     }
                 }
@@ -257,6 +300,11 @@ class PopupCapitulosController : Initializable {
         }
         mImportedChapters.sortBy { it.volume }
     }
+
+    private fun deduplicarCapitulosImportados(caps: List<Capitulo>, linguagem: Linguagem): List<Capitulo> =
+        caps.groupBy { it.capitulo }.values.map { grupo ->
+            grupo.maxBy { scoreCapitulo(it, linguagem) }
+        }
 
     fun limparImportacao() {
         txtEndereco.text = ""
@@ -438,25 +486,77 @@ class PopupCapitulosController : Initializable {
         preparar(mImportedChapters)
     }
 
-    private fun consulta() {
-        if (txtEndereco.text.isNullOrEmpty())
+    private fun consulta() = processarUrl(txtEndereco.text)
+
+    private fun processarComickApi(site: String) {
+        val slug = site.substringAfter("/comic/").substringBefore("?").substringBefore("#").trim('/')
+        mergeImportedChapters(extractComickApi(slug))
+        isImportado = true
+        preparar(mImportedChapters)
+    }
+
+    private fun processarDocumento(site: String, pagina: Document) {
+        val list = when {
+            site.lowercase().contains("mangaplanet.com") -> extractMangaPlanet(pagina)
+            site.lowercase().contains("comick.io") || site.lowercase().contains("comickfan.com") -> extractComick(pagina)
+            site.lowercase().contains("mangafire.to") -> extractMangaFire(pagina)
+            site.lowercase().contains("taiyo.moe") -> extractTayo(pagina)
+            site.lowercase().contains("mangapark.net") -> extractMangaPark(pagina)
+            site.lowercase().contains("mangaforest.me") -> extractMangaForest(pagina)
+            site.lowercase().contains("mangaread.org") -> extractMangaRead(pagina)
+            site.lowercase().contains("mangak.io") -> extractMangaK(pagina)
+            site.lowercase().contains("mangakatana.com") -> extractMangaKatana(pagina)
+            site.lowercase().contains("mangadex.org") -> extractMangaDex(pagina)
+            else -> mLista.toList()
+        }
+        mergeImportedChapters(list)
+        isImportado = true
+        preparar(mImportedChapters)
+    }
+
+    internal fun processarHtml(site: String, html: String) {
+        processarDocumento(site, Jsoup.parse(html, site))
+    }
+
+    internal fun processarConteudoWeb(site: String, html: String) {
+        if (site.contains("comick", ignoreCase = true) && site.contains("/comic/")) {
+            processarComickApi(site)
+        } else {
+            processarHtml(site, html)
+        }
+    }
+
+    internal fun normalizarEndereco(endereco: String): String {
+        val trimmed = endereco.trim()
+        if (trimmed.isBlank()) return trimmed
+        if (trimmed.contains("http://", ignoreCase = true) || trimmed.contains("https://", ignoreCase = true))
+            return trimmed
+        if (File(trimmed).exists()) return trimmed
+        if (trimmed.startsWith("www.", ignoreCase = true) ||
+            (trimmed.contains(".") && !trimmed.contains("\\") && !trimmed.contains(":")))
+            return "https://$trimmed"
+        return trimmed
+    }
+
+    internal fun processarUrl(endereco: String) {
+        if (endereco.isBlank()) {
+            AlertasModal.alerta("Endereço", "Informe uma URL ou arquivo HTML antes de executar.")
             return
+        }
 
         try {
-            var site = txtEndereco.text
+            var site = normalizarEndereco(endereco)
+            if (site != endereco.trim())
+                txtEndereco.text = site
 
             val isUrl = site.contains("https:") || site.contains("http:")
-            if (isUrl && site.contains("comick" , ignoreCase = true)) {
-                val slug = site.substringAfter("/comic/").substringBefore("?").substringBefore("#").trim('/')
-                val list = extractComickApi(slug)
-                mergeImportedChapters(list)
-                isImportado = true
-                preparar(mImportedChapters)
+            if (isUrl && site.contains("comick", ignoreCase = true)) {
+                processarComickApi(site)
                 return
             }
 
             val pagina: Document = try {
-                 if (isUrl)
+                if (isUrl)
                     Jsoup.connect(site)
                         .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
                         .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
@@ -466,9 +566,9 @@ class PopupCapitulosController : Initializable {
                         .referrer("http://www.google.com")
                         .get()
                 else {
-                    val file = File(txtEndereco.text)
-                    val pagina = Jsoup.parse(file)
-                    for (node in pagina.childNodes())
+                    val file = File(endereco)
+                    val doc = Jsoup.parse(file)
+                    for (node in doc.childNodes())
                         if (node is Comment) {
                             val commentData = node.data.trim()
                             if (commentData.startsWith("saved from url=")) {
@@ -477,7 +577,6 @@ class PopupCapitulosController : Initializable {
                             }
                         }
 
-                    // Se não encontrou o comentário, tenta inferir pelo nome do arquivo (útil para testes)
                     if (!site.startsWith("http")) {
                         val fileName = file.name.lowercase()
                         if (fileName.contains("mangaplanet")) site = "https://mangaplanet.com"
@@ -492,7 +591,7 @@ class PopupCapitulosController : Initializable {
                         else if (fileName.contains("mangakatana")) site = "https://mangakatana.com"
                     }
 
-                    pagina
+                    doc
                 }
             } catch (e: IOException) {
                 mLOG.error(e.message, e)
@@ -504,37 +603,18 @@ class PopupCapitulosController : Initializable {
                 return
             }
 
-            site.lowercase().let {
-                val list = if (it.contains("mangaplanet.com"))
-                    extractMangaPlanet(pagina)
-                else if (it.contains("comick.io"))
-                    extractComick(pagina)
-                else if (it.contains("mangafire.to"))
-                    extractMangaFire(pagina)
-                else if (it.contains("taiyo.moe"))
-                    extractTayo(pagina)
-                else if (it.contains("mangapark.net"))
-                    extractMangaPark(pagina)
-                else if (it.contains("mangaforest.me"))
-                    extractMangaForest(pagina)
-                else if (it.contains("mangaread.org"))
-                    extractMangaRead(pagina)
-                else if (it.contains("mangak.io"))
-                    extractMangaK(pagina)
-                else if (it.contains("mangakatana.com"))
-                    extractMangaKatana(pagina)
-                else if (it.contains("mangadex.org"))
-                    extractMangaDex(pagina)
-                else
-                    mLista.toList()
-
-                mergeImportedChapters(list)
-                isImportado = true
-                preparar(mImportedChapters)
-            }
+            processarDocumento(site, pagina)
         } catch (e: Exception) {
             mLOG.error(e.message, e)
             AlertasModal.erro("Erro ao realizar o processamento do site", e.message.toString())
+        }
+    }
+
+    @FXML
+    private fun onBtnWeb() {
+        PopupCapitulosWebController.abreTelaWeb(stackPane, apRoot, txtEndereco.text) { site, html ->
+            processarConteudoWeb(site, html)
+            txtEndereco.text = site
         }
     }
 
@@ -544,120 +624,91 @@ class PopupCapitulosController : Initializable {
     //Regex case insentive, no qual pode começar com capítulo, numero ou formato japoneas.
     private val mReplace = "(?i)^(ch|chapter|episode|第|[0-9])[0-9０-９ .]+(話|:)?".toRegex()
 
-    private fun preparar(lista: List<Volume>) {
-        val linguagem = cbLinguagem.value
-        val capRegex = Regex("(?:(?:Chapter|Capítulo|Ch\\.?|Cap\\.?|第)\\s*)?(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE)
+    internal fun preparar(lista: List<Volume>) {
+        val linguagem = cbLinguagem.value ?: Linguagem.PORTUGUESE
 
-        // Criamos uma lista flat de todos os capítulos da fonte, lembrando seu volume original
         data class SourceItem(val vol: Double, val cap: Capitulo)
 
         val sourcePool = mutableListOf<SourceItem>()
         lista.forEach { v ->
-            v.capitulos.forEach { c -> sourcePool.add(SourceItem(v.volume, c)) }
+            deduplicarCapitulosImportados(v.capitulos, linguagem).forEach { c ->
+                sourcePool.add(SourceItem(v.volume, c))
+            }
         }
 
         val volumesResult = mutableListOf<Volume>()
 
         if (mProcessar.isNotEmpty()) {
-            // Primeiro, identificamos o range de capítulos e volume de cada registro do mProcessar
-            val processarInfos = mProcessar.map { p ->
-                val numeros = p.tags.split("\n").mapNotNull { tag ->
-                    var capitulo = tag.substringAfter(Utils.SEPARADOR_IMAGEM).trim()
-                    if (capitulo.endsWith(Utils.SEPARADOR_IMPORTACAO))
-                        capitulo = capitulo.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
-
-                    capRegex.find(capitulo)?.groupValues?.get(1)?.toDoubleOrNull()
-                }
+            for (p in mProcessar) {
                 val vol = p.comicInfo?.volume?.toDouble() ?: -1.0
-                object {
-                    val processar = p
-                    val volume = vol
-                    val min = numeros.minOrNull() ?: Double.MAX_VALUE
-                    val max = numeros.maxOrNull() ?: Double.MIN_VALUE
-                    val tagCapitulos = numeros
-                }
-            }
+                val tagRefs = parseTagsProcessar(p.tags)
+                val matches = mutableListOf<MatchedChapter>()
+                val matchedTagRefs = mutableSetOf<TagCapituloRef>()
 
-            for (info in processarInfos) {
-                val capitulosEncontrados = mutableListOf<Capitulo>()
-
-                // 2.1 - Localizar por volume e capítulo (Exato)
-                // Percorremos os capítulos que este arquivo "deveria" ter conforme suas tags
-                info.tagCapitulos.forEach { numCapTag ->
-                    var found = sourcePool.find { it.vol == info.volume && it.cap.capitulo == numCapTag }
-                    if (found == null) {
-                        found = sourcePool.find { it.vol == info.volume && it.cap.capitulo.toInt() == numCapTag.toInt() }
+                tagRefs.forEach { tagRef ->
+                    val found = sourcePool.find {
+                        it.vol == vol && capitulosEquivalentes(it.cap.capitulo, tagRef.capitulo)
                     }
-
-                    found?.let {
-                        capitulosEncontrados.add(it.cap)
-                        sourcePool.remove(it)
+                    if (found != null) {
+                        matches.add(MatchedChapter(tagRef, found.cap))
+                        matchedTagRefs.add(tagRef)
+                        sourcePool.remove(found)
                     }
                 }
 
-                // 2.2 - Caso não encontrado, procurar apenas por capítulo (Independente de volume)
-                // Só tentamos os capítulos das tags que ainda não foram preenchidos
-                val restantesTags = info.tagCapitulos.filter { tagNum -> capitulosEncontrados.none { it.capitulo == tagNum } }
-                restantesTags.forEach { numCapTag ->
-                    var found = sourcePool.find { it.cap.capitulo == numCapTag }
-                    if (found == null) {
-                        found = sourcePool.find { it.cap.capitulo.toInt() == numCapTag.toInt() }
-                    }
-
-                    found?.let {
-                        capitulosEncontrados.add(it.cap)
-                        sourcePool.remove(it)
+                tagRefs.filter { it !in matchedTagRefs }.forEach { tagRef ->
+                    val found = sourcePool.find { capitulosEquivalentes(it.cap.capitulo, tagRef.capitulo) }
+                    if (found != null) {
+                        matches.add(MatchedChapter(tagRef, found.cap))
+                        matchedTagRefs.add(tagRef)
+                        sourcePool.remove(found)
                     }
                 }
 
-                // 2.3 - Localizar por proximidade (capítulos entre os valores do volume/arquivo)
-                if (info.min <= info.max) {
-                    val proximos = sourcePool.filter { it.cap.capitulo >= info.min && it.cap.capitulo <= info.max }
-                    capitulosEncontrados.addAll(proximos.map { it.cap })
-                    sourcePool.removeAll(proximos)
+                val numeros = tagRefs.map { it.capitulo }
+                val min = numeros.minOrNull() ?: Double.MAX_VALUE
+                val max = numeros.maxOrNull() ?: Double.MIN_VALUE
+                if (min <= max) {
+                    val proximos = sourcePool.filter { it.cap.capitulo >= min && it.cap.capitulo <= max }.toList()
+                    proximos.forEach { item ->
+                        matches.add(MatchedChapter(null, item.cap))
+                        sourcePool.remove(item)
+                    }
                 }
 
-                capitulosEncontrados.sortBy { it.capitulo }
-
+                val capitulosEncontrados = matches.map { it.cap }.sortedBy { it.capitulo }.toMutableList()
                 val tags = if (isImportado) {
-                    capitulosEncontrados.sortedBy { it.capitulo }.joinToString(separator = "\n") {
-                        val num = formatar(it.capitulo)
-                        val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
-                        val cleanTitle = Utils.limparTitulo(title)
-                        val label = "Capítulo $num"
-                        "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
-                    }
+                    matches.sortedBy { it.cap.capitulo }
+                        .joinToString(separator = "\n") { gerarTagImportada(it.tagRef, it.cap, linguagem) }
                 } else ""
-                volumesResult.add(Volume(arquivo = info.processar.arquivo, volume = info.volume, capitulos = capitulosEncontrados, tags = tags))
+
+                volumesResult.add(
+                    Volume(
+                        arquivo = p.arquivo,
+                        volume = vol,
+                        capitulos = capitulosEncontrados,
+                        tags = tags,
+                        descricoes = p.tags
+                    )
+                )
             }
 
-            // Capítulos não localizados vão para o volume 0
             if (sourcePool.isNotEmpty()) {
                 val caps = sourcePool.map { it.cap }.sortedBy { it.capitulo }
-                val tags = if (isImportado) {
-                    caps.joinToString(separator = "\n") {
-                        val num = formatar(it.capitulo)
-                        val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
-                        val cleanTitle = Utils.limparTitulo(title)
-                        val label = "Capítulo $num"
-                        "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
-                    }
-                } else ""
-                volumesResult.add(Volume(arquivo = "Não Localizados", volume = 0.0, capitulos = caps.toMutableList(), tags = tags))
+                val tags = if (isImportado) gerarTagsNaoLocalizadas(caps, linguagem) else ""
+                volumesResult.add(
+                    Volume(
+                        arquivo = "Não Localizados",
+                        volume = 0.0,
+                        capitulos = caps.toMutableList(),
+                        tags = tags
+                    )
+                )
             }
         } else {
-            // Se mProcessar estiver vazio, apenas exibe o que veio da lista
             for (item in lista) {
                 item.capitulos.sortBy { it.capitulo }
-                item.tags = if (isImportado) {
-                    item.capitulos.joinToString(separator = "\n") {
-                        val num = formatar(it.capitulo)
-                        val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
-                        val cleanTitle = Utils.limparTitulo(title)
-                        val label = "Capítulo $num"
-                        "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
-                    }
-                } else ""
+                item.tags = if (isImportado) gerarTagsNaoLocalizadas(item.capitulos, linguagem) else ""
                 item.arquivo = mArquivos.find { it.lowercase().contains("volume " + formatar(item.volume)) } ?: ""
                 volumesResult.add(item)
             }
@@ -669,16 +720,8 @@ class PopupCapitulosController : Initializable {
     }
 
     private fun atualizarTags(volume: Volume) {
-        val linguagem = cbLinguagem.value
-        volume.tags = if (isImportado) {
-            volume.capitulos.joinToString(separator = "\n") {
-                val num = formatar(it.capitulo)
-                val title = if (linguagem == Linguagem.JAPANESE && it.japones.isNotEmpty()) it.japones else it.ingles
-                val cleanTitle = Utils.limparTitulo(title)
-                val label = "Capítulo $num"
-                "-1${Utils.SEPARADOR_IMAGEM}$label ${Utils.SEPARADOR_IMPORTACAO} $num${Utils.SEPARADOR_CAPITULO}$cleanTitle"
-            }
-        } else ""
+        val linguagem = cbLinguagem.value ?: Linguagem.PORTUGUESE
+        volume.tags = if (isImportado) gerarTagsNaoLocalizadas(volume.capitulos, linguagem) else ""
     }
 
     private fun popupDividir() {
@@ -837,17 +880,10 @@ class PopupCapitulosController : Initializable {
         var minNeeded = Double.MAX_VALUE
         var maxNeeded = Double.MIN_VALUE
         if (mProcessar.isNotEmpty()) {
-            val capRegex = Regex("(?:(?:Chapter|Capítulo|Ch\\.?|Cap\\.?|第)\\s*)?(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE)
             mProcessar.forEach { p ->
-                p.tags.lines().forEach { tag ->
-                    var capitulo = tag.substringAfter(Utils.SEPARADOR_IMAGEM).trim()
-                    if (capitulo.endsWith(Utils.SEPARADOR_IMPORTACAO))
-                        capitulo = capitulo.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
-
-                    capRegex.find(capitulo)?.groupValues?.get(1)?.toDoubleOrNull()?.let {
-                        if (it < minNeeded) minNeeded = it
-                        if (it > maxNeeded) maxNeeded = it
-                    }
+                parseTagsProcessar(p.tags).forEach { tagRef ->
+                    if (tagRef.capitulo < minNeeded) minNeeded = tagRef.capitulo
+                    if (tagRef.capitulo > maxNeeded) maxNeeded = tagRef.capitulo
                 }
             }
         }
@@ -1463,15 +1499,7 @@ class PopupCapitulosController : Initializable {
                 descricao = item.capitulos.joinToString(separator = "\n") { capitulo.format(it.capitulo) }
             SimpleStringProperty(descricao)
         }
-        clDescricoes.setCellValueFactory { param ->
-            val item = param.value
-            var descricao = ""
-            if (item.capitulos.isNotEmpty())
-                descricao =
-                    item.capitulos.joinToString(separator = "\n") { capitulo.format(it.capitulo) + ": " + if (cbLinguagem.value == Linguagem.JAPANESE) it.japones else it.ingles }
-
-            SimpleStringProperty(descricao)
-        }
+        clDescricoes.setCellValueFactory { SimpleStringProperty(it.value.descricoes) }
 
         mLista.addListener(ListChangeListener {
             atualizaCheckMarcarTodos()
@@ -1483,14 +1511,26 @@ class PopupCapitulosController : Initializable {
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         cbLinguagem.items.addAll(Linguagem.PORTUGUESE, Linguagem.ENGLISH, Linguagem.JAPANESE)
         cbLinguagem.selectionModel.selectFirst()
-        cbLinguagem.valueProperty().addListener { _, _, _ -> preparar(mLista) }
+        cbLinguagem.valueProperty().addListener { _, _, _ ->
+            preparar(mImportedChapters)
+            tbViewTabela.refresh()
+        }
 
         linkaCelulas()
         listeners()
         tbViewTabela.items = mLista
 
-        for (button in arrayOf(hplComickIO, hplComickFan, hplTaiyo, hplMangaDex, hplMangaFire, hplMangaRead, hplMangak, hplMangaPark, hplMangaKatana, hplVyManga, hplMangaTown1, hplMangaTown2, hplMangaHere, hplKMangaKodansha))
-            button.setOnAction { openSite(button.text) }
+        btnWeb.graphic = FontIcon(MaterialDesignW.WEB).apply {
+            iconSize = 17
+            iconColor = Color.WHITE
+        }
+
+        for (button in arrayOf(hplComickIO, hplComickFan, hplTaiyo, hplMangaDex, hplMangaFire, hplMangaRead, hplMangak, hplMangaPark, hplMangaKatana, hplVyManga, hplMangaTown1, hplMangaTown2, hplMangaHere, hplKMangaKodansha)) {
+            button.setOnAction {
+                txtEndereco.text = button.text
+                consulta()
+            }
+        }
 
         val menu = javafx.scene.control.ContextMenu()
         val colar = javafx.scene.control.MenuItem("Colar (Ctrl+V)")

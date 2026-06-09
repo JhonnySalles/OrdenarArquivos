@@ -62,6 +62,7 @@
                               </ImageView>
                            </graphic>
                         </JFXButton>
+                        <JFXButton fx:id="btnWeb" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnWeb" prefHeight="30.0" prefWidth="30.0" styleClass="background-Black3" />
                         <JFXButton fx:id="btnExecutar" onAction="#onBtnExecutar" prefHeight="30.0" prefWidth="110.0" styleClass="background-Green2" text="Executar" textFill="WHITE" />
                      </children>
                   </HBox>

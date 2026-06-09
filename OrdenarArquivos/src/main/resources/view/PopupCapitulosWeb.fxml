@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.jfoenix.controls.JFXButton?>
+<?import com.jfoenix.controls.JFXTextField?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.web.WebView?>
+<?import java.net.URL?>
+
+<AnchorPane fx:id="apRoot" minHeight="450.0" minWidth="800.0" prefHeight="650.0" prefWidth="1000.0" styleClass="background-Black2" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.PopupCapitulosWebController">
+   <children>
+      <VBox spacing="10.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <children>
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+               <children>
+                  <JFXTextField fx:id="txtEndereco" focusColor="#71afe5" labelFloat="true" prefHeight="25.0" promptText="Endereço" styleClass="texto-stilo-1" unFocusColor="#106ebe" HBox.hgrow="ALWAYS" />
+                  <JFXButton fx:id="btnAtualizar" contentDisplay="GRAPHIC_ONLY" onAction="#onBtnAtualizar" prefHeight="30.0" prefWidth="30.0" styleClass="background-Black3" />
+               </children>
+            </HBox>
+            <VBox>
+               <children>
+                  <Label style="-fx-font-size: 10px;" styleClass="texto-stilo-1" text="Sites:" />
+                  <ScrollPane fitToHeight="true" maxHeight="60.0" pannable="true" styleClass="scroll-links">
+                     <content>
+                        <AnchorPane minHeight="0.0" minWidth="0.0" styleClass="background-Black2">
+                           <children>
+                              <HBox alignment="CENTER" styleClass="background-Black2" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                 <children>
+                                    <Hyperlink fx:id="hplComickIO" text="https://comick.io/" />
+                                    <Hyperlink fx:id="hplComickFan" text="https://comickfan.com/" />
+                                    <Hyperlink fx:id="hplMangaFire" text="https://mangafire.to/" />
+                                    <Hyperlink fx:id="hplMangak" text="https://mangak.io/" />
+                                    <Hyperlink fx:id="hplMangaRead" text="https://www.mangaread.org/" />
+                                    <Hyperlink fx:id="hplMangaDex" text="https://mangadex.org/" />
+                                    <Hyperlink fx:id="hplTaiyo" text="https://taiyo.moe/" />
+                                    <Hyperlink fx:id="hplMangaPark" text="https://mangapark.net/" />
+                                    <Hyperlink fx:id="hplMangaKatana" text="https://mangakatana.com/" />
+                                    <Hyperlink fx:id="hplVyManga" text="https://vymanga.net/" />
+                                    <Hyperlink fx:id="hplMangaTown1" text="https://www.mangatown.com/" />
+                                    <Hyperlink fx:id="hplMangaTown2" text="https://m.mangatown.com/" />
+                                    <Hyperlink fx:id="hplMangaHere" text="https://www.mangahere.cc/" />
+                                    <Hyperlink fx:id="hplKMangaKodansha" text="https://kmanga.kodansha.com/" />
+                                 </children>
+                              </HBox>
+                           </children>
+                        </AnchorPane>
+                     </content>
+                  </ScrollPane>
+               </children>
+            </VBox>
+            <WebView fx:id="webView" minHeight="200.0" VBox.vgrow="ALWAYS" />
+         </children>
+         <padding>
+            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+         </padding>
+      </VBox>
+   </children>
+   <stylesheets>
+      <URL value="@../css/Dark_TelaInicial.css" />
+      <URL value="@../css/Paleta_Cores.css" />
+   </stylesheets>
+</AnchorPane>
