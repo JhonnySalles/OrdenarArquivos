@@ -1,6 +1,8 @@
 package com.fenix.ordenararquivos.fileparse
 
+import com.fenix.ordenararquivos.process.Winrar
 import com.fenix.ordenararquivos.util.Utils
+import com.github.junrar.exception.UnsupportedRarV5Exception
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
@@ -31,12 +33,19 @@ class ParseFactory {
             return tryParse(parser, file)
         }
 
-        private fun tryParse(parse: Parse, file: File): Parse {
+        private fun tryParse(parse: Parse, file: File, tentarConversao: Boolean = true): Parse {
             try {
                 parse.parse(file)
             } catch (e: IOException) {
-                mLOG.error(e.message, e)
-                throw kotlin.Exception("Não foi possível abrir o arquivo")
+                if (tentarConversao && parse is RarParse && e.cause is UnsupportedRarV5Exception) {
+                    mLOG.warn("Tentando conversão RAR v5 → v4: {}", file.absolutePath)
+                    if (Winrar.converterRar5ParaRar4(file))
+                        return tryParse(parse, file, tentarConversao = false)
+                    mLOG.error("Conversão RAR v5 → v4 falhou: {}", file.absolutePath)
+                } else {
+                    mLOG.error(e.message, e)
+                }
+                throw kotlin.Exception("Não foi possível abrir o arquivo", e)
             }
             return parse
         }

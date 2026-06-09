@@ -3,6 +3,7 @@ package com.fenix.ordenararquivos.fileparse
 import com.fenix.ordenararquivos.util.Utils
 import com.github.junrar.Archive
 import com.github.junrar.exception.RarException
+import com.github.junrar.exception.UnsupportedRarV5Exception
 import com.github.junrar.rarfile.FileHeader
 import org.slf4j.LoggerFactory
 import java.io.*
@@ -10,7 +11,7 @@ import java.nio.charset.StandardCharsets
 import java.util.*
 import java.util.function.Consumer
 
-class RarParse : Parse {
+open class RarParse : Parse {
     private val mLOG = LoggerFactory.getLogger(RarParse::class.java)
 
     private lateinit var mArquivo: Archive
@@ -22,9 +23,12 @@ class RarParse : Parse {
     override fun parse(file: File) {
         mArquivo = try {
             Archive(file)
+        } catch (e: UnsupportedRarV5Exception) {
+            mLOG.warn("RAR v5 não suportado pelo junrar: {}", file.name)
+            throw IOException("unsupported rar v5", e)
         } catch (e: RarException) {
             mLOG.error(e.message, e)
-            throw IOException("unable to open archive")
+            throw IOException("unable to open archive", e)
         }
         var cabecalho = mArquivo.nextFileHeader()
         while (cabecalho != null) {

@@ -22,6 +22,8 @@ open class WinrarServices {
     }
 
     open fun extrairTudo(arquivo: File, destino: File): Boolean = Winrar.extrairTudo(arquivo, destino)
+
+    open fun converterRar5ParaRar4(arquivo: File): Boolean = Winrar.converterRar5ParaRar4(arquivo)
     
     open fun listarConteudo(arquivo: File): List<String> = Winrar.listarConteudo(arquivo)
 

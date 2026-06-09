@@ -78,7 +78,7 @@
                   <TableColumn fx:id="clPublicacao" prefWidth="90.0" text="Publicação" />
                   <TableColumn fx:id="clResumo" prefWidth="150.0" text="Resumo" />
                   <TableColumn fx:id="clTags" prefWidth="250.0" text="Tags" />
-                  <TableColumn fx:id="clAcoes" prefWidth="200.0" text="Ações" />
+                  <TableColumn fx:id="clAcoes" prefWidth="280.0" text="Ações" />
                </columns>
             </TableView>
          </children>

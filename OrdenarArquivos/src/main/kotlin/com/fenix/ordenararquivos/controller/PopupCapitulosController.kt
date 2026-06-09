@@ -60,9 +60,6 @@ import java.util.*
 class PopupCapitulosController : Initializable {
 
     @FXML
-    private lateinit var hplMangaPlanet: Hyperlink
-
-    @FXML
     private lateinit var hplComickIO: Hyperlink
 
     @FXML
@@ -73,9 +70,6 @@ class PopupCapitulosController : Initializable {
 
     @FXML
     private lateinit var hplMangaFire: Hyperlink
-
-    @FXML
-    private lateinit var hplMangaForest: Hyperlink
 
     @FXML
     private lateinit var hplMangaRead: Hyperlink
@@ -1495,7 +1489,7 @@ class PopupCapitulosController : Initializable {
         listeners()
         tbViewTabela.items = mLista
 
-        for (button in arrayOf(hplComickIO, hplComickFan, hplTaiyo, hplMangaDex, hplMangaFire, hplMangaPlanet, hplMangaForest, hplMangaRead, hplMangak, hplMangaPark, hplMangaKatana, hplVyManga, hplMangaTown1, hplMangaTown2, hplMangaHere, hplKMangaKodansha))
+        for (button in arrayOf(hplComickIO, hplComickFan, hplTaiyo, hplMangaDex, hplMangaFire, hplMangaRead, hplMangak, hplMangaPark, hplMangaKatana, hplVyManga, hplMangaTown1, hplMangaTown2, hplMangaHere, hplKMangaKodansha))
             button.setOnAction { openSite(button.text) }
 
         val menu = javafx.scene.control.ContextMenu()

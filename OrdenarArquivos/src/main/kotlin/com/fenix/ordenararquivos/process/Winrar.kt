@@ -15,6 +15,7 @@ import javafx.scene.image.Image
 import javafx.util.Callback
 import org.slf4j.LoggerFactory
 import java.io.*
+import java.nio.file.Files
 import java.util.*
 
 object Winrar {
@@ -137,6 +138,88 @@ object Winrar {
         } catch (e: Exception) {
             mLOG.error(e.message, e)
             false
+        } finally {
+            proc?.destroy()
+        }
+    }
+
+    @JvmStatic
+    fun converterRar5ParaRar4(arquivo: File): Boolean {
+        if (!arquivo.exists()) return false
+
+        val tempDir = Files.createTempDirectory("rar_convert_").toFile()
+        val arquivoVer4 = File(arquivo.parentFile, "${arquivo.nameWithoutExtension}_ver4.rar")
+
+        try {
+            val delimitador = if (tempDir.path.endsWith("\\")) "" else "\\"
+            val destinoExtracao = tempDir.path + delimitador
+            mLOG.info("Conversão RAR v5→v4: extraindo {}", arquivo.name)
+            val (exitExtract, outExtract) = executarComando("rar", "x", "-y", arquivo.path, destinoExtracao)
+            if (exitExtract != 0) {
+                mLOG.error("Falha na extração (exit {}): {}", exitExtract, outExtract)
+                return false
+            }
+
+            val conteudo = tempDir.listFiles()
+            if (conteudo.isNullOrEmpty()) {
+                mLOG.error("Extração não produziu conteúdo: {}", arquivo.name)
+                return false
+            }
+
+            if (arquivoVer4.exists()) arquivoVer4.delete()
+
+            mLOG.info("Conversão RAR v5→v4: recompactando em {}", arquivoVer4.name)
+            val packArgs = arrayOf("rar", "a", "-ma4", "-r", "-ep1", "-y", arquivoVer4.path) +
+                    conteudo.map { it.absolutePath }.toTypedArray()
+            val (exitPack, outPack) = executarComando(*packArgs)
+            if (exitPack != 0 || !arquivoVer4.exists() || arquivoVer4.length() == 0L) {
+                mLOG.error("Falha na recompactação (exit {}): {}", exitPack, outPack)
+                return false
+            }
+
+            if (!arquivo.delete()) {
+                mLOG.error("Não foi possível remover o arquivo original: {}", arquivo.name)
+                return false
+            }
+
+            if (!arquivoVer4.renameTo(arquivo)) {
+                mLOG.error("Não foi possível renomear {} para {}", arquivoVer4.name, arquivo.name)
+                return false
+            }
+
+            mLOG.info("Conversão RAR v5→v4 concluída: {}", arquivo.name)
+            return true
+        } catch (e: Exception) {
+            mLOG.error("Erro na conversão RAR v5→v4: ${arquivo.name}", e)
+            return false
+        } finally {
+            tempDir.deleteRecursively()
+            if (arquivoVer4.exists()) {
+                if (!arquivo.exists())
+                    arquivoVer4.renameTo(arquivo)
+                else
+                    arquivoVer4.delete()
+            }
+        }
+    }
+
+    private fun executarComando(vararg args: String): Pair<Int, String> {
+        var proc: Process? = null
+        return try {
+            mLOG.info("Executando: {}", args.joinToString(" "))
+            val pb = ProcessBuilder(*args)
+            pb.redirectErrorStream(true)
+            proc = pb.start()
+            val output = StringBuilder()
+            BufferedReader(InputStreamReader(proc.inputStream)).use { reader ->
+                var line: String?
+                while (reader.readLine().also { line = it } != null)
+                    output.append(line).append("\n")
+            }
+            proc.waitFor() to output.toString()
+        } catch (e: Exception) {
+            mLOG.error(e.message, e)
+            -1 to e.message.orEmpty()
         } finally {
             proc?.destroy()
         }

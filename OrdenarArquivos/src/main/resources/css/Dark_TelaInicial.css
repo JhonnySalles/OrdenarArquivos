@@ -351,6 +351,14 @@
     -fx-background-insets: 1;
 }
 
+.popup-mal-spinner {
+    -jfx-radius: 24;
+}
+
+.popup-mal-spinner .arc {
+    -fx-stroke: #71afe5;
+}
+
 /*---------- Tab ----------*/
 .jfx-tab-pane .tab {
     -fx-pref-height: 30

@@ -879,7 +879,17 @@ class AbaComicInfoController : Initializable {
     }
 
     private fun processarComicInfoItem(item: Processar) {
-        if (item.file == null || !item.file!!.exists()) {
+        processarComicInfoItens(listOf(item))
+    }
+
+    private fun processarComicInfoItens(itens: List<Processar>) {
+        if (itens.isEmpty()) {
+            Notificacoes.notificacao(Notificacao.ALERTA, "Processar ComicInfo", "Selecione pelo menos um registro na tabela.")
+            return
+        }
+
+        val validos = itens.filter { it.file != null && it.file!!.exists() }
+        if (validos.isEmpty()) {
             AlertasModal.alerta("Alerta", "Arquivo não encontrado para processar.")
             return
         }
@@ -897,26 +907,34 @@ class AbaComicInfoController : Initializable {
 
         val processa: Task<Boolean> = object : Task<Boolean>() {
             override fun call(): Boolean {
-                updateMessage("Processando ComicInfo do item ${item.arquivo}...")
-                com.fenix.ordenararquivos.process.ComicInfo.processaArquivo(linguagem, item.file!!, marcaCapitulo)
+                val total = validos.size.toLong()
+                validos.forEachIndexed { i, item ->
+                    updateProgress(i.toLong() + 1, total)
+                    updateMessage("Processando ComicInfo ${i + 1} de $total: ${item.arquivo}")
+                    com.fenix.ordenararquivos.process.ComicInfo.processaArquivo(linguagem, item.file!!, marcaCapitulo)
+                }
                 return true
             }
 
             override fun succeeded() {
-                updateMessage("Processamento do item finalizado.")
+                updateMessage("Processamento finalizado.")
                 controllerPai.rootProgress.progressProperty().unbind()
                 controllerPai.rootMessage.textProperty().unbind()
                 controllerPai.clearProgress()
                 controllerPai.setCursor(null)
                 habilita()
-                recarregarComicInfoItem(item)
-                Notificacoes.notificacao(Notificacao.SUCESSO, "Processamento ComicInfo", "ComicInfo do item processado com sucesso.")
+                validos.forEach { recarregarComicInfoItem(it) }
+                val mensagem = if (validos.size == 1)
+                    "ComicInfo do item processado com sucesso."
+                else
+                    "${validos.size} itens processados com sucesso."
+                Notificacoes.notificacao(Notificacao.SUCESSO, "Processamento ComicInfo", mensagem)
             }
 
             override fun failed() {
                 super.failed()
-                mLOG.error("Erro na Task de processamento do item ${item.arquivo}", exception)
-                updateMessage("Erro ao processar o ComicInfo do item.")
+                mLOG.error("Erro na Task de processamento de ComicInfo", exception)
+                updateMessage("Erro ao processar o ComicInfo.")
                 controllerPai.rootProgress.progressProperty().unbind()
                 controllerPai.rootMessage.textProperty().unbind()
                 controllerPai.clearProgress()
@@ -1344,7 +1362,7 @@ class AbaComicInfoController : Initializable {
 
         clAcoes.setCellFactory {
             object : TableCell<Processar, Void>() {
-                private val btnProcessar = JFXButton("ComicInfo").apply {
+                private val btnProcessar = JFXButton("Processar ComicInfo").apply {
                     styleClass.add("background-Black2")
                     textFill = Color.WHITE
                     setOnAction { processarComicInfoItem(tableView.items[index]) }
@@ -1498,6 +1516,15 @@ class AbaComicInfoController : Initializable {
             }
         }
 
+        val processarComicInfo = MenuItem("Processar ComicInfo")
+        processarComicInfo.setOnAction {
+            val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
+            if (selecionados.isNotEmpty())
+                processarComicInfoItens(selecionados)
+            else
+                Notificacoes.notificacao(Notificacao.ALERTA, "Processar ComicInfo", "Selecione pelo menos um registro na tabela.")
+        }
+
         // GRUPO GERAL
         val remover = MenuItem("Remover registro (Del)")
         remover.setOnAction {
@@ -1558,6 +1585,7 @@ class AbaComicInfoController : Initializable {
             SeparatorMenuItem(),
             recarregarTodos,
             recarregarSelecionados,
+            processarComicInfo,
             SeparatorMenuItem(),
             remover
         )

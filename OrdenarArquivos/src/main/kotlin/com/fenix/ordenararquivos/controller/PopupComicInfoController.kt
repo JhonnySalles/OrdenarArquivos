@@ -13,6 +13,7 @@ import com.jfoenix.controls.JFXComboBox
 import com.jfoenix.controls.JFXDialog
 import com.jfoenix.controls.JFXDialogLayout
 import com.jfoenix.controls.JFXTextArea
+import com.jfoenix.controls.JFXSpinner
 import com.jfoenix.controls.JFXTextField
 import javafx.application.Platform
 import javafx.collections.FXCollections
@@ -27,7 +28,6 @@ import javafx.scene.Parent
 import javafx.scene.control.ContextMenu
 import javafx.scene.control.Label
 import javafx.scene.control.MenuItem
-import javafx.scene.control.ProgressIndicator
 import javafx.scene.control.ScrollBar
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
@@ -320,7 +320,11 @@ class PopupComicInfoController : Initializable {
 
     private fun showProgress() {
         if (progressOverlay == null) {
-            val progress = ProgressIndicator()
+            val progress = JFXSpinner().apply {
+                prefWidth = 48.0
+                prefHeight = 48.0
+                styleClass.add("popup-mal-spinner")
+            }
             val label = Label("Consultando MyAnimeList...").apply {
                 style = "-fx-text-fill: white; -fx-font-weight: bold;"
             }
