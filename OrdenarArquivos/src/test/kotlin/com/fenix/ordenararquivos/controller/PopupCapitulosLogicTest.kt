@@ -64,4 +64,78 @@ class PopupCapitulosLogicTest : BaseJfxTest() {
         assertEquals(2.0, entries[0].vol)
         assertEquals("Offline Chapter", entries[0].title)
     }
+
+    @Test
+    fun testExtractMangaTownDesktop() {
+        val htmlFile = File("src/test/resources/fixtures/mangatown-desktop.html")
+        val doc = Jsoup.parse(htmlFile, "UTF-8")
+
+        val volumes = controller.extractMangaTown(doc)
+
+        assertEquals(1, volumes.size)
+        assertTrue(volumes[0].capitulos.any { it.capitulo == 71.0 })
+    }
+
+    @Test
+    fun testExtractMangaTownMobile() {
+        val htmlFile = File("src/test/resources/fixtures/mangatown-mobile.html")
+        val doc = Jsoup.parse(htmlFile, "UTF-8")
+
+        val volumes = controller.extractMangaTown(doc)
+
+        assertEquals(1, volumes.size)
+        assertTrue(volumes[0].capitulos.any { it.capitulo == 206.0 })
+    }
+
+    @Test
+    fun testExtractMangaHere() {
+        val htmlFile = File("src/test/resources/fixtures/mangahere.html")
+        val doc = Jsoup.parse(htmlFile, "UTF-8")
+
+        val volumes = controller.extractMangaHere(doc)
+
+        assertEquals(1, volumes.size)
+        assertTrue(volumes[0].capitulos.any { it.capitulo == 71.0 })
+    }
+
+    @Test
+    fun testExtractVyManga() {
+        val htmlFile = File("src/test/resources/fixtures/vymanga.html")
+        val doc = Jsoup.parse(htmlFile, "UTF-8")
+
+        val volumes = controller.extractVyManga(doc)
+
+        assertEquals(1, volumes.size)
+        assertTrue(volumes[0].capitulos.any { it.capitulo == 72.0 })
+    }
+
+    @Test
+    fun testExtractVyMangaWithVolume() {
+        val parsed = controller.parseChapterFromText("Vol.3 Chapter 46 : The Hero'S Memoirs")
+
+        assertEquals(3.0, parsed?.volume)
+        assertEquals(46.0, parsed?.chapter)
+        assertEquals("The Hero'S Memoirs", parsed?.title)
+    }
+
+    @Test
+    fun testExtractKManga() {
+        val htmlFile = File("src/test/resources/fixtures/kmanga-episode.html")
+        val doc = Jsoup.parse(htmlFile, "UTF-8")
+
+        val volumes = controller.extractKManga(doc)
+
+        assertEquals(1, volumes.size)
+        val capitulo142 = volumes[0].capitulos.find { it.capitulo == 142.0 }
+        assertTrue(capitulo142 != null)
+        assertEquals("The Hero Granville Rozzo", capitulo142?.ingles)
+    }
+
+    @Test
+    fun testParseChapterFromTextPortuguese() {
+        val parsed = controller.parseChapterFromText("Capítulo 12: Título em português")
+
+        assertEquals(12.0, parsed?.chapter)
+        assertEquals("Título em português", parsed?.title)
+    }
 }

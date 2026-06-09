@@ -524,6 +524,10 @@ class PopupCapitulosController : Initializable {
             site.lowercase().contains("mangak.io") -> extractMangaK(pagina)
             site.lowercase().contains("mangakatana.com") -> extractMangaKatana(pagina)
             site.lowercase().contains("mangadex.org") -> extractMangaDex(pagina)
+            site.lowercase().contains("mangatown.com") -> extractMangaTown(pagina)
+            site.lowercase().contains("mangahere") -> extractMangaHere(pagina)
+            site.lowercase().contains("vymanga.net") -> extractVyManga(pagina)
+            site.lowercase().contains("kmanga.kodansha.com") -> extractKManga(pagina)
             else -> mLista.toList()
         }
         finalizarImportacao(list)
@@ -604,6 +608,10 @@ class PopupCapitulosController : Initializable {
                         else if (fileName.contains("mangadex")) site = "https://mangadex.org"
                         else if (fileName.contains("mangak")) site = "https://mangak.io"
                         else if (fileName.contains("mangakatana")) site = "https://mangakatana.com"
+                        else if (fileName.contains("mangatown")) site = "https://www.mangatown.com"
+                        else if (fileName.contains("mangahere")) site = "https://www.mangahere.cc"
+                        else if (fileName.contains("vymanga")) site = "https://vymanga.net"
+                        else if (fileName.contains("kmanga") || fileName.contains("kodansha")) site = "https://kmanga.kodansha.com"
                     }
 
                     doc
@@ -643,6 +651,64 @@ class PopupCapitulosController : Initializable {
 
     //Regex case insentive, no qual pode começar com capítulo, numero ou formato japoneas.
     private val mReplace = "(?i)^(ch|chapter|episode|第|[0-9])[0-9０-９ .]+(話|:)?".toRegex()
+
+    internal data class ParsedChapterLine(
+        val volume: Double?,
+        val chapter: Double,
+        val title: String
+    )
+
+    private val CHAPTER_LINE_REGEX = Regex(
+        "(?:Vol(?:ume)?\\.?\\s*(\\d+(?:\\.\\d+)?))?\\s*" +
+            "(?:Chapter|Ch\\.?|Chap|Capítulo|Capitulo|Cap\\.?|C\\.?|第)?\\s*" +
+            "([\\d.]+)\\s*[:\\-—]?\\s*(.*)",
+        RegexOption.IGNORE_CASE
+    )
+
+    private val KMANGA_CHAPTER_REGEX = Regex(
+        "CHAPTER(\\d+(?:\\.\\d+)?)\\s*(.*)",
+        RegexOption.IGNORE_CASE
+    )
+
+    private val MANGATOWN_DESKTOP_CHAPTER_REGEX = Regex("(\\d+(?:\\.\\d+)?)$")
+    private val MANGATOWN_MOBILE_CHAPTER_REGEX = Regex("C\\.(\\d+(?:\\.\\d+)?)", RegexOption.IGNORE_CASE)
+
+    internal fun parseChapterFromText(text: String): ParsedChapterLine? {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return null
+        val match = CHAPTER_LINE_REGEX.find(trimmed) ?: return null
+        val chapter = match.groupValues[2].toDoubleOrNull() ?: return null
+        val volume = match.groupValues[1].toDoubleOrNull()
+        val title = match.groupValues[3].trim()
+        return ParsedChapterLine(volume, chapter, title)
+    }
+
+    private fun parseKMangaChapterText(text: String): ParsedChapterLine? {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return null
+        val match = KMANGA_CHAPTER_REGEX.find(trimmed) ?: return null
+        val chapter = match.groupValues[1].toDoubleOrNull() ?: return null
+        val title = match.groupValues[2].trim()
+        return ParsedChapterLine(null, chapter, title)
+    }
+
+    private fun addParsedChapter(
+        volumesMap: MutableMap<Double, Volume>,
+        processed: MutableSet<Double>,
+        parsed: ParsedChapterLine,
+        cleanTitle: Boolean = true
+    ) {
+        if (processed.contains(parsed.chapter)) return
+        processed.add(parsed.chapter)
+        val volNum = parsed.volume ?: -1.0
+        val volume = volumesMap.getOrPut(volNum) { Volume(volume = volNum) }
+        val title = if (cleanTitle) {
+            Utils.limparTitulo(parsed.title).replace(mReplace, "").trim()
+        } else {
+            parsed.title.replace(mReplace, "").trim()
+        }
+        volume.capitulos.add(Capitulo(capitulo = parsed.chapter, ingles = title, japones = ""))
+    }
 
     internal fun preparar(lista: List<Volume>) {
         val linguagem = cbLinguagem.value ?: Linguagem.PORTUGUESE
@@ -1484,6 +1550,126 @@ class PopupCapitulosController : Initializable {
         return volumesMap.values.sortedBy { it.volume }
     }
 
+    //<--------------------------  MangaTown -------------------------->
+    internal fun extractMangaTown(pagina: Document): List<Volume> {
+        val volumesMap = mutableMapOf<Double, Volume>()
+        val processed = mutableSetOf<Double>()
+
+        val desktopItems = pagina.select("ul.chapter_list > li")
+        if (desktopItems.isNotEmpty()) {
+            for (li in desktopItems) {
+                val link = li.selectFirst("a") ?: continue
+                val linkText = link.text().trim()
+                val chapMatch = MANGATOWN_DESKTOP_CHAPTER_REGEX.find(linkText) ?: continue
+                val chapNum = chapMatch.groupValues[1].toDoubleOrNull() ?: continue
+                if (processed.contains(chapNum)) continue
+                processed.add(chapNum)
+
+                var title = ""
+                for (span in li.select("span")) {
+                    if (!span.hasClass("time")) {
+                        val spanText = span.text().trim()
+                        if (spanText.isNotEmpty()) title = spanText
+                    }
+                }
+
+                val volume = volumesMap.getOrPut(-1.0) { Volume(volume = -1.0) }
+                volume.capitulos.add(
+                    Capitulo(
+                        capitulo = chapNum,
+                        ingles = title.replace(mReplace, "").trim(),
+                        japones = ""
+                    )
+                )
+            }
+        } else {
+            for (li in pagina.select("ul.detail-ch-list > li")) {
+                val link = li.selectFirst("a") ?: continue
+                val linkText = link.text().trim()
+                val chapMatch = MANGATOWN_MOBILE_CHAPTER_REGEX.find(linkText) ?: continue
+                val chapNum = chapMatch.groupValues[1].toDoubleOrNull() ?: continue
+                if (processed.contains(chapNum)) continue
+                processed.add(chapNum)
+
+                val title = link.selectFirst("span.vol")?.text()?.trim().orEmpty()
+                val volume = volumesMap.getOrPut(-1.0) { Volume(volume = -1.0) }
+                volume.capitulos.add(
+                    Capitulo(
+                        capitulo = chapNum,
+                        ingles = title.replace(mReplace, "").trim(),
+                        japones = ""
+                    )
+                )
+            }
+        }
+
+        volumesMap.values.forEach { it.capitulos.sortBy { it.capitulo } }
+        return volumesMap.values.sortedBy { it.volume }
+    }
+
+    //<--------------------------  MangaHere -------------------------->
+    internal fun extractMangaHere(pagina: Document): List<Volume> {
+        val volumesMap = mutableMapOf<Double, Volume>()
+        val processed = mutableSetOf<Double>()
+
+        for (li in pagina.select("ul.detail-main-list > li")) {
+            val link = li.selectFirst("a") ?: continue
+            val title3 = link.selectFirst("p.title3")?.text()?.trim()
+            val text = if (!title3.isNullOrBlank()) title3 else link.attr("title").trim()
+            if (text.isBlank()) continue
+
+            parseChapterFromText(text)?.let { parsed ->
+                addParsedChapter(volumesMap, processed, parsed)
+            }
+        }
+
+        volumesMap.values.forEach { it.capitulos.sortBy { it.capitulo } }
+        return volumesMap.values.sortedBy { it.volume }
+    }
+
+    //<--------------------------  VyManga -------------------------->
+    internal fun extractVyManga(pagina: Document): List<Volume> {
+        val volumesMap = mutableMapOf<Double, Volume>()
+        val processed = mutableSetOf<Double>()
+
+        for (link in pagina.select("a.list-chapter")) {
+            val spanText = link.selectFirst("span")?.text()?.trim().orEmpty()
+            if (spanText.isBlank()) continue
+            parseChapterFromText(spanText)?.let { parsed ->
+                addParsedChapter(volumesMap, processed, parsed)
+            }
+        }
+
+        volumesMap.values.forEach { it.capitulos.sortBy { it.capitulo } }
+        return volumesMap.values.sortedBy { it.volume }
+    }
+
+    //<--------------------------  KManga -------------------------->
+    internal fun extractKManga(pagina: Document): List<Volume> {
+        val volumesMap = mutableMapOf<Double, Volume>()
+        val processed = mutableSetOf<Double>()
+
+        val episodeLinks = pagina.select("a.c-episode-item[href*=/episode/]")
+        if (episodeLinks.isNotEmpty()) {
+            for (link in episodeLinks) {
+                val ttl = link.selectFirst(".c-episode-item__ttl")?.text()?.trim()
+                    ?: link.selectFirst("img[alt]")?.attr("alt")?.trim()
+                    ?: continue
+                parseKMangaChapterText(ttl)?.let { parsed ->
+                    addParsedChapter(volumesMap, processed, parsed, cleanTitle = false)
+                }
+            }
+        } else {
+            val pageTitle = pagina.title().substringAfter("|", pagina.title()).substringBefore("/").trim()
+            parseKMangaChapterText(pageTitle)?.let { parsed ->
+                addParsedChapter(volumesMap, processed, parsed, cleanTitle = false)
+            }
+        }
+
+        volumesMap.values.forEach { it.capitulos.sortBy { it.capitulo } }
+        return volumesMap.values.sortedBy { it.volume }
+    }
+
     private fun listeners() {
         txtEndereco.focusedProperty().addListener { _, oldVal, _ ->
             if (oldVal)
@@ -1573,10 +1759,7 @@ class PopupCapitulosController : Initializable {
         }
 
         for (button in arrayOf(hplComickIO, hplComickFan, hplTaiyo, hplMangaDex, hplMangaFire, hplMangaRead, hplMangak, hplMangaPark, hplMangaKatana, hplVyManga, hplMangaTown1, hplMangaTown2, hplMangaHere, hplKMangaKodansha)) {
-            button.setOnAction {
-                txtEndereco.text = button.text
-                consulta()
-            }
+            button.setOnAction { openSite(button.text) }
         }
 
         val menu = javafx.scene.control.ContextMenu()
