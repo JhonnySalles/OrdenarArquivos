@@ -1,5 +1,6 @@
 package com.fenix.ordenararquivos.configuration
 
+import com.fenix.ordenararquivos.model.enums.OcrEngine
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -30,12 +31,23 @@ object Configuracao {
         }
     }
 
+    fun reload() {
+        loadProperties()
+        loadSecrets()
+    }
+
     private fun createProperties() {
         try {
             FileOutputStream("app.properties").use { os ->
                 properties.clear()
                 properties.setProperty("caminho.commictagger", "")
                 properties.setProperty("app.update_link", "")
+                properties.setProperty("ocr.engine", OcrEngine.TESSERACT.configValue)
+                properties.setProperty("ocr.ollama.url", "http://localhost:11434")
+                properties.setProperty("ocr.ollama.model", "moondream")
+                properties.setProperty("ocr.paddle.cls", "true")
+                properties.setProperty("ocr.paddle.use_angle_cls", "true")
+                properties.setProperty("ocr.paddle.limit_side_len", "2880")
                 properties.store(os, "")
             }
         } catch (e: IOException) {
@@ -79,6 +91,48 @@ object Configuracao {
             field = value
         }
         get() = properties.getProperty("app.update_link", "")
+
+    var ocrEngine: OcrEngine = OcrEngine.TESSERACT
+        set(value) {
+            properties["ocr.engine"] = value.configValue
+            field = value
+        }
+        get() = OcrEngine.fromConfigValue(properties.getProperty("ocr.engine"))
+
+    var ollamaUrl: String = ""
+        set(value) {
+            properties["ocr.ollama.url"] = value
+            field = value
+        }
+        get() = properties.getProperty("ocr.ollama.url", "http://localhost:11434")
+
+    var ollamaModel: String = ""
+        set(value) {
+            properties["ocr.ollama.model"] = value
+            field = value
+        }
+        get() = properties.getProperty("ocr.ollama.model", "moondream")
+
+    var paddleCls: Boolean = true
+        set(value) {
+            properties["ocr.paddle.cls"] = value.toString()
+            field = value
+        }
+        get() = properties.getProperty("ocr.paddle.cls", "true").toBoolean()
+
+    var paddleUseAngleCls: Boolean = true
+        set(value) {
+            properties["ocr.paddle.use_angle_cls"] = value.toString()
+            field = value
+        }
+        get() = properties.getProperty("ocr.paddle.use_angle_cls", "true").toBoolean()
+
+    var paddleLimitSideLen: Int = 2880
+        set(value) {
+            properties["ocr.paddle.limit_side_len"] = value.toString()
+            field = value
+        }
+        get() = properties.getProperty("ocr.paddle.limit_side_len", "2880").toIntOrNull() ?: 2880
 
     // -------------------------------------------------------------------------------------------------
     private fun loadSecrets(): Properties {
@@ -124,4 +178,4 @@ object Configuracao {
     val googleDriveApiKey: String get() = secrets.getProperty("google_drive_api_key", "")
     val googleDriveRefreshToken: String get() = secrets.getProperty("google_drive_refresh_token", "")
     val googleDriveFolderId: String get() = secrets.getProperty("google_drive_folder_id", "")
-}
+}

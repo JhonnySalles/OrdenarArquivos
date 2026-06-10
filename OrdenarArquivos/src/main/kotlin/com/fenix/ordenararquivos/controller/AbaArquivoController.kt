@@ -13,8 +13,9 @@ import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
 import com.fenix.ordenararquivos.model.enums.*
 import com.fenix.ordenararquivos.notification.AlertasModal
 import com.fenix.ordenararquivos.notification.Notificacoes
-import com.fenix.ordenararquivos.process.Ocr
+import com.fenix.ordenararquivos.process.ocr.OcrEngineFactory
 import com.fenix.ordenararquivos.service.ComicInfoServices
+import com.fenix.ordenararquivos.service.OcrServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.WinrarServices
 import com.fenix.ordenararquivos.util.Utils
@@ -864,18 +865,25 @@ class AbaArquivoController : Initializable {
         mComicInfo = comic
     }
 
+    internal var mOcrService = OcrServices()
+
     private fun ocrSumario(sumario: File) {
         remSugestao()
         val isJapanese = txtNomePastaManga.text.contains("[JPN]", true)
+        val linguagem = if (isJapanese) Linguagem.JAPANESE else Linguagem.PORTUGUESE
         val ocr: Task<Void> = object : Task<Void>() {
             override fun call(): Void? {
                 try {
                     updateProgress(-1.0, 1.0)
-                    if (!Ocr.mGemini && !Ocr.mLibs)
-                        throw LibException("Bibliotecas OCR não instânciadas.")
+                    if (!OcrEngineFactory.isAvailable(Configuracao.ocrEngine))
+                        throw LibException("Motor OCR '${Configuracao.ocrEngine.displayName}' não disponível.")
 
-                    Ocr.prepare(isJapanese)
-                    val sugestao = Ocr.process(sumario, Utils.SEPARADOR_PAGINA, Utils.SEPARADOR_CAPITULO)
+                    val sugestao = mOcrService.processOcr(
+                        sumario,
+                        Utils.SEPARADOR_PAGINA,
+                        Utils.SEPARADOR_CAPITULO,
+                        linguagem
+                    )
                     mLOG.info("OCR processado: $sugestao")
                     if (sugestao.isNotEmpty())
                         Platform.runLater {
@@ -886,8 +894,6 @@ class AbaArquivoController : Initializable {
                     Platform.runLater {
                         Notificacoes.notificacao(Notificacao.ERRO, "OCR", "Erro ao realizar o OCR do arquivo de sumário. " + e.message)
                     }
-                } finally {
-                    Ocr.clear()
                 }
                 return null
             }

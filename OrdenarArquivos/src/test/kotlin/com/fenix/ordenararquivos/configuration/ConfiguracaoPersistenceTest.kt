@@ -1,5 +1,6 @@
 package com.fenix.ordenararquivos.configuration
 
+import com.fenix.ordenararquivos.model.enums.OcrEngine
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
 import java.io.File
@@ -26,18 +27,11 @@ class ConfiguracaoPersistenceTest {
         if (appBackup != null) appFile.writeBytes(appBackup!!) else appFile.delete()
         if (secretsBackup != null) secretsFile.writeBytes(secretsBackup!!) else secretsFile.delete()
         
-        // Recarregar para o estado original
-        reloadConfig()
+        Configuracao.reload()
     }
 
     private fun reloadConfig() {
-        val loadProps = Configuracao::class.java.getDeclaredMethod("loadProperties")
-        loadProps.isAccessible = true
-        loadProps.invoke(Configuracao)
-
-        val loadSecrets = Configuracao::class.java.getDeclaredMethod("loadSecrets")
-        loadSecrets.isAccessible = true
-        loadSecrets.invoke(Configuracao)
+        Configuracao.reload()
     }
 
     @Test
@@ -66,11 +60,72 @@ class ConfiguracaoPersistenceTest {
         props.setProperty("mal.registros_consulta", "120")
         appFile.outputStream().use { props.store(it, null) }
         
-        // 5. Forcar reload via reflection
+        // 5. Forcar reload em memoria
         reloadConfig()
         
         // 6. Verificar se o objeto Configuracao refletiu a mudanca do disco
         assertEquals(120, Configuracao.registrosConsultaMal)
+    }
+
+    @Test
+    fun `test salvar e carregar ocr engine`() {
+        val original = Configuracao.ocrEngine
+        try {
+            Configuracao.ocrEngine = OcrEngine.PADDLE
+            Configuracao.saveProperties()
+
+            val props = Properties()
+            appFile.inputStream().use { props.load(it) }
+            assertEquals(OcrEngine.PADDLE.configValue, props.getProperty("ocr.engine"))
+
+            props.setProperty("ocr.engine", OcrEngine.GEMINI.configValue)
+            appFile.outputStream().use { props.store(it, null) }
+            reloadConfig()
+            assertEquals(OcrEngine.GEMINI, Configuracao.ocrEngine)
+        } finally {
+            Configuracao.ocrEngine = original
+            Configuracao.saveProperties()
+        }
+    }
+
+    @Test
+    fun `test salvar e carregar parametros ollama e paddle`() {
+        val originalOllamaUrl = Configuracao.ollamaUrl
+        val originalOllamaModel = Configuracao.ollamaModel
+        val originalPaddleCls = Configuracao.paddleCls
+        val originalPaddleAngle = Configuracao.paddleUseAngleCls
+        val originalPaddleLimit = Configuracao.paddleLimitSideLen
+
+        try {
+            Configuracao.ollamaUrl = "http://127.0.0.1:11434"
+            Configuracao.ollamaModel = "llava"
+            Configuracao.paddleCls = false
+            Configuracao.paddleUseAngleCls = true
+            Configuracao.paddleLimitSideLen = 1920
+            Configuracao.saveProperties()
+
+            val props = Properties()
+            appFile.inputStream().use { props.load(it) }
+            assertEquals("http://127.0.0.1:11434", props.getProperty("ocr.ollama.url"))
+            assertEquals("llava", props.getProperty("ocr.ollama.model"))
+            assertEquals("false", props.getProperty("ocr.paddle.cls"))
+            assertEquals("true", props.getProperty("ocr.paddle.use_angle_cls"))
+            assertEquals("1920", props.getProperty("ocr.paddle.limit_side_len"))
+
+            reloadConfig()
+            assertEquals("http://127.0.0.1:11434", Configuracao.ollamaUrl)
+            assertEquals("llava", Configuracao.ollamaModel)
+            assertFalse(Configuracao.paddleCls)
+            assertTrue(Configuracao.paddleUseAngleCls)
+            assertEquals(1920, Configuracao.paddleLimitSideLen)
+        } finally {
+            Configuracao.ollamaUrl = originalOllamaUrl
+            Configuracao.ollamaModel = originalOllamaModel
+            Configuracao.paddleCls = originalPaddleCls
+            Configuracao.paddleUseAngleCls = originalPaddleAngle
+            Configuracao.paddleLimitSideLen = originalPaddleLimit
+            Configuracao.saveProperties()
+        }
     }
 
     @Test

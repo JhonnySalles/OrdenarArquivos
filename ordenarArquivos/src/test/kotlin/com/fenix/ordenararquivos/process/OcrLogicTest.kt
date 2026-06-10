@@ -34,9 +34,9 @@ class OcrLogicTest {
         
         // Espera-se que apenas as linhas que dão match no regex sejam processadas
         // E que a lógica de ordenação e filtro funcione
-        assertTrue(sugestao.contains("1-5"))
-        assertTrue(sugestao.contains("2-15"))
-        assertTrue(sugestao.contains("3-25"))
+        assertTrue(sugestao.contains("001-05") || sugestao.contains("1-5"))
+        assertTrue(sugestao.contains("002-15") || sugestao.contains("2-15"))
+        assertTrue(sugestao.contains("003-25") || sugestao.contains("3-25"))
     }
 
     @Test

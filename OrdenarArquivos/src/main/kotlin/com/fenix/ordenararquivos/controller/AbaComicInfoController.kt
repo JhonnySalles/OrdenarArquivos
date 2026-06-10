@@ -496,6 +496,7 @@ class AbaComicInfoController : Initializable {
     private fun processaOCR() {
         val separador = Utils.SEPARADOR_CAPITULO
         val listaProcessar = mObsListaProcessar.toList()
+        val linguagemOcr = cbLinguagem.value ?: Linguagem.JAPANESE
         val processaOCR: Task<Boolean> = object : Task<Boolean>() {
             override fun call(): Boolean {
                 try {
@@ -523,7 +524,12 @@ class AbaComicInfoController : Initializable {
                                 continue
                             }
 
-                            val capitulos = mOcrService.processOcr(sumario, Utils.SEPARADOR_PAGINA, separador).split("\n")
+                            val capitulos = mOcrService.processOcr(
+                                sumario,
+                                Utils.SEPARADOR_PAGINA,
+                                separador,
+                                linguagemOcr
+                            ).split("\n")
                             val newTag = mutableSetOf<String>()
                             val tags = item.comicInfo?.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList()
                                 ?: emptyList()
@@ -1064,7 +1070,12 @@ class AbaComicInfoController : Initializable {
 
         val task = object : Task<Unit>() {
             override fun call() {
-                val capitulos = mOcrService.processOcr(sumario, Utils.SEPARADOR_PAGINA, Utils.SEPARADOR_CAPITULO).split("\n")
+                val capitulos = mOcrService.processOcr(
+                    sumario,
+                    Utils.SEPARADOR_PAGINA,
+                    Utils.SEPARADOR_CAPITULO,
+                    language
+                ).split("\n")
                 val newTag = mutableSetOf<String>()
                 val tags = item.comicInfo!!.pages?.filter { !it.bookmark.isNullOrEmpty() }?.map { it.image.toString() + Utils.SEPARADOR_IMAGEM + it.bookmark }?.toList() ?: emptyList()
 
