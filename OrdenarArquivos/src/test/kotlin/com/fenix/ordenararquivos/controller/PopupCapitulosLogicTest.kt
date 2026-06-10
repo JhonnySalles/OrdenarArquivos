@@ -3,6 +3,7 @@ package com.fenix.ordenararquivos.controller
 import com.fenix.ordenararquivos.BaseJfxTest
 import org.jsoup.Jsoup
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -169,14 +170,43 @@ class PopupCapitulosLogicTest : BaseJfxTest() {
     }
 
     @Test
+    fun testExtractMangaDexIgnoresLangCounts() {
+        val doc = Jsoup.parse(File("src/test/resources/fixtures/mangadex-lang-counts.html"), "UTF-8")
+        val volumes = controller.extractMangaDex(doc)
+        val caps = volumes.flatMap { it.capitulos }
+
+        val cap180 = caps.find { it.capitulo == 180.0 }
+        assertTrue(cap180 != null)
+        assertEquals("Poder Trovejante", cap180?.ingles)
+        assertTrue(caps.none { it.capitulo == 18011.0 })
+
+        val cap177 = caps.find { it.capitulo == 177.0 }
+        assertTrue(cap177 != null)
+        assertEquals("O Fardo que se Carrega", cap177?.ingles)
+        assertTrue(caps.none { it.capitulo == 17721.0 })
+    }
+
+    @Test
     fun testExtractComickFan() {
         val doc = Jsoup.parse(File("src/test/resources/fixtures/comickfan.html"), "UTF-8")
         val volumes = controller.extractComickFan(doc)
         assertEquals(1, volumes.size)
-        assertEquals(2, volumes[0].capitulos.size)
+        assertEquals(3, volumes[0].capitulos.size)
         val cap163 = volumes[0].capitulos.find { it.capitulo == 163.0 }
         assertTrue(cap163 != null)
         assertEquals("Run Like Hell", cap163?.ingles)
+    }
+
+    @Test
+    fun testExtractComickFanIgnoresScanMetadata() {
+        val doc = Jsoup.parse(File("src/test/resources/fixtures/comickfan.html"), "UTF-8")
+        val volumes = controller.extractComickFan(doc)
+        val cap1 = volumes[0].capitulos.find { it.capitulo == 1.0 }
+        assertTrue(cap1 != null)
+        assertEquals("Birth of a Slave", cap1!!.ingles)
+        assertFalse(cap1.ingles.contains("Ards"))
+        assertFalse(cap1.ingles.contains("upvotes"))
+        assertFalse(cap1.ingles.contains("months ago"))
     }
 
     @Test

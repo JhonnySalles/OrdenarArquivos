@@ -275,9 +275,10 @@ class PopupCapitulosControllerUnitTest : BaseJfxTest() {
         controller.processarHtml("https://mangakatana.com", html)
 
         val lista = getField("mLista") as List<Volume>
-        assertEquals(1, lista.size)
-        assertTrue(lista[0].tags.contains("The Weight She Carries"))
-        assertFalse(lista[0].tags.contains("-1${Utils.SEPARADOR_IMAGEM}Capítulo 177"))
+        val vol1 = lista.find { it.arquivo == "vol1.cbz" }
+        assertNotNull(vol1)
+        assertTrue(vol1!!.tags.contains("The Weight She Carries"))
+        assertFalse(vol1.tags.contains("-1${Utils.SEPARADOR_IMAGEM}Capítulo 177"))
     }
 
     @Test

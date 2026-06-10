@@ -1,12 +1,10 @@
 // ==UserScript==
 // @name         OrdenarArquivos — Importar Capítulos
 // @namespace    http://tampermonkey.net/
-// @version      1.3.0
+// @version      1.3.1
 // @description  Extrai lista de capítulos da página e copia no formato do popup Colar do OrdenarArquivos
 // @author       Fenix
 // @grant        GM_setClipboard
-//
-// Descomente os @match dos sites que deseja usar ao instalar no Tampermonkey:
 //
 // @match        https://comick.io/*
 // @match        https://comickfan.com/*
@@ -367,26 +365,29 @@
         return buildVolumesFromTempCaps(raw);
     }
 
+    function comickFanTitleFromItem(item) {
+        const titleStripRegex = /^Chapter\s*[\d.]+\s*[-:]?\s*/i;
+        const link = item.querySelector('a');
+        const attrTitle = link ? (link.getAttribute('title') || '').trim() : '';
+        if (attrTitle.includes(' - ')) return attrTitle.split(' - ').slice(1).join(' - ').trim();
+        if (attrTitle) return attrTitle.replace(titleStripRegex, '').trim();
+
+        const medium = item.querySelector('.font-medium');
+        if (!medium) return '';
+        const clone = medium.cloneNode(true);
+        clone.querySelectorAll('span').forEach(s => s.remove());
+        return clone.textContent.trim().replace(titleStripRegex, '').trim();
+    }
+
     function extractComickFan(doc) {
         const volumesMap = {};
         const processed = new Set();
-        const titleStripRegex = /^Chapter\s*[\d.]+\s*[-:]?\s*/i;
 
         doc.querySelectorAll('#chapterList .chapter-items[data-chapter-num], .chapter-items[data-chapter-num]').forEach(item => {
             const chapNum = parseNum(item.getAttribute('data-chapter-num'));
             if (chapNum == null) return;
 
-            const link = item.querySelector('a');
-            let title = '';
-            const attrTitle = link ? (link.getAttribute('title') || '').trim() : '';
-            if (attrTitle.includes(' - ')) title = attrTitle.split(' - ').slice(1).join(' - ').trim();
-            else if (attrTitle) title = attrTitle.replace(titleStripRegex, '').trim();
-
-            if (!title) {
-                const textEl = item.querySelector('.font-medium font, .font-medium, a');
-                const text = textEl ? textEl.textContent.trim() : '';
-                title = text.replace(titleStripRegex, '').trim();
-            }
+            const title = comickFanTitleFromItem(item);
             addCapituloSeValido(volumesMap, -1, chapNum, title, true, processed);
         });
 
@@ -630,15 +631,19 @@
     // MangaDex
     // -------------------------------------------------------------------------
 
+    function parseMangaDexChapterNumber(header) {
+        const labelSpan = header.querySelector('.flex span.font-bold, span.font-bold');
+        const label = labelSpan ? labelSpan.textContent : header.textContent;
+        const m = /Chapter\s*([\d.]+)/i.exec(label);
+        return m ? parseNum(m[1]) : null;
+    }
+
     function extractMangaDex(doc) {
         const volumesMap = {};
         const processedKeys = new Set();
-        const numberRegex = /[\d.]+/;
 
         doc.querySelectorAll('.chapter-header').forEach(header => {
-            const numMatch = numberRegex.exec(header.textContent);
-            if (!numMatch) return;
-            const chapterNumber = parseNum(numMatch[0]);
+            const chapterNumber = parseMangaDexChapterNumber(header);
             if (chapterNumber == null) return;
 
             let volumeNumber = -1;

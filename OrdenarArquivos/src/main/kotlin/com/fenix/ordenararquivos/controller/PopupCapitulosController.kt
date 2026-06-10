@@ -1210,25 +1210,28 @@ class PopupCapitulosController : Initializable {
         return entries
     }
 
+    private fun comickFanTitleFromItem(item: Element): String {
+        val titleStripRegex = Regex("""(?i)^Chapter\s*[\d.]+\s*[-:]?\s*""")
+        val link = item.selectFirst("a")
+        link?.attr("title")?.trim()?.let { attr ->
+            if (attr.contains(" - ")) return attr.substringAfter(" - ").trim()
+            val stripped = attr.replace(titleStripRegex, "").trim()
+            if (stripped.isNotBlank()) return stripped
+        }
+
+        val medium = item.selectFirst(".font-medium") ?: return ""
+        val mediumClone = medium.clone()
+        mediumClone.select("span").remove()
+        return mediumClone.text().trim().replace(titleStripRegex, "").trim()
+    }
+
     internal fun extractComickFan(pagina: Document): List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
         val processed = mutableSetOf<String>()
-        val titleStripRegex = Regex("""(?i)^Chapter\s*[\d.]+\s*[-:]?\s*""")
 
         pagina.select("#chapterList .chapter-items[data-chapter-num], .chapter-items[data-chapter-num]").forEach { item ->
             val chapNum = item.attr("data-chapter-num").toDoubleOrNull() ?: return@forEach
-
-            val link = item.selectFirst("a")
-            var title = ""
-            link?.attr("title")?.trim()?.let { attr ->
-                title = if (attr.contains(" - ")) attr.substringAfter(" - ").trim()
-                else attr.replace(titleStripRegex, "").trim()
-            }
-            if (title.isBlank()) {
-                val textEl = item.selectFirst(".font-medium font, .font-medium, a")
-                val text = textEl?.text()?.trim().orEmpty()
-                title = text.replace(titleStripRegex, "").trim()
-            }
+            val title = comickFanTitleFromItem(item)
             val volume = volumesMap.getOrPut(-1.0) { Volume(volume = -1.0) }
             addCapituloSeValido(volume, chapNum, title, processed = processed, volumeNum = -1.0)
         }
@@ -1626,13 +1629,19 @@ class PopupCapitulosController : Initializable {
     }
 
     //<--------------------------  MangaDex -------------------------->
+    private fun parseMangaDexChapterNumber(header: Element): Double? {
+        val chapterLabelRegex = Regex("""(?i)Chapter\s*([\d.]+)""")
+        val labelSpan = header.selectFirst(".flex span.font-bold") ?: header.selectFirst("span.font-bold")
+        val label = labelSpan?.text() ?: header.text()
+        return chapterLabelRegex.find(label)?.groupValues?.get(1)?.toDoubleOrNull()
+    }
+
     internal fun extractMangaDex(pagina: Document): List<Volume> {
         val volumesMap = mutableMapOf<Double, Volume>()
         val processedKeys = mutableSetOf<String>()
-        val numberRegex = Regex("""[\d.]+""")
 
         for (header in pagina.select(".chapter-header")) {
-            val chapterNumber = numberRegex.find(header.text())?.value?.toDoubleOrNull() ?: continue
+            val chapterNumber = parseMangaDexChapterNumber(header) ?: continue
 
             var volumeNumber = -1.0
             var currentParent = header.parent()
