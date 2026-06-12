@@ -15,6 +15,8 @@ import javafx.scene.effect.BoxBlur
 import javafx.scene.layout.HBox
 import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
+import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyEvent
 import javafx.scene.text.Font
 import java.net.URL
 import java.util.*
@@ -45,6 +47,12 @@ class PopupCapitulosDividirController : Initializable {
                 val blur = BoxBlur(3.0, 3.0, 3)
                 val dialogLayout = JFXDialogLayout()
                 val subDialog = JFXDialog(stackPane, dialogLayout, JFXDialog.DialogTransition.CENTER)
+                subDialog.addEventHandler(KeyEvent.KEY_PRESSED) { event ->
+                    if (event.code == KeyCode.ESCAPE) {
+                        subDialog.close()
+                        event.consume()
+                    }
+                }
 
                 val loader = FXMLLoader(PopupCapitulosDividirController::class.java.getResource("/view/PopupCapitulosDividir.fxml"))
                 val newAnchorPane: Parent = loader.load()

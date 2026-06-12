@@ -42,6 +42,8 @@ import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import javafx.stage.Stage
+import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyEvent
 import java.net.URL
 import java.util.*
 
@@ -376,6 +378,12 @@ class PopupComicInfoController : Initializable {
                 dialogLayout.setHeading(hbTitulo)
                 dialogLayout.setBody(root)
                 val dialog = JFXDialog(stackPane, dialogLayout, JFXDialog.DialogTransition.CENTER)
+                dialog.addEventHandler(KeyEvent.KEY_PRESSED) { event ->
+                    if (event.code == KeyCode.ESCAPE) {
+                        controller.onBtnCancelar()
+                        event.consume()
+                    }
+                }
                 dialog.isOverlayClose = false
 
                 controller.onClose = { dialog.close() }

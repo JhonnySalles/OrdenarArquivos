@@ -17,6 +17,8 @@ import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.fxml.Initializable
 import javafx.geometry.Pos
+import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyEvent
 import javafx.scene.Node
 import javafx.scene.Parent
 import javafx.scene.control.Hyperlink
@@ -384,6 +386,13 @@ class PopupCapitulosWebController : Initializable {
                 val blur = BoxBlur(3.0, 3.0, 3)
                 val dialogLayout = JFXDialogLayout()
                 val subDialog = JFXDialog(stackPane, dialogLayout, JFXDialog.DialogTransition.CENTER)
+                subDialog.addEventHandler(KeyEvent.KEY_PRESSED) { event ->
+                    if (event.code == KeyCode.ESCAPE) {
+                        cnt.liberarPagina()
+                        subDialog.close()
+                        event.consume()
+                    }
+                }
 
                 val loader = FXMLLoader(PopupCapitulosWebController::class.java.getResource("/view/PopupCapitulosWeb.fxml"))
                 val newAnchorPane: Parent = loader.load()

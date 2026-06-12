@@ -42,6 +42,7 @@ import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.effect.BoxBlur
 import javafx.scene.input.DragEvent
 import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyEvent
 import javafx.scene.input.TransferMode
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.HBox
@@ -2489,6 +2490,12 @@ class PopupCapitulosController : Initializable {
                 val blur = BoxBlur(3.0, 3.0, 3)
                 val dialogLayout = JFXDialogLayout()
                 dialog = JFXDialog(rootStackPane, dialogLayout, JFXDialog.DialogTransition.CENTER)
+                dialog.addEventHandler(KeyEvent.KEY_PRESSED) { event ->
+                    if (event.code == KeyCode.ESCAPE) {
+                        dialog.close()
+                        event.consume()
+                    }
+                }
                 val loader = FXMLLoader()
                 loader.location = fxmlLocate
                 val newAnchorPane: Parent = loader.load()

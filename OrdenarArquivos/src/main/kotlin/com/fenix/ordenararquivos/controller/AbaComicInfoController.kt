@@ -39,6 +39,8 @@ import javafx.scene.input.KeyEvent
 import javafx.scene.input.TransferMode
 import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
+import javafx.scene.image.Image
+import javafx.scene.image.ImageView
 import javafx.util.Callback
 import javafx.scene.effect.BoxBlur
 import javafx.scene.text.Font
@@ -47,6 +49,7 @@ import com.fenix.ordenararquivos.util.PropertyChangeAction
 import com.fenix.ordenararquivos.util.CompositeAction
 import com.fenix.ordenararquivos.util.ReversibleAction
 import javafx.scene.layout.HBox
+import javafx.scene.layout.VBox
 import javafx.fxml.FXMLLoader
 import com.jfoenix.controls.JFXDialogLayout
 import com.jfoenix.controls.JFXDialog
@@ -57,11 +60,13 @@ import java.net.URL
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.*
+import java.util.concurrent.atomic.AtomicInteger
 
 class AbaComicInfoController : Initializable {
 
     private val mLOG = LoggerFactory.getLogger(AbaComicInfoController::class.java)
     private val ALERTA_PSEUDO_CLASS = PseudoClass.getPseudoClass("alerta")
+    private val activeTasksCount = AtomicInteger(0)
 
     //<--------------------------  PRINCIPAL   -------------------------->
 
@@ -114,6 +119,9 @@ class AbaComicInfoController : Initializable {
     private lateinit var clProcessado: TableColumn<Processar, Boolean>
 
     @FXML
+    private lateinit var clCapa: TableColumn<Processar, String>
+
+    @FXML
     private lateinit var clArquivo: TableColumn<Processar, String>
 
     @FXML
@@ -150,6 +158,7 @@ class AbaComicInfoController : Initializable {
     private var mObsListaProcessar: ObservableList<Processar> = FXCollections.observableArrayList()
     private val mDecimal = DecimalFormat("000.##", DecimalFormatSymbols(Locale.US))
     private val mPASTA_TEMPORARIA = File(System.getProperty("user.dir"), "temp/")
+    private val mPASTA_COVERS = File(mPASTA_TEMPORARIA, "covers/")
     private val mHistory = GridHistoryManager()
 
     @FXML
@@ -425,6 +434,21 @@ class AbaComicInfoController : Initializable {
         if (::controller.isInitialized) controllerPai.setCursor(null)
     }
 
+    private fun bloquearControlesGerais(block: Boolean) {
+        txtPastaProcessar.isDisable = block
+        btnPesquisarPastaProcessar.isDisable = block
+        cbLinguagem.isDisable = block
+        btnCarregar.isDisable = block
+        btnTagsProcessar.isDisable = block
+        btnTagsNormaliza.isDisable = block
+        btnTagsAplicar.isDisable = block
+        btnSalvarTodos.isDisable = block
+        btnCapitulos.isDisable = block
+        btnSumario.isDisable = block
+        btnOcrProcessar.isDisable = block
+        btnProcessar.isDisable = block
+    }
+
     private fun configuraTextEdit() {
         txtPastaProcessar.onKeyPressed = EventHandler { e: javafx.scene.input.KeyEvent ->
             if (e.code == KeyCode.ENTER) {
@@ -597,10 +621,51 @@ class AbaComicInfoController : Initializable {
         t.start()
     }
 
+    private fun extrairCapaDoArquivo(arquivo: File): String? {
+        try {
+            val conteudo = mRarService.listarConteudo(arquivo)
+            val primeiraImagem = conteudo.filter { Utils.isImage(it) }.sortedNaturally().firstOrNull() ?: return null
+            
+            if (!mPASTA_COVERS.exists()) mPASTA_COVERS.mkdirs()
+            
+            val extension = File(primeiraImagem).extension.ifEmpty { "jpg" }
+            val cleanName = arquivo.nameWithoutExtension.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+            val coverDestFile = File(mPASTA_COVERS, "cover_${cleanName}.${extension}")
+            
+            val tempExtractDir = File(mPASTA_TEMPORARIA, "cover_extract_${System.currentTimeMillis()}")
+            tempExtractDir.mkdirs()
+            try {
+                if (mRarService.extrairItens(arquivo, listOf(primeiraImagem), tempExtractDir)) {
+                    val extractedFile = File(tempExtractDir, primeiraImagem)
+                    if (extractedFile.exists()) {
+                        extractedFile.copyTo(coverDestFile, overwrite = true)
+                        return coverDestFile.absolutePath
+                    } else {
+                        val foundImg = tempExtractDir.walkTopDown().filter { it.isFile && Utils.isImage(it.name) }.firstOrNull()
+                        if (foundImg != null) {
+                            foundImg.copyTo(coverDestFile, overwrite = true)
+                            return coverDestFile.absolutePath
+                        }
+                    }
+                }
+            } finally {
+                tempExtractDir.deleteRecursively()
+            }
+        } catch (e: Exception) {
+            mLOG.error("Erro ao extrair capa do arquivo: ${arquivo.name}", e)
+        }
+        return null
+    }
+
     private fun carregarItens() {
         val path = txtPastaProcessar.text?.trim() ?: ""
         val pasta = File(path)
         if (path.isNotEmpty() && pasta.exists() && pasta.isDirectory) {
+            if (mPASTA_COVERS.exists()) {
+                mPASTA_COVERS.deleteRecursively()
+            }
+            mPASTA_COVERS.mkdirs()
+
             btnCarregar.isDisable = true
             controllerPai.setCursor(Cursor.WAIT)
             val linguagemCarregamento = cbLinguagem.value ?: Linguagem.PORTUGUESE
@@ -646,6 +711,7 @@ class AbaComicInfoController : Initializable {
                             }
 
                             val tags = tagsFromComic(comic)
+                            val coverPath = extrairCapaDoArquivo(arquivo)
                             val processar = JFXButton("Processar").apply { id = "btnProcessar_${i}" }
                             val amazon = JFXButton("Amazon").apply { id = "btnAmazon_${i}" }
                             val salvar = JFXButton("Salvar").apply { id = "btnSalvar_${i}" }
@@ -657,7 +723,8 @@ class AbaComicInfoController : Initializable {
                                 processar,
                                 amazon,
                                 salvar,
-                                semComicInfo = semComicInfo
+                                semComicInfo = semComicInfo,
+                                capaPath = coverPath
                             )
 
                             processar.styleClass.add("background-White1")
@@ -712,8 +779,10 @@ class AbaComicInfoController : Initializable {
     }
 
     private fun salvarComicInfoItem(item: Processar) {
+        val tempDir = File(mPASTA_TEMPORARIA, "save_single_${System.currentTimeMillis()}_${UUID.randomUUID()}")
+        tempDir.mkdirs()
         try {
-            val info = File(item.file!!.parent, "ComicInfo.xml")
+            val info = File(tempDir, "ComicInfo.xml")
             if (info.exists())
                 info.delete()
 
@@ -777,12 +846,114 @@ class AbaComicInfoController : Initializable {
             marshaller.marshal(item.comicInfo, out)
             out.close()
             mRarService.insereComicInfo(item.file!!, info)
-            mHistory.removeHistoryForItem(item)
-            mObsListaProcessar.remove(item)
+            Platform.runLater {
+                mHistory.removeHistoryForItem(item)
+                mObsListaProcessar.remove(item)
+                tbViewProcessar.refresh()
+            }
         } catch (e: Exception) {
             mLOG.error(e.message, e)
-            AlertasModal.erro("Erro", "Erro ao salvar o ComicInfo no arquivo ComicInfo.xml. " + e.message)
+            Platform.runLater {
+                AlertasModal.erro("Erro", "Erro ao salvar o ComicInfo no arquivo ComicInfo.xml. " + e.message)
+            }
+        } finally {
+            tempDir.deleteRecursively()
         }
+    }
+
+    private fun salvarComicInfoItemAsync(item: Processar) {
+        if (item.isSalvandoOuProcessando) return
+        item.isSalvandoOuProcessando = true
+        tbViewProcessar.refresh()
+
+        if (activeTasksCount.getAndIncrement() == 0) {
+            bloquearControlesGerais(true)
+        }
+
+        val task = object : Task<Void>() {
+            override fun call(): Void? {
+                salvarComicInfoItem(item)
+                return null
+            }
+
+            override fun succeeded() {
+                item.isSalvandoOuProcessando = false
+                tbViewProcessar.refresh()
+                if (activeTasksCount.decrementAndGet() == 0) {
+                    bloquearControlesGerais(false)
+                }
+                Notificacoes.notificacao(Notificacao.SUCESSO, "Salvar ComicInfo", "Item salvo com sucesso.")
+            }
+
+            override fun failed() {
+                item.isSalvandoOuProcessando = false
+                tbViewProcessar.refresh()
+                if (activeTasksCount.decrementAndGet() == 0) {
+                    bloquearControlesGerais(false)
+                }
+                mLOG.error("Erro ao salvar o item", exception)
+                AlertasModal.erro("Erro ao salvar", exception?.message ?: "Erro desconhecido")
+            }
+        }
+        Thread(task).start()
+    }
+
+    private fun processarComicInfoItemAsync(item: Processar) {
+        if (item.isSalvandoOuProcessando) return
+        val file = item.file ?: return
+        if (!file.exists()) {
+            AlertasModal.alerta("Alerta", "Arquivo não encontrado para processar.")
+            return
+        }
+
+        item.isSalvandoOuProcessando = true
+        tbViewProcessar.refresh()
+
+        if (activeTasksCount.getAndIncrement() == 0) {
+            bloquearControlesGerais(true)
+        }
+
+        val linguagem = cbLinguagem.value ?: Linguagem.PORTUGUESE
+        val marcaCapitulo = when (linguagem) {
+            Linguagem.PORTUGUESE -> "Capítulo"
+            Linguagem.ENGLISH -> "Chapter"
+            Linguagem.JAPANESE -> "第%s話"
+            else -> ""
+        }
+
+        val task = object : Task<Void>() {
+            override fun call(): Void? {
+                val tempDir = File(mPASTA_TEMPORARIA, "process_single_${System.currentTimeMillis()}_${UUID.randomUUID()}")
+                tempDir.mkdirs()
+                try {
+                    com.fenix.ordenararquivos.process.ComicInfo.processaArquivo(linguagem, file, marcaCapitulo, tempDir)
+                } finally {
+                    tempDir.deleteRecursively()
+                }
+                return null
+            }
+
+            override fun succeeded() {
+                item.isSalvandoOuProcessando = false
+                recarregarComicInfoItem(item)
+                tbViewProcessar.refresh()
+                if (activeTasksCount.decrementAndGet() == 0) {
+                    bloquearControlesGerais(false)
+                }
+                Notificacoes.notificacao(Notificacao.SUCESSO, "Processamento ComicInfo", "ComicInfo do item processado com sucesso.")
+            }
+
+            override fun failed() {
+                item.isSalvandoOuProcessando = false
+                tbViewProcessar.refresh()
+                if (activeTasksCount.decrementAndGet() == 0) {
+                    bloquearControlesGerais(false)
+                }
+                mLOG.error("Erro ao processar item", exception)
+                AlertasModal.erro("Erro ao processar o ComicInfo", exception?.message ?: "Erro desconhecido")
+            }
+        }
+        Thread(task).start()
     }
 
     private fun salvarItens(startIndex: Int = 0, endIndex: Int = 0) {
@@ -904,6 +1075,7 @@ class AbaComicInfoController : Initializable {
             item.comicInfo = comic ?: ComicInfo()
             item.tags = if (comic != null) tagsFromComic(comic) else ""
             item.arquivo = arquivo.name
+            item.capaPath = extrairCapaDoArquivo(arquivo)
         } finally {
             extractDir.deleteRecursively()
         }
@@ -1329,8 +1501,15 @@ class AbaComicInfoController : Initializable {
 
     private fun editaColunas() {
         clTitulo.cellFactory = TextAreaTableCell.forTableColumn()
+        clTitulo.setOnEditStart { e ->
+            val item = e.tableView.items[e.tablePosition.row]
+            if (item.isSalvandoOuProcessando) {
+                Platform.runLater { e.tableView.edit(-1, null) }
+            }
+        }
         clTitulo.setOnEditCommit { e ->
             val item = e.tableView.items[e.tablePosition.row]
+            if (item.isSalvandoOuProcessando) return@setOnEditCommit
             val oldVal = item.comicInfo?.title ?: ""
             val newVal = e.newValue
             if (oldVal != newVal) {
@@ -1340,8 +1519,15 @@ class AbaComicInfoController : Initializable {
         }
 
         clSerie.cellFactory = TextAreaTableCell.forTableColumn()
+        clSerie.setOnEditStart { e ->
+            val item = e.tableView.items[e.tablePosition.row]
+            if (item.isSalvandoOuProcessando) {
+                Platform.runLater { e.tableView.edit(-1, null) }
+            }
+        }
         clSerie.setOnEditCommit { e ->
             val item = e.tableView.items[e.tablePosition.row]
+            if (item.isSalvandoOuProcessando) return@setOnEditCommit
             val oldVal = item.comicInfo?.series ?: ""
             val newVal = e.newValue
             if (oldVal != newVal) {
@@ -1351,8 +1537,15 @@ class AbaComicInfoController : Initializable {
         }
 
         clResumo.cellFactory = TextAreaTableCell.forTableColumn()
+        clResumo.setOnEditStart { e ->
+            val item = e.tableView.items[e.tablePosition.row]
+            if (item.isSalvandoOuProcessando) {
+                Platform.runLater { e.tableView.edit(-1, null) }
+            }
+        }
         clResumo.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
             val item = e.tableView.items[e.tablePosition.row]
+            if (item.isSalvandoOuProcessando) return@setOnEditCommit
             val oldVal = item.comicInfo?.summary ?: ""
             val newVal = e.newValue
             if (oldVal != newVal) {
@@ -1366,6 +1559,10 @@ class AbaComicInfoController : Initializable {
             val item = param.value
             val booleanProp = SimpleBooleanProperty(item.isProcessado)
             booleanProp.addListener { _, _, newValue ->
+                if (item.isSalvandoOuProcessando) {
+                    Platform.runLater { tbViewProcessar.refresh() }
+                    return@addListener
+                }
                 if (item.isProcessado != newValue) {
                     val oldVal = item.isProcessado
                     mHistory.pushAction(PropertyChangeAction(item, oldVal, newValue) { i, v -> 
@@ -1393,8 +1590,15 @@ class AbaComicInfoController : Initializable {
                         "Shift + Alt + Acima/Baixo: Move a tag da linha selecionada para cima ou baixo, movimentando outras tags subjacentes."
             )
         )
+        clTags.setOnEditStart { e ->
+            val item = e.tableView.items[e.tablePosition.row]
+            if (item.isSalvandoOuProcessando) {
+                Platform.runLater { e.tableView.edit(-1, null) }
+            }
+        }
         clTags.setOnEditCommit { e: TableColumn.CellEditEvent<Processar, String> ->
             val item = e.tableView.items[e.tablePosition.row]
+            if (item.isSalvandoOuProcessando) return@setOnEditCommit
             val oldVal = item.tags
             val newVal = e.newValue
             if (oldVal != newVal) {
@@ -1405,26 +1609,108 @@ class AbaComicInfoController : Initializable {
 
         clAcoes.setCellFactory {
             object : TableCell<Processar, Void>() {
-                private val btnProcessar = JFXButton("Processar ComicInfo").apply {
+                private val btnAjustar = JFXButton("Ajustar").apply {
+                    styleClass.add("background-Blue3")
+                    textFill = Color.WHITE
+                    setOnAction {
+                        val rowItem = tableView.items[index]
+                        val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+                        gerarTagItem(rowItem, language, isAjustar = true)?.let { mHistory.pushAction(it) }
+                        tableView.refresh()
+                    }
+                }
+                private val btnNormalizar = JFXButton("Normalizar").apply {
+                    styleClass.add("background-Purple2")
+                    textFill = Color.WHITE
+                    setOnAction {
+                        val rowItem = tableView.items[index]
+                        val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+                        normalizarTagItem(rowItem, language)?.let { mHistory.pushAction(it) }
+                        tableView.refresh()
+                    }
+                }
+                private val btnTitulo = JFXButton("Título").apply {
+                    styleClass.add("background-Orange1")
+                    textFill = Color.WHITE
+                    setOnAction {
+                        val rowItem = tableView.items[index]
+                        val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
+                        formatarTitleCaseTagItem(rowItem, language)?.let { mHistory.pushAction(it) }
+                        tableView.refresh()
+                    }
+                }
+
+                private val btnAmazon = JFXButton("Amazon").apply {
+                    styleClass.add("background-Orange1")
+                    textFill = Color.WHITE
+                    setOnAction { popupAmazon(tableView.items[index]) }
+                }
+                private val btnEditar = JFXButton("Editar").apply {
+                    styleClass.add("background-Blue3")
+                    textFill = Color.WHITE
+                    setOnAction { abrirPopupComicInfo(listOf(tableView.items[index])) }
+                }
+                private val btnProcessar = JFXButton("Processar").apply {
                     styleClass.add("background-Black2")
                     textFill = Color.WHITE
-                    setOnAction { processarComicInfoItem(tableView.items[index]) }
+                    setOnAction { processarComicInfoItemAsync(tableView.items[index]) }
+                }
+
+                private val btnDeletar = JFXButton("Deletar").apply {
+                    styleClass.add("background-Red2")
+                    textFill = Color.WHITE
+                    setOnAction {
+                        val rowItem = tableView.items[index]
+                        if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
+                            mHistory.removeHistoryForItem(rowItem)
+                            mObsListaProcessar.remove(rowItem)
+                            tableView.refresh()
+                        }
+                    }
                 }
                 private val btnOcr = JFXButton("OCR").apply {
                     styleClass.add("background-White1")
+                    textFill = Color.BLACK
                     setOnAction { visualizarSumarioItem(tableView.items[index]) }
                 }
                 private val btnSalvar = JFXButton("Salvar").apply {
                     styleClass.add("background-Green3")
-                    setOnAction { salvarComicInfoItem(tableView.items[index]) }
+                    textFill = Color.WHITE
+                    setOnAction { salvarComicInfoItemAsync(tableView.items[index]) }
                 }
-                private val hbox = HBox(5.0, btnProcessar, btnOcr, btnSalvar).apply {
+
+                private val hbox1 = HBox(5.0, btnAjustar, btnNormalizar, btnTitulo).apply {
+                    alignment = Pos.CENTER
+                }
+                private val hbox2 = HBox(5.0, btnAmazon, btnEditar, btnProcessar).apply {
+                    alignment = Pos.CENTER
+                }
+                private val hbox3 = HBox(5.0, btnDeletar, btnOcr, btnSalvar).apply {
+                    alignment = Pos.CENTER
+                }
+
+                private val vbox = VBox(5.0, hbox1, hbox2, hbox3).apply {
                     alignment = Pos.CENTER
                 }
 
                 override fun updateItem(item: Void?, empty: Boolean) {
                     super.updateItem(item, empty)
-                    graphic = if (empty) null else hbox
+                    if (empty) {
+                        graphic = null
+                    } else {
+                        val rowItem = tableView.items[index]
+                        val isDisable = rowItem.isSalvandoOuProcessando
+                        btnAjustar.isDisable = isDisable
+                        btnNormalizar.isDisable = isDisable
+                        btnTitulo.isDisable = isDisable
+                        btnAmazon.isDisable = isDisable
+                        btnEditar.isDisable = isDisable
+                        btnProcessar.isDisable = isDisable
+                        btnDeletar.isDisable = isDisable
+                        btnOcr.isDisable = isDisable
+                        btnSalvar.isDisable = isDisable
+                        graphic = vbox
+                    }
                 }
             }
         }
@@ -1468,18 +1754,28 @@ class AbaComicInfoController : Initializable {
 
         val tagsNormalizar = MenuItem("Normalizar Tags (Ctrl + N)")
         tagsNormalizar.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null) {
+            val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
+            if (selecionados.isNotEmpty()) {
                 val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
-                normalizarTagItem(tbViewProcessar.selectionModel.selectedItem, language)?.let { mHistory.pushAction(it) }
+                val actions = mutableListOf<ReversibleAction>()
+                for (item in selecionados) {
+                    normalizarTagItem(item, language)?.let { actions.add(it) }
+                }
+                if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                 tbViewProcessar.refresh()
             }
         }
 
         val tagsTitleCase = MenuItem("Tags Como TÍtulo (Ctrl + Shift + N)")
         tagsTitleCase.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null) {
+            val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
+            if (selecionados.isNotEmpty()) {
                 val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
-                formatarTitleCaseTagItem(tbViewProcessar.selectionModel.selectedItem, language)?.let { mHistory.pushAction(it) }
+                val actions = mutableListOf<ReversibleAction>()
+                for (item in selecionados) {
+                    formatarTitleCaseTagItem(item, language)?.let { actions.add(it) }
+                }
+                if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                 tbViewProcessar.refresh()
             }
         }
@@ -1632,68 +1928,27 @@ class AbaComicInfoController : Initializable {
         )
 
         tbViewProcessar.contextMenu = menu
-        
-        tbViewProcessar.addEventFilter(KeyEvent.KEY_PRESSED) { event ->
-            if (tbViewProcessar.editingCellProperty().get() != null || event.target is javafx.scene.control.TextInputControl) return@addEventFilter
-            if (event.isControlDown) {
-                when (event.code) {
-                    KeyCode.Z -> {
-                        val action = if (event.isShiftDown) mHistory.redo() else mHistory.undo()
-                        if (action != null) {
-                            tbViewProcessar.refresh()
-                            (action.getFirstAffectedItem() as? Processar)?.let { item ->
-                                val idx = mObsListaProcessar.indexOf(item)
-                                if (idx != -1) tbViewProcessar.scrollTo(idx)
-                            }
-                        }
-                        event.consume()
-                    }
-                    KeyCode.Y -> {
-                        val action = mHistory.redo()
-                        if (action != null) {
-                            tbViewProcessar.refresh()
-                            (action.getFirstAffectedItem() as? Processar)?.let { item ->
-                                val idx = mObsListaProcessar.indexOf(item)
-                                if (idx != -1) tbViewProcessar.scrollTo(idx)
-                            }
-                        }
-                        event.consume()
-                    }
-                    KeyCode.S -> {
-                        val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
-                        if (selecionados.isNotEmpty()) {
-                            if (selecionados.size > 1)
-                                salvarListaItens(selecionados)
-                            else
-                                salvarComicInfoItem(selecionados[0])
-                        }
-                        event.consume()
-                    }
-                    else -> {}
-                }
-            } else if (event.code == KeyCode.DELETE && tbViewProcessar.selectionModel.selectedItems.isNotEmpty()) {
-                if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
-                    val selected = tbViewProcessar.selectionModel.selectedItems.toList()
-                    selected.forEach { mHistory.removeHistoryForItem(it) }
-                    mObsListaProcessar.removeAll(selected)
-                    tbViewProcessar.refresh()
-                }
-                event.consume()
-            }
-        }
 
         tbViewProcessar.setRowFactory {
             object : TableRow<Processar>() {
                 init {
                     setOnMouseClicked { event ->
-                        if (event.clickCount == 2 && !isEmpty)
-                            abrirPopupComicInfo(listOf(item))
+                        if (event.clickCount == 2 && !isEmpty) {
+                            if (item != null && !item.isSalvandoOuProcessando) {
+                                abrirPopupComicInfo(listOf(item))
+                            }
+                        }
                     }
                 }
 
                 override fun updateItem(item: Processar?, empty: Boolean) {
                     super.updateItem(item, empty)
                     pseudoClassStateChanged(ALERTA_PSEUDO_CLASS, item?.semComicInfo == true)
+                    if (!empty && item != null && item.isSalvandoOuProcessando) {
+                        style = "-fx-background-color: #d4edda; -fx-text-background-color: black;"
+                    } else {
+                        style = ""
+                    }
                 }
             }
         }
@@ -1943,76 +2198,101 @@ class AbaComicInfoController : Initializable {
                 return@addEventFilter
             }
 
-            if (selecionado == null && e.code != KeyCode.DELETE) return@addEventFilter
-
-            when (e.code) {
-                KeyCode.S -> {
-                    if (e.isControlDown) {
-                        if (selecionados.size > 1)
-                            salvarListaItens(selecionados)
-                        else if (selecionado != null)
-                            salvarComicInfoItem(selecionado)
-                        e.consume()
-                    }
-                }
-
-                KeyCode.T -> {
-                    if (e.isControlDown) {
-                        gerarTagItem(selecionado, language)?.let { mHistory.pushAction(it) }
-                        tbViewProcessar.refresh()
-                        e.consume()
-                    }
-                }
-
-                KeyCode.O -> {
-                    if (e.isControlDown) {
-                        visualizarSumarioItem(selecionado)
-                        e.consume()
-                    }
-                }
-
-                KeyCode.A -> {
-                    if (e.isControlDown) {
-                        gerarTagItem(selecionado, language, isAjustar = true)?.let { mHistory.pushAction(it) }
-                        tbViewProcessar.refresh()
-                        e.consume()
-                    }
-                }
-
-                KeyCode.N -> {
-                    if (e.isControlDown) {
-                        if (e.isShiftDown) {
-                            formatarTitleCaseTagItem(selecionado, language)?.let { mHistory.pushAction(it) }
-                        } else {
-                            normalizarTagItem(selecionado, language)?.let { mHistory.pushAction(it) }
+            if (e.isControlDown) {
+                when (e.code) {
+                    KeyCode.Z -> {
+                        val action = if (e.isShiftDown) mHistory.redo() else mHistory.undo()
+                        if (action != null) {
+                            tbViewProcessar.refresh()
+                            (action.getFirstAffectedItem() as? Processar)?.let { item ->
+                                val idx = mObsListaProcessar.indexOf(item)
+                                if (idx != -1) tbViewProcessar.scrollTo(idx)
+                            }
                         }
-                        tbViewProcessar.refresh()
                         e.consume()
                     }
-                }
-
-                KeyCode.DELETE -> {
-                    if (selecionados.isNotEmpty()) {
-                        if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
-                            mObsListaProcessar.removeAll(selecionados)
+                    KeyCode.Y -> {
+                        val action = mHistory.redo()
+                        if (action != null) {
+                            tbViewProcessar.refresh()
+                            (action.getFirstAffectedItem() as? Processar)?.let { item ->
+                                val idx = mObsListaProcessar.indexOf(item)
+                                if (idx != -1) tbViewProcessar.scrollTo(idx)
+                            }
+                        }
+                        e.consume()
+                    }
+                    KeyCode.S -> {
+                        if (selecionados.isNotEmpty()) {
+                            if (selecionados.size > 1)
+                                salvarListaItens(selecionados)
+                            else if (selecionado != null)
+                                salvarComicInfoItem(selecionado)
+                        }
+                        e.consume()
+                    }
+                    KeyCode.T -> {
+                        if (selecionado != null) {
+                            gerarTagItem(selecionado, language)?.let { mHistory.pushAction(it) }
                             tbViewProcessar.refresh()
                         }
                         e.consume()
                     }
-                }
-
-                KeyCode.SPACE -> {
-                    val selecionadosItems = tbViewProcessar.selectionModel.selectedItems
-                    if (selecionadosItems.isNotEmpty()) {
-                        val novoEstado = !selecionadosItems.first().isProcessado
-                        selecionadosItems.forEach { it.isProcessado = novoEstado }
-                        tbViewProcessar.refresh()
-                        atualizaCheckTodosProcessado()
+                    KeyCode.O -> {
+                        if (selecionado != null) {
+                            visualizarSumarioItem(selecionado)
+                        }
+                        e.consume()
                     }
-                    e.consume()
+                    KeyCode.A -> {
+                        if (selecionado != null) {
+                            gerarTagItem(selecionado, language, isAjustar = true)?.let { mHistory.pushAction(it) }
+                            tbViewProcessar.refresh()
+                        }
+                        e.consume()
+                    }
+                    KeyCode.N -> {
+                        if (selecionados.isNotEmpty()) {
+                            val actions = mutableListOf<ReversibleAction>()
+                            if (e.isShiftDown) {
+                                for (item in selecionados) {
+                                    formatarTitleCaseTagItem(item, language)?.let { actions.add(it) }
+                                }
+                            } else {
+                                for (item in selecionados) {
+                                    normalizarTagItem(item, language)?.let { actions.add(it) }
+                                }
+                            }
+                            if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
+                            tbViewProcessar.refresh()
+                        }
+                        e.consume()
+                    }
+                    else -> {}
                 }
-
-                else -> {}
+            } else {
+                when (e.code) {
+                    KeyCode.DELETE -> {
+                        if (selecionados.isNotEmpty()) {
+                            if (ConfirmaModal.confirmacao("Aviso", "Deseja remover o registro?")) {
+                                selecionados.forEach { mHistory.removeHistoryForItem(it) }
+                                mObsListaProcessar.removeAll(selecionados)
+                                tbViewProcessar.refresh()
+                            }
+                            e.consume()
+                        }
+                    }
+                    KeyCode.SPACE -> {
+                        if (selecionados.isNotEmpty()) {
+                            val novoEstado = !selecionados.first().isProcessado
+                            selecionados.forEach { it.isProcessado = novoEstado }
+                            tbViewProcessar.refresh()
+                            atualizaCheckTodosProcessado()
+                        }
+                        e.consume()
+                    }
+                    else -> {}
+                }
             }
         }
     }
@@ -2282,6 +2562,32 @@ class AbaComicInfoController : Initializable {
 
     private fun linkaCelulas() {
         clProcessado.cellValueFactory = PropertyValueFactory("isProcessado")
+        clCapa.setCellValueFactory { param ->
+            SimpleStringProperty(param.value.capaPath)
+        }
+        clCapa.setCellFactory {
+            object : TableCell<Processar, String>() {
+                private val imageView = ImageView().apply {
+                    fitWidth = 50.0
+                    fitHeight = 70.0
+                    isPreserveRatio = true
+                }
+                override fun updateItem(item: String?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    if (empty || item.isNullOrEmpty()) {
+                        graphic = null
+                    } else {
+                        val file = File(item)
+                        if (file.exists()) {
+                            imageView.image = Image(file.toURI().toString(), true)
+                            graphic = imageView
+                        } else {
+                            graphic = null
+                        }
+                    }
+                }
+            }
+        }
         clArquivo.cellValueFactory = PropertyValueFactory("arquivo")
         clSerie.setCellValueFactory { param ->
             val item = param.value

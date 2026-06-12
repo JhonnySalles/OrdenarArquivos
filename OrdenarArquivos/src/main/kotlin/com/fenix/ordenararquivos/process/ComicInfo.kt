@@ -71,29 +71,31 @@ object ComicInfo {
         }
     }
 
-    fun processaArquivo(linguagem: Linguagem, arquivo: File, marcaCapitulo: String) {
+    fun processaArquivo(linguagem: Linguagem, arquivo: File, marcaCapitulo: String, tempFolder: File? = null) {
         nCancelar = false
         mMarcarCapitulo = marcaCapitulo
         try {
             mJaxBc = JAXBContext.newInstance(Comic::class.java)
             mService = ComicInfoServices()
-            processa(linguagem, arquivo)
+            processa(linguagem, arquivo, tempFolder)
         } finally {
             mJaxBc = null
             mService = null
         }
     }
 
-    private fun processa(linguagem: Linguagem, arquivo: File) {
+    private fun processa(linguagem: Linguagem, arquivo: File, tempFolder: File? = null) {
         try {
             if (arquivo.name.lowercase(Locale.getDefault()).matches(PATTERN)) {
                 var info: File? = null
                 try {
-                    info = extraiInfo(arquivo)
+                    info = extraiInfo(arquivo, tempFolder)
 
                     val comic: Comic = if (info == null || !info.exists()) {
-                        if (info == null)
-                            info = File(arquivo.absolutePath + File.separator + COMICINFO)
+                        if (info == null) {
+                            val destino = tempFolder?.path ?: Utils.getCaminho(arquivo.path)
+                            info = File(destino + File.separator + COMICINFO)
+                        }
 
                         val nome = arquivo.name.substringBeforeLast(".")
                         val titulo = nome.substringBeforeLast("-").trim()
@@ -364,10 +366,11 @@ object ComicInfo {
         }
     }
 
-    private fun extraiInfo(arquivo: File): File? {
+    private fun extraiInfo(arquivo: File, tempFolder: File? = null): File? {
         var comicInfo: File? = null
         var proc: Process? = null
-        val comando = arrayOf("rar", "e", "-ma4", "-y", arquivo.path, Utils.getCaminho(arquivo.path), COMICINFO)
+        val destino = tempFolder?.path ?: Utils.getCaminho(arquivo.path)
+        val comando = arrayOf("rar", "e", "-ma4", "-y", arquivo.path, destino, COMICINFO)
         try {
             val pb = ProcessBuilder(*comando)
             pb.redirectErrorStream(true)
@@ -385,7 +388,7 @@ object ComicInfo {
             if (exitCode != 0) {
                 mLOG.info("Erro ao extrair $COMICINFO (Exit Code: $exitCode). Output:\n$output")
             } else {
-                comicInfo = File(Utils.getCaminho(arquivo.path) + File.separator + COMICINFO)
+                comicInfo = File(destino + File.separator + COMICINFO)
             }
         } catch (e: Exception) {
             mLOG.error("Falha ao extrair ComicInfo: ${e.message}", e)
