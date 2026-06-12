@@ -385,7 +385,11 @@ class PopupCapitulosWebController : Initializable {
             try {
                 val blur = BoxBlur(3.0, 3.0, 3)
                 val dialogLayout = JFXDialogLayout()
+                val loader = FXMLLoader(PopupCapitulosWebController::class.java.getResource("/view/PopupCapitulosWeb.fxml"))
+                val newAnchorPane: Parent = loader.load()
+                val cnt: PopupCapitulosWebController = loader.getController()
                 val subDialog = JFXDialog(stackPane, dialogLayout, JFXDialog.DialogTransition.CENTER)
+
                 subDialog.addEventHandler(KeyEvent.KEY_PRESSED) { event ->
                     if (event.code == KeyCode.ESCAPE) {
                         cnt.liberarPagina()
@@ -393,10 +397,6 @@ class PopupCapitulosWebController : Initializable {
                         event.consume()
                     }
                 }
-
-                val loader = FXMLLoader(PopupCapitulosWebController::class.java.getResource("/view/PopupCapitulosWeb.fxml"))
-                val newAnchorPane: Parent = loader.load()
-                val cnt: PopupCapitulosWebController = loader.getController()
 
                 cnt.setEnderecoInicial(enderecoInicial)
 
