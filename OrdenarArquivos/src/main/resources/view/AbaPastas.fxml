@@ -64,7 +64,7 @@
                   <JFXButton fx:id="btnCapitulos" buttonType="RAISED" minWidth="70.0" onAction="#onBtnCapitulos" prefHeight="30.0" prefWidth="135.0" styleClass="background-White1" text="Capítulos" />
                   <JFXButton fx:id="btnSubstituir" buttonType="RAISED" minWidth="110.0" onAction="#onBtnSubstituirTitulo" prefHeight="30.0" prefWidth="135.0" styleClass="background-White1" text="Substituir Título">
                      <tooltip>
-                        <Tooltip text="Ctrl + R" />
+                        <Tooltip text="Buscar e substituir texto nos títulos das pastas (Ctrl + R)" />
                      </tooltip>
                   </JFXButton>
                </children>

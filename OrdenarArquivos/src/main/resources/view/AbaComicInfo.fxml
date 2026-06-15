@@ -59,6 +59,11 @@
                   <JFXButton fx:id="btnTagsProcessar" buttonType="RAISED" minWidth="90.0" onAction="#onBtnTagsProcessar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Purple2" text="Gerar tags" textFill="WHITE" />
                   <JFXButton fx:id="btnTagsNormaliza" buttonType="RAISED" minWidth="90.0" onAction="#onBtnTagsNormaliza" prefHeight="30.0" prefWidth="150.0" styleClass="background-Orange1" text="Normaliza tag" textFill="WHITE" />
                   <JFXButton fx:id="btnTagsAplicar" buttonType="RAISED" minWidth="90.0" onAction="#onBtnTagsAplicar" prefHeight="30.0" prefWidth="150.0" styleClass="background-Yellow1" text="Aplicar tags" />
+                  <JFXButton fx:id="btnSubstituirTags" buttonType="RAISED" minWidth="90.0" onAction="#onBtnSubstituirTags" prefHeight="30.0" prefWidth="150.0" styleClass="background-Black2" text="Substituir Tags" textFill="WHITE">
+                     <tooltip>
+                        <Tooltip text="Buscar e substituir texto nas tags (Ctrl + R)." />
+                     </tooltip>
+                  </JFXButton>
                   <JFXButton fx:id="btnSalvarTodos" buttonType="RAISED" minWidth="90.0" onAction="#onBtnSalvarTodos" prefHeight="30.0" prefWidth="150.0" styleClass="background-Green3" text="Salvar todos" textFill="WHITE" />
                </children>
                <VBox.margin>

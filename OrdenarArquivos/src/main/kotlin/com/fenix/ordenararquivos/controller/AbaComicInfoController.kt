@@ -104,6 +104,9 @@ class AbaComicInfoController : Initializable {
     private lateinit var btnSalvarTodos: JFXButton
 
     @FXML
+    private lateinit var btnSubstituirTags: JFXButton
+
+    @FXML
     private lateinit var btnCapitulos: JFXButton
 
     @FXML
@@ -374,6 +377,58 @@ class AbaComicInfoController : Initializable {
     }
 
     @FXML
+    private fun onBtnSubstituirTags() {
+        val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
+        val listToProcess = if (selecionados.size > 1) selecionados else mObsListaProcessar.toList()
+
+        if (listToProcess.isEmpty()) {
+            Notificacoes.notificacao(Notificacao.ALERTA, "Substituir Tags", "Nenhum item carregado para processar.")
+            return
+        }
+
+        val exemplos = listToProcess
+            .flatMap { it.tags.split("\n") }
+            .filter { it.isNotEmpty() }
+            .shuffled()
+            .take(5)
+
+        PopupSubstituirController.abreTelaSubstituir(controllerPai.rootStack, apRoot, exemplos) { localizar, substituir, isRegex ->
+            try {
+                val actions = mutableListOf<ReversibleAction>()
+
+                if (isRegex) {
+                    val regex = Regex(localizar)
+                    for (item in listToProcess) {
+                        val original = item.tags
+                        val novo = original.replace(regex, substituir)
+                        if (original != novo) {
+                            actions.add(PropertyChangeAction(item, original, novo) { i, v -> i.tags = v })
+                            item.tags = novo
+                        }
+                    }
+                } else {
+                    for (item in listToProcess) {
+                        val original = item.tags
+                        val novo = original.replace(localizar, substituir)
+                        if (original != novo) {
+                            actions.add(PropertyChangeAction(item, original, novo) { i, v -> i.tags = v })
+                            item.tags = novo
+                        }
+                    }
+                }
+
+                if (actions.isNotEmpty()) {
+                    mHistory.pushAction(CompositeAction(actions))
+                }
+                tbViewProcessar.refresh()
+                Notificacoes.notificacao(Notificacao.SUCESSO, "Substituir Tags", "Substituição concluída em ${actions.size} item(ns).")
+            } catch (e: Exception) {
+                AlertasModal.erro("Erro Regex", "Expressão regular inválida: ${e.message}")
+            }
+        }
+    }
+
+    @FXML
     private fun onBtnSalvarTodos() {
         if (mObsListaProcessar.isNotEmpty())
             salvarItens(startIndex = 0, endIndex = mObsListaProcessar.size)
@@ -445,6 +500,7 @@ class AbaComicInfoController : Initializable {
         btnTagsProcessar.isDisable = block
         btnTagsNormaliza.isDisable = block
         btnTagsAplicar.isDisable = block
+        btnSubstituirTags.isDisable = block
         btnSalvarTodos.isDisable = block
         btnCapitulos.isDisable = block
         btnSumario.isDisable = block
@@ -1767,6 +1823,11 @@ class AbaComicInfoController : Initializable {
             }
         }
 
+        val tagsSubstituir = MenuItem("Substituir nas Tags (Ctrl + R)")
+        tagsSubstituir.setOnAction {
+            onBtnSubstituirTags()
+        }
+
         val atualizarTagsDoArquivo = MenuItem("Gerar Tags do Arquivo (Através das pastas)")
         atualizarTagsDoArquivo.setOnAction {
             if (tbViewProcessar.selectionModel.selectedItem != null)
@@ -1899,6 +1960,7 @@ class AbaComicInfoController : Initializable {
             tagsAjustar,
             tagsNormalizar,
             tagsTitleCase,
+            tagsSubstituir,
             SeparatorMenuItem(),
 
             processarOcr,
@@ -2263,6 +2325,10 @@ class AbaComicInfoController : Initializable {
                                 mHistory.pushAction(CompositeAction(actions))
                             tbViewProcessar.refresh()
                         }
+                        e.consume()
+                    }
+                    KeyCode.R -> {
+                        onBtnSubstituirTags()
                         e.consume()
                     }
                     else -> {}
