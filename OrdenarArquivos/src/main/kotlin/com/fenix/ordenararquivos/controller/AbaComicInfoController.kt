@@ -67,6 +67,9 @@ class AbaComicInfoController : Initializable {
     private val mLOG = LoggerFactory.getLogger(AbaComicInfoController::class.java)
     private val ALERTA_PSEUDO_CLASS = PseudoClass.getPseudoClass("alerta")
     private val activeTasksCount = AtomicInteger(0)
+    private val saveExecutor = java.util.concurrent.Executors.newFixedThreadPool(3) { r ->
+        Thread(r).apply { isDaemon = true }
+    }
 
     //<--------------------------  PRINCIPAL   -------------------------->
 
@@ -895,7 +898,7 @@ class AbaComicInfoController : Initializable {
                 AlertasModal.erro("Erro ao salvar", exception?.message ?: "Erro desconhecido")
             }
         }
-        Thread(task).start()
+        saveExecutor.submit(task)
     }
 
     private fun processarComicInfoItemAsync(item: Processar) {
@@ -957,78 +960,16 @@ class AbaComicInfoController : Initializable {
     }
 
     private fun salvarItens(startIndex: Int = 0, endIndex: Int = 0) {
-        controllerPai.setCursor(Cursor.WAIT)
-        desabilita(btnSalvarTodos)
         val list = mObsListaProcessar.toList()
-        val processar: Task<Void> = object : Task<Void>() {
-            override fun call(): Void? {
-                try {
-                    updateMessage("Salvando ComicInfo...")
-                    for (i in startIndex until endIndex) {
-                        updateProgress(i.toLong(), endIndex.toLong())
-                        updateMessage("Salvando ComicInfo $i de $endIndex.")
-                        salvarComicInfoItem(list[i])
-                    }
-                } catch (e: Exception) {
-                    mLOG.info("Erro ao salvar o ComicInfo.", e)
-                    Platform.runLater {
-                        Notificacoes.notificacao(Notificacao.ERRO, "Salvar ComicInfo", "Erro ao salvar o ComicInfo. " + e.message)
-                    }
-                }
-                return null
-            }
-
-            override fun succeeded() {
-                updateMessage("ComicInfo salvo com sucesso.")
-                controllerPai.rootProgress.progressProperty().unbind()
-                controllerPai.rootMessage.textProperty().unbind()
-                controllerPai.clearProgress()
-                controllerPai.setCursor(null)
-                habilita()
-            }
+        val start = if (startIndex < 0) 0 else startIndex
+        val end = if (endIndex > list.size) list.size else endIndex
+        for (i in start until end) {
+            salvarComicInfoItemAsync(list[i])
         }
-        controllerPai.rootProgress.progressProperty().unbind()
-        controllerPai.rootMessage.textProperty().unbind()
-        controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
-        controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
-        Thread(processar).start()
     }
 
     private fun salvarListaItens(itens: List<Processar>) {
-        controllerPai.setCursor(Cursor.WAIT)
-        desabilita()
-        val processar: Task<Void> = object : Task<Void>() {
-            override fun call(): Void? {
-                try {
-                    val total = itens.size.toLong()
-                    itens.forEachIndexed { i, item ->
-                        updateProgress(i.toLong() + 1, total)
-                        updateMessage("Salvando item ${i + 1} de $total: ${item.arquivo}")
-                        Platform.runLater { salvarComicInfoItem(item) }
-                        Thread.sleep(100) // Pequena pausa para UI respirar
-                    }
-                } catch (e: Exception) {
-                    mLOG.error("Erro ao salvar itens selecionados", e)
-                }
-                return null
-            }
-
-            override fun succeeded() {
-                controllerPai.clearProgress()
-                habilita()
-                Notificacoes.notificacao(Notificacao.SUCESSO, "Salvar ComicInfo", "Itens salvos com sucesso.")
-            }
-
-            override fun failed() {
-                controllerPai.clearProgress()
-                habilita()
-            }
-        }
-        controllerPai.rootProgress.progressProperty().unbind()
-        controllerPai.rootMessage.textProperty().unbind()
-        controllerPai.rootProgress.progressProperty().bind(processar.progressProperty())
-        controllerPai.rootMessage.textProperty().bind(processar.messageProperty())
-        Thread(processar).start()
+        itens.forEach { salvarComicInfoItemAsync(it) }
     }
 
     internal fun arquivoPossuiComicInfo(arquivo: File): Boolean =
@@ -1289,6 +1230,33 @@ class AbaComicInfoController : Initializable {
             }
         }
         Thread(task).start()
+    }
+
+    private fun aplicarTag(item: Processar): PropertyChangeAction<Processar, String>? {
+        if (item.tags.isEmpty() || !item.tags.contains(Utils.SEPARADOR_IMPORTACAO))
+            return null
+
+        val oldTags = item.tags
+        val linhas = mutableListOf<String>()
+        val separador = Utils.SEPARADOR_CAPITULO
+        for (linha in item.tags.split("\n")) {
+            if (linha.contains(Utils.SEPARADOR_IMPORTACAO)) {
+                val prefix = linha.substringBefore(Utils.SEPARADOR_IMPORTACAO).trim()
+                val basePrefix = prefix.split(Regex("—|-"), 2)[0].trim()
+                val title = linha.substringAfterLast(separador).trim()
+                val cleanTitle = Utils.limparTitulo(title)
+                linhas.add("$basePrefix — $cleanTitle")
+            } else {
+                linhas.add(linha)
+            }
+        }
+
+        val newTags = linhas.joinToString(separator = "\n")
+        if (newTags != oldTags) {
+            item.tags = newTags
+            return PropertyChangeAction(item, oldTags, newTags) { i, v -> i.tags = v }
+        }
+        return null
     }
 
     private fun gerarTagItem(item: Processar, language: Linguagem, isAjustar: Boolean = false): PropertyChangeAction<Processar, String>? {
@@ -1609,6 +1577,16 @@ class AbaComicInfoController : Initializable {
 
         clAcoes.setCellFactory {
             object : TableCell<Processar, Void>() {
+                private val btnAplicar = JFXButton("Aplicar").apply {
+                    styleClass.add("background-Indigo1")
+                    textFill = Color.WHITE
+                    setOnAction {
+                        val rowItem = tableView.items[index]
+                        aplicarTag(rowItem)?.let { mHistory.pushAction(it) }
+                        tableView.refresh()
+                    }
+                }
+
                 private val btnAjustar = JFXButton("Ajustar").apply {
                     styleClass.add("background-Blue3")
                     textFill = Color.WHITE
@@ -1619,6 +1597,7 @@ class AbaComicInfoController : Initializable {
                         tableView.refresh()
                     }
                 }
+
                 private val btnNormalizar = JFXButton("Normalizar").apply {
                     styleClass.add("background-Purple2")
                     textFill = Color.WHITE
@@ -1679,7 +1658,7 @@ class AbaComicInfoController : Initializable {
                     setOnAction { salvarComicInfoItemAsync(tableView.items[index]) }
                 }
 
-                private val hbox1 = HBox(5.0, btnAjustar, btnNormalizar, btnTitulo).apply {
+                private val hbox1 = HBox(5.0, btnAplicar, btnAjustar, btnNormalizar, btnTitulo).apply {
                     alignment = Pos.CENTER
                 }
                 private val hbox2 = HBox(5.0, btnAmazon, btnEditar, btnProcessar).apply {
@@ -1748,6 +1727,14 @@ class AbaComicInfoController : Initializable {
             if (tbViewProcessar.selectionModel.selectedItem != null) {
                 val language = cbLinguagem.value ?: Linguagem.PORTUGUESE
                 gerarTagItem(tbViewProcessar.selectionModel.selectedItem, language, isAjustar = true)?.let { mHistory.pushAction(it) }
+                tbViewProcessar.refresh()
+            }
+        }
+
+        val tagsAplicar = MenuItem("Aplicar Tags (Shift + Alt + Enter)")
+        tagsAplicar.setOnAction {
+            if (tbViewProcessar.selectionModel.selectedItem != null) {
+                aplicarTag(tbViewProcessar.selectionModel.selectedItem)?.let { mHistory.pushAction(it) }
                 tbViewProcessar.refresh()
             }
         }
@@ -1821,7 +1808,7 @@ class AbaComicInfoController : Initializable {
                 if (selecionados.size > 1)
                     salvarListaItens(selecionados)
                 else
-                    salvarComicInfoItem(selecionados[0])
+                    salvarComicInfoItemAsync(selecionados[0])
             }
         }
 
@@ -1904,6 +1891,7 @@ class AbaComicInfoController : Initializable {
             chamarImportarSumario,
             chamarAmazon,
             SeparatorMenuItem(),
+            tagsAplicar,
             atualizarPaginaTag,
             atualizarTagsDoArquivo,
             gerarTagsAnteriores,
@@ -2198,7 +2186,14 @@ class AbaComicInfoController : Initializable {
                 return@addEventFilter
             }
 
-            if (e.isControlDown) {
+            if (e.isAltDown && e.isShiftDown && e.code.equals(KeyCode.ENTER)) {
+                val actions = mutableListOf<ReversibleAction>()
+                for (item in selecionados)
+                    aplicarTag(item)?.let { actions.add(it) }
+                if (actions.isNotEmpty())
+                    mHistory.pushAction(CompositeAction(actions))
+                tbViewProcessar.refresh()
+            } else if (e.isControlDown) {
                 when (e.code) {
                     KeyCode.Z -> {
                         val action = if (e.isShiftDown) mHistory.redo() else mHistory.undo()
@@ -2206,7 +2201,8 @@ class AbaComicInfoController : Initializable {
                             tbViewProcessar.refresh()
                             (action.getFirstAffectedItem() as? Processar)?.let { item ->
                                 val idx = mObsListaProcessar.indexOf(item)
-                                if (idx != -1) tbViewProcessar.scrollTo(idx)
+                                if (idx != -1)
+                                    tbViewProcessar.scrollTo(idx)
                             }
                         }
                         e.consume()
@@ -2227,7 +2223,7 @@ class AbaComicInfoController : Initializable {
                             if (selecionados.size > 1)
                                 salvarListaItens(selecionados)
                             else if (selecionado != null)
-                                salvarComicInfoItem(selecionado)
+                                salvarComicInfoItemAsync(selecionado)
                         }
                         e.consume()
                     }
@@ -2263,7 +2259,8 @@ class AbaComicInfoController : Initializable {
                                     normalizarTagItem(item, language)?.let { actions.add(it) }
                                 }
                             }
-                            if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
+                            if (actions.isNotEmpty())
+                                mHistory.pushAction(CompositeAction(actions))
                             tbViewProcessar.refresh()
                         }
                         e.consume()
