@@ -10,7 +10,6 @@ import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.util.Utils
 import jakarta.xml.bind.JAXBContext
 import jakarta.xml.bind.Marshaller
-import javafx.application.Platform
 import javafx.scene.image.Image
 import javafx.util.Callback
 import org.slf4j.LoggerFactory
@@ -24,8 +23,6 @@ object Winrar {
 
     private val mServiceComicInfo = ComicInfoServices()
 
-    private var mProcess: Process? = null
-
     @JvmStatic
     fun compactarArquivo(rar: File, arquivos: List<File>): Boolean {
         var success = true
@@ -34,37 +31,36 @@ object Winrar {
             compactar += '"'.toString() + arquivo.path + '"' + ' '
         val comando = "rar a -ma4 -ep1 " + '"' + rar.path + '"' + " " + compactar
         mLOG.info(comando)
+        var proc: Process? = null
         return try {
             val rt = Runtime.getRuntime()
-            mProcess = rt.exec(comando)
-            Platform.runLater {
-                try {
-                    mLOG.info("Resultado: " + mProcess!!.waitFor())
-                } catch (e: InterruptedException) {
-                    mLOG.error("Erro ao executar o comando.", e)
-                }
-            }
+            proc = rt.exec(comando)
             var resultado = ""
-            val stdInput = BufferedReader(InputStreamReader(mProcess!!.inputStream))
+            val stdInput = BufferedReader(InputStreamReader(proc.inputStream))
             var s: String?
             while (stdInput.readLine().also { s = it } != null) resultado += "$s"
             if (resultado.isNotEmpty())
                 mLOG.info("Output comand:\n$resultado")
             s = null
             resultado = ""
-            val stdError = BufferedReader(InputStreamReader(mProcess!!.errorStream))
+            val stdError = BufferedReader(InputStreamReader(proc.errorStream))
             while (stdError.readLine().also { s = it } != null) resultado += "$s"
             if (resultado.isNotEmpty()) {
                 success = false
                 mLOG.info("Error comand: $resultado Necessário adicionar o rar no path e reiniciar a aplicação. ".trimIndent())
+            }
+            try {
+                val exitCode = proc.waitFor()
+                mLOG.info("Resultado: $exitCode")
+            } catch (e: InterruptedException) {
+                mLOG.error("Erro ao executar o comando.", e)
             }
             success
         } catch (e: Exception) {
             mLOG.error("Erro ao compactar o arquivo.", e)
             false
         } finally {
-            if (mProcess != null)
-                mProcess!!.destroy()
+            proc?.destroy()
         }
     }
 

@@ -791,7 +791,7 @@ class AbaComicInfoController : Initializable {
                             amazon.styleClass.add("background-White1")
                             amazon.setOnAction { popupAmazon(item) }
                             salvar.styleClass.add("background-White1")
-                            salvar.setOnAction { salvarComicInfoItem(item) }
+                            salvar.setOnAction { salvarComicInfoItemAsync(item) }
 
                             lista.add(item)
                         }
@@ -2631,8 +2631,8 @@ class AbaComicInfoController : Initializable {
         clCapa.setCellFactory {
             object : TableCell<Processar, String>() {
                 private val imageView = ImageView().apply {
-                    fitWidth = 50.0
-                    fitHeight = 70.0
+                    fitWidth = 150.0
+                    fitHeight = 170.0
                     isPreserveRatio = true
                 }
                 override fun updateItem(item: String?, empty: Boolean) {

@@ -76,7 +76,7 @@
                      <graphic>
                         <JFXCheckBox fx:id="ckbTodosProcessado" alignment="CENTER" checkedColor="#60a917" contentDisplay="GRAPHIC_ONLY" mnemonicParsing="false" onAction="#onBtnTodosProcessado" prefHeight="18.0" prefWidth="53.0" unCheckedColor="WHITE" />
                      </graphic></TableColumn>
-                  <TableColumn fx:id="clCapa" prefWidth="60.0" text="Capa" />
+                  <TableColumn fx:id="clCapa" prefWidth="160.0" text="Capa" />
                   <TableColumn fx:id="clArquivo" prefWidth="200.0" text="Arquivo" />
                   <TableColumn fx:id="clSerie" prefWidth="100.0" text="Série" />
                   <TableColumn fx:id="clTitulo" prefWidth="100.0" text="Título" />
