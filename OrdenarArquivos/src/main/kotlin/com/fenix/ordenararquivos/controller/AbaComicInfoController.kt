@@ -1681,7 +1681,7 @@ class AbaComicInfoController : Initializable {
                     setOnAction { popupAmazon(tableView.items[index]) }
                 }
                 private val btnEditar = JFXButton("Editar").apply {
-                    styleClass.add("background-Blue3")
+                    styleClass.add("background-Black2")
                     textFill = Color.WHITE
                     setOnAction { abrirPopupComicInfo(listOf(tableView.items[index])) }
                 }
