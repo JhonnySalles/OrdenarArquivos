@@ -1789,8 +1789,13 @@ class AbaComicInfoController : Initializable {
 
         val tagsAplicar = MenuItem("Aplicar Tags (Shift + Alt + Enter)")
         tagsAplicar.setOnAction {
-            if (tbViewProcessar.selectionModel.selectedItem != null) {
-                aplicarTag(tbViewProcessar.selectionModel.selectedItem)?.let { mHistory.pushAction(it) }
+            val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
+            if (selecionados.isNotEmpty()) {
+                val actions = mutableListOf<ReversibleAction>()
+                for (item in selecionados) {
+                    aplicarTag(item)?.let { actions.add(it) }
+                }
+                if (actions.isNotEmpty()) mHistory.pushAction(CompositeAction(actions))
                 tbViewProcessar.refresh()
             }
         }
@@ -2029,6 +2034,20 @@ class AbaComicInfoController : Initializable {
 
                         textArea.replaceText(0, textArea.length, linhas.joinToString(separator = "\n"))
                         key.consume()
+
+                        // Commita o valor atual no editor e encerra o modo de edição
+                        tbViewProcessar.edit(-1, null)
+                        
+                        // Executa a aplicação de tag para todos os selecionados
+                        val selecionados = tbViewProcessar.selectionModel.selectedItems.toList()
+                        val actions = mutableListOf<ReversibleAction>()
+                        for (item in selecionados) {
+                            aplicarTag(item)?.let { actions.add(it) }
+                        }
+                        if (actions.isNotEmpty()) {
+                            mHistory.pushAction(CompositeAction(actions))
+                        }
+                        tbViewProcessar.refresh()
                     }
 
                     KeyCode.DELETE -> {
