@@ -266,30 +266,10 @@ class TelaInicialController : Initializable {
 
         arquivoController.limpaCampos()
 
-        // Filtro de teclas para o TabPane global. Impede que teclas de seta alterem a aba selecionada
-        // a menos que o foco esteja de fato na área de cabeçalhos do TabPane.
-        tpGlobal.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED) { event ->
-            val code = event.code
-            if (code == javafx.scene.input.KeyCode.UP || code == javafx.scene.input.KeyCode.DOWN ||
-                code == javafx.scene.input.KeyCode.LEFT || code == javafx.scene.input.KeyCode.RIGHT) {
-                
-                var node: javafx.scene.Node? = tpGlobal.scene?.focusOwner
-                var focusInHeader = false
-                while (node != null) {
-                    if (node.styleClass.contains("tab-header-area") || node.styleClass.contains("headers-region")) {
-                        focusInHeader = true
-                        break
-                    }
-                    node = node.parent
-                }
-                
-                // Se o foco NÃO estiver na área do cabeçalho da aba, consumimos o evento das setas
-                // para que o TabPane não intercepte e troque as abas.
-                if (!focusInHeader) {
-                    event.consume()
-                }
-            }
-        }
+        // Desabilita a travessia de foco no TabPane global. Isso impede que o TabPane capture o foco do teclado
+        // em seus cabeçalhos e mude de aba ao pressionar as setas direcionais enquanto o usuário interage
+        // com elementos internos (como a Grid ou botões de ação).
+        tpGlobal.isFocusTraversable = false
     }
 
     companion object {
