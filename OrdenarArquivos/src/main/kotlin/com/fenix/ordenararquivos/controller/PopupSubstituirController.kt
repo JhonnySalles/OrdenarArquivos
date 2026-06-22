@@ -44,7 +44,8 @@ class PopupSubstituirController : Initializable {
     @FXML
     lateinit var vbSubstituido: VBox
 
-    private var titulosOriginais: List<String> = emptyList()
+    private var todosTitulos: List<String> = emptyList()
+    private var titulosPreview: List<String> = emptyList()
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         adicionarSugestoes()
@@ -71,20 +72,13 @@ class PopupSubstituirController : Initializable {
     }
 
     fun setExemplos(titulos: List<String>) {
-        titulosOriginais = titulos.filter { it.isNotEmpty() }.shuffled().take(3)
-        if (titulosOriginais.isNotEmpty()) {
+        todosTitulos = titulos.filter { it.isNotEmpty() }
+        if (todosTitulos.isNotEmpty()) {
             vbPreview.isVisible = true
-            vbOriginal.children.clear()
-            for (titulo in titulosOriginais) {
-                val lbl = Label(titulo)
-                lbl.textFill = Color.WHITE
-                lbl.font = Font.font(8.0)
-                vbOriginal.children.add(lbl)
-            }
             atualizarPreview()
 
-            txtLocalizar.textProperty().addListener { _, _, _ -> atualizarPreview() }
-            txtSubstituir.textProperty().addListener { _, _, _ -> atualizarPreview() }
+            txtLocalizar.focusedProperty().addListener { _, _, focused -> if (!focused) atualizarPreview() }
+            txtSubstituir.focusedProperty().addListener { _, _, focused -> if (!focused) atualizarPreview() }
             ckbRegex.selectedProperty().addListener { _, _, _ -> atualizarPreview() }
         } else {
             vbPreview.isVisible = false
@@ -92,31 +86,73 @@ class PopupSubstituirController : Initializable {
     }
 
     private fun atualizarPreview() {
+        vbOriginal.children.clear()
         vbSubstituido.children.clear()
         val localizar = txtLocalizar.text ?: ""
         val substituir = txtSubstituir.text ?: ""
+        val isRegex = ckbRegex.isSelected
 
-        for (original in titulosOriginais) {
-            val lbl = Label()
-            lbl.font = Font.font(8.0)
-            if (localizar.isEmpty()) {
-                lbl.text = original
-                lbl.textFill = Color.GRAY
-            } else {
+        if (localizar.isEmpty()) {
+            titulosPreview = todosTitulos.shuffled().take(3)
+            renderPreviewList(localizar, substituir, isRegex, isValid = true)
+        } else {
+            var isValid = true
+            var regex: Regex? = null
+            if (isRegex) {
                 try {
-                    if (ckbRegex.isSelected) {
-                        lbl.text = original.replace(Regex(localizar), substituir)
-                        lbl.textFill = Color.web("#0cff00")
-                    } else {
-                        lbl.text = original.replace(localizar, substituir)
-                        lbl.textFill = Color.web("#0cff00")
-                    }
+                    regex = Regex(localizar)
                 } catch (e: Exception) {
-                    lbl.text = "Regex Inválido"
-                    lbl.textFill = Color.RED
+                    isValid = false
                 }
             }
-            vbSubstituido.children.add(lbl)
+
+            if (!isValid) {
+                titulosPreview = todosTitulos.shuffled().take(3)
+                renderPreviewList(localizar, substituir, isRegex, isValid = false)
+            } else {
+                val matches = todosTitulos.filter {
+                    if (isRegex) regex!!.containsMatchIn(it)
+                    else it.contains(localizar)
+                }
+                titulosPreview = if (matches.isNotEmpty()) {
+                    matches.shuffled().take(3)
+                } else {
+                    todosTitulos.shuffled().take(3)
+                }
+                renderPreviewList(localizar, substituir, isRegex, isValid = true)
+            }
+        }
+    }
+
+    private fun renderPreviewList(localizar: String, substituir: String, isRegex: Boolean, isValid: Boolean) {
+        for (original in titulosPreview) {
+            val lblOrig = Label(original)
+            lblOrig.textFill = Color.WHITE
+            lblOrig.font = Font.font(8.0)
+            vbOriginal.children.add(lblOrig)
+
+            val lblSub = Label()
+            lblSub.font = Font.font(8.0)
+            if (localizar.isEmpty()) {
+                lblSub.text = original
+                lblSub.textFill = Color.GRAY
+            } else if (!isValid) {
+                lblSub.text = "Regex Inválido"
+                lblSub.textFill = Color.RED
+            } else {
+                try {
+                    lblSub.text = if (isRegex) {
+                        original.replace(Regex(localizar), substituir)
+                    } else {
+                        original.replace(localizar, substituir)
+                    }
+                    lblSub.textFill = Color.web("#0cff00")
+                } catch (e: Exception) {
+                    lblSub.text = "Erro ao substituir"
+                    lblSub.textFill = Color.RED
+                }
+            }
+            vbSubstituido.children.add(lblSub)
         }
     }
 
@@ -156,7 +192,6 @@ class PopupSubstituirController : Initializable {
                     val isRegex = cnt.ckbRegex.isSelected
                     if (loc.isNotEmpty()) {
                         callback(loc, sub, isRegex)
-                        subDialog.close()
                     } else {
                         cnt.txtLocalizar.requestFocus()
                     }
