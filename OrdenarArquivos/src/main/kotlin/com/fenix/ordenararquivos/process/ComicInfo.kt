@@ -243,11 +243,23 @@ object ComicInfo {
                             for (i in 0 until parse.getSize())
                                 pages.add(Pages(image = i))
                             comic.pages = pages
-                        } else
-                            comic.pages?.forEach {
+                        } else {
+                            val pages = comic.pages!!.toMutableList()
+                            if (pages.size < parse.getSize()) {
+                                for (i in pages.size until parse.getSize()) {
+                                    pages.add(Pages(image = i))
+                                }
+                            } else if (pages.size > parse.getSize()) {
+                                while (pages.size > parse.getSize()) {
+                                    pages.removeAt(pages.size - 1)
+                                }
+                            }
+                            pages.forEach {
                                 it.bookmark = null
                                 it.type = null
                             }
+                            comic.pages = pages
+                        }
 
                         if (comic.pageCount == null || comic.pageCount == 0)
                             comic.pageCount = comic.pages!!.size
