@@ -60,6 +60,9 @@ class PopupConfiguracaoController : Initializable {
     private lateinit var cbGeminiModel: JFXComboBox<String>
 
     @FXML
+    private lateinit var cbGeminiKey: JFXComboBox<String>
+
+    @FXML
     private lateinit var boxOllama: VBox
 
     @FXML
@@ -113,12 +116,7 @@ class PopupConfiguracaoController : Initializable {
 
     private var onClose: (() -> Unit)? = null
 
-    private val geminiModelsMap = mapOf(
-        "Gemini 2.5 Flash" to "gemini-2.5-flash-lite",
-        "Gemini 2.0 Flash" to "gemini-2.0-flash",
-        "Gemini 1.5 Flash" to "gemini-1.5-flash",
-        "Gemini 1.5 Pro" to "gemini-1.5-pro"
-    )
+
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         setupFields()
@@ -136,7 +134,8 @@ class PopupConfiguracaoController : Initializable {
             updateOcrBlocksState()
         }
 
-        cbGeminiModel.items = FXCollections.observableArrayList(geminiModelsMap.keys.toList())
+        cbGeminiModel.isEditable = true
+        cbGeminiKey.items = FXCollections.observableArrayList("Key 1", "Key 2")
 
         spRegistrosMal.valueFactory = SpinnerValueFactory.IntegerSpinnerValueFactory(1, 100, 50)
 
@@ -184,8 +183,9 @@ class PopupConfiguracaoController : Initializable {
         cbOcrEngine.selectionModel.select(Configuracao.ocrEngine)
 
         val currentModel = Configuracao.geminiModel
-        val displayName = geminiModelsMap.entries.find { it.value == currentModel }?.key ?: geminiModelsMap.keys.first()
-        cbGeminiModel.selectionModel.select(displayName)
+        cbGeminiModel.value = currentModel
+        cbGeminiKey.value = Configuracao.geminiKeySelecionada
+        carregarModelosGemini()
 
         txtOllamaUrl.text = Configuracao.ollamaUrl
         txtOllamaModel.text = Configuracao.ollamaModel
@@ -253,8 +253,9 @@ class PopupConfiguracaoController : Initializable {
 
             Configuracao.ocrEngine = cbOcrEngine.selectionModel.selectedItem ?: OcrEngine.TESSERACT
 
-            val selectedDisplay = cbGeminiModel.selectionModel.selectedItem
-            Configuracao.geminiModel = geminiModelsMap[selectedDisplay] ?: "gemini-2.0-flash"
+            val selectedModel = cbGeminiModel.editor.text.takeIf { !it.isNullOrBlank() } ?: cbGeminiModel.value ?: "gemini-2.0-flash"
+            Configuracao.geminiModel = selectedModel
+            Configuracao.geminiKeySelecionada = cbGeminiKey.value ?: "Key 1"
 
             Configuracao.ollamaUrl = txtOllamaUrl.text.trim().ifEmpty { "http://localhost:11434" }
             Configuracao.ollamaModel = txtOllamaModel.text.trim().ifEmpty { "moondream" }
@@ -272,6 +273,70 @@ class PopupConfiguracaoController : Initializable {
             onClose?.invoke()
         } catch (e: Exception) {
             Notificacoes.notificacao(Notificacao.ERRO, "Configurações", "Erro ao salvar configurações: ${e.message}")
+        }
+    }
+
+    private fun carregarModelosGemini() {
+        val client = com.squareup.okhttp.OkHttpClient()
+        val keysToTry = listOf(Configuracao.geminiKey1, Configuracao.geminiKey2).filter { it.isNotEmpty() }
+        
+        if (keysToTry.isEmpty()) {
+            return
+        }
+
+        java.util.concurrent.CompletableFuture.runAsync {
+            var responseData: String? = null
+            for (key in keysToTry) {
+                try {
+                    val url = "https://generativelanguage.googleapis.com/v1beta/models?key=$key"
+                    val request = com.squareup.okhttp.Request.Builder()
+                        .url(url)
+                        .get()
+                        .build()
+                    val response = client.newCall(request).execute()
+                    if (response.isSuccessful && response.body() != null) {
+                        responseData = response.body().string()
+                    }
+                    response.body()?.close()
+                } catch (e: Exception) {
+                    mLOG.error("Erro ao listar modelos do Gemini com a chave: $e")
+                }
+                if (responseData != null) break
+            }
+
+            if (responseData != null) {
+                try {
+                    val json = org.json.JSONObject(responseData!!)
+                    val modelsArray = json.getJSONArray("models")
+                    val modelList = mutableListOf<String>()
+                    for (i in 0 until modelsArray.length()) {
+                        val m = modelsArray.getJSONObject(i)
+                        val name = m.getString("name")
+                        val description = m.optString("description", "")
+                        val methods = m.getJSONArray("supportedGenerationMethods")
+                        val supportsGenerate = (0 until methods.length()).any { j ->
+                            methods.getString(j) == "generateContent"
+                        }
+                        val isMultimodal = (name.contains("gemini") && !name.contains("gemini-1.0-pro")) ||
+                                description.contains("multimodal", ignoreCase = true)
+                        if (supportsGenerate && isMultimodal) {
+                            val shortName = if (name.startsWith("models/")) name.substring("models/".length) else name
+                            modelList.add(shortName)
+                        }
+                    }
+                    modelList.sort()
+                    javafx.application.Platform.runLater {
+                        val editorText = cbGeminiModel.editor.text
+                        val currentVal = if (editorText != null && editorText.isNotBlank()) editorText else cbGeminiModel.value
+                        cbGeminiModel.items = javafx.collections.FXCollections.observableArrayList(modelList)
+                        if (currentVal != null) {
+                            cbGeminiModel.value = currentVal
+                        }
+                    }
+                } catch (e: Exception) {
+                    mLOG.error("Erro ao processar resposta de modelos do Gemini: $e")
+                }
+            }
         }
     }
 

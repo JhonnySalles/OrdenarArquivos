@@ -24,6 +24,7 @@ import jakarta.xml.bind.JAXBContext
 import jakarta.xml.bind.Marshaller
 import jakarta.xml.bind.Unmarshaller
 import javafx.animation.Interpolator
+import javafx.animation.PauseTransition
 import javafx.application.Platform
 import javafx.beans.Observable
 import javafx.beans.property.ReadOnlyProperty
@@ -2309,6 +2310,36 @@ class AbaArquivoController : Initializable {
         contextMenu.items.addAll(itemAbrir, SeparatorMenuItem(), itemCapa, itemSumario, itemCapaCompleta, SeparatorMenuItem(), itemMoverBadge, itemGerarBadge)
         lsVwImagens.contextMenu = contextMenu
 
+        val longPressDelay = PauseTransition(Duration.millis(800.0)).apply {
+            setOnFinished {
+                val item = lsVwImagens.selectionModel.selectedItem
+                if (item != null) {
+                    val file = File(txtPastaOrigem.text, item)
+                    if (file.exists()) {
+                        abrirPopupVisualizarImagem(file)
+                    }
+                }
+            }
+        }
+
+        lsVwImagens.addEventFilter(MouseEvent.MOUSE_PRESSED) { click ->
+            if (click.button == MouseButton.PRIMARY) {
+                longPressDelay.playFromStart()
+            }
+        }
+
+        lsVwImagens.addEventFilter(MouseEvent.MOUSE_RELEASED) {
+            longPressDelay.stop()
+        }
+
+        lsVwImagens.addEventFilter(MouseEvent.MOUSE_DRAGGED) {
+            longPressDelay.stop()
+        }
+
+        lsVwImagens.addEventFilter(ScrollEvent.ANY) {
+            longPressDelay.stop()
+        }
+
         lsVwImagens.onMouseClicked = EventHandler { click: MouseEvent ->
             if (click.clickCount > 1) {
                 if (click.isControlDown)
@@ -2659,6 +2690,12 @@ class AbaArquivoController : Initializable {
                 }
             }
         }
+
+        val contextMenuTabela = ContextMenu()
+        val itemApagarTags = MenuItem("Apagar tags")
+        itemApagarTags.setOnAction { apagarTagsGrid() }
+        contextMenuTabela.items.add(itemApagarTags)
+        tbViewTabela.contextMenu = contextMenuTabela
     }
 
     private fun addCapitulo(capitulo: String): String {
@@ -3356,6 +3393,7 @@ class AbaArquivoController : Initializable {
         val kcComicInfo: KeyCombination = KeyCodeCombination(KeyCode.W, KeyCombination.CONTROL_DOWN)
         val kcArquivos: KeyCombination = KeyCodeCombination(KeyCode.D, KeyCombination.CONTROL_DOWN)
         val kcHistorico: KeyCombination = KeyCodeCombination(KeyCode.H, KeyCombination.CONTROL_DOWN)
+        val kcApagarTagsGrid: KeyCombination = KeyCodeCombination(KeyCode.T, KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN)
 
         val kcProcessar: KeyCombination = KeyCodeCombination(KeyCode.P, KeyCombination.CONTROL_DOWN)
         val mnProcessar = Mnemonic(btnProcessar, kcProcessar)
@@ -3410,6 +3448,12 @@ class AbaArquivoController : Initializable {
             if (kcHistorico.match(ke)) {
                 if (acdArquivos.expandedPane != ttpHistorico)
                     acdArquivos.expandedPane = ttpHistorico
+            }
+
+            if (kcApagarTagsGrid.match(ke)) {
+                if (tbViewTabela.isFocused) {
+                    apagarTagsGrid()
+                }
             }
         }
     }
@@ -3580,6 +3624,11 @@ class AbaArquivoController : Initializable {
         txtAreaImportar.replaceText(0, txtAreaImportar.length, texto.joinToString("\n"))
         txtAreaImportar.positionCaret(txtAreaImportar.text.indexOf(line) + line.length)
         txtAreaImportar.scrollTop = scroll
+    }
+
+    private fun apagarTagsGrid() {
+        mObsListaCaminhos.forEach { it.tag = "" }
+        tbViewTabela.refresh()
     }
 
     private fun ordenarLinhas() {

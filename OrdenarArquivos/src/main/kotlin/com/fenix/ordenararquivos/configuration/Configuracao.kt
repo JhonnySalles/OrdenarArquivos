@@ -173,6 +173,13 @@ object Configuracao {
         }
         get() = properties.getProperty("gemini_model", "gemini-2.0-flash")
 
+    var geminiKeySelecionada: String = "Key 1"
+        set(value) {
+            properties["gemini_key_selecionada"] = value
+            field = value
+        }
+        get() = properties.getProperty("gemini_key_selecionada", "Key 1")
+
     val geminiKey1: String get() = secrets.getProperty("gemini_api_key_1", "")
     val geminiKey2: String get() = secrets.getProperty("gemini_api_key_2", "")
     val googleDriveApiKey: String get() = secrets.getProperty("google_drive_api_key", "")

@@ -32,7 +32,7 @@ class GeminiOcrEngine : OcrEngineStrategy {
         if (!isAvailable()) {
             throw OcrException("Chave da API Gemini não configurada em secrets.properties.")
         }
-        mGeminiKey = Configuracao.geminiKey1
+        mGeminiKey = if (Configuracao.geminiKeySelecionada == "Key 2") Configuracao.geminiKey2 else Configuracao.geminiKey1
         mIsFirstKey = true
     }
 
@@ -77,11 +77,14 @@ class GeminiOcrEngine : OcrEngineStrategy {
         val response = mClient.newCall(request).execute()
         mLog.info("Resposta Gemini: ${response.code()} - ${response.message()}")
 
-        if (response.code() == 429 && mIsFirstKey && Configuracao.geminiKey2.isNotEmpty()) {
-            response.body()?.close()
-            mGeminiKey = Configuracao.geminiKey2
-            mIsFirstKey = false
-            return processGemini(imagem, texto)
+        if (response.code() == 429 && mIsFirstKey) {
+            val otherKey = if (Configuracao.geminiKeySelecionada == "Key 2") Configuracao.geminiKey1 else Configuracao.geminiKey2
+            if (otherKey.isNotEmpty()) {
+                response.body()?.close()
+                mGeminiKey = otherKey
+                mIsFirstKey = false
+                return processGemini(imagem, texto)
+            }
         }
 
         if (response.code() > 299 || response.body() == null) {
