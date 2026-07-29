@@ -192,7 +192,7 @@ class AbaMangaController : Initializable {
     }
 
     private fun carregarDados(incremental: Boolean = false) {
-        if (mCarregando)
+        if (!isAbaSelecionada || mCarregando)
             return
 
         mCarregando = true
