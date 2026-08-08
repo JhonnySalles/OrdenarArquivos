@@ -49,7 +49,7 @@
         <mal4j.version>3.4.3</mal4j.version>
         <jakarta.xml.version>4.0.1</jakarta.xml.version>
         <jaxb.version>4.0.0</jaxb.version>
-        <jsoup.version>1.15.3</jsoup.version>
+        <jsoup.version>1.23.1</jsoup.version>
         <ikonli.version>12.4.0</ikonli.version>
         <google.firebase.version>9.3.0</google.firebase.version>
         <io.grpc.version>1.62.2</io.grpc.version>
