@@ -143,6 +143,9 @@ object Configuracao {
                     secrets.setProperty("my_anime_list_client_id", "")
                     secrets.setProperty("gemini_api_key_1", "")
                     secrets.setProperty("gemini_api_key_2", "")
+                    secrets.setProperty("openrouter_api_key", "")
+                    secrets.setProperty("ocrspace_api_key", "")
+                    secrets.setProperty("optiic_api_key", "")
                     secrets.setProperty("sentry_dns", "")
                     secrets.setProperty("sentry_environment", "")
                     secrets.setProperty("google_drive_api_key", "")
@@ -180,8 +183,18 @@ object Configuracao {
         }
         get() = properties.getProperty("gemini_key_selecionada", "Key 1")
 
+    var openrouterModel: String = ""
+        set(value) {
+            properties["ocr.openrouter.model"] = value
+            field = value
+        }
+        get() = properties.getProperty("ocr.openrouter.model", "")
+
     val geminiKey1: String get() = secrets.getProperty("gemini_api_key_1", "")
     val geminiKey2: String get() = secrets.getProperty("gemini_api_key_2", "")
+    val openrouterApiKey: String get() = secrets.getProperty("openrouter_api_key", "")
+    val ocrspaceApiKey: String get() = secrets.getProperty("ocrspace_api_key", "")
+    val optiicApiKey: String get() = secrets.getProperty("optiic_api_key", "")
     val googleDriveApiKey: String get() = secrets.getProperty("google_drive_api_key", "")
     val googleDriveRefreshToken: String get() = secrets.getProperty("google_drive_refresh_token", "")
     val googleDriveFolderId: String get() = secrets.getProperty("google_drive_folder_id", "")

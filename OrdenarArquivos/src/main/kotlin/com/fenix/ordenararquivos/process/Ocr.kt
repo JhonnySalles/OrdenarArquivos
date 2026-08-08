@@ -4,6 +4,7 @@ import com.fenix.ordenararquivos.configuration.Configuracao
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.model.enums.OcrEngine
 import com.fenix.ordenararquivos.process.ocr.GeminiOcrEngine
+import com.fenix.ordenararquivos.process.ocr.OpenRouterOcrEngine
 import com.fenix.ordenararquivos.process.ocr.OcrEngineFactory
 import com.fenix.ordenararquivos.process.ocr.OcrPrompts
 import com.fenix.ordenararquivos.process.ocr.OcrTextNormalizer
@@ -100,6 +101,8 @@ object Ocr {
         activeStrategy.prepare(linguagem)
         if (activeStrategy is GeminiOcrEngine) {
             (activeStrategy as GeminiOcrEngine).setPrompt(currentPrompt)
+        } else if (activeStrategy is OpenRouterOcrEngine) {
+            (activeStrategy as OpenRouterOcrEngine).setPrompt(currentPrompt)
         }
     }
 
@@ -120,9 +123,13 @@ object Ocr {
         if (isTeste) return testSuggestion
 
         activeStrategy = OcrEngineFactory.resolve()
-        if (Configuracao.ocrEngine == OcrEngine.GEMINI) {
+        if (Configuracao.ocrEngine == OcrEngine.GEMINI || Configuracao.ocrEngine == OcrEngine.OPENROUTER) {
             currentPrompt = OcrPrompts.geraPromptSumario(separadorPagina, separadorCapitulo)
-            (activeStrategy as GeminiOcrEngine).setPrompt(currentPrompt)
+            if (activeStrategy is GeminiOcrEngine) {
+                (activeStrategy as GeminiOcrEngine).setPrompt(currentPrompt)
+            } else if (activeStrategy is OpenRouterOcrEngine) {
+                (activeStrategy as OpenRouterOcrEngine).setPrompt(currentPrompt)
+            }
         }
 
         val rawText = activeStrategy.recognize(image, linguagem)

@@ -84,6 +84,37 @@
                            </children>
                         </VBox>
 
+                        <VBox fx:id="boxOpenRouter" spacing="16.0" style="-fx-background-radius: 10;" styleClass="background-Black2">
+                           <padding>
+                              <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                           </padding>
+                           <children>
+                              <Label styleClass="texto-stilo-1" text="OpenRouter (nuvem)" textFill="#ababab" />
+                              <JFXComboBox fx:id="cbOpenRouterModel" focusColor="#0cff00" labelFloat="true" maxWidth="1.7976931348623157E308" minHeight="27.0" prefHeight="30.0" promptText="Modelo do OpenRouter" styleClass="combo-box-stilo-2" unFocusColor="#4059a9" />
+                              <Label text="Chave de API configurada em secrets.properties (openrouter_api_key)" textFill="#707070" wrapText="true" />
+                           </children>
+                        </VBox>
+
+                        <VBox fx:id="boxOcrSpace" spacing="16.0" style="-fx-background-radius: 10;" styleClass="background-Black2">
+                           <padding>
+                              <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                           </padding>
+                           <children>
+                              <Label styleClass="texto-stilo-1" text="OCR.space (nuvem)" textFill="#ababab" />
+                              <Label text="Chave de API configurada em secrets.properties (ocrspace_api_key)" textFill="#707070" wrapText="true" />
+                           </children>
+                        </VBox>
+
+                        <VBox fx:id="boxOptiic" spacing="16.0" style="-fx-background-radius: 10;" styleClass="background-Black2">
+                           <padding>
+                              <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                           </padding>
+                           <children>
+                              <Label styleClass="texto-stilo-1" text="Optiic (nuvem)" textFill="#ababab" />
+                              <Label text="Chave de API configurada em secrets.properties (optiic_api_key)" textFill="#707070" wrapText="true" />
+                           </children>
+                        </VBox>
+
                         <VBox fx:id="boxOllama" spacing="16.0" style="-fx-background-radius: 10;" styleClass="background-Black2">
                            <padding>
                               <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />

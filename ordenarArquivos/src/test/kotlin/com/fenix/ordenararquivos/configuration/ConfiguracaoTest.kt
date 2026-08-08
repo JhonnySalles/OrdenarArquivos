@@ -55,5 +55,7 @@ class ConfiguracaoTest {
         assertNotNull(Configuracao.geminiModel)
         assertNotNull(Configuracao.geminiKey1)
         assertNotNull(Configuracao.geminiKey2)
+        assertNotNull(Configuracao.openrouterApiKey)
+        assertNotNull(Configuracao.openrouterModel)
     }
 }

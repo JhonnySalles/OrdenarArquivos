@@ -63,6 +63,18 @@ class PopupConfiguracaoController : Initializable {
     private lateinit var cbGeminiKey: JFXComboBox<String>
 
     @FXML
+    private lateinit var boxOpenRouter: VBox
+
+    @FXML
+    private lateinit var cbOpenRouterModel: JFXComboBox<String>
+
+    @FXML
+    private lateinit var boxOcrSpace: VBox
+
+    @FXML
+    private lateinit var boxOptiic: VBox
+
+    @FXML
     private lateinit var boxOllama: VBox
 
     @FXML
@@ -137,6 +149,8 @@ class PopupConfiguracaoController : Initializable {
         cbGeminiModel.isEditable = true
         cbGeminiKey.items = FXCollections.observableArrayList("Key 1", "Key 2")
 
+        cbOpenRouterModel.isEditable = true
+
         spRegistrosMal.valueFactory = SpinnerValueFactory.IntegerSpinnerValueFactory(1, 100, 50)
 
         val paddleFactory = object : SpinnerValueFactory.IntegerSpinnerValueFactory(960, 4320, 2880, 32) {
@@ -187,6 +201,10 @@ class PopupConfiguracaoController : Initializable {
         cbGeminiKey.value = Configuracao.geminiKeySelecionada
         carregarModelosGemini()
 
+        val currentOpenRouterModel = Configuracao.openrouterModel
+        cbOpenRouterModel.value = currentOpenRouterModel
+        carregarModelosOpenRouter()
+
         txtOllamaUrl.text = Configuracao.ollamaUrl
         txtOllamaModel.text = Configuracao.ollamaModel
 
@@ -210,6 +228,9 @@ class PopupConfiguracaoController : Initializable {
     private fun updateOcrBlocksState() {
         val engine = cbOcrEngine.selectionModel.selectedItem ?: OcrEngine.TESSERACT
         boxGemini.opacity = if (engine == OcrEngine.GEMINI) 1.0 else 0.55
+        boxOpenRouter.opacity = if (engine == OcrEngine.OPENROUTER) 1.0 else 0.55
+        boxOcrSpace.opacity = if (engine == OcrEngine.OCR_SPACE) 1.0 else 0.55
+        boxOptiic.opacity = if (engine == OcrEngine.OPTIIC) 1.0 else 0.55
         boxOllama.opacity = 0.55
         boxPaddle.opacity = if (engine == OcrEngine.PADDLE) 1.0 else 0.55
     }
@@ -256,6 +277,9 @@ class PopupConfiguracaoController : Initializable {
             val selectedModel = cbGeminiModel.editor.text.takeIf { !it.isNullOrBlank() } ?: cbGeminiModel.value ?: "gemini-2.0-flash"
             Configuracao.geminiModel = selectedModel
             Configuracao.geminiKeySelecionada = cbGeminiKey.value ?: "Key 1"
+
+            val selectedOpenRouterModel = cbOpenRouterModel.editor.text.takeIf { !it.isNullOrBlank() } ?: cbOpenRouterModel.value ?: ""
+            Configuracao.openrouterModel = selectedOpenRouterModel
 
             Configuracao.ollamaUrl = txtOllamaUrl.text.trim().ifEmpty { "http://localhost:11434" }
             Configuracao.ollamaModel = txtOllamaModel.text.trim().ifEmpty { "moondream" }
@@ -335,6 +359,81 @@ class PopupConfiguracaoController : Initializable {
                     }
                 } catch (e: Exception) {
                     mLOG.error("Erro ao processar resposta de modelos do Gemini: $e")
+                }
+            }
+        }
+    }
+
+    private fun carregarModelosOpenRouter() {
+        val client = com.squareup.okhttp.OkHttpClient()
+        val apiKey = Configuracao.openrouterApiKey
+
+        java.util.concurrent.CompletableFuture.runAsync {
+            var responseData: String? = null
+            try {
+                val url = "https://openrouter.ai/api/v1/models"
+                val requestBuilder = com.squareup.okhttp.Request.Builder()
+                    .url(url)
+                    .get()
+                if (apiKey.isNotEmpty()) {
+                    requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+                }
+                val response = client.newCall(requestBuilder.build()).execute()
+                if (response.isSuccessful && response.body() != null) {
+                    responseData = response.body().string()
+                }
+                response.body()?.close()
+            } catch (e: Exception) {
+                mLOG.error("Erro ao listar modelos do OpenRouter: $e")
+            }
+
+            if (responseData != null) {
+                try {
+                    val json = org.json.JSONObject(responseData)
+                    val dataArray = json.getJSONArray("data")
+                    val modelList = mutableListOf<String>()
+                    for (i in 0 until dataArray.length()) {
+                        val m = dataArray.getJSONObject(i)
+                        val id = m.getString("id")
+
+                        // Verificar pricing
+                        val pricing = m.optJSONObject("pricing")
+                        val isFree = if (pricing != null) {
+                            val promptCost = pricing.optString("prompt", "0").toDoubleOrNull() ?: 0.0
+                            val completionCost = pricing.optString("completion", "0").toDoubleOrNull() ?: 0.0
+                            promptCost == 0.0 && completionCost == 0.0
+                        } else false
+
+                        // Verificar modalidade de visão (input_modalities contém "image" ou modality contém "image")
+                        val architecture = m.optJSONObject("architecture")
+                        val supportsVision = if (architecture != null) {
+                            val modality = architecture.optString("modality", "")
+                            val inputModalities = architecture.optJSONArray("input_modalities")
+                            val hasImageInInput = if (inputModalities != null) {
+                                (0 until inputModalities.length()).any { idx ->
+                                    inputModalities.getString(idx) == "image"
+                                }
+                            } else false
+                            modality.contains("image", ignoreCase = true) || hasImageInInput
+                        } else false
+
+                        if (isFree && supportsVision) {
+                            modelList.add(id)
+                        }
+                    }
+                    modelList.sort()
+                    javafx.application.Platform.runLater {
+                        val editorText = cbOpenRouterModel.editor.text
+                        val currentVal = if (editorText != null && editorText.isNotBlank()) editorText else cbOpenRouterModel.value
+                        cbOpenRouterModel.items = javafx.collections.FXCollections.observableArrayList(modelList)
+                        if (currentVal != null && currentVal.isNotBlank() && modelList.contains(currentVal)) {
+                            cbOpenRouterModel.value = currentVal
+                        } else if (modelList.isNotEmpty()) {
+                            cbOpenRouterModel.value = modelList.first()
+                        }
+                    }
+                } catch (e: Exception) {
+                    mLOG.error("Erro ao processar resposta de modelos do OpenRouter: $e")
                 }
             }
         }
