@@ -816,8 +816,22 @@ class AbaArquivoController : Initializable {
         return valida
     }
 
+    private fun extractMalIdFromNotes(notes: String?): Long? {
+        if (notes.isNullOrBlank()) return null
+        val regex = Regex("Tagged with MyAnimeList.*?\\[Issue ID (\\d+)\\]", RegexOption.IGNORE_CASE)
+        val match = regex.find(notes)
+        return match?.groupValues?.get(1)?.toLongOrNull()
+    }
+
     internal fun carregaComicInfo(comic: ComicInfo) {
-        txtIdMal.text = if (comic.idMal != null) comic.idMal.toString() else ""
+        if ((comic.idMal == null || comic.idMal == 0L) && !comic.notes.isNullOrEmpty()) {
+            extractMalIdFromNotes(comic.notes)?.let { id ->
+                comic.idMal = id
+            }
+        }
+        val malIdStr = if (comic.idMal != null && comic.idMal!! > 0) comic.idMal.toString() else ""
+        txtIdMal.text = malIdStr
+        txtMalId.text = malIdStr
         cbAgeRating.selectionModel.select(comic.ageRating)
         val lingua = Linguagem.getEnum(comic.languageISO) ?: cbLinguagem.value
         cbLinguagem.selectionModel.select(lingua)
@@ -1192,12 +1206,20 @@ class AbaArquivoController : Initializable {
 
         val comic = mServiceComicInfo.find(nome, cbLinguagem.value.sigla) ?: ComicInfo(null, null, nome, nome)
 
+        val extractedMalId = extractMalIdFromNotes(mComicInfo.notes) ?: extractMalIdFromNotes(comic.notes)
+
         if (comic.id == null) {
             mLOG.info("Gerando novo ComicInfo.")
-            txtMalId.text = ""
+            if (extractedMalId != null) {
+                comic.idMal = extractedMalId
+            }
+            txtMalId.text = if (comic.idMal != null && comic.idMal!! > 0) comic.idMal.toString() else ""
         } else {
             mLOG.info("ComicInfo localizado: " + comic.title)
-            txtMalId.text = comic.idMal.toString()
+            if ((comic.idMal == null || comic.idMal == 0L) && extractedMalId != null) {
+                comic.idMal = extractedMalId
+            }
+            txtMalId.text = if (comic.idMal != null && comic.idMal!! > 0) comic.idMal.toString() else ""
         }
 
         if (comic.comic.isEmpty())
