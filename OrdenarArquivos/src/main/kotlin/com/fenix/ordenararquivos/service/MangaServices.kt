@@ -16,6 +16,7 @@ class MangaServices {
     private val mINSERT_MANGA = "INSERT INTO Manga (nome, volume, capitulo, arquivo, quantidade, capitulos, criacao, atualizacao) VALUES (?,?,?,?,?,?,?,?)"
     private val mSELECT_MANGA_ATUAL = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome LIKE ? AND volume LIKE ? AND capitulo LIKE ? LIMIT 1"
     private val mSELECT_MANGA_ANTERIOR = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome LIKE ? AND capitulo LIKE ? ORDER BY volume DESC LIMIT 1"
+    private val mSELECT_ULTIMO_VOLUME = "SELECT id, nome, volume, capitulo, arquivo, quantidade, capitulos, atualizacao FROM Manga WHERE nome LIKE ? ORDER BY volume DESC LIMIT 1"
     private val mINSERT_CAMINHO = "INSERT INTO Caminho (id_manga, capitulo, pagina, pasta, tag) VALUES (?,?,?,?,?)"
     private val mSELECT_CAMINHO = "SELECT id, capitulo, pagina, pasta, tag FROM Caminho WHERE id_manga = ?"
     private val mDELETE_CAMINHO = "DELETE FROM Caminho WHERE id_manga = ?"
@@ -50,6 +51,15 @@ class MangaServices {
                 selectAtual(nome, volume, capitulo)
         } catch (e: SQLException) {
             mLOG.warn("Erro ao buscar o manga.")
+            null
+        }
+    }
+
+    fun findUltimoVolume(nome: String): Manga? {
+        return try {
+            selectUltimoVolume(nome)
+        } catch (e: SQLException) {
+            mLOG.warn("Erro ao buscar o ultimo volume do manga.")
             null
         }
     }
@@ -148,6 +158,33 @@ class MangaServices {
             st = conn.prepareStatement(mSELECT_MANGA_ANTERIOR)
             st.setString(1, nome)
             st.setString(2, capitulo)
+            rs = st.executeQuery()
+            var manga: Manga? = null
+            if (rs.next()) {
+                manga = Manga(
+                        rs.getLong("id"), rs.getString("nome"), rs.getString("volume"),
+                        rs.getString("capitulo"), rs.getString("arquivo"), rs.getInt("quantidade"),
+                        rs.getString("capitulos"), Utils.toDateTime(rs.getString("atualizacao"))
+                )
+                manga.caminhos = selectByManga(manga)
+            }
+            manga
+        } catch (e: SQLException) {
+            mLOG.error("Erro ao buscar o manga.", e)
+            throw e
+        } finally {
+            DataBase.closeStatement(st)
+            DataBase.closeResultSet(rs)
+        }
+    }
+
+    @Throws(SQLException::class)
+    private fun selectUltimoVolume(nome: String): Manga? {
+        var st: PreparedStatement? = null
+        var rs: ResultSet? = null
+        return try {
+            st = conn.prepareStatement(mSELECT_ULTIMO_VOLUME)
+            st.setString(1, nome)
             rs = st.executeQuery()
             var manga: Manga? = null
             if (rs.next()) {

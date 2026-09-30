@@ -2861,12 +2861,32 @@ class AbaArquivoController : Initializable {
         }
 
         mAutoComplete.setSelectionHandler { event ->
-            var nome = event.getObject() + " -"
+            val mangaNome = event.getObject()
+            var nome = mangaNome + " -"
 
             if (txtNomePastaManga.text != null && txtNomePastaManga.text.contains("]"))
                 nome = txtNomePastaManga.text.substringBefore("]") + "] " + nome
 
             txtNomePastaManga.text = nome
+
+            val ultimoVolume = mServiceManga.findUltimoVolume(mangaNome)
+            if (ultimoVolume != null) {
+                txtVolume.text = ultimoVolume.volume
+                txtNomePastaCapitulo.text = ultimoVolume.capitulo
+                txtNomeArquivo.text = ultimoVolume.arquivo
+                txtAreaImportar.replaceText(0, txtAreaImportar.length, ultimoVolume.capitulos)
+
+                mListaCaminhos = ArrayList(ultimoVolume.caminhos)
+                mObsListaCaminhos = FXCollections.observableArrayList(mListaCaminhos)
+                tbViewTabela.items = mObsListaCaminhos
+                recalculateBadgePositions()
+
+                onBtnVolumeMais()
+            } else {
+                simulaNome()
+            }
+
+            carregaComicInfo()
         }
 
         txtNomePastaManga.addEventFilter(KeyEvent.KEY_PRESSED) { event ->
@@ -4095,7 +4115,13 @@ class AbaArquivoController : Initializable {
                                     summary = comicInfo.summary
                                 }
 
-                                txtMalId.text = comicInfo.idMal?.toString() ?: ""
+                                if ((mComicInfo.idMal == null || mComicInfo.idMal == 0L) && !mComicInfo.notes.isNullOrEmpty()) {
+                                    extractMalIdFromNotes(mComicInfo.notes)?.let { id ->
+                                        mComicInfo.idMal = id
+                                    }
+                                }
+
+                                txtMalId.text = if (mComicInfo.idMal != null && mComicInfo.idMal!! > 0) mComicInfo.idMal.toString() else ""
                                 txtMalNome.text = comicInfo.series
                                 carregaComicInfo(mComicInfo)
 
