@@ -120,6 +120,12 @@ class AbaPastasController : Initializable {
     @FXML
     private lateinit var btnSubstituir: JFXButton
 
+    @FXML
+    private lateinit var btnConverterWebp: JFXButton
+
+    @FXML
+    private lateinit var btnRemoverXml: JFXButton
+
     //<--------------------------  Arquivos   -------------------------->
 
     @FXML
@@ -193,6 +199,9 @@ class AbaPastasController : Initializable {
 
     @FXML
     private lateinit var txtMalNome: JFXTextField
+
+    @FXML
+    private lateinit var btnNovoComicInfo: JFXButton
 
     @FXML
     private lateinit var btnAmazonConsultar: JFXButton
@@ -478,6 +487,28 @@ class AbaPastasController : Initializable {
     }
 
     @FXML
+    private fun onBtnNovoComicInfo() {
+        tbTabRootPastas.selectionModel.select(tbTabPastas_ComicInfo)
+        val mangaNome = cbManga.editor.text?.trim() ?: ""
+        var nome = mangaNome
+        if (nome.contains("]"))
+            nome = nome.substring(nome.indexOf("]")).replace("]", "").trim { it <= ' ' }
+        if (nome.isNotEmpty() && nome.endsWith("-", ignoreCase = true))
+            nome = nome.substring(0, nome.length - 1).trim { it <= ' ' }
+
+        val novoComic = ComicInfo(null, null, nome, nome)
+        novoComic.languageISO = cbLinguagem.value?.sigla ?: "ja"
+        novoComic.comic = nome
+        novoComic.series = nome
+
+        mComicInfo = novoComic
+        txtMalId.text = ""
+        txtMalNome.text = nome
+        atualizaTituloComicInfo(novoComic)
+        Notificacoes.notificacao(Notificacao.SUCESSO, "ComicInfo", "Novo ComicInfo inicializado em branco.")
+    }
+
+    @FXML
     private fun onBtnAmazonConsultar() {
         tbTabRootPastas.selectionModel.select(tbTabPastas_ComicInfo)
         val callback: Callback<ComicInfo, Boolean> = Callback<ComicInfo, Boolean> { param ->
@@ -756,6 +787,230 @@ class AbaPastasController : Initializable {
         }
     }
 
+    @FXML
+    private fun onBtnConverterWebp() {
+        val pastaTexto = txtPasta.text
+        if (pastaTexto.isNullOrEmpty()) {
+            txtPasta.unFocusColor = Color.RED
+            AlertasModal.alerta("Alerta", "Informe a pasta para realizar a conversão.")
+            return
+        }
+
+        val raiz = File(pastaTexto)
+        if (!raiz.exists() || !raiz.isDirectory) {
+            AlertasModal.alerta("Alerta", "Pasta informada não existe ou é inválida.")
+            return
+        }
+
+        if (!ConfirmaModal.confirmacao("Converter WebP para JPG", "Deseja converter todas as imagens .webp em .jpg na pasta e subpastas? Os arquivos .webp originais serão excluídos após a conversão.")) {
+            return
+        }
+
+        if (btnConverterWebp.accessibleTextProperty().value.equals("CONVERTER", ignoreCase = true) || btnConverterWebp.accessibleTextProperty().value.isNullOrEmpty()) {
+            desabilita(btnConverterWebp)
+            controllerPai.setCursor(Cursor.WAIT)
+
+            val task = object : Task<Void>() {
+                override fun call(): Void? {
+                    try {
+                        mCANCELAR = false
+                        val webpFiles = raiz.walkBottomUp()
+                            .filter { it.isFile && (it.extension.equals("webp", ignoreCase = true) || it.extension.equals("web", ignoreCase = true)) }
+                            .toList()
+
+                        val total = webpFiles.size.toLong()
+                        if (total == 0L) {
+                            Platform.runLater {
+                                Notificacoes.notificacao(Notificacao.ALERTA, "Converter WebP", "Nenhuma imagem .webp encontrada na pasta.")
+                            }
+                            return null
+                        }
+
+                        var atual = 0L
+                        var convertidos = 0
+
+                        for (file in webpFiles) {
+                            if (mCANCELAR) break
+                            atual++
+                            updateProgress(atual, total)
+                            updateMessage("Convertendo: ${file.name} ($atual de $total)")
+
+                            val destinoJpg = File(file.parentFile, "${file.nameWithoutExtension}.jpg")
+                            val sucesso = converterWebpParaJpg(file, destinoJpg)
+                            if (sucesso) {
+                                convertidos++
+                                file.delete()
+                            }
+                        }
+
+                        if (!mCANCELAR) {
+                            Platform.runLater {
+                                carregarItens()
+                                Notificacoes.notificacao(Notificacao.SUCESSO, "Conversão Concluída", "$convertidos de $total imagens convertidas para JPG com sucesso.")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        mLOG.error("Erro ao converter imagens WebP.", e)
+                        Platform.runLater { AlertasModal.erro("Erro na conversão", e.message ?: "Erro desconhecido") }
+                    }
+                    return null
+                }
+
+                override fun succeeded() {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    habilita(btnConverterWebp, "Converter WebP")
+                    controllerPai.clearProgress()
+                }
+
+                override fun failed() {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    habilita(btnConverterWebp, "Converter WebP")
+                    controllerPai.clearProgress()
+                }
+            }
+
+            controllerPai.rootProgress.progressProperty().unbind()
+            controllerPai.rootMessage.textProperty().unbind()
+            controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
+            controllerPai.rootMessage.textProperty().bind(task.messageProperty())
+            Thread(task).start()
+        } else {
+            mCANCELAR = true
+        }
+    }
+
+    private fun converterWebpParaJpg(origem: File, destino: File): Boolean {
+        try {
+            val fxImage = Image(origem.toURI().toString())
+            if (!fxImage.isError && fxImage.width > 0) {
+                val width = fxImage.width.toInt()
+                val height = fxImage.height.toInt()
+                val reader = fxImage.pixelReader
+                if (reader != null) {
+                    val rgbImage = java.awt.image.BufferedImage(width, height, java.awt.image.BufferedImage.TYPE_INT_RGB)
+                    for (y in 0 until height) {
+                        for (x in 0 until width) {
+                            val argb = reader.getArgb(x, y)
+                            rgbImage.setRGB(x, y, argb)
+                        }
+                    }
+                    return javax.imageio.ImageIO.write(rgbImage, "jpg", destino)
+                }
+            }
+        } catch (e: Throwable) {
+            mLOG.warn("Falha ao converter com JavaFX Image: ${e.message}")
+        }
+
+        try {
+            val buffered = javax.imageio.ImageIO.read(origem)
+            if (buffered != null) {
+                val rgbImage = java.awt.image.BufferedImage(buffered.width, buffered.height, java.awt.image.BufferedImage.TYPE_INT_RGB)
+                val g = rgbImage.createGraphics()
+                g.color = java.awt.Color.WHITE
+                g.fillRect(0, 0, buffered.width, buffered.height)
+                g.drawImage(buffered, 0, 0, null)
+                g.dispose()
+                return javax.imageio.ImageIO.write(rgbImage, "jpg", destino)
+            }
+        } catch (e: Throwable) {
+            mLOG.warn("Falha ao converter com ImageIO: ${e.message}")
+        }
+        return false
+    }
+
+    @FXML
+    private fun onBtnRemoverXml() {
+        val pastaTexto = txtPasta.text
+        if (pastaTexto.isNullOrEmpty()) {
+            txtPasta.unFocusColor = Color.RED
+            AlertasModal.alerta("Alerta", "Informe a pasta para remoção dos arquivos XML.")
+            return
+        }
+
+        val raiz = File(pastaTexto)
+        if (!raiz.exists() || !raiz.isDirectory) {
+            AlertasModal.alerta("Alerta", "Pasta informada não existe ou é inválida.")
+            return
+        }
+
+        if (!ConfirmaModal.confirmacao("Remover XMLs", "Deseja realmente remover todos os arquivos .xml (incluindo ComicInfo.xml) da pasta e subpastas?")) {
+            return
+        }
+
+        if (btnRemoverXml.accessibleTextProperty().value.equals("REMOVER", ignoreCase = true) || btnRemoverXml.accessibleTextProperty().value.isNullOrEmpty()) {
+            desabilita(btnRemoverXml)
+            controllerPai.setCursor(Cursor.WAIT)
+
+            val task = object : Task<Void>() {
+                override fun call(): Void? {
+                    try {
+                        mCANCELAR = false
+                        val xmlFiles = raiz.walkBottomUp()
+                            .filter { it.isFile && it.extension.equals("xml", ignoreCase = true) }
+                            .toList()
+
+                        val total = xmlFiles.size.toLong()
+                        if (total == 0L) {
+                            Platform.runLater {
+                                Notificacoes.notificacao(Notificacao.ALERTA, "Remover XMLs", "Nenhum arquivo .xml encontrado na pasta.")
+                            }
+                            return null
+                        }
+
+                        var atual = 0L
+                        var excluidos = 0
+
+                        for (file in xmlFiles) {
+                            if (mCANCELAR) break
+                            atual++
+                            updateProgress(atual, total)
+                            updateMessage("Excluindo: ${file.name} ($atual de $total)")
+
+                            if (file.delete()) {
+                                excluidos++
+                            }
+                        }
+
+                        if (!mCANCELAR) {
+                            Platform.runLater {
+                                carregarItens()
+                                Notificacoes.notificacao(Notificacao.SUCESSO, "Remover XMLs", "$excluidos arquivo(s) .xml excluído(s) com sucesso.")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        mLOG.error("Erro ao remover arquivos XML.", e)
+                        Platform.runLater { AlertasModal.erro("Erro ao remover XMLs", e.message ?: "Erro desconhecido") }
+                    }
+                    return null
+                }
+
+                override fun succeeded() {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    habilita(btnRemoverXml, "Remover XMLs")
+                    controllerPai.clearProgress()
+                }
+
+                override fun failed() {
+                    controllerPai.rootProgress.progressProperty().unbind()
+                    controllerPai.rootMessage.textProperty().unbind()
+                    habilita(btnRemoverXml, "Remover XMLs")
+                    controllerPai.clearProgress()
+                }
+            }
+
+            controllerPai.rootProgress.progressProperty().unbind()
+            controllerPai.rootMessage.textProperty().unbind()
+            controllerPai.rootProgress.progressProperty().bind(task.progressProperty())
+            controllerPai.rootMessage.textProperty().bind(task.messageProperty())
+            Thread(task).start()
+        } else {
+            mCANCELAR = true
+        }
+    }
+
     private fun desabilita(activeButton: JFXButton? = null) {
         btnPesquisarPasta.isDisable = true
         txtPasta.isDisable = true
@@ -769,6 +1024,9 @@ class AbaPastasController : Initializable {
         cbApagarArquivo.isDisable = true
         btnCompactar.isDisable = true
         btnCapitulos.isDisable = true
+        btnSubstituir.isDisable = true
+        btnConverterWebp.isDisable = true
+        btnRemoverXml.isDisable = true
         btnValidar.isDisable = true
         btnImportarVolumes.isDisable = true
 
@@ -790,6 +1048,9 @@ class AbaPastasController : Initializable {
         btnCompactar.isDisable = false
         btnValidar.isDisable = false
         btnCapitulos.isDisable = false
+        btnSubstituir.isDisable = false
+        btnConverterWebp.isDisable = false
+        btnRemoverXml.isDisable = false
         btnImportarVolumes.isDisable = false
         tbViewProcessar.isDisable = false
         ckbSelecionarTodos.isDisable = false
@@ -1405,6 +1666,10 @@ class AbaPastasController : Initializable {
                 mObsListaProcessar.sortWith(compareBy({ it.volume }, { it.capitulo }))
                 tbViewProcessar.refresh()
                 carregaComicInfo()
+
+                if (txtMalNome.text.isNotEmpty() || txtMalId.text.isNotEmpty()) {
+                    btnMalConsultar.fire()
+                }
             }
         }
         cbManga.editor.textProperty().addListener { _, _, _ ->
@@ -2197,12 +2462,27 @@ class AbaPastasController : Initializable {
                     try {
                         val conteudo = mRarService.listarConteudo(file)
                         val itensCapa = conteudo.filter { it.contains("capa", ignoreCase = true) || it.contains("cover", ignoreCase = true) }
+                        val itensComicInfo = conteudo.filter { it.contains("comicinfo.xml", ignoreCase = true) }
 
-                        if (itensCapa.isNotEmpty()) {
-                            mRarService.extrairItens(file, itensCapa, tempDir)
+                        val itensExtrair = (itensCapa + itensComicInfo).distinct()
+                        if (itensExtrair.isNotEmpty()) {
+                            mRarService.extrairItens(file, itensExtrair, tempDir)
                         } else {
-                            mLOG.info("Nenhuma pasta ou arquivo de capa encontrado no arquivo: ${file.name}")
+                            mLOG.info("Nenhuma pasta de capa ou ComicInfo encontrado no arquivo: ${file.name}")
                             return@forEach
+                        }
+
+                        // Processa ComicInfo do primeiro arquivo se disponível
+                        val xmlFile = tempDir.walk().filter { it.isFile && it.name.equals("ComicInfo.xml", ignoreCase = true) }.firstOrNull()
+                        var extractedComicInfo: ComicInfo? = null
+                        if (xmlFile != null) {
+                            try {
+                                val jaxb = JAXBContext.newInstance(ComicInfo::class.java)
+                                val unmarshaller = jaxb.createUnmarshaller()
+                                extractedComicInfo = unmarshaller.unmarshal(xmlFile) as ComicInfo
+                            } catch (e: Exception) {
+                                mLOG.error("Erro ao ler ComicInfo extraído de ${file.name}", e)
+                            }
                         }
 
                         val capa = tempDir.walk().filter { it.isDirectory && (it.name.contains("Capa", true) || it.name.contains("Cover", true)) }.firstOrNull()
@@ -2220,9 +2500,17 @@ class AbaPastasController : Initializable {
                             mangaNome = if (sugestoes.isNotEmpty()) sugestoes.first() else mangaNome
 
                             if (!atualizado) {
+                                val comicInfoToUse = extractedComicInfo
+                                val idMalFound = comicInfoToUse?.idMal
                                 Platform.runLater {
                                     cbManga.value = mangaNome
+                                    if (idMalFound != null) {
+                                        txtMalId.text = idMalFound.toString()
+                                    }
                                     txtMalNome.text = mangaNome
+                                    if (comicInfoToUse != null) {
+                                        mComicInfo = comicInfoToUse
+                                    }
                                     consultarMal()
                                 }
                                 atualizado = true

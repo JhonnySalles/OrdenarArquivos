@@ -53,9 +53,12 @@ class PopupSubstituirController : Initializable {
 
     private fun adicionarSugestoes() {
         val sugestoes = listOf(
+            Sugestao("Capítulo Inicial (215:)", "^(\\d+):?\\s*", "ch. $1 "),
             Sugestao("Colchetes [ ]", "\\[.*?\\]", ""),
             Sugestao("Parênteses ( )", "\\(.*?\\)", ""),
             Sugestao("Traços -", "\\s*-\\s*", " "),
+            Sugestao("Espaços Duplos", "\\s{2,}", " "),
+            Sugestao("Underscores _", "_", " "),
             Sugestao("Extensão", "\\.[a-zA-Z0-9]+$", "")
         )
 
@@ -75,53 +78,88 @@ class PopupSubstituirController : Initializable {
         todosTitulos = titulos.filter { it.isNotEmpty() }
         if (todosTitulos.isNotEmpty()) {
             vbPreview.isVisible = true
+            sortearNovosExemplos()
             atualizarPreview()
 
-            txtLocalizar.focusedProperty().addListener { _, _, focused -> if (!focused) atualizarPreview() }
-            txtSubstituir.focusedProperty().addListener { _, _, focused -> if (!focused) atualizarPreview() }
+            txtLocalizar.textProperty().addListener { _, _, _ -> atualizarPreview() }
+            txtSubstituir.textProperty().addListener { _, _, _ -> atualizarPreview() }
             ckbRegex.selectedProperty().addListener { _, _, _ -> atualizarPreview() }
+
+            txtLocalizar.focusedProperty().addListener { _, _, focused ->
+                if (!focused) {
+                    sortearNovosExemplos()
+                    atualizarPreview()
+                }
+            }
+            txtSubstituir.focusedProperty().addListener { _, _, focused ->
+                if (!focused) {
+                    sortearNovosExemplos()
+                    atualizarPreview()
+                }
+            }
         } else {
             vbPreview.isVisible = false
+        }
+    }
+
+    private fun sortearNovosExemplos() {
+        if (todosTitulos.isEmpty()) {
+            titulosPreview = emptyList()
+            return
+        }
+
+        val localizar = txtLocalizar.text ?: ""
+        val isRegex = ckbRegex.isSelected
+
+        if (localizar.isEmpty()) {
+            titulosPreview = todosTitulos.shuffled().take(3)
+            return
+        }
+
+        var regex: Regex? = null
+        if (isRegex) {
+            try {
+                regex = Regex(localizar)
+            } catch (e: Exception) {
+                titulosPreview = todosTitulos.shuffled().take(3)
+                return
+            }
+        }
+
+        val matches = todosTitulos.filter {
+            if (isRegex && regex != null) regex.containsMatchIn(it)
+            else it.contains(localizar)
+        }
+
+        titulosPreview = if (matches.isNotEmpty()) {
+            matches.shuffled().take(3)
+        } else {
+            todosTitulos.shuffled().take(3)
         }
     }
 
     private fun atualizarPreview() {
         vbOriginal.children.clear()
         vbSubstituido.children.clear()
+
+        if (titulosPreview.isEmpty()) {
+            sortearNovosExemplos()
+        }
+
         val localizar = txtLocalizar.text ?: ""
         val substituir = txtSubstituir.text ?: ""
         val isRegex = ckbRegex.isSelected
 
-        if (localizar.isEmpty()) {
-            titulosPreview = todosTitulos.shuffled().take(3)
-            renderPreviewList(localizar, substituir, isRegex, isValid = true)
-        } else {
-            var isValid = true
-            var regex: Regex? = null
-            if (isRegex) {
-                try {
-                    regex = Regex(localizar)
-                } catch (e: Exception) {
-                    isValid = false
-                }
-            }
-
-            if (!isValid) {
-                titulosPreview = todosTitulos.shuffled().take(3)
-                renderPreviewList(localizar, substituir, isRegex, isValid = false)
-            } else {
-                val matches = todosTitulos.filter {
-                    if (isRegex) regex!!.containsMatchIn(it)
-                    else it.contains(localizar)
-                }
-                titulosPreview = if (matches.isNotEmpty()) {
-                    matches.shuffled().take(3)
-                } else {
-                    todosTitulos.shuffled().take(3)
-                }
-                renderPreviewList(localizar, substituir, isRegex, isValid = true)
+        var isValid = true
+        if (isRegex && localizar.isNotEmpty()) {
+            try {
+                Regex(localizar)
+            } catch (e: Exception) {
+                isValid = false
             }
         }
+
+        renderPreviewList(localizar, substituir, isRegex, isValid)
     }
 
     private fun renderPreviewList(localizar: String, substituir: String, isRegex: Boolean, isValid: Boolean) {
