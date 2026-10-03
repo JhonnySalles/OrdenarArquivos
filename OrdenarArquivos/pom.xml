@@ -51,6 +51,7 @@
         <jaxb.version>4.0.0</jaxb.version>
         <jsoup.version>1.15.3</jsoup.version>
         <ikonli.version>12.4.0</ikonli.version>
+        <kotlinx.coroutines.version>1.8.0</kotlinx.coroutines.version>
         <google.firebase.version>9.3.0</google.firebase.version>
         <io.grpc.version>1.62.2</io.grpc.version>
         <google.api.version>v3-rev20230822-2.0.0</google.api.version>
@@ -59,28 +60,14 @@
 
     <repositories>
         <repository>
-            <id>localRepository</id>
-            <url>file://${project.basedir}/src/lib</url>
+            <id>central</id>
+            <name>Central Maven repository</name>
+            <url>https://repo.maven.apache.org/maven2</url>
         </repository>
 
         <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
-        </repository>
-
-        <repository>
-            <id>Central Maven repository</id>
-            <name>Central Maven repository https</name>
-            <url>https://repo.maven.apache.org/maven2</url>
-        </repository>
-
-        <repository>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <id>Central Bintray</id>
-            <name>bintray</name>
-            <url>https://jcenter.bintray.com</url>
         </repository>
     </repositories>
 
@@ -119,13 +106,13 @@
         <dependency>
             <groupId>org.jetbrains.kotlinx</groupId>
             <artifactId>kotlinx-coroutines-core-jvm</artifactId>
-            <version>${kotlin.version}</version>
+            <version>${kotlinx.coroutines.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.jetbrains.kotlinx</groupId>
             <artifactId>kotlinx-coroutines-javafx</artifactId>
-            <version>${kotlin.version}</version>
+            <version>${kotlinx.coroutines.version}</version>
         </dependency>
 
         <!--                                          Bibliotecas Teste                                           -->
@@ -553,7 +540,7 @@
                         <!-- Default configuration for running with: mvn clean javafx:run -->
                         <id>default-cli</id>
                         <configuration>
-                            <mainClass>com.fenix.ordenararquivos/com.fenix.ordenararquivos.Run</mainClass>
+                            <mainClass>com.fenix.ordenararquivos.App</mainClass>
                             <launcher>app</launcher>
                             <jlinkZipName>app</jlinkZipName>
                             <jlinkImageName>app</jlinkImageName>

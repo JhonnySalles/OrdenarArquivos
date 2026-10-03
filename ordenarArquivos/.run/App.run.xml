@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="App" type="JetRunConfigurationType" nameIsGenerated="true">
+    <option name="MAIN_CLASS_NAME" value="com.fenix.ordenararquivos.App" />
+    <module name="ordenarArquivos" />
+    <option name="VM_PARAMETERS" value="--add-opens=javafx.graphics/com.sun.javafx.stage=com.jfoenix --add-opens=javafx.graphics/com.sun.glass.ui=com.jfoenix --add-opens=javafx.base/com.sun.javafx.binding=com.jfoenix --add-opens=javafx.controls/com.sun.javafx.scene.control.behavior=com.jfoenix --add-opens=javafx.controls/com.sun.javafx.scene.control=com.jfoenix --add-opens=javafx.base/com.sun.javafx.event=com.jfoenix --add-opens=java.base/java.lang.reflect=com.jfoenix --add-opens=java.base/java.lang=com.jfoenix --add-opens=javafx.controls/javafx.scene.control.skin=com.jfoenix --add-opens=javafx.graphics/com.sun.javafx.scene=com.jfoenix --add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED --add-exports=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED -Dcom.jfoenix.disableAnimations=true -Xms512m -Xmx1024m" />
+    <shortenClasspath name="NONE" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
