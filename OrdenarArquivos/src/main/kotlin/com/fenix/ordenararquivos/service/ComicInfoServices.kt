@@ -6,7 +6,13 @@ import com.fenix.ordenararquivos.database.DataBase.closeStatement
 import com.fenix.ordenararquivos.database.DataBase.instancia
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
+import com.fenix.ordenararquivos.model.entities.comicinfo.TrackerResult
+import com.fenix.ordenararquivos.model.entities.comicinfo.TrackerMetadata
+import com.fenix.ordenararquivos.model.entities.comicinfo.TrackerAuthor
+import com.fenix.ordenararquivos.model.enums.TrackerType
+import com.fenix.ordenararquivos.api.anilist.AniListTracker
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.util.Utils
 import com.google.gson.Gson
@@ -258,15 +264,15 @@ class ComicInfoServices {
         }
     }
 
-    private fun toMal(manga: dev.katsute.mal4j.manga.Manga) : Mal {
+    private fun toTrackerResult(manga: dev.katsute.mal4j.manga.Manga) : TrackerResult {
         val buton = JFXButton("Site")
         buton.styleClass.add("background-White1")
         buton.setOnAction { openSiteMal(manga.id) }
 
         var imageView : ImageView? = null
         val url = when {
-            manga.mainPicture.largeURL != null -> manga.mainPicture.largeURL
-            manga.mainPicture.mediumURL != null -> manga.mainPicture.mediumURL
+            manga.mainPicture?.largeURL != null -> manga.mainPicture.largeURL
+            manga.mainPicture?.mediumURL != null -> manga.mainPicture.mediumURL
             manga.pictures.isNotEmpty() -> {
                 when {
                     manga.pictures[0].largeURL != null -> manga.pictures[0].largeURL
@@ -296,196 +302,269 @@ class ComicInfoServices {
             imageView.setOnDragDetected { pause.stop() }
         }
 
-        return Mal(manga.id, manga.title, manga.alternativeTitles.japanese + "\n" + manga.alternativeTitles.english, buton, imageView, manga)
+        val altTitles = mutableListOf<String>()
+        if (!manga.alternativeTitles.english.isNullOrBlank()) altTitles.add(manga.alternativeTitles.english)
+        if (!manga.alternativeTitles.japanese.isNullOrBlank()) altTitles.add(manga.alternativeTitles.japanese)
+        if (manga.alternativeTitles.synonyms != null) altTitles.addAll(manga.alternativeTitles.synonyms)
+
+        val genres = manga.genres.map { it.name }
+        val authors = manga.authors.map { TrackerAuthor(it.role, it.firstName, it.lastName) }
+        val serialization = manga.serialization.map { it.name }
+
+        val metadata = TrackerMetadata(
+            id = manga.id,
+            title = manga.title,
+            alternativeTitles = altTitles,
+            genres = genres,
+            authors = authors,
+            serialization = serialization,
+            url = "https://myanimelist.net/manga/\${manga.id}",
+            type = manga.type?.field() ?: "Manga",
+            characters = null // fetched later if needed
+        )
+
+        return TrackerResult(
+            tracker = TrackerType.MYANIMELIST,
+            id = manga.id,
+            nome = manga.title,
+            descricao = manga.alternativeTitles.japanese + "\n" + manga.alternativeTitles.english,
+            site = buton,
+            imagem = imageView,
+            dados = metadata
+        )
     }
 
     private var MyAnimeLis: MyAnimeList? = null
-    fun getMal(id: Long?, nome : String, offset: Int = 0) : List<Mal> {
-        if (Configuracao.myAnimeListClient.isBlank())
-            throw Exception("Não possui o client id do MyAnimeList configurado.")
+    
+    private fun jaccardSimilarity(s1: String, s2: String): Double {
+        val w1 = s1.lowercase().split("\\s+".toRegex()).toSet()
+        val w2 = s2.lowercase().split("\\s+".toRegex()).toSet()
+        if (w1.isEmpty() && w2.isEmpty()) return 1.0
+        val intersection = w1.intersect(w2).size.toDouble()
+        val union = w1.union(w2).size.toDouble()
+        return intersection / union
+    }
 
-        if (MyAnimeLis == null)
-            MyAnimeLis = MyAnimeList.withClientID(Configuracao.myAnimeListClient)
+    fun getTrackers(id: Long?, nome: String, offset: Int = 0): List<TrackerResult> {
+        val executor = Executors.newFixedThreadPool(2)
+        val futureMal = CompletableFuture.supplyAsync({
+            val lista = mutableListOf<TrackerResult>()
+            try {
+                if (Configuracao.myAnimeListClient.isBlank()) {
+                    mLOG.warn("Não possui o client id do MyAnimeList configurado.")
+                    return@supplyAsync lista
+                }
 
-        val lista = mutableListOf<Mal>()
-        if (id != null)
-            lista.add(toMal(MyAnimeLis!!.getManga(id)))
-        else {
-            val query = if (nome.length > 64) nome.substring(0, 64) else nome
-            val limit = Configuracao.registrosConsultaMal
-            val consulta = MyAnimeLis!!.manga.withQuery(query).withLimit(limit).withOffset(offset).search()
-            if (consulta != null && consulta.isNotEmpty()) {
-                for (item in consulta)
-                    lista.add(toMal(item))
+                if (MyAnimeLis == null)
+                    MyAnimeLis = MyAnimeList.withClientID(Configuracao.myAnimeListClient)
+
+                if (id != null) {
+                    lista.add(toTrackerResult(MyAnimeLis!!.getManga(id)))
+                } else {
+                    val query = if (nome.length > 64) nome.substring(0, 64) else nome
+                    val limit = Configuracao.registrosConsultaMal
+                    val consulta = MyAnimeLis!!.manga.withQuery(query).withLimit(limit).withOffset(offset).search()
+                    if (consulta != null && consulta.isNotEmpty()) {
+                        for (item in consulta)
+                            lista.add(toTrackerResult(item))
+                    }
+                }
+            } catch (e: Exception) {
+                mLOG.error("Erro na consulta do MyAnimeList: \${e.message}", e)
             }
+            lista
+        }, executor)
+
+        val futureAniList = CompletableFuture.supplyAsync({
+            if (offset == 0) { // AniList simple search does not paginate in current implementation
+                AniListTracker.search(id, nome)
+            } else emptyList()
+        }, executor)
+
+        val results = mutableListOf<TrackerResult>()
+        try {
+            results.addAll(futureMal.get())
+            results.addAll(futureAniList.get())
+        } catch (e: Exception) {
+            mLOG.error("Erro ao aguardar consultas: \${e.message}", e)
+        } finally {
+            executor.shutdown()
         }
-        return lista.toList()
+
+        if (id == null) {
+            results.sortByDescending { jaccardSimilarity(nome, it.nome) }
+        }
+
+        return results.toList()
     }
 
     private val mDESCRIPTION_MAL = "Tagged with MyAnimeList on "
-    fun updateMal(comic: ComicInfo, mal: Mal, linguagem : Linguagem) {
-        val dados = mal.mal
-        comic.idMal = dados.id
+    private val mDESCRIPTION_ANILIST = "Tagged with AniList on "
+
+    fun updateTracker(comic: ComicInfo, result: TrackerResult, linguagem: Linguagem) {
+        val dados = result.dados
+        
+        if (result.tracker == TrackerType.MYANIMELIST) {
+            comic.idMal = dados.id
+        }
+
         comic.languageISO = linguagem.sigla
 
         for (author in dados.authors) {
             if (author.role.equals("art", ignoreCase = true)) {
-                if (comic.penciller == null || comic.penciller!!.isEmpty())
+                if (comic.penciller.isNullOrEmpty())
                     comic.penciller = (author.firstName + " " + author.lastName).trim()
 
-                if (comic.inker == null || comic.inker!!.isEmpty())
+                if (comic.inker.isNullOrEmpty())
                     comic.inker = (author.firstName + " " + author.lastName).trim()
 
-                if (comic.coverArtist == null || comic.coverArtist!!.isEmpty())
+                if (comic.coverArtist.isNullOrEmpty())
                     comic.coverArtist = (author.firstName + " " + author.lastName).trim()
             } else if (author.role.equals("story", ignoreCase = true)) {
-                if (comic.penciller == null || comic.penciller!!.isEmpty())
+                if (comic.penciller.isNullOrEmpty())
                     comic.penciller = (author.firstName + " " + author.lastName).trim()
             } else {
                 if (author.role.lowercase(Locale.getDefault()).contains("story")) {
-                    if (comic.writer == null || comic.penciller!!.isEmpty())
+                    if (comic.writer.isNullOrEmpty() || comic.penciller.isNullOrEmpty())
                         comic.writer = (author.firstName + " " + author.lastName).trim()
                 }
                 if (author.role.lowercase(Locale.getDefault()).contains("art")) {
-                    if (comic.penciller == null || comic.penciller!!.isEmpty())
+                    if (comic.penciller.isNullOrEmpty())
                         comic.penciller = (author.firstName + " " + author.lastName).trim()
 
-                    if (comic.inker == null || comic.inker!!.isEmpty())
+                    if (comic.inker.isNullOrEmpty())
                         comic.inker = (author.firstName + " " + author.lastName).trim()
 
-                    if (comic.coverArtist == null || comic.coverArtist!!.isEmpty())
+                    if (comic.coverArtist.isNullOrEmpty())
                         comic.coverArtist = (author.firstName + " " + author.lastName).trim()
                 }
             }
         }
 
-        if (comic.genre == null || comic.genre!!.isEmpty()) {
-            var genero = ""
-            for (genre in dados.genres)
-                genero += genre.name + "; "
-            comic.genre = genero.substring(0, genero.lastIndexOf("; "))
+        if (comic.genre.isNullOrEmpty() && dados.genres.isNotEmpty()) {
+            comic.genre = dados.genres.joinToString("; ")
         }
 
-        comic.series = mal.nome
+        comic.series = result.nome
         if (linguagem == Linguagem.PORTUGUESE) {
-            if (dados.alternativeTitles.english != null && dados.alternativeTitles.english.isNotEmpty()) {
+            val engTitle = dados.alternativeTitles.find { it != result.nome }
+            if (!engTitle.isNullOrEmpty()) {
                 comic.title = dados.title
-                comic.series = dados.alternativeTitles.english
+                comic.series = engTitle
             }
         } else if (linguagem == Linguagem.JAPANESE) {
-            if (dados.alternativeTitles.japanese != null && dados.alternativeTitles.japanese.isNotEmpty())
-                comic.title = dados.alternativeTitles.japanese
+            val japTitle = dados.alternativeTitles.find { it.any { c -> c.code in 0x3040..0x30FF || c.code in 0x4E00..0x9FBF } }
+            if (!japTitle.isNullOrEmpty())
+                comic.title = japTitle
         }
 
-        var title: String = comic.title
-        if (comic.alternateSeries == null || comic.alternateSeries!!.isEmpty()) {
-            title = ""
-            if (dados.alternativeTitles.japanese != null && dados.alternativeTitles.japanese.isNotEmpty())
-                title += dados.alternativeTitles.japanese + "; "
 
-            if (dados.alternativeTitles.english != null && dados.alternativeTitles.english.isNotEmpty())
-                title += dados.alternativeTitles.english + "; "
-
-
-            if (dados.alternativeTitles.synonyms != null)
-                for (synonym in dados.alternativeTitles.synonyms)
-                    title += "$synonym; "
-
-            if (title.isNotEmpty())
-                comic.alternateSeries = title.substring(0, title.lastIndexOf("; "))
+        if (comic.alternateSeries.isNullOrEmpty() && dados.alternativeTitles.isNotEmpty()) {
+            val altTitle = dados.alternativeTitles.joinToString("; ")
+            if (altTitle.isNotEmpty())
+                comic.alternateSeries = altTitle
         }
 
-        if (comic.publisher == null || comic.publisher!!.isEmpty()) {
-            var publisher = ""
-            for (pub in dados.serialization)
-                publisher += pub.name + "; "
+        if (comic.publisher.isNullOrEmpty() && dados.serialization.isNotEmpty()) {
+            comic.publisher = dados.serialization.joinToString("; ")
+        }
+        
+        if (!dados.characters.isNullOrBlank()) {
+            comic.characters = dados.characters
+        }
 
-            if (publisher.isNotEmpty())
-                comic.publisher = publisher.substring(0, publisher.lastIndexOf("; "))
+        if (comic.web.isNullOrEmpty()) {
+            comic.web = dados.url
+        } else if (!comic.web!!.contains(dados.url)) {
+            comic.web = comic.web + " " + dados.url
         }
 
         val dateTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        val descriptionTag = if (result.tracker == TrackerType.MYANIMELIST) mDESCRIPTION_MAL else mDESCRIPTION_ANILIST
+        val trackerIdStr = if (result.tracker == TrackerType.MYANIMELIST) "[Issue ID ${dados.id}]" else "[${result.tracker.label} ID ${dados.id}]"
+        
         var notes = ""
         if (comic.notes != null) {
             if (comic.notes!!.contains(";")) {
                 for (note in comic.notes!!.split(";"))
-                    notes += if (note.lowercase(Locale.getDefault()).contains(mDESCRIPTION_MAL.lowercase(Locale.getDefault())))
-                        mDESCRIPTION_MAL + dateTime.format(LocalDateTime.now()) + ". [Issue ID " + dados.id + "]; "
+                    notes += if (note.lowercase(Locale.getDefault()).contains(descriptionTag.lowercase(Locale.getDefault())))
+                        descriptionTag + dateTime.format(LocalDateTime.now()) + ". $trackerIdStr; "
                     else
                         note.trim() + "; "
-            } else if (comic.notes!!.lowercase(Locale.getDefault()).contains(mDESCRIPTION_MAL.lowercase(Locale.getDefault())))
-                notes = mDESCRIPTION_MAL + dateTime.format(LocalDateTime.now()) + ". [Issue ID " + dados.id + "]; "
+            } else if (comic.notes!!.lowercase(Locale.getDefault()).contains(descriptionTag.lowercase(Locale.getDefault())))
+                notes = descriptionTag + dateTime.format(LocalDateTime.now()) + ". $trackerIdStr; "
             else
-                notes += ((comic.notes + "; " + mDESCRIPTION_MAL + dateTime.format(LocalDateTime.now())) + ". [Issue ID " + dados.id) + "]; "
+                notes += ((comic.notes + "; " + descriptionTag + dateTime.format(LocalDateTime.now())) + ". $trackerIdStr") + "; "
         } else
-            notes += mDESCRIPTION_MAL + dateTime.format(LocalDateTime.now()) + ". [Issue ID " + dados.id + "]; "
+            notes += descriptionTag + dateTime.format(LocalDateTime.now()) + ". $trackerIdStr; "
 
         comic.notes = notes.substring(0, notes.lastIndexOf("; "))
 
-        try {
-            var responseBody: String? = null
-            var attempts = 0
-            val maxAttempts = 3
+        if (result.tracker == TrackerType.MYANIMELIST && comic.characters.isNullOrBlank()) {
+            try {
+                var responseBody: String? = null
+                var attempts = 0
+                val maxAttempts = 3
 
-            while (attempts < maxAttempts) {
-                attempts++
-                try {
-                    val reqBuilder: HttpRequest.Builder = HttpRequest.newBuilder()
-                    val request: HttpRequest = reqBuilder
-                        .uri(URI(String.format("https://api.jikan.moe/v4/manga/%s/characters", dados.id)))
-                        .timeout(java.time.Duration.ofSeconds(10))
-                        .GET()
-                        .build()
+                while (attempts < maxAttempts) {
+                    attempts++
+                    try {
+                        val reqBuilder: HttpRequest.Builder = HttpRequest.newBuilder()
+                        val request: HttpRequest = reqBuilder
+                            .uri(URI(String.format("https://api.jikan.moe/v4/manga/%s/characters", dados.id)))
+                            .timeout(java.time.Duration.ofSeconds(10))
+                            .GET()
+                            .build()
 
-                    val response: HttpResponse<String> = mHttpClient.send(request, HttpResponse.BodyHandlers.ofString())
-                    if (response.statusCode() == 200) {
-                        responseBody = response.body()
-                        break
-                    } else if (response.statusCode() == 429) {
-                        mLOG.warn("Limite de requisições do Jikan atingido (429). Tentativa $attempts/$maxAttempts. Aguardando...")
-                        Thread.sleep(1500L * attempts)
-                    } else {
-                        mLOG.warn("Falha ao consultar personagens no Jikan. Status: ${response.statusCode()}")
-                        break
-                    }
-                } catch (e: Exception) {
-                    if (attempts >= maxAttempts) {
-                        throw e
-                    }
-                    mLOG.warn("Erro temporário ao consultar personagens no Jikan (tentativa $attempts/$maxAttempts): ${e.message}")
-                    Thread.sleep(1000L * attempts)
-                }
-            }
-
-            if (responseBody != null && responseBody.contains("character")) {
-                val gson = Gson()
-                val element: JsonElement = gson.fromJson(responseBody, JsonElement::class.java)
-                val jsonObject: JsonObject = element.asJsonObject
-                val list: JsonArray? = jsonObject.getAsJsonArray("data")
-
-                if (list != null) {
-                    var characters = ""
-                    for (item in list) {
-                        val obj: JsonObject? = item?.asJsonObject
-                        val characterObj = obj?.getAsJsonObject("character")
-                        var character: String? = characterObj?.get("name")?.asString
-                        if (character != null) {
-                            if (character.contains(", "))
-                                character = character.replace(",", "")
-                            else if (character.contains(","))
-                                character = character.replace(",", " ")
-
-                            val role = obj?.get("role")?.asString ?: ""
-                            characters += character + if (role.equals("main", true)) " ($role), " else ", "
+                        val response: HttpResponse<String> = mHttpClient.send(request, HttpResponse.BodyHandlers.ofString())
+                        if (response.statusCode() == 200) {
+                            responseBody = response.body()
+                            break
+                        } else if (response.statusCode() == 429) {
+                            mLOG.warn("Limite de requisições do Jikan atingido (429). Tentativa \$attempts/\$maxAttempts. Aguardando...")
+                            Thread.sleep(1500L * attempts)
+                        } else {
+                            mLOG.warn("Falha ao consultar personagens no Jikan. Status: \${response.statusCode()}")
+                            break
                         }
+                    } catch (e: Exception) {
+                        if (attempts >= maxAttempts) {
+                            throw e
+                        }
+                        mLOG.warn("Erro temporário ao consultar personagens no Jikan (tentativa \$attempts/\$maxAttempts): \${e.message}")
+                        Thread.sleep(1000L * attempts)
                     }
-                    if (characters.isNotEmpty())
-                        comic.characters = characters.substring(0, characters.lastIndexOf(", ")) + "."
                 }
+
+                if (responseBody != null && responseBody.contains("character")) {
+                    val gson = Gson()
+                    val element: JsonElement = gson.fromJson(responseBody, JsonElement::class.java)
+                    val jsonObject: JsonObject = element.asJsonObject
+                    val list: JsonArray? = jsonObject.getAsJsonArray("data")
+
+                    if (list != null) {
+                        var characters = ""
+                        for (item in list) {
+                            val obj: JsonObject? = item?.asJsonObject
+                            val characterObj = obj?.getAsJsonObject("character")
+                            var character: String? = characterObj?.get("name")?.asString
+                            if (character != null) {
+                                if (character.contains(", "))
+                                    character = character.replace(",", "")
+                                else if (character.contains(","))
+                                    character = character.replace(",", " ")
+
+                                val role = obj?.get("role")?.asString ?: ""
+                                characters += character + if (role.equals("main", true)) " (\$role), " else ", "
+                            }
+                        }
+                        if (characters.isNotEmpty())
+                            comic.characters = characters.substring(0, characters.lastIndexOf(", ")) + "."
+                    }
+                }
+            } catch (e: Exception) {
+                mLOG.error("Erro ao consultar os personagens. " + e.message, e)
             }
-        } catch (e: Exception) {
-            mLOG.error("Erro ao consultar os personagens. " + e.message, e)
         }
     }
-
 }

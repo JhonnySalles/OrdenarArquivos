@@ -1,5 +1,6 @@
 package com.fenix.ordenararquivos.controller
 
+import javafx.scene.layout.HBox
 import com.fenix.ordenararquivos.components.NumberTextFieldTableCell
 import com.fenix.ordenararquivos.configuration.Configuracao
 import com.fenix.ordenararquivos.model.entities.Caminhos
@@ -9,7 +10,8 @@ import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.entities.capitulos.Volume
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
+import com.fenix.ordenararquivos.model.entities.comicinfo.TrackerResult
+import com.fenix.ordenararquivos.model.enums.TrackerType
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.model.enums.Selecionado
@@ -216,20 +218,20 @@ class AbaPastasController : Initializable {
     private lateinit var btnGravarComicInfo: JFXButton
 
     @FXML
-    private lateinit var tbViewMal: TableView<Mal>
+    private lateinit var tbViewMal: TableView<TrackerResult>
 
     @FXML
-    private lateinit var clMalId: TableColumn<Mal, String>
+    private lateinit var clMalId: TableColumn<TrackerResult, String>
 
     @FXML
-    private lateinit var clMalNome: TableColumn<Mal, String>
+    private lateinit var clMalNome: TableColumn<TrackerResult, String>
     @FXML
-    private lateinit var clMalTipo: TableColumn<Mal, String>
+    private lateinit var clMalTipo: TableColumn<TrackerResult, HBox>
     @FXML
-    private lateinit var clMalSite: TableColumn<Mal, JFXButton?>
+    private lateinit var clMalSite: TableColumn<TrackerResult, JFXButton?>
 
     @FXML
-    private lateinit var clMalImagem: TableColumn<Mal, ImageView?>
+    private lateinit var clMalImagem: TableColumn<TrackerResult, ImageView?>
 
     private lateinit var controller: TelaInicialController
     var controllerPai: TelaInicialController
@@ -240,7 +242,7 @@ class AbaPastasController : Initializable {
 
     internal var mComicInfo by Delegates.observable(ComicInfo()) { _, _, newValue -> carregaComicInfo(newValue) }
     internal var mObsListaProcessar: ObservableList<Pasta> = FXCollections.observableArrayList()
-    private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
+    private var mObsListaMal: ObservableList<TrackerResult> = FXCollections.observableArrayList()
     private val mHistory = GridHistoryManager()
 
     internal var mServiceManga = MangaServices()
@@ -455,7 +457,7 @@ class AbaPastasController : Initializable {
 
             val task = object : Task<Void>() {
                 override fun call(): Void? {
-                    mServiceComicInfo.updateMal(comicInfo, mal, linguagem)
+                    mServiceComicInfo.updateTracker(comicInfo, mal, linguagem)
                     return null
                 }
 
@@ -1153,9 +1155,9 @@ class AbaPastasController : Initializable {
         comic.notes = txtNotes.text.ifEmpty { null }
     }
 
-    private fun carregaMal(mal: Mal) {
+    private fun carregaMal(mal: TrackerResult) {
         val comic = ComicInfo(mComicInfo)
-        mServiceComicInfo.updateMal(comic, mal, cbLinguagem.value ?: Linguagem.JAPANESE)
+        mServiceComicInfo.updateTracker(comic, mal, cbLinguagem.value ?: Linguagem.JAPANESE)
         mComicInfo = comic
     }
 
@@ -1185,14 +1187,14 @@ class AbaPastasController : Initializable {
                 }
 
                 val consulta: Task<Void> = object : Task<Void>() {
-                    private var listaResults = listOf<Mal>()
+                    private var listaResults = listOf<TrackerResult>()
                     private var atualizado = false
 
                     override fun call(): Void? {
                         try {
-                            listaResults = mServiceComicInfo.getMal(id, nome, offset)
+                            listaResults = mServiceComicInfo.getTrackers(id, nome, offset)
                             if (id != null && listaResults.size == 1) {
-                                mServiceComicInfo.updateMal(comicInfo, listaResults.first(), linguagem)
+                                mServiceComicInfo.updateTracker(comicInfo, listaResults.first(), linguagem)
                                 atualizado = true
                             }
                         } catch (e: Exception) {
@@ -2112,11 +2114,11 @@ class AbaPastasController : Initializable {
 
         configurarAtalhosGrid()
 
-        clMalId.cellValueFactory = PropertyValueFactory("idVisual")
-        clMalNome.cellValueFactory = PropertyValueFactory("nome")
-        clMalTipo.cellValueFactory = PropertyValueFactory("tipo")
-        clMalSite.cellValueFactory = PropertyValueFactory("site")
-        clMalImagem.cellValueFactory = PropertyValueFactory("imagem")
+        clMalId.setCellValueFactory(PropertyValueFactory("idVisual"))
+        clMalNome.setCellValueFactory(PropertyValueFactory("nome"))
+        clMalTipo.setCellValueFactory(PropertyValueFactory("trackerBadge"))
+        clMalSite.setCellValueFactory(PropertyValueFactory("site"))
+        clMalImagem.setCellValueFactory(PropertyValueFactory("imagem"))
         tbViewMal.items = mObsListaMal
 
         tbViewMal.onMouseClicked = EventHandler { click: MouseEvent ->
@@ -2125,28 +2127,13 @@ class AbaPastasController : Initializable {
         }
 
         val contextMenuMal = ContextMenu()
-        val itemRecarregar = MenuItem("Recarregar imagem")
-        itemRecarregar.setOnAction {
-            val selected = tbViewMal.selectionModel.selectedItem
-            if (selected != null && selected.imagem != null) {
-                val mal = selected.mal
-                val url = when {
-                    mal.mainPicture.largeURL != null -> mal.mainPicture.largeURL
-                    mal.mainPicture.mediumURL != null -> mal.mainPicture.mediumURL
-                    mal.pictures.isNotEmpty() -> {
-                        when {
-                            mal.pictures[0].largeURL != null -> mal.pictures[0].largeURL
-                            else -> mal.pictures[0].mediumURL
-                        }
-                    }
-                    else -> null
-                }
-                if (url != null) {
-                    selected.imagem!!.image = Image(url, true)
-                }
-            }
+        val itemLimparMal = MenuItem("Limpar Consulta")
+        itemLimparMal.setOnAction {
+            mObsListaMal.clear()
+            txtMalId.clear()
+            txtMalNome.clear()
         }
-        contextMenuMal.items.add(itemRecarregar)
+        contextMenuMal.items.add(itemLimparMal)
         tbViewMal.contextMenu = contextMenuMal
 
         editaColunas()

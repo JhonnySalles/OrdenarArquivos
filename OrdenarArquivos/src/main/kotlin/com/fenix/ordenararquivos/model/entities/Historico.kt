@@ -1,7 +1,7 @@
 package com.fenix.ordenararquivos.model.entities
 
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
+import com.fenix.ordenararquivos.model.entities.comicinfo.TrackerResult
 
 enum class HistoricoStatus {
     PENDENTE,
@@ -27,7 +27,7 @@ data class Historico(
     val caminhos: List<Caminhos>,
     val itens: List<String>,
     val capas: List<Capa>,
-    val mal: List<Mal>,
+    val trackers: List<TrackerResult>,
     var status: HistoricoStatus = HistoricoStatus.PENDENTE,
     var errorMsg: String? = null
 )

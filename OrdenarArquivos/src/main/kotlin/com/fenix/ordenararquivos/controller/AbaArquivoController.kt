@@ -9,7 +9,8 @@ import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.comet.CoMet
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
+import com.fenix.ordenararquivos.model.entities.comicinfo.TrackerResult
+import com.fenix.ordenararquivos.model.enums.TrackerType
 import com.fenix.ordenararquivos.model.enums.*
 import com.fenix.ordenararquivos.model.entities.HistoricoStatus
 import com.fenix.ordenararquivos.notification.AlertasModal
@@ -303,7 +304,7 @@ class AbaArquivoController : Initializable {
     @FXML
     private lateinit var txtNotes: JFXTextArea
 
-    //<--------------------------  MAL SEARCH   -------------------------->
+    //<--------------------------  TrackerResult SEARCH   -------------------------->
 
     @FXML
     private lateinit var txtMalId: JFXTextField
@@ -324,20 +325,20 @@ class AbaArquivoController : Initializable {
     private lateinit var btnGravarComicInfo: JFXButton
 
     @FXML
-    private lateinit var tbViewMal: TableView<Mal>
+    private lateinit var tbViewMal: TableView<TrackerResult>
 
     @FXML
-    private lateinit var clMalId: TableColumn<Mal, String>
+    private lateinit var clMalId: TableColumn<TrackerResult, String>
 
     @FXML
-    private lateinit var clMalNome: TableColumn<Mal, String>
+    private lateinit var clMalNome: TableColumn<TrackerResult, String>
     @FXML
-    private lateinit var clMalTipo: TableColumn<Mal, String>
+    private lateinit var clMalTipo: TableColumn<TrackerResult, HBox>
     @FXML
-    private lateinit var clMalSite: TableColumn<Mal, JFXButton?>
+    private lateinit var clMalSite: TableColumn<TrackerResult, JFXButton?>
 
     @FXML
-    private lateinit var clMalImagem: TableColumn<Mal, ImageView?>
+    private lateinit var clMalImagem: TableColumn<TrackerResult, ImageView?>
 
     internal var mRarService = WinrarServices()
     private val mProcessingQueue = Executors.newSingleThreadExecutor { runnable ->
@@ -361,7 +362,7 @@ class AbaArquivoController : Initializable {
     private var mObsListaCaminhos: ObservableList<Caminhos> = FXCollections.observableArrayList(mListaCaminhos)
     private var mObsListaItens: ObservableList<String> = FXCollections.observableArrayList("")
     private var mObsListaImagesSelected: ObservableList<Capa> = FXCollections.observableArrayList()
-    private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
+    private var mObsListaMal: ObservableList<TrackerResult> = FXCollections.observableArrayList()
 
     private val mImageCache = mutableMapOf<String, Image>()
     private var mDraggingChapterIndex: Int? = null
@@ -600,7 +601,7 @@ class AbaArquivoController : Initializable {
     @FXML
     private fun onBtnMalAplicar() {
         if (tbViewMal.selectionModel.selectedItem != null) {
-            val mal = tbViewMal.selectionModel.selectedItem
+            val TrackerResult = tbViewMal.selectionModel.selectedItem
             val linguagem = cbLinguagem.value ?: Linguagem.JAPANESE
             val comicInfo = ComicInfo(mComicInfo)
 
@@ -609,7 +610,7 @@ class AbaArquivoController : Initializable {
 
             val task = object : Task<Void>() {
                 override fun call(): Void? {
-                    mServiceComicInfo.updateMal(comicInfo, mal, linguagem)
+                    mServiceComicInfo.updateTracker(comicInfo, TrackerResult, linguagem)
                     return null
                 }
 
@@ -882,9 +883,9 @@ class AbaArquivoController : Initializable {
         comic.notes = txtNotes.text.ifEmpty { null }
     }
 
-    private fun carregaMal(mal: Mal) {
+    private fun carregaMal(TrackerResult: TrackerResult) {
         val comic = ComicInfo(mComicInfo)
-        mServiceComicInfo.updateMal(comic, mal, cbLinguagem.value ?: Linguagem.JAPANESE)
+        mServiceComicInfo.updateTracker(comic, TrackerResult, cbLinguagem.value ?: Linguagem.JAPANESE)
         mComicInfo = comic
     }
 
@@ -987,14 +988,14 @@ class AbaArquivoController : Initializable {
                 }
 
                 val consulta: Task<Void> = object : Task<Void>() {
-                    private var listaResults = listOf<Mal>()
+                    private var listaResults = listOf<TrackerResult>()
                     private var atualizado = false
 
                     override fun call(): Void? {
                         try {
-                            listaResults = mServiceComicInfo.getMal(id, nome, offset)
+                            listaResults = mServiceComicInfo.getTrackers(id, nome, offset)
                             if (id != null && listaResults.size == 1) {
-                                mServiceComicInfo.updateMal(comicInfo, listaResults.first(), linguagem)
+                                mServiceComicInfo.updateTracker(comicInfo, listaResults.first(), linguagem)
                                 atualizado = true
                             }
                         } catch (e: Exception) {
@@ -2655,11 +2656,11 @@ class AbaArquivoController : Initializable {
         clNomePasta.cellValueFactory = PropertyValueFactory("nomePasta")
         clTag.cellValueFactory = PropertyValueFactory("tag")
 
-        clMalId.cellValueFactory = PropertyValueFactory("idVisual")
-        clMalNome.cellValueFactory = PropertyValueFactory("nome")
-        clMalTipo.cellValueFactory = PropertyValueFactory("tipo")
-        clMalSite.cellValueFactory = PropertyValueFactory("site")
-        clMalImagem.cellValueFactory = PropertyValueFactory("imagem")
+        clMalId.setCellValueFactory(PropertyValueFactory("idVisual"))
+        clMalNome.setCellValueFactory(PropertyValueFactory("nome"))
+        clMalTipo.setCellValueFactory(PropertyValueFactory("trackerBadge"))
+        clMalSite.setCellValueFactory(PropertyValueFactory("site"))
+        clMalImagem.setCellValueFactory(PropertyValueFactory("imagem"))
 
         editaColunas()
         selecionaImagens()
@@ -2670,28 +2671,14 @@ class AbaArquivoController : Initializable {
         }
 
         val contextMenuMal = ContextMenu()
-        val itemRecarregar = MenuItem("Recarregar imagem")
-        itemRecarregar.setOnAction {
-            val selected = tbViewMal.selectionModel.selectedItem
-            if (selected != null && selected.imagem != null) {
-                val mal = selected.mal
-                val url = when {
-                    mal.mainPicture.largeURL != null -> mal.mainPicture.largeURL
-                    mal.mainPicture.mediumURL != null -> mal.mainPicture.mediumURL
-                    mal.pictures.isNotEmpty() -> {
-                        when {
-                            mal.pictures[0].largeURL != null -> mal.pictures[0].largeURL
-                            else -> mal.pictures[0].mediumURL
-                        }
-                    }
-                    else -> null
-                }
-                if (url != null) {
-                    selected.imagem!!.image = Image(url, true)
-                }
-            }
+        val itemLimparMal = MenuItem("Limpar Consulta")
+        itemLimparMal.setOnAction {
+            mObsListaMal.clear()
+            txtMalId.clear()
+            txtMalNome.clear()
         }
-        contextMenuMal.items.add(itemRecarregar)
+        contextMenuMal.items.add(itemLimparMal)
+        tbViewMal.contextMenu = contextMenuMal
         tbViewMal.contextMenu = contextMenuMal
 
         lsVwHistorico.setCellFactory {
@@ -2749,7 +2736,7 @@ class AbaArquivoController : Initializable {
                     lsVwImagens.items = mObsListaItens
                     mObsListaImagesSelected.addAll(item.capas.map { it.copy() })
 
-                    mObsListaMal = FXCollections.observableArrayList(item.mal)
+                    mObsListaMal = FXCollections.observableArrayList(item.trackers)
                     tbViewMal.items = mObsListaMal
 
                     lsVwImagens.refresh()

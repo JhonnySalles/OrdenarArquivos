@@ -4,7 +4,8 @@ import com.fenix.ordenararquivos.configuration.Configuracao
 import com.fenix.ordenararquivos.model.entities.Processar
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
+import com.fenix.ordenararquivos.model.entities.comicinfo.TrackerResult
+import com.fenix.ordenararquivos.model.enums.TrackerType
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.notification.AlertasModal
 import com.fenix.ordenararquivos.service.ComicInfoServices
@@ -101,20 +102,20 @@ class PopupComicInfoController : Initializable {
     private lateinit var btnMalAplicar: JFXButton
 
     @FXML
-    private lateinit var tbViewMal: TableView<Mal>
+    private lateinit var tbViewMal: TableView<TrackerResult>
 
     @FXML
-    private lateinit var clMalId: TableColumn<Mal, Long>
+    private lateinit var clMalId: TableColumn<TrackerResult, Long>
 
     @FXML
-    private lateinit var clMalNome: TableColumn<Mal, String>
+    private lateinit var clMalNome: TableColumn<TrackerResult, String>
     @FXML
-    private lateinit var clMalTipo: TableColumn<Mal, String>
+    private lateinit var clMalTipo: TableColumn<TrackerResult, HBox>
     @FXML
-    private lateinit var clMalSite: TableColumn<Mal, JFXButton?>
+    private lateinit var clMalSite: TableColumn<TrackerResult, JFXButton?>
 
     @FXML
-    private lateinit var clMalImagem: TableColumn<Mal, ImageView>
+    private lateinit var clMalImagem: TableColumn<TrackerResult, ImageView>
 
     @FXML
     private lateinit var apRoot: AnchorPane
@@ -128,7 +129,7 @@ class PopupComicInfoController : Initializable {
     private fun onBtnMalAplicar() {
         val selected = tbViewMal.selectionModel.selectedItem ?: return
         atualizaObjeto()
-        mServiceComicInfo.updateMal(mComicInfo, selected, cbLinguagem.value ?: Linguagem.JAPANESE)
+        mServiceComicInfo.updateTracker(mComicInfo, selected, cbLinguagem.value ?: Linguagem.JAPANESE)
         carregaCampos()
     }
 
@@ -158,7 +159,7 @@ class PopupComicInfoController : Initializable {
     var onSave: ((ComicInfo) -> Unit)? = null
     private lateinit var mComicInfo: ComicInfo
     private val mServiceComicInfo = ComicInfoServices()
-    private var mObsListaMal: ObservableList<Mal> = FXCollections.observableArrayList()
+    private var mObsListaMal: ObservableList<TrackerResult> = FXCollections.observableArrayList()
 
 
     private fun onBtnMalConsultar(offset: Int) {
@@ -178,9 +179,9 @@ class PopupComicInfoController : Initializable {
         btnMalConsultar.isDisable = true
         showProgress()
 
-        val task = object : Task<List<Mal>>() {
-            override fun call(): List<Mal> {
-                return mServiceComicInfo.getMal(id, nome, offset)
+        val task = object : Task<List<TrackerResult>>() {
+            override fun call(): List<TrackerResult> {
+                return mServiceComicInfo.getTrackers(id, nome, offset)
             }
 
             override fun succeeded() {
@@ -199,7 +200,7 @@ class PopupComicInfoController : Initializable {
                 isConsultandoMal = false
                 hideProgress()
                 Platform.runLater {
-                    AlertasModal.erro("Erro na Consulta MAL", exception.message ?: "Erro desconhecido")
+                    AlertasModal.erro("Erro na Consulta Tracker", exception.message ?: "Erro desconhecido")
                 }
                 exception.printStackTrace()
             }
@@ -233,11 +234,11 @@ class PopupComicInfoController : Initializable {
     }
 
     private fun initTable() {
-        clMalId.cellValueFactory = PropertyValueFactory("idVisual")
-        clMalNome.cellValueFactory = PropertyValueFactory("nome")
-        clMalTipo.cellValueFactory = PropertyValueFactory("tipo")
-        clMalSite.cellValueFactory = PropertyValueFactory("site")
-        clMalImagem.cellValueFactory = PropertyValueFactory("imagem")
+        clMalId.setCellValueFactory(PropertyValueFactory("idVisual"))
+        clMalNome.setCellValueFactory(PropertyValueFactory("nome"))
+        clMalTipo.setCellValueFactory(PropertyValueFactory("trackerBadge"))
+        clMalSite.setCellValueFactory(PropertyValueFactory("site"))
+        clMalImagem.setCellValueFactory(PropertyValueFactory("imagem"))
         tbViewMal.items = mObsListaMal
 
         tbViewMal.setOnMouseClicked { event ->
@@ -247,28 +248,11 @@ class PopupComicInfoController : Initializable {
         }
 
         val contextMenuMal = ContextMenu()
-        val itemRecarregar = MenuItem("Recarregar imagem")
-        itemRecarregar.setOnAction {
-            val selected = tbViewMal.selectionModel.selectedItem
-            if (selected != null && selected.imagem != null) {
-                val mal = selected.mal
-                val url = when {
-                    mal.mainPicture.largeURL != null -> mal.mainPicture.largeURL
-                    mal.mainPicture.mediumURL != null -> mal.mainPicture.mediumURL
-                    mal.pictures.isNotEmpty() -> {
-                        when {
-                            mal.pictures[0].largeURL != null -> mal.pictures[0].largeURL
-                            else -> mal.pictures[0].mediumURL
-                        }
-                    }
-                    else -> null
-                }
-                if (url != null) {
-                    selected.imagem!!.image = Image(url, true)
-                }
-            }
+        val itemLimparMal = MenuItem("Limpar Consulta")
+        itemLimparMal.setOnAction {
+            // Nothing specific yet
         }
-        contextMenuMal.items.add(itemRecarregar)
+        contextMenuMal.items.add(itemLimparMal)
         tbViewMal.contextMenu = contextMenuMal
     }
 
