@@ -54,6 +54,9 @@ class PopupComicInfoController : Initializable {
     private lateinit var txtIdMal: JFXTextField
 
     @FXML
+    private lateinit var txtIdAnilist: JFXTextField
+
+    @FXML
     private lateinit var cbAgeRating: JFXComboBox<AgeRating>
 
     @FXML
@@ -93,6 +96,9 @@ class PopupComicInfoController : Initializable {
     private lateinit var txtMalId: JFXTextField
 
     @FXML
+    private lateinit var txtAnilistId: JFXTextField
+
+    @FXML
     private lateinit var txtMalNome: JFXTextField
 
     @FXML
@@ -109,10 +115,9 @@ class PopupComicInfoController : Initializable {
 
     @FXML
     private lateinit var clMalNome: TableColumn<TrackerResult, String>
+
     @FXML
-    private lateinit var clMalTipo: TableColumn<TrackerResult, HBox>
-    @FXML
-    private lateinit var clMalSite: TableColumn<TrackerResult, JFXButton?>
+    private lateinit var clMalSite: TableColumn<TrackerResult, VBox>
 
     @FXML
     private lateinit var clMalImagem: TableColumn<TrackerResult, ImageView>
@@ -168,10 +173,11 @@ class PopupComicInfoController : Initializable {
 
         isConsultandoMal = true
 
-        val id = txtMalId.text.toLongOrNull()
+        val idMal = txtMalId.text.toLongOrNull()
+        val idAnilist = txtAnilistId.text.toLongOrNull()
         val nome = txtMalNome.text.replace(Regex("[^\\p{L}\\p{N}\\s_\\-]"), "")
 
-        if (nome.isEmpty() && id == null) {
+        if (nome.isEmpty() && idMal == null && idAnilist == null) {
             isConsultandoMal = false
             return
         }
@@ -181,7 +187,7 @@ class PopupComicInfoController : Initializable {
 
         val task = object : Task<List<TrackerResult>>() {
             override fun call(): List<TrackerResult> {
-                return mServiceComicInfo.getTrackers(id, nome, offset)
+                return mServiceComicInfo.getTrackers(idMal, idAnilist, nome, offset)
             }
 
             override fun succeeded() {
@@ -218,13 +224,38 @@ class PopupComicInfoController : Initializable {
         initTable()
         initCombos()
 
+        txtMalId.onKeyPressed = javafx.event.EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) btnMalConsultar.fire() }
+        txtAnilistId.onKeyPressed = javafx.event.EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) btnMalConsultar.fire() }
+        txtMalNome.onKeyPressed = javafx.event.EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) btnMalConsultar.fire() }
+
+        txtIdMal.textProperty().addListener { _, oldValue, newValue ->
+            if (newValue != null && !newValue.matches("\\d*".toRegex())) {
+                txtIdMal.text = oldValue
+            }
+        }
+        txtIdAnilist.textProperty().addListener { _, oldValue, newValue ->
+            if (newValue != null && !newValue.matches("\\d*".toRegex())) {
+                txtIdAnilist.text = oldValue
+            }
+        }
+        txtMalId.textProperty().addListener { _, oldValue, newValue ->
+            if (newValue != null && !newValue.matches("\\d*".toRegex())) {
+                txtMalId.text = oldValue
+            }
+        }
+        txtAnilistId.textProperty().addListener { _, oldValue, newValue ->
+            if (newValue != null && !newValue.matches("\\d*".toRegex())) {
+                txtAnilistId.text = oldValue
+            }
+        }
+
         tbViewMal.skinProperty().addListener { _, _, newSkin ->
             if (newSkin != null) {
                 val flow = tbViewMal.lookup(".virtual-flow")
                 if (flow != null) {
                     val vbar = flow.lookup(".scroll-bar:vertical") as ScrollBar?
                     vbar?.valueProperty()?.addListener { _, _, newValue ->
-                        if (newValue.toDouble() == vbar.max && !isConsultandoMal && txtMalId.text.isEmpty() && mObsListaMal.size >= (Configuracao.registrosConsultaMal - 1)) {
+                        if (newValue.toDouble() == vbar.max && !isConsultandoMal && txtMalId.text.isEmpty() && txtAnilistId.text.isEmpty() && mObsListaMal.size >= (Configuracao.registrosConsultaMal - 1)) {
                             onBtnMalConsultar(mObsListaMal.size)
                         }
                     }
@@ -236,8 +267,7 @@ class PopupComicInfoController : Initializable {
     private fun initTable() {
         clMalId.setCellValueFactory(PropertyValueFactory("idVisual"))
         clMalNome.setCellValueFactory(PropertyValueFactory("nome"))
-        clMalTipo.setCellValueFactory(PropertyValueFactory("trackerBadge"))
-        clMalSite.setCellValueFactory(PropertyValueFactory("site"))
+        clMalSite.setCellValueFactory(PropertyValueFactory("siteBox"))
         clMalImagem.setCellValueFactory(PropertyValueFactory("imagem"))
         tbViewMal.items = mObsListaMal
 
@@ -269,6 +299,7 @@ class PopupComicInfoController : Initializable {
 
     private fun carregaCampos() {
         txtIdMal.text = mComicInfo.idMal?.toString() ?: ""
+        txtIdAnilist.text = mComicInfo.idAnilist?.toString() ?: ""
         cbAgeRating.value = mComicInfo.ageRating ?: AgeRating.Unknown
         cbLinguagem.value = Linguagem.getEnum(mComicInfo.languageISO ?: "ja") ?: Linguagem.JAPANESE
         txtTitle.text = mComicInfo.title ?: ""
@@ -282,11 +313,14 @@ class PopupComicInfoController : Initializable {
         txtImprint.text = mComicInfo.imprint ?: ""
         txtNotes.text = mComicInfo.notes ?: ""
 
+        txtMalId.text = mComicInfo.idMal?.toString() ?: ""
+        txtAnilistId.text = mComicInfo.idAnilist?.toString() ?: ""
         txtMalNome.text = mComicInfo.series ?: mComicInfo.title ?: ""
     }
 
     private fun atualizaObjeto() {
         mComicInfo.idMal = txtIdMal.text.toLongOrNull()
+        mComicInfo.idAnilist = txtIdAnilist.text.toLongOrNull()
         mComicInfo.ageRating = cbAgeRating.value
         mComicInfo.languageISO = cbLinguagem.value?.sigla ?: "ja"
         mComicInfo.title = txtTitle.text

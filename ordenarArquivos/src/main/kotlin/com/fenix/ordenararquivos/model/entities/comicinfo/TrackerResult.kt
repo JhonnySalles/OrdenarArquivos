@@ -6,6 +6,7 @@ import javafx.geometry.Pos
 import javafx.scene.control.Label
 import javafx.scene.image.ImageView
 import javafx.scene.layout.HBox
+import javafx.scene.layout.VBox
 
 data class TrackerMetadata(
     val id: Long,
@@ -40,9 +41,21 @@ class TrackerResult(
     // UI representation of Tracker type with badge-like HBox
     val trackerBadge: HBox get() {
         val label = Label(tracker.label)
-        label.style = "-fx-background-color: " + (if (tracker == TrackerType.ANILIST) "#02A9FF" else "#2E51A2") + "; -fx-text-fill: white; -fx-padding: 3 6 3 6; -fx-background-radius: 4;"
+        label.style = "-fx-background-color: " + (if (tracker == TrackerType.ANILIST) "#02A9FF" else "#2E51A2") + "; -fx-text-fill: white; -fx-padding: 2 4 2 4; -fx-background-radius: 4; -fx-font-size: 10px; -fx-font-weight: bold;"
         val box = HBox(label)
-        box.alignment = Pos.CENTER_LEFT
+        box.alignment = Pos.CENTER
+        return box
+    }
+
+    val siteBox: VBox get() {
+        val label = Label(tracker.label)
+        label.style = "-fx-background-color: " + (if (tracker == TrackerType.ANILIST) "#02A9FF" else "#2E51A2") + "; -fx-text-fill: white; -fx-padding: 2 4 2 4; -fx-background-radius: 4; -fx-font-size: 10px; -fx-font-weight: bold;"
+        val box = VBox(4.0)
+        box.alignment = Pos.CENTER
+        if (site != null) {
+            box.children.add(site)
+        }
+        box.children.add(label)
         return box
     }
 

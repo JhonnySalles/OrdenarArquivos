@@ -10,7 +10,7 @@ import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.Pasta
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
+import com.fenix.ordenararquivos.model.entities.comicinfo.TrackerResult
 import com.fenix.ordenararquivos.notification.AlertasModal
 import com.fenix.ordenararquivos.notification.ConfirmaModal
 import com.fenix.ordenararquivos.service.ComicInfoServices
@@ -444,17 +444,17 @@ class AbaPastasUiTest : BaseTest() {
         robot.interact { tabRoot.selectionModel.select(1) }
         WaitForAsyncUtils.waitForFxEvents()
 
-        val devMalManga1 = mock<dev.katsute.mal4j.manga.Manga>()
-        val malClassic = Mal(121L, "Naruto Classic", "Desc Classic", null, null, devMalManga1)
-        val devMalManga2 = mock<dev.katsute.mal4j.manga.Manga>()
-        val malShippuden = Mal(122L, "Naruto Shippuden", "Desc Shippuden", null, null, devMalManga2)
+        val meta1 = com.fenix.ordenararquivos.model.entities.comicinfo.TrackerMetadata(121L, "Naruto Classic", listOf("Naruto Classic"), listOf("Action"), emptyList(), emptyList(), "", "manga")
+        val malClassic = TrackerResult(com.fenix.ordenararquivos.model.enums.TrackerType.MYANIMELIST, 121L, "Naruto Classic", "Desc Classic", null, null, meta1)
+        val meta2 = com.fenix.ordenararquivos.model.entities.comicinfo.TrackerMetadata(122L, "Naruto Shippuden", listOf("Naruto Shippuden"), listOf("Action"), emptyList(), emptyList(), "", "manga")
+        val malShippuden = TrackerResult(com.fenix.ordenararquivos.model.enums.TrackerType.MYANIMELIST, 122L, "Naruto Shippuden", "Desc Shippuden", null, null, meta2)
 
-        whenever(mockComicInfoService.getMal(anyOrNull(), any()))
+        whenever(mockComicInfoService.getTrackers(anyOrNull(), anyOrNull(), any(), any()))
                 .thenReturn(listOf(malClassic, malShippuden))
-        whenever(mockComicInfoService.updateMal(any(), any(), any())).thenAnswer { invocation ->
+        whenever(mockComicInfoService.updateTracker(any(), any(), any())).thenAnswer { invocation ->
             val comic = invocation.getArgument<ComicInfo>(0)
-            val mal = invocation.getArgument<Mal>(1)
-            comic.title = mal.nome
+            val tracker = invocation.getArgument<TrackerResult>(1)
+            comic.title = tracker.nome
             null
         }
 
@@ -466,7 +466,7 @@ class AbaPastasUiTest : BaseTest() {
         }
 
         robot.interact {
-            val tv = robot.lookup("#tbViewMal").queryAs(TableView::class.java) as TableView<Mal>
+            val tv = robot.lookup("#tbViewMal").queryAs(TableView::class.java) as TableView<TrackerResult>
             tv.selectionModel.select(malClassic)
             tv.onMouseClicked.handle(
                     javafx.scene.input.MouseEvent(
@@ -498,10 +498,10 @@ class AbaPastasUiTest : BaseTest() {
                 robot.lookup("#txtTitle").queryAs(JFXTextField::class.java).text
         )
 
-        // Validar se a nova coluna clMalTipo está presente e acessível
-        val tv = robot.lookup("#tbViewMal").queryAs(TableView::class.java) as TableView<Mal>
-        val clTipo = tv.columns.find { it.text?.contains("Tipo", ignoreCase = true) == true }
-        assertNotNull(clTipo, "A coluna clMalTipo deveria estar presente na tabela")
+        // Validar se a coluna de site/badge está presente
+        val tv = robot.lookup("#tbViewMal").queryAs(TableView::class.java) as TableView<TrackerResult>
+        val clSite = tv.columns.find { it.id == "clMalSite" || it.text == "" }
+        assertNotNull(clSite, "A coluna clMalSite deveria estar presente na tabela")
     }
 
     @Test

@@ -3,7 +3,7 @@ package com.fenix.ordenararquivos.controller
 import com.fenix.ordenararquivos.BaseJfxTest
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
+import com.fenix.ordenararquivos.model.entities.comicinfo.TrackerResult
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.jfoenix.controls.JFXButton
@@ -31,6 +31,7 @@ class PopupComicInfoControllerUnitTest : BaseJfxTest() {
 
         // Injetar campos FXML
         setField("txtIdMal", JFXTextField())
+        setField("txtIdAnilist", JFXTextField())
         setField("cbAgeRating", JFXComboBox<AgeRating>())
         setField("cbLinguagem", JFXComboBox<Linguagem>())
         setField("txtTitle", JFXTextField())
@@ -45,9 +46,11 @@ class PopupComicInfoControllerUnitTest : BaseJfxTest() {
         setField("txtNotes", JFXTextArea())
 
         setField("txtMalId", JFXTextField())
+        setField("txtAnilistId", JFXTextField())
         setField("txtMalNome", JFXTextField())
         setField("btnMalConsultar", JFXButton())
-        setField("tbViewMal", TableView<Mal>())
+        setField("tbViewMal", TableView<TrackerResult>())
+        setField("apRoot", javafx.scene.layout.AnchorPane())
     }
 
     private fun setField(name: String, value: Any?) {
@@ -102,7 +105,9 @@ class PopupComicInfoControllerUnitTest : BaseJfxTest() {
     fun testOnBtnMalConsultar() {
         (getField("txtMalNome") as JFXTextField).text = "Bleach"
 
-        whenever(comicInfoService.getMal(anyOrNull(), any(), any())).thenReturn(listOf(mock()))
+        val meta = com.fenix.ordenararquivos.model.entities.comicinfo.TrackerMetadata(1L, "Bleach", emptyList(), emptyList(), emptyList(), emptyList(), "", "manga")
+        val trackerResult = TrackerResult(com.fenix.ordenararquivos.model.enums.TrackerType.MYANIMELIST, 1L, "Bleach", "Desc", null, null, meta)
+        whenever(comicInfoService.getTrackers(anyOrNull(), anyOrNull(), any(), any())).thenReturn(listOf(trackerResult))
 
         val method = controller.javaClass.getDeclaredMethod("onBtnMalConsultar")
         method.isAccessible = true
@@ -111,6 +116,6 @@ class PopupComicInfoControllerUnitTest : BaseJfxTest() {
         // Como o método é assíncrono (Task), aguardamos a execução
         Thread.sleep(200)
 
-        verify(comicInfoService).getMal(null, "Bleach")
+        verify(comicInfoService).getTrackers(null, null, "Bleach", 0)
     }
 }

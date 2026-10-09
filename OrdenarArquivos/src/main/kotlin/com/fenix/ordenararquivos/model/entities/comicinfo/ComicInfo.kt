@@ -10,6 +10,8 @@ data class ComicInfo(
     var id: UUID? = null,
     @XmlTransient
     var idMal: Long? = null,
+    @XmlTransient
+    var idAnilist: Long? = null,
     @field:XmlElement(name = "comic")
     var comic: String = "",
     @field:XmlElement(name = "Title")
@@ -103,11 +105,14 @@ data class ComicInfo(
     var gtin: String? = null
 ) {
 
+    constructor(id: UUID?, idMal: Long?, comic: String, title: String) : this(id = id, idMal = idMal, idAnilist = null, comic = comic, title = title)
+    constructor(id: UUID?, idMal: Long?, comic: String, title: String, series: String) : this(id = id, idMal = idMal, idAnilist = null, comic = comic, title = title, series = series)
+
     constructor(
         id: UUID?, idMal: Long?, comic: String, title: String, series: String, publisher: String?, alternateSeries: String?,
         storyArc: String?, seriesGroup: String?, imprint: String?, genre: String?, languageISO: String,
         ageRating: AgeRating?
-    ) : this(id, idMal, comic, title, series) {
+    ) : this(id = id, idMal = idMal, idAnilist = null, comic = comic, title = title, series = series) {
         this.publisher = publisher
         this.alternateSeries = alternateSeries
         this.storyArc = storyArc
@@ -119,7 +124,7 @@ data class ComicInfo(
     }
 
     constructor(comic: ComicInfo) : this(
-        comic.id, comic.idMal, comic.comic, comic.title, comic.series, comic.number, comic.volume,
+        comic.id, comic.idMal, comic.idAnilist, comic.comic, comic.title, comic.series, comic.number, comic.volume,
         comic.notes, comic.year, comic.month, comic.day, comic.writer, comic.penciller, comic.inker, comic.coverArtist, comic.colorist,
         comic.letterer, comic.publisher, comic.tags, comic.web, comic.editor, comic.translator, comic.pageCount, comic.pages, comic.count,
         comic.alternateSeries, comic.alternateNumber, comic.storyArc, comic.storyArcNumber, comic.seriesGroup, comic.alternateCount,
@@ -131,6 +136,7 @@ data class ComicInfo(
     fun merge(comic: ComicInfo) {
         this.id = comic.id
         this.idMal = comic.idMal
+        this.idAnilist = comic.idAnilist
         this.comic = comic.comic
         this.title = comic.title
         this.series = comic.series

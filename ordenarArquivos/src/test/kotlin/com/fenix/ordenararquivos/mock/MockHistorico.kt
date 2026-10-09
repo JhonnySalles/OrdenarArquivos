@@ -32,7 +32,7 @@ class MockHistorico {
             caminhos = mockCaminhos.mockEntities(),
             itens = listOf("item1", "item2"),
             capas = mockCapa.mockEntities(),
-            mal = mockMal.mockEntities()
+            trackers = mockMal.mockEntities()
         )
     }
 

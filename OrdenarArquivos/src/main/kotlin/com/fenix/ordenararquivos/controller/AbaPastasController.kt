@@ -1,6 +1,7 @@
 package com.fenix.ordenararquivos.controller
 
 import javafx.scene.layout.HBox
+import javafx.scene.layout.VBox
 import com.fenix.ordenararquivos.components.NumberTextFieldTableCell
 import com.fenix.ordenararquivos.configuration.Configuracao
 import com.fenix.ordenararquivos.model.entities.Caminhos
@@ -162,6 +163,9 @@ class AbaPastasController : Initializable {
     private lateinit var txtIdMal: JFXTextField
 
     @FXML
+    private lateinit var txtIdAnilist: JFXTextField
+
+    @FXML
     private lateinit var cbAgeRating: JFXComboBox<AgeRating>
 
     @FXML
@@ -200,6 +204,9 @@ class AbaPastasController : Initializable {
     private lateinit var txtMalId: JFXTextField
 
     @FXML
+    private lateinit var txtAnilistId: JFXTextField
+
+    @FXML
     private lateinit var txtMalNome: JFXTextField
 
     @FXML
@@ -225,10 +232,9 @@ class AbaPastasController : Initializable {
 
     @FXML
     private lateinit var clMalNome: TableColumn<TrackerResult, String>
+
     @FXML
-    private lateinit var clMalTipo: TableColumn<TrackerResult, HBox>
-    @FXML
-    private lateinit var clMalSite: TableColumn<TrackerResult, JFXButton?>
+    private lateinit var clMalSite: TableColumn<TrackerResult, VBox>
 
     @FXML
     private lateinit var clMalImagem: TableColumn<TrackerResult, ImageView?>
@@ -464,7 +470,7 @@ class AbaPastasController : Initializable {
                 override fun succeeded() {
                     mComicInfo = comicInfo
 
-                    val selecionado = if (mComicInfo.idMal != null) Selecionado.SELECIONADO else Selecionado.SELECIONAR
+                    val selecionado = if (mComicInfo.idMal != null || mComicInfo.idAnilist != null) Selecionado.SELECIONADO else Selecionado.SELECIONAR
                     Selecionado.setTabColor(tbTabPastas_ComicInfo, selecionado)
                     tbTabPastas_ComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + comicInfo.comic + ")" else "")
 
@@ -505,6 +511,7 @@ class AbaPastasController : Initializable {
 
         mComicInfo = novoComic
         txtMalId.text = ""
+        txtAnilistId.text = ""
         txtMalNome.text = nome
         atualizaTituloComicInfo(novoComic)
         Notificacoes.notificacao(Notificacao.SUCESSO, "ComicInfo", "Novo ComicInfo inicializado em branco.")
@@ -1069,6 +1076,7 @@ class AbaPastasController : Initializable {
 
     internal fun carregaComicInfo(comic: ComicInfo) {
         txtIdMal.text = if (comic.idMal != null) comic.idMal.toString() else ""
+        txtIdAnilist.text = if (comic.idAnilist != null) comic.idAnilist.toString() else ""
         cbAgeRating.selectionModel.select(comic.ageRating)
         val lingua = Linguagem.getEnum(comic.languageISO) ?: cbLinguagem.value
         cbLinguagem.selectionModel.select(lingua)
@@ -1083,6 +1091,7 @@ class AbaPastasController : Initializable {
         txtNotes.text = comic.notes
 
         txtMalId.text = comic.idMal?.toString() ?: ""
+        txtAnilistId.text = comic.idAnilist?.toString() ?: ""
         txtMalNome.text = comic.comic
         atualizaTituloComicInfo(comic)
     }
@@ -1110,9 +1119,11 @@ class AbaPastasController : Initializable {
         if (comic.id == null) {
             mLOG.info("Gerando novo ComicInfo.")
             txtMalId.text = ""
+            txtAnilistId.text = ""
         } else {
             mLOG.info("ComicInfo localizado: " + comic.title)
-            txtMalId.text = comic.idMal.toString()
+            txtMalId.text = comic.idMal?.toString() ?: ""
+            txtAnilistId.text = comic.idAnilist?.toString() ?: ""
         }
 
         if (comic.comic.isEmpty())
@@ -1130,7 +1141,7 @@ class AbaPastasController : Initializable {
 
     private fun atualizaTituloComicInfo(comic: ComicInfo) {
         val selecionado = when {
-            comic.idMal != null -> Selecionado.SELECIONADO
+            comic.idMal != null || comic.idAnilist != null -> Selecionado.SELECIONADO
             mObsListaMal.isNotEmpty() -> Selecionado.SELECIONAR
             else -> Selecionado.VAZIO
         }
@@ -1141,7 +1152,8 @@ class AbaPastasController : Initializable {
     }
 
     fun atualizaComicInfo(comic: ComicInfo) {
-        comic.idMal = if (txtIdMal.text.isNotEmpty()) txtIdMal.text.toLong() else null
+        comic.idMal = if (txtIdMal.text.isNotEmpty()) txtIdMal.text.toLongOrNull() else null
+        comic.idAnilist = if (txtIdAnilist.text.isNotEmpty()) txtIdAnilist.text.toLongOrNull() else null
         comic.ageRating = cbAgeRating.value
         comic.languageISO = cbLinguagem.value.sigla
         comic.title = txtTitle.text
@@ -1166,8 +1178,9 @@ class AbaPastasController : Initializable {
             return
         isConsultandoMal = true
 
-        if (txtMalId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
-            val id: Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLongOrNull() else null
+        if (txtMalId.text.isNotEmpty() || txtAnilistId.text.isNotEmpty() || txtMalNome.text.isNotEmpty()) {
+            val idMal: Long? = if (txtMalId.text.isNotEmpty()) txtMalId.text.toLongOrNull() else null
+            val idAnilist: Long? = if (txtAnilistId.text.isNotEmpty()) txtAnilistId.text.toLongOrNull() else null
             val nome = txtMalNome.text.replace(Regex("[^\\p{L}\\p{N}\\s_\\-]"), "")
             val linguagem = cbLinguagem.value ?: Linguagem.JAPANESE
             val comicInfo = ComicInfo(mComicInfo)
@@ -1183,7 +1196,7 @@ class AbaPastasController : Initializable {
                     controllerPai.rootProgress.progress = -1.0
                 }
                 if (!messageBound) {
-                    controllerPai.rootMessage.text = "Consultando MyAnimeList..."
+                    controllerPai.rootMessage.text = "Consultando Trackers..."
                 }
 
                 val consulta: Task<Void> = object : Task<Void>() {
@@ -1192,14 +1205,14 @@ class AbaPastasController : Initializable {
 
                     override fun call(): Void? {
                         try {
-                            listaResults = mServiceComicInfo.getTrackers(id, nome, offset)
-                            if (id != null && listaResults.size == 1) {
+                            listaResults = mServiceComicInfo.getTrackers(idMal, idAnilist, nome, offset)
+                            if ((idMal != null || idAnilist != null) && listaResults.size == 1) {
                                 mServiceComicInfo.updateTracker(comicInfo, listaResults.first(), linguagem)
                                 atualizado = true
                             }
                         } catch (e: Exception) {
-                            mLOG.info("Erro ao realizar a consulta do MyAnimeList.", e)
-                            Platform.runLater { AlertasModal.erro("Erro no My Anime List", e.message ?: "Erro desconhecido") }
+                            mLOG.info("Erro ao realizar a consulta do Tracker.", e)
+                            Platform.runLater { AlertasModal.erro("Erro no Tracker", e.message ?: "Erro desconhecido") }
                         }
                         return null
                     }
@@ -1572,6 +1585,7 @@ class AbaPastasController : Initializable {
         }
 
         txtIdMal.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
+        txtIdAnilist.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
         cbAgeRating.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
         cbLinguagem.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
         txtTitle.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
@@ -1584,6 +1598,7 @@ class AbaPastasController : Initializable {
         txtGenre.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) Utils.clickTab() }
 
         txtMalId.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) btnMalConsultar.fire() }
+        txtAnilistId.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) btnMalConsultar.fire() }
         txtMalNome.onKeyPressed = EventHandler { e: KeyEvent -> if (e.code == KeyCode.ENTER) btnMalConsultar.fire() }
 
         txtIdMal.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
@@ -1591,9 +1606,19 @@ class AbaPastasController : Initializable {
                 txtIdMal.text = oldValue
         }
 
+        txtIdAnilist.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
+            if (newValue != null && !newValue.matches(Utils.NUMBER_REGEX))
+                txtIdAnilist.text = oldValue
+        }
+
         txtMalId.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
             if (newValue != null && newValue.isNotEmpty() && !newValue.matches(Utils.NUMBER_REGEX))
                 txtMalId.text = oldValue
+        }
+
+        txtAnilistId.textProperty().addListener { _: ObservableValue<out String?>?, oldValue: String?, newValue: String? ->
+            if (newValue != null && newValue.isNotEmpty() && !newValue.matches(Utils.NUMBER_REGEX))
+                txtAnilistId.text = oldValue
         }
 
         txtSeries.textProperty().addListener { _, _, newValue ->
@@ -2116,8 +2141,7 @@ class AbaPastasController : Initializable {
 
         clMalId.setCellValueFactory(PropertyValueFactory("idVisual"))
         clMalNome.setCellValueFactory(PropertyValueFactory("nome"))
-        clMalTipo.setCellValueFactory(PropertyValueFactory("trackerBadge"))
-        clMalSite.setCellValueFactory(PropertyValueFactory("site"))
+        clMalSite.setCellValueFactory(PropertyValueFactory("siteBox"))
         clMalImagem.setCellValueFactory(PropertyValueFactory("imagem"))
         tbViewMal.items = mObsListaMal
 
@@ -2131,6 +2155,7 @@ class AbaPastasController : Initializable {
         itemLimparMal.setOnAction {
             mObsListaMal.clear()
             txtMalId.clear()
+            txtAnilistId.clear()
             txtMalNome.clear()
         }
         contextMenuMal.items.add(itemLimparMal)
@@ -2489,10 +2514,14 @@ class AbaPastasController : Initializable {
                             if (!atualizado) {
                                 val comicInfoToUse = extractedComicInfo
                                 val idMalFound = comicInfoToUse?.idMal
+                                val idAnilistFound = comicInfoToUse?.idAnilist
                                 Platform.runLater {
                                     cbManga.value = mangaNome
                                     if (idMalFound != null) {
                                         txtMalId.text = idMalFound.toString()
+                                    }
+                                    if (idAnilistFound != null) {
+                                        txtAnilistId.text = idAnilistFound.toString()
                                     }
                                     txtMalNome.text = mangaNome
                                     if (comicInfoToUse != null) {
@@ -2631,7 +2660,7 @@ class AbaPastasController : Initializable {
                 if (flow != null) {
                     val vbar = flow.lookup(".scroll-bar:vertical") as ScrollBar?
                     vbar?.valueProperty()?.addListener { _, _, newValue ->
-                        if (newValue.toDouble() == vbar.max && !isConsultandoMal && txtMalId.text.isEmpty() && mObsListaMal.size >= (Configuracao.registrosConsultaMal - 1)) {
+                        if (newValue.toDouble() == vbar.max && !isConsultandoMal && txtMalId.text.isEmpty() && txtAnilistId.text.isEmpty() && mObsListaMal.size >= (Configuracao.registrosConsultaMal - 1)) {
                             consultarMal(mObsListaMal.size)
                         }
                     }

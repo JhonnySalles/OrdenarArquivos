@@ -7,7 +7,7 @@ import com.fenix.ordenararquivos.database.DataBase
 import com.fenix.ordenararquivos.model.entities.Manga
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
+import com.fenix.ordenararquivos.model.entities.comicinfo.TrackerResult
 import com.fenix.ordenararquivos.notification.AlertasModal
 import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.process.Ocr
@@ -281,20 +281,20 @@ class AbaArquivoUiTest : BaseTest() {
         WaitForAsyncUtils.waitForFxEvents()
 
         // 1. Mock
-        val devMalManga1 = mock<dev.katsute.mal4j.manga.Manga>()
-        val malClassic = Mal(121L, "Naruto Classic", "Desc Classic", null, null, devMalManga1)
-        val devMalManga2 = mock<dev.katsute.mal4j.manga.Manga>()
-        val malShippuden = Mal(122L, "Naruto Shippuden", "Desc Shippuden", null, null, devMalManga2)
+        val meta1 = com.fenix.ordenararquivos.model.entities.comicinfo.TrackerMetadata(121L, "Naruto Classic", listOf("Naruto Classic"), listOf("Action"), emptyList(), emptyList(), "", "manga")
+        val malClassic = TrackerResult(com.fenix.ordenararquivos.model.enums.TrackerType.MYANIMELIST, 121L, "Naruto Classic", "Desc Classic", null, null, meta1)
+        val meta2 = com.fenix.ordenararquivos.model.entities.comicinfo.TrackerMetadata(122L, "Naruto Shippuden", listOf("Naruto Shippuden"), listOf("Action"), emptyList(), emptyList(), "", "manga")
+        val malShippuden = TrackerResult(com.fenix.ordenararquivos.model.enums.TrackerType.MYANIMELIST, 122L, "Naruto Shippuden", "Desc Shippuden", null, null, meta2)
 
-        whenever(mockComicInfoService.getMal(anyOrNull(), any(), any()))
+        whenever(mockComicInfoService.getTrackers(anyOrNull(), anyOrNull(), any(), any()))
                 .thenReturn(listOf(malClassic, malShippuden))
 
-        whenever(mockComicInfoService.updateMal(any(), any(), any())).thenAnswer { invocation ->
+        whenever(mockComicInfoService.updateTracker(any(), any(), any())).thenAnswer { invocation ->
             val comic = invocation.getArgument<ComicInfo>(0)
-            val mal = invocation.getArgument<Mal>(1)
-            comic.title = mal.nome
-            comic.series = mal.nome + " Series"
-            comic.publisher = "Editora " + mal.nome
+            val tracker = invocation.getArgument<TrackerResult>(1)
+            comic.title = tracker.nome
+            comic.series = tracker.nome + " Series"
+            comic.publisher = "Editora " + tracker.nome
             null
         }
 
@@ -316,12 +316,12 @@ class AbaArquivoUiTest : BaseTest() {
             robot.lookup("#tbViewMal").queryAs(TableView::class.java).items.isNotEmpty()
         }
 
-        val tbViewMal = robot.lookup("#tbViewMal").queryAs(TableView::class.java) as TableView<Mal>
+        val tbViewMal = robot.lookup("#tbViewMal").queryAs(TableView::class.java) as TableView<TrackerResult>
         assertEquals(2, tbViewMal.items.size)
 
-        // Validar se a nova coluna clMalTipo está presente
-        val clTipo = tbViewMal.columns.find { it.text?.contains("Tipo", ignoreCase = true) == true }
-        assertNotNull(clTipo, "A coluna clMalTipo deveria estar presente na tabela do MAL")
+        // Validar se a coluna de site/badge está presente
+        val clSite = tbViewMal.columns.find { it.id == "clMalSite" || it.text == "" }
+        assertNotNull(clSite, "A coluna clMalSite deveria estar presente na tabela do MAL")
 
         // 2. Fluxo: Duplo Clique
         robot.doubleClickOn("Naruto Classic")
@@ -356,7 +356,7 @@ class AbaArquivoUiTest : BaseTest() {
         robot.clickOn("#btnGravarComicInfo")
         WaitForAsyncUtils.waitForFxEvents()
 
-        verify(mockComicInfoService, atLeastOnce()).updateMal(any<ComicInfo>(), any<Mal>(), any())
+        verify(mockComicInfoService, atLeastOnce()).updateTracker(any<ComicInfo>(), any<TrackerResult>(), any())
     }
 
     @Test
@@ -424,7 +424,7 @@ class AbaArquivoUiTest : BaseTest() {
                 )
 
         doReturn(comicInfoFake).whenever(mockComicInfoService).find(any(), anyOrNull())
-        doReturn(emptyList<Mal>()).whenever(mockComicInfoService).getMal(anyOrNull(), any(), any())
+        doReturn(emptyList<TrackerResult>()).whenever(mockComicInfoService).getTrackers(anyOrNull(), anyOrNull(), any(), any())
 
         // Mock do Manga se necessário ao carregar pelos campos de volume
         val mangaFake =

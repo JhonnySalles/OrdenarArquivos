@@ -76,41 +76,13 @@ internal class ComicInfoServicesTest : BaseTest() {
 
     @Test
     @Order(5)
-    fun updateMal() {
+    fun updateTracker() {
         assertNotNull(lastEntity)
-        val mal = mMockMal.mockEntity()
-        val mockAuthor = mock(dev.katsute.mal4j.manga.property.Author::class.java)
-        `when`(mockAuthor.role).thenReturn("story")
-        `when`(mockAuthor.firstName).thenReturn("Eichiro")
-        `when`(mockAuthor.lastName).thenReturn("Oda")
+        val trackerResult = mMockMal.mockEntity()
         
-        val mockTitles = mock(dev.katsute.mal4j.property.AlternativeTitles::class.java)
-        lenient().`when`(mockTitles.english).thenReturn("One Piece")
-        lenient().`when`(mockTitles.japanese).thenReturn("ワンピース")
-        lenient().`when`(mockTitles.synonyms).thenReturn(arrayOf("OP"))
+        mService.updateTracker(lastEntity!!, trackerResult, Linguagem.PORTUGUESE)
 
-        lenient().`when`(mal.mal.authors).thenReturn(arrayOf(mockAuthor))
-        lenient().`when`(mal.mal.alternativeTitles).thenReturn(mockTitles)
-        lenient().`when`(mal.mal.genres).thenReturn(arrayOf())
-        lenient().`when`(mal.mal.serialization).thenReturn(arrayOf())
-        lenient().`when`(mal.mal.title).thenReturn("One Piece Title")
-        lenient().`when`(mal.mal.id).thenReturn(123L)
-        
-        // Mocking HttpClient static calls for character list fetching
-        mockStatic(HttpClient::class.java).use { httpClientMock ->
-            val mockClient = mock(HttpClient::class.java)
-            val mockBuilder = mock(HttpClient.Builder::class.java)
-            val mockResponse = mock(HttpResponse::class.java) as HttpResponse<String>
-
-            `when`(HttpClient.newBuilder()).thenReturn(mockBuilder)
-            `when`(mockBuilder.build()).thenReturn(mockClient)
-            `when`(mockResponse.body()).thenReturn("{\"data\": [{\"character\": {\"name\": \"Test Character\"}, \"role\": \"main\"}]}")
-            `when`(mockClient.send(any(), any<HttpResponse.BodyHandler<String>>())).thenReturn(mockResponse)
-
-            mService.updateMal(lastEntity!!, mal, Linguagem.PORTUGUESE)
-
-            assertEquals(123L, lastEntity!!.idMal)
-            assertTrue(lastEntity!!.characters?.contains("Test Character") == true)
-        }
+        assertEquals(12345L, lastEntity!!.idMal)
+        assertTrue(lastEntity!!.characters?.contains("Test Char") == true)
     }
 }

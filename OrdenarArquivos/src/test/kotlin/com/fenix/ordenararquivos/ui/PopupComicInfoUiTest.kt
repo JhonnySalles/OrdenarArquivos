@@ -4,7 +4,7 @@ import com.fenix.ordenararquivos.BaseTest
 import com.fenix.ordenararquivos.controller.PopupComicInfoController
 import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
-import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
+import com.fenix.ordenararquivos.model.entities.comicinfo.TrackerResult
 import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.jfoenix.controls.JFXButton
@@ -122,8 +122,9 @@ class PopupComicInfoUiTest : BaseTest() {
         val btnMalConsultar = robot.lookup("#btnMalConsultar").queryAs(JFXButton::class.java)
         val tbViewMal = robot.lookup("#tbViewMal").queryAs(TableView::class.java)
 
-        val malResult = Mal(123L, "MAL Title", "Alt Title", null, null, mock())
-        whenever(mockComicInfoService.getMal(anyOrNull(), any(), any())).thenReturn(listOf(malResult))
+        val meta = com.fenix.ordenararquivos.model.entities.comicinfo.TrackerMetadata(123L, "MAL Title", listOf("Alt Title"), listOf("Action"), emptyList(), emptyList(), "", "manga")
+        val malResult = TrackerResult(com.fenix.ordenararquivos.model.enums.TrackerType.MYANIMELIST, 123L, "MAL Title", "Alt Title", null, null, meta)
+        whenever(mockComicInfoService.getTrackers(anyOrNull(), anyOrNull(), any(), any())).thenReturn(listOf(malResult))
 
         robot.interact {
             txtMalNome.text = "Naruto"
@@ -136,7 +137,7 @@ class PopupComicInfoUiTest : BaseTest() {
         }
         
         assertEquals(1, tbViewMal.items.size)
-        val item = tbViewMal.items[0] as Mal
+        val item = tbViewMal.items[0] as TrackerResult
         assertEquals(123L, item.id)
     }
 
@@ -149,12 +150,12 @@ class PopupComicInfoUiTest : BaseTest() {
         val btnMalAplicar = robot.lookup("#btnMalAplicar").queryAs(JFXButton::class.java)
         val txtTitle = robot.lookup("#txtTitle").queryAs(JFXTextField::class.java)
 
-        // Mock updateMal para mudar o título no objeto
+        // Mock updateTracker para mudar o título no objeto
         doAnswer {
             val ci = it.getArgument<ComicInfo>(0)
             ci.title = "Updated Title from MAL"
             null
-        }.whenever(mockComicInfoService).updateMal(any(), any(), any())
+        }.whenever(mockComicInfoService).updateTracker(any(), any(), any())
 
         robot.interact {
             tbViewMal.selectionModel.select(0)

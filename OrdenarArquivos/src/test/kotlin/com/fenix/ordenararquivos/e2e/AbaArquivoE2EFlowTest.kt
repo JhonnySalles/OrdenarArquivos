@@ -302,17 +302,18 @@ class AbaArquivoE2EFlowTest : BaseTest() {
         robot.push(KeyCode.CONTROL, KeyCode.A).push(KeyCode.BACK_SPACE)
         robot.write("One Piece")
 
-        val mockMangaMal = mock<dev.katsute.mal4j.manga.Manga>()
-        val fakeMal =
-                com.fenix.ordenararquivos.model.entities.comicinfo.Mal(
+        val meta = com.fenix.ordenararquivos.model.entities.comicinfo.TrackerMetadata(1L, "One Piece", emptyList(), emptyList(), emptyList(), emptyList(), "", "manga")
+        val fakeTracker =
+                com.fenix.ordenararquivos.model.entities.comicinfo.TrackerResult(
+                        com.fenix.ordenararquivos.model.enums.TrackerType.MYANIMELIST,
                         1L,
                         "One Piece",
                         "Desc",
                         null,
                         null,
-                        mockMangaMal
+                        meta
                 )
-        whenever(mockComicInfoService.getMal(anyOrNull(), anyOrNull())).thenReturn(listOf(fakeMal))
+        whenever(mockComicInfoService.getTrackers(anyOrNull(), anyOrNull(), anyOrNull(), any())).thenReturn(listOf(fakeTracker))
         whenever(mockComicInfoService.find(any(), anyOrNull()))
                 .thenReturn(
                         com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo().apply {

@@ -345,7 +345,7 @@ class ComicInfoServices {
         return intersection / union
     }
 
-    fun getTrackers(id: Long?, nome: String, offset: Int = 0): List<TrackerResult> {
+    fun getTrackers(idMal: Long?, idAnilist: Long?, nome: String, offset: Int = 0): List<TrackerResult> {
         val executor = Executors.newFixedThreadPool(2)
         val futureMal = CompletableFuture.supplyAsync({
             val lista = mutableListOf<TrackerResult>()
@@ -358,9 +358,9 @@ class ComicInfoServices {
                 if (MyAnimeLis == null)
                     MyAnimeLis = MyAnimeList.withClientID(Configuracao.myAnimeListClient)
 
-                if (id != null) {
-                    lista.add(toTrackerResult(MyAnimeLis!!.getManga(id)))
-                } else {
+                if (idMal != null) {
+                    lista.add(toTrackerResult(MyAnimeLis!!.getManga(idMal)))
+                } else if (nome.isNotBlank()) {
                     val query = if (nome.length > 64) nome.substring(0, 64) else nome
                     val limit = Configuracao.registrosConsultaMal
                     val consulta = MyAnimeLis!!.manga.withQuery(query).withLimit(limit).withOffset(offset).search()
@@ -377,7 +377,11 @@ class ComicInfoServices {
 
         val futureAniList = CompletableFuture.supplyAsync({
             if (offset == 0) { // AniList simple search does not paginate in current implementation
-                AniListTracker.search(id, nome)
+                if (idAnilist != null) {
+                    AniListTracker.search(idAnilist, "")
+                } else if (nome.isNotBlank()) {
+                    AniListTracker.search(null, nome)
+                } else emptyList()
             } else emptyList()
         }, executor)
 
@@ -391,11 +395,15 @@ class ComicInfoServices {
             executor.shutdown()
         }
 
-        if (id == null) {
+        if (idMal == null && idAnilist == null && nome.isNotBlank()) {
             results.sortByDescending { jaccardSimilarity(nome, it.nome) }
         }
 
         return results.toList()
+    }
+
+    fun getTrackers(id: Long?, nome: String, offset: Int = 0): List<TrackerResult> {
+        return getTrackers(id, null, nome, offset)
     }
 
     private val mDESCRIPTION_MAL = "Tagged with MyAnimeList on "
@@ -406,6 +414,8 @@ class ComicInfoServices {
         
         if (result.tracker == TrackerType.MYANIMELIST) {
             comic.idMal = dados.id
+        } else if (result.tracker == TrackerType.ANILIST) {
+            comic.idAnilist = dados.id
         }
 
         comic.languageISO = linguagem.sigla

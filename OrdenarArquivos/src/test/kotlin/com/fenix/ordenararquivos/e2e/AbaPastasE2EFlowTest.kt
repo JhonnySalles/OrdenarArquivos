@@ -280,32 +280,51 @@ class AbaPastasE2EFlowTest : BaseTest() {
         }
         WaitForAsyncUtils.waitForFxEvents()
 
-        val mockMal1 =
-                com.fenix.ordenararquivos.model.entities.comicinfo.Mal(
-                        1L,
-                        "Naruto Original",
-                        "Desc 1",
-                        null,
-                        null,
-                        mock()
-                )
-        val mockMal2 =
-                com.fenix.ordenararquivos.model.entities.comicinfo.Mal(
-                        2L,
-                        "Naruto Shippuden",
-                        "Desc 2",
-                        null,
-                        null,
-                        mock()
-                )
-        whenever(mockComicInfoService.getMal(anyOrNull(), any()))
-                .thenReturn(listOf(mockMal1, mockMal2))
-        whenever(mockComicInfoService.updateMal(any(), any(), any())).thenAnswer { inv ->
-            val comic =
-                    inv.getArgument<com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo>(0)
-            val mal = inv.getArgument<com.fenix.ordenararquivos.model.entities.comicinfo.Mal>(1)
-            comic.idMal = mal.id
-            comic.title = mal.nome
+        val mockMetadata1 = com.fenix.ordenararquivos.model.entities.comicinfo.TrackerMetadata(
+            id = 1L,
+            title = "Naruto Original",
+            alternativeTitles = listOf("Naruto"),
+            genres = listOf("Action"),
+            authors = emptyList(),
+            serialization = emptyList(),
+            url = "",
+            type = "manga"
+        )
+        val mockTracker1 = com.fenix.ordenararquivos.model.entities.comicinfo.TrackerResult(
+            tracker = com.fenix.ordenararquivos.model.enums.TrackerType.MYANIMELIST,
+            id = 1L,
+            nome = "Naruto Original",
+            descricao = "Desc 1",
+            site = null,
+            imagem = null,
+            dados = mockMetadata1
+        )
+        val mockMetadata2 = com.fenix.ordenararquivos.model.entities.comicinfo.TrackerMetadata(
+            id = 2L,
+            title = "Naruto Shippuden",
+            alternativeTitles = listOf("Naruto Shippuden"),
+            genres = listOf("Action"),
+            authors = emptyList(),
+            serialization = emptyList(),
+            url = "",
+            type = "manga"
+        )
+        val mockTracker2 = com.fenix.ordenararquivos.model.entities.comicinfo.TrackerResult(
+            tracker = com.fenix.ordenararquivos.model.enums.TrackerType.MYANIMELIST,
+            id = 2L,
+            nome = "Naruto Shippuden",
+            descricao = "Desc 2",
+            site = null,
+            imagem = null,
+            dados = mockMetadata2
+        )
+        whenever(mockComicInfoService.getTrackers(anyOrNull(), anyOrNull(), any(), any()))
+                .thenReturn(listOf(mockTracker1, mockTracker2))
+        whenever(mockComicInfoService.updateTracker(any(), any(), any())).thenAnswer { inv ->
+            val comic = inv.getArgument<com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo>(0)
+            val tracker = inv.getArgument<com.fenix.ordenararquivos.model.entities.comicinfo.TrackerResult>(1)
+            comic.idMal = tracker.id
+            comic.title = tracker.nome
             null
         }
 
