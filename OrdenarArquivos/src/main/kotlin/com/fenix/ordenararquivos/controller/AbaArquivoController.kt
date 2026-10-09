@@ -904,10 +904,35 @@ class AbaArquivoController : Initializable {
         comic.notes = txtNotes.text.ifEmpty { null }
     }
 
-    private fun carregaMal(TrackerResult: TrackerResult) {
+    private fun carregaMal(TrackerResult: TrackerResult?) {
+        if (TrackerResult == null) return
+        controllerPai.setCursor(Cursor.WAIT)
         val comic = ComicInfo(mComicInfo)
-        mServiceComicInfo.updateTracker(comic, TrackerResult, cbLinguagem.value ?: Linguagem.JAPANESE)
-        mComicInfo = comic
+        val linguagem = cbLinguagem.value ?: Linguagem.JAPANESE
+        val task = object : Task<Void>() {
+            override fun call(): Void? {
+                try {
+                    mServiceComicInfo.updateTracker(comic, TrackerResult, linguagem)
+                } catch (e: Exception) {
+                    mLOG.error("Erro ao atualizar dados do tracker: ${e.message}", e)
+                }
+                return null
+            }
+
+            override fun succeeded() {
+                mComicInfo = comic
+                controllerPai.setCursor(null)
+            }
+
+            override fun failed() {
+                controllerPai.setCursor(null)
+            }
+
+            override fun cancelled() {
+                controllerPai.setCursor(null)
+            }
+        }
+        Thread(task).start()
     }
 
     internal var mOcrService = OcrServices()

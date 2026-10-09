@@ -42,7 +42,7 @@ class ComicInfoServices {
 
     private val mLOG = LoggerFactory.getLogger(ComicInfoServices::class.java)
     private val mHttpClient: HttpClient = HttpClient.newBuilder()
-        .connectTimeout(java.time.Duration.ofSeconds(10))
+        .connectTimeout(java.time.Duration.ofSeconds(4))
         .build()
 
     private val mUPDATE_COMIC_INFO = "UPDATE ComicInfo SET comic = ?, idMal = ?, series = ?, title = ?, publisher = ?, genre = ?, imprint = ?, seriesGroup = ?, storyArc = ?, maturityRating = ?, alternativeSeries = ?, language = ?,  atualizacao = ? WHERE id = ?"
@@ -318,7 +318,7 @@ class ComicInfoServices {
             genres = genres,
             authors = authors,
             serialization = serialization,
-            url = "https://myanimelist.net/manga/\${manga.id}",
+            url = "https://myanimelist.net/manga/${manga.id}",
             type = manga.type?.field() ?: "Manga",
             characters = null // fetched later if needed
         )
@@ -514,7 +514,7 @@ class ComicInfoServices {
             try {
                 var responseBody: String? = null
                 var attempts = 0
-                val maxAttempts = 3
+                val maxAttempts = 2
 
                 while (attempts < maxAttempts) {
                     attempts++
@@ -522,7 +522,7 @@ class ComicInfoServices {
                         val reqBuilder: HttpRequest.Builder = HttpRequest.newBuilder()
                         val request: HttpRequest = reqBuilder
                             .uri(URI(String.format("https://api.jikan.moe/v4/manga/%s/characters", dados.id)))
-                            .timeout(java.time.Duration.ofSeconds(10))
+                            .timeout(java.time.Duration.ofSeconds(4))
                             .GET()
                             .build()
 
@@ -531,18 +531,18 @@ class ComicInfoServices {
                             responseBody = response.body()
                             break
                         } else if (response.statusCode() == 429) {
-                            mLOG.warn("Limite de requisições do Jikan atingido (429). Tentativa \$attempts/\$maxAttempts. Aguardando...")
-                            Thread.sleep(1500L * attempts)
+                            mLOG.warn("Limite de requisições do Jikan atingido (429). Tentativa $attempts/$maxAttempts. Aguardando...")
+                            Thread.sleep(500L * attempts)
                         } else {
-                            mLOG.warn("Falha ao consultar personagens no Jikan. Status: \${response.statusCode()}")
+                            mLOG.warn("Falha ao consultar personagens no Jikan. Status: ${response.statusCode()}")
                             break
                         }
                     } catch (e: Exception) {
                         if (attempts >= maxAttempts) {
-                            throw e
+                            // non-fatal, continue with available data
                         }
-                        mLOG.warn("Erro temporário ao consultar personagens no Jikan (tentativa \$attempts/\$maxAttempts): \${e.message}")
-                        Thread.sleep(1000L * attempts)
+                        mLOG.warn("Erro temporário ao consultar personagens no Jikan (tentativa $attempts/$maxAttempts): ${e.message}")
+                        Thread.sleep(500L * attempts)
                     }
                 }
 
@@ -565,7 +565,7 @@ class ComicInfoServices {
                                     character = character.replace(",", " ")
 
                                 val role = obj?.get("role")?.asString ?: ""
-                                characters += character + if (role.equals("main", true)) " (\$role), " else ", "
+                                characters += character + if (role.equals("main", true)) " ($role), " else ", "
                             }
                         }
                         if (characters.isNotEmpty())

@@ -1,5 +1,6 @@
 package com.fenix.ordenararquivos.model.entities.comicinfo
 
+import com.fenix.ordenararquivos.model.enums.TrackerMediaType
 import com.fenix.ordenararquivos.model.enums.TrackerType
 import com.jfoenix.controls.JFXButton
 import javafx.geometry.Pos
@@ -17,7 +18,8 @@ data class TrackerMetadata(
     val serialization: List<String>,
     val url: String,
     val type: String, // e.g. manga, novel
-    val characters: String? = null
+    val characters: String? = null,
+    val mediaType: TrackerMediaType = TrackerMediaType.from(type)
 )
 
 data class TrackerAuthor(
@@ -38,24 +40,35 @@ class TrackerResult(
     val idVisual: String get() = if (id > 0) id.toString() else ""
     val tipo: String get() = dados.type.replace("_", " ").replaceFirstChar { it.uppercase() }
     
-    // UI representation of Tracker type with badge-like HBox
-    val trackerBadge: HBox get() {
+    val mediaTypeBadge: Label get() {
+        val label = Label(dados.mediaType.label)
+        label.style = "-fx-background-color: ${dados.mediaType.color}; -fx-text-fill: white; -fx-padding: 2 4 2 4; -fx-background-radius: 4; -fx-font-size: 10px; -fx-font-weight: bold;"
+        return label
+    }
+
+    val trackerBadgeLabel: Label get() {
         val label = Label(tracker.label)
         label.style = "-fx-background-color: " + (if (tracker == TrackerType.ANILIST) "#02A9FF" else "#2E51A2") + "; -fx-text-fill: white; -fx-padding: 2 4 2 4; -fx-background-radius: 4; -fx-font-size: 10px; -fx-font-weight: bold;"
-        val box = HBox(label)
+        return label
+    }
+
+    // UI representation of Tracker type with badge-like HBox
+    val trackerBadge: HBox get() {
+        val box = HBox(trackerBadgeLabel)
         box.alignment = Pos.CENTER
         return box
     }
 
     val siteBox: VBox get() {
-        val label = Label(tracker.label)
-        label.style = "-fx-background-color: " + (if (tracker == TrackerType.ANILIST) "#02A9FF" else "#2E51A2") + "; -fx-text-fill: white; -fx-padding: 2 4 2 4; -fx-background-radius: 4; -fx-font-size: 10px; -fx-font-weight: bold;"
         val box = VBox(4.0)
         box.alignment = Pos.CENTER
         if (site != null) {
             box.children.add(site)
         }
-        box.children.add(label)
+        val badgesBox = HBox(3.0)
+        badgesBox.alignment = Pos.CENTER
+        badgesBox.children.addAll(mediaTypeBadge, trackerBadgeLabel)
+        box.children.add(badgesBox)
         return box
     }
 
