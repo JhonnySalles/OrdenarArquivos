@@ -11,8 +11,10 @@ import com.fenix.ordenararquivos.model.entities.comicinfo.AgeRating
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
 import com.fenix.ordenararquivos.model.enums.*
+import com.fenix.ordenararquivos.model.entities.HistoricoStatus
 import com.fenix.ordenararquivos.notification.AlertasModal
 import com.fenix.ordenararquivos.notification.Notificacoes
+import java.util.concurrent.Executors
 import com.fenix.ordenararquivos.process.ocr.OcrEngineFactory
 import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.OcrServices
@@ -338,6 +340,12 @@ class AbaArquivoController : Initializable {
     private lateinit var clMalImagem: TableColumn<Mal, ImageView?>
 
     internal var mRarService = WinrarServices()
+    private val mProcessingQueue = Executors.newSingleThreadExecutor { runnable ->
+        val thread = Thread(runnable)
+        thread.isDaemon = true
+        thread.name = "FileProcessorQueueThread"
+        thread
+    }
     private lateinit var controller: TelaInicialController
     var controllerPai: TelaInicialController
         get() = controller
@@ -1413,52 +1421,59 @@ class AbaArquivoController : Initializable {
     private val TRAS = " Tras"
     private val SUMARIO = " zSumário"
 
-    private fun gerarCapa(nomePasta: String, mesclarCapaTudo: Boolean): File {
+    private fun gerarCapa(
+        nomePasta: String,
+        mesclarCapaTudo: Boolean,
+        caminhoOrigem: File? = mCaminhoOrigem,
+        imagensSelecionadas: List<Capa> = mObsListaImagesSelected.toList(),
+        nomeManga: String = txtNomePastaManga.text,
+        volume: String = txtVolume.text
+    ): File {
         val destinoCapa = criaPasta("$nomePasta Capa\\")
-        if (!mObsListaImagesSelected.isEmpty()) {
+        if (imagensSelecionadas.isNotEmpty() && caminhoOrigem != null) {
             mLOG.info("Processando imagens de capa.")
-            var nome = txtNomePastaManga.text.trim { it <= ' ' } + " " + txtVolume.text.trim { it <= ' ' }
+            var nome = nomeManga.trim { it <= ' ' } + " " + volume.trim { it <= ' ' }
             if (nome.contains("]"))
                 nome = nome.substring(nome.indexOf(']') + 1).trim { it <= ' ' }
 
-            val capa = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA) == 0 }.findFirst()
+            val capa = imagensSelecionadas.stream().filter { it.tipo.compareTo(TipoCapa.CAPA) == 0 }.findFirst()
 
             if (capa.isPresent)
                 limpaMargemImagens(
                     renomeiaItem(
                         copiaItem(
-                            File(mCaminhoOrigem!!.path + "\\" + capa.get().nome),
+                            File(caminhoOrigem.path + "\\" + capa.get().nome),
                             destinoCapa
                         ), nome + FRENTE + capa.get().nome.substring(capa.get().nome.lastIndexOf("."))
                     ), false
                 )
             mLOG.info("Gerando capa da frente... " + if (capa.isPresent) (" processado. Imagem: " + capa.get().nome) else " não localizado.")
 
-            val tras = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.TRAS) == 0 }.findFirst()
+            val tras = imagensSelecionadas.stream().filter { it.tipo.compareTo(TipoCapa.TRAS) == 0 }.findFirst()
             if (tras.isPresent)
                 limpaMargemImagens(
                     renomeiaItem(
                         copiaItem(
-                            File(mCaminhoOrigem!!.path + "\\" + tras.get().nome),
+                            File(caminhoOrigem.path + "\\" + tras.get().nome),
                             destinoCapa
                         ), nome + TRAS + tras.get().nome.substring(tras.get().nome.lastIndexOf("."))
                     ), true
                 )
             mLOG.info("Gerando capa de tras... " + if (tras.isPresent) (" processado. Imagem: " + tras.get().nome) else " não localizado.")
 
-            val sumario = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.SUMARIO) == 0 }.findFirst()
+            val sumario = imagensSelecionadas.stream().filter { it.tipo.compareTo(TipoCapa.SUMARIO) == 0 }.findFirst()
 
             if (sumario.isPresent)
                 renomeiaItem(
                     copiaItem(
-                        File(mCaminhoOrigem!!.path + "\\" + sumario.get().nome),
+                        File(caminhoOrigem.path + "\\" + sumario.get().nome),
                         destinoCapa
                     ), nome + SUMARIO + sumario.get().nome.substring(sumario.get().nome.lastIndexOf("."))
                 )
             mLOG.info("Gerando sumário... " + if (sumario.isPresent) (" processado. Imagem: " + sumario.get().nome) else " não localizado.")
 
-            if (mObsListaImagesSelected.stream().anyMatch { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.direita != null }) {
-                val tudo = mObsListaImagesSelected.stream()
+            if (imagensSelecionadas.stream().anyMatch { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.direita != null }) {
+                val tudo = imagensSelecionadas.stream()
                     .filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.direita != null }
                     .findFirst()
 
@@ -1466,8 +1481,8 @@ class AbaArquivoController : Initializable {
                     mLOG.info("Gerando capa completa...  mesclando arquivos....")
                     mLOG.info("Imagem frente: " + tudo.get().nome)
                     mLOG.info("Imagem trazeira: " + tudo.get().direita!!.nome)
-                    copiaItem(File(mCaminhoOrigem!!.path + "\\" + tudo.get().nome), mPASTA_TEMPORARIA)
-                    copiaItem(File(mCaminhoOrigem!!.path + "\\" + tudo.get().direita!!.nome), mPASTA_TEMPORARIA)
+                    copiaItem(File(caminhoOrigem.path + "\\" + tudo.get().nome), mPASTA_TEMPORARIA)
+                    copiaItem(File(caminhoOrigem.path + "\\" + tudo.get().direita!!.nome), mPASTA_TEMPORARIA)
                     val esquerda = File(mPASTA_TEMPORARIA, tudo.get().nome)
                     val direita = File(mPASTA_TEMPORARIA, tudo.get().direita!!.nome)
                     val destino = File(destinoCapa.path + "\\" + nome + TUDO + ".png")
@@ -1482,7 +1497,7 @@ class AbaArquivoController : Initializable {
                             tudo.get().nome.lastIndexOf(".")
                         )
                     )
-                    renomeiaItem(copiaItem(File(mCaminhoOrigem, tudo.get().nome), destinoCapa), arquivo.name)
+                    renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().nome), destinoCapa), arquivo.name)
                     limpaMargemImagens(arquivo, true)
                     mLOG.info("Cópia concluída.")
                 }
@@ -1493,20 +1508,20 @@ class AbaArquivoController : Initializable {
                     val direita = File(mPASTA_TEMPORARIA, nome + TRAS + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
 
                     if (capa.isEmpty)
-                        renomeiaItem(copiaItem(File(mCaminhoOrigem, tudo.get().nome), destinoCapa), esquerda.name)
+                        renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().nome), destinoCapa), esquerda.name)
 
                     if (tras.isEmpty)
-                        renomeiaItem(copiaItem(File(mCaminhoOrigem, tudo.get().direita!!.nome), destinoCapa), direita.name)
+                        renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().direita!!.nome), destinoCapa), direita.name)
 
                     mLOG.info("Copiando concluída.")
                 }
-            } else if (mObsListaImagesSelected.stream()
-                    .anyMatch { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.isDupla } || mObsListaImagesSelected.stream()
+            } else if (imagensSelecionadas.stream()
+                    .anyMatch { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.isDupla } || imagensSelecionadas.stream()
                     .anyMatch { it.tipo.compareTo(TipoCapa.SUMARIO) != 0 && it.isDupla }
             ) {
-                var tudo = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.isDupla }.findFirst()
+                var tudo = imagensSelecionadas.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 && it.isDupla }.findFirst()
                 if (tudo.isEmpty)
-                    tudo = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.SUMARIO) != 0 && it.isDupla }.findFirst()
+                    tudo = imagensSelecionadas.stream().filter { it.tipo.compareTo(TipoCapa.SUMARIO) != 0 && it.isDupla }.findFirst()
 
                 mLOG.info("Gerando capa completa... copiando arquivo....")
                 mLOG.info("Imagem: " + tudo.get().nome)
@@ -1515,13 +1530,13 @@ class AbaArquivoController : Initializable {
                         tudo.get().nome.lastIndexOf(".")
                     )
                 )
-                renomeiaItem(copiaItem(File(mCaminhoOrigem, tudo.get().nome), destinoCapa), arquivo.name)
+                renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().nome), destinoCapa), arquivo.name)
                 limpaMargemImagens(arquivo, true)
                 mLOG.info("Cópia concluída.")
 
                 if (tras.isEmpty || capa.isEmpty) {
                     mLOG.info("Dividindo a capa completa para gerar a capa de frente e traz...")
-                    copiaItem(File(mCaminhoOrigem!!.path + "\\" + tudo.get().nome), mPASTA_TEMPORARIA)
+                    copiaItem(File(caminhoOrigem.path + "\\" + tudo.get().nome), mPASTA_TEMPORARIA)
                     val temp = File(mPASTA_TEMPORARIA, tudo.get().nome)
                     val esquerda = File(mPASTA_TEMPORARIA, nome + FRENTE + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
                     val direita = File(mPASTA_TEMPORARIA, nome + TRAS + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
@@ -1535,7 +1550,7 @@ class AbaArquivoController : Initializable {
                     mLOG.info("Divisão concluída.")
                 }
             } else {
-                val tudo = mObsListaImagesSelected.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 }.findFirst()
+                val tudo = imagensSelecionadas.stream().filter { it.tipo.compareTo(TipoCapa.CAPA_COMPLETA) == 0 }.findFirst()
                 if (tudo.isPresent) {
                     mLOG.info("Copiando capa completa...")
                     val arquivo = File(
@@ -1543,7 +1558,7 @@ class AbaArquivoController : Initializable {
                             tudo.get().nome.lastIndexOf(".")
                         )
                     )
-                    renomeiaItem(copiaItem(File(mCaminhoOrigem, tudo.get().nome), destinoCapa), arquivo.name)
+                    renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().nome), destinoCapa), arquivo.name)
                     limpaMargemImagens(arquivo, true)
                     mLOG.info("Cópia concluída.")
 
@@ -1552,7 +1567,7 @@ class AbaArquivoController : Initializable {
                         val esquerda = File(mPASTA_TEMPORARIA, nome + FRENTE + tudo.get().nome.substring(tudo.get().nome.lastIndexOf(".")))
 
                         if (capa.isEmpty)
-                            renomeiaItem(copiaItem(File(mCaminhoOrigem, tudo.get().nome), destinoCapa), esquerda.name)
+                            renomeiaItem(copiaItem(File(caminhoOrigem, tudo.get().nome), destinoCapa), esquerda.name)
 
                         mLOG.info("Copiando concluída.")
                     }
@@ -1564,6 +1579,17 @@ class AbaArquivoController : Initializable {
     }
 
     private fun processar() {
+        val caminhoOrigem = mCaminhoOrigem ?: run {
+            AlertasModal.erro("Erro", "Pasta de origem não selecionada.")
+            return
+        }
+        val caminhoDestino = mCaminhoDestino ?: run {
+            AlertasModal.erro("Erro", "Pasta de destino não selecionada.")
+            return
+        }
+        val filterNomeArquivo = mFilterNomeArquivo
+        val imagensSelecionadas = mObsListaImagesSelected.map { it.copy() }
+
         val nomePastaManga = txtNomePastaManga.text.trim { it <= ' ' }
         val volume = txtVolume.text.trim { it <= ' ' }
         val nomeArquivo = txtNomeArquivo.text
@@ -1573,7 +1599,6 @@ class AbaArquivoController : Initializable {
         val listaCaminhos = mListaCaminhos.map { it.copy() }.toMutableList()
 
         val mesclarCapaTudo = cbMesclarCapaTudo.isSelected
-        val verificaPaginaDupla = cbVerificaPaginaDupla.isSelected
         val compactarArquivo = cbCompactarArquivo.isSelected
         val gerarCapitulo = cbGerarCapitulo.isSelected
 
@@ -1582,29 +1607,37 @@ class AbaArquivoController : Initializable {
             nome, txtPastaOrigem.text, txtPastaDestino.text,
             txtNomePastaManga.text, txtVolume.text, txtNomeArquivo.text, txtNomePastaCapitulo.text, txtGerarInicio.text,
             txtGerarFim.text, txtAreaImportar.text, mBadgePositions.toMap(), mManga?.apply { Manga.copy(this) },
-            mComicInfo, mListaCaminhos.map { it.copy() }, mObsListaItens.toList(), mObsListaImagesSelected.map { it.copy() }, mObsListaMal.toList()
+            mComicInfo, mListaCaminhos.map { it.copy() }, mObsListaItens.toList(), mObsListaImagesSelected.map { it.copy() }, mObsListaMal.toList(),
+            HistoricoStatus.PENDENTE
         )
 
         lsVwHistorico.items.removeIf { it.nome == nome }
         lsVwHistorico.items.add(0, processarItem)
+        lsVwHistorico.refresh()
 
         val movimentaArquivos: Task<Boolean> = object : Task<Boolean>() {
             override fun call(): Boolean {
                 try {
-                    Platform.runLater { salvaManga() }
+                    processarItem.status = HistoricoStatus.PROCESSANDO
+                    Platform.runLater {
+                        controllerPai.rootProgress.progressProperty().bind(this.progressProperty())
+                        controllerPai.rootMessage.textProperty().bind(this.messageProperty())
+                        lsVwHistorico.refresh()
+                        salvaManga()
+                    }
 
                     mCANCELAR = false
                     var i = 0L
-                    val max = mCaminhoOrigem!!.listFiles(mFilterNomeArquivo)?.size?.toLong() ?: 0L
+                    val max = caminhoOrigem.listFiles(filterNomeArquivo)?.size?.toLong() ?: 0L
                     val pastasCompactar: MutableList<File> = ArrayList()
                     LAST_PROCESS_FOLDERS.clear()
                     val pastasComic = mutableMapOf<String, File>()
                     updateProgress(i, max)
 
                     updateMessage("Criando diretórios...")
-                    val nomePasta = (mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + nomePastaManga + " " + volume)
+                    val nomePasta = (caminhoDestino.path.trim { it <= ' ' } + "\\" + nomePastaManga + " " + volume)
                     updateMessage("Criando diretórios - $nomePasta Capa\\")
-                    pastasCompactar.add(gerarCapa(nomePasta, mesclarCapaTudo))
+                    pastasCompactar.add(gerarCapa(nomePasta, mesclarCapaTudo, caminhoOrigem, imagensSelecionadas, nomePastaManga, volume))
                     pastasComic["000"] = pastasCompactar[0]
 
                     // Montar lista de posições de imagem (0-based) onde cada capítulo inicia, baseado nos badges
@@ -1618,9 +1651,16 @@ class AbaArquivoController : Initializable {
                     pastasCompactar.add(destino)
                     pastasComic[listaCaminhos[capAtual].capitulo] = destino
 
-                    val filesProcessar = mCaminhoOrigem!!.listFiles(mFilterNomeArquivo)
+                    val filesProcessar = caminhoOrigem.listFiles(filterNomeArquivo)
                     if (filesProcessar == null) {
-                        Platform.runLater { AlertasModal.erro("Erro ao processar", "Não foi possível listar os arquivos do diretório de origem: ${mCaminhoOrigem!!.absolutePath}") }
+                        processarItem.status = HistoricoStatus.ERRO
+                        val err = "Não foi possível listar os arquivos do diretório de origem: ${caminhoOrigem.absolutePath}"
+                        processarItem.errorMsg = err
+                        Platform.runLater {
+                            Notificacoes.notificacao(Notificacao.ERRO, "Erro ao processar ($nome)", err)
+                            AlertasModal.erro("Erro ao processar", err)
+                            lsVwHistorico.refresh()
+                        }
                         return false
                     }
 
@@ -1661,11 +1701,11 @@ class AbaArquivoController : Initializable {
                         }
                         mCANCELAR
                     }
-                    val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + nomeArquivo
+                    val arquivoZip = caminhoDestino.path.trim { it <= ' ' } + "\\" + nomeArquivo
                     manga.caminhos = listaCaminhos
 
                     if (mRarService.compactar(
-                            mCaminhoDestino!!,
+                            caminhoDestino,
                             File(arquivoZip),
                             manga,
                             comicInfo,
@@ -1680,32 +1720,45 @@ class AbaArquivoController : Initializable {
                         LAST_PROCESS_FOLDERS = pastasCompactar
                 } catch (e: Exception) {
                     mLOG.error("Erro ao processar.", e)
-                    Platform.runLater { AlertasModal.erro("Erro ao processar", e.message ?: e.toString()) }
+                    processarItem.status = HistoricoStatus.ERRO
+                    processarItem.errorMsg = e.message ?: e.toString()
+                    Platform.runLater {
+                        Notificacoes.notificacao(Notificacao.ERRO, "Erro ao processar ($nome)", e.message ?: e.toString())
+                        AlertasModal.erro("Erro ao processar", e.message ?: e.toString())
+                        lsVwHistorico.refresh()
+                    }
+                    return false
                 }
                 return true
             }
 
             override fun succeeded() {
+                if (processarItem.status != HistoricoStatus.ERRO) {
+                    processarItem.status = HistoricoStatus.CONCLUIDO
+                }
                 updateMessage("Arquivos movidos com sucesso.")
                 controllerPai.rootProgress.progressProperty().unbind()
                 controllerPai.rootMessage.textProperty().unbind()
                 controllerPai.clearProgress()
-                habilita()
                 lsVwHistorico.refresh()
             }
 
             override fun failed() {
                 super.failed()
+                processarItem.status = HistoricoStatus.ERRO
+                val err = super.getMessage() ?: "Erro desconhecido"
+                processarItem.errorMsg = err
                 updateMessage("Erro ao mover os arquivos.")
-                AlertasModal.erro("Erro ao mover os arquivos", super.getMessage())
-                habilita()
+                Notificacoes.notificacao(Notificacao.ERRO, "Erro ao mover arquivos ($nome)", err)
+                AlertasModal.erro("Erro ao mover os arquivos", err)
+                controllerPai.rootProgress.progressProperty().unbind()
+                controllerPai.rootMessage.textProperty().unbind()
+                controllerPai.clearProgress()
+                lsVwHistorico.refresh()
             }
         }
-        controllerPai.rootProgress.progressProperty().bind(movimentaArquivos.progressProperty())
-        controllerPai.rootMessage.textProperty().bind(movimentaArquivos.messageProperty())
-        val t = Thread(movimentaArquivos)
-        t.isDaemon = true
-        t.start()
+
+        mProcessingQueue.submit(movimentaArquivos)
     }
 
     private fun mesclarImagens(arquivoDestino: File?, frente: File?, tras: File?): Boolean {
@@ -1919,15 +1972,13 @@ class AbaArquivoController : Initializable {
     @FXML
     private fun onBtnProcessa() {
         if (validaCampos()) {
-            if (btnProcessar.accessibleTextProperty().value.equals("PROCESSA", ignoreCase = true)) {
-                mListaCaminhos = ArrayList(tbViewTabela.items)
-                btnProcessar.accessibleTextProperty().set("CANCELA")
-                btnProcessar.text = "Cancelar"
-                controllerPai.setCursor(Cursor.WAIT)
-                desabilita()
-                processar()
-            } else
-                mCANCELAR = true
+            btnProcessar.isDisable = true
+            val pause = PauseTransition(Duration.seconds(2.0))
+            pause.setOnFinished { btnProcessar.isDisable = false }
+            pause.play()
+
+            mListaCaminhos = ArrayList(tbViewTabela.items)
+            processar()
         }
     }
 
@@ -2647,14 +2698,30 @@ class AbaArquivoController : Initializable {
             object : ListCell<Historico?>() {
                 override fun updateItem(historico: Historico?, empty: Boolean) {
                     super.updateItem(historico, empty)
-                    text = if (empty || historico == null) null else historico.nome
+                    if (empty || historico == null) {
+                        text = null
+                        graphic = null
+                        textFill = Color.BLACK
+                    } else {
+                        val statusSuffix = when (historico.status) {
+                            HistoricoStatus.PENDENTE -> " (Na fila)"
+                            HistoricoStatus.PROCESSANDO -> " (Processando...)"
+                            HistoricoStatus.CONCLUIDO -> " (Concluído)"
+                            HistoricoStatus.ERRO -> " (Erro)"
+                        }
+                        text = historico.nome + statusSuffix
+                        textFill = if (historico.status == HistoricoStatus.ERRO) Color.RED else Color.BLACK
+                    }
                 }
             }
         }
 
         lsVwHistorico.onMouseClicked = EventHandler { click: MouseEvent ->
+            val item = lsVwHistorico.selectionModel.selectedItem
+            if (click.clickCount == 1 && item != null && item.status == HistoricoStatus.ERRO && !item.errorMsg.isNullOrBlank()) {
+                Notificacoes.notificacao(Notificacao.ERRO, "Erro no Histórico (${item.nome})", item.errorMsg ?: "Erro ao processar.")
+            }
             if (click.clickCount > 1 && lsVwHistorico.items.isNotEmpty()) {
-                val item = lsVwHistorico.selectionModel.selectedItem
                 if (item != null) {
                     txtPastaOrigem.text = item.pastaOrigem
                     txtPastaDestino.text = item.pastaDestino
@@ -2744,7 +2811,20 @@ class AbaArquivoController : Initializable {
     private var mNomePastaAnterior = ""
     private var mInsetCapitulo = false
     private var mLastCaretPos = 0
+    private fun getPathSanitizerFormatter(): javafx.scene.control.TextFormatter<String> {
+        return javafx.scene.control.TextFormatter { change ->
+            if (change.isContentChange) {
+                change.text = change.text.replace(Regex("[\\\\/:*?\"<>|]"), "")
+            }
+            change
+        }
+    }
+
     private fun configuraTextEdit() {
+        txtNomePastaManga.textFormatter = getPathSanitizerFormatter()
+        txtNomePastaCapitulo.textFormatter = getPathSanitizerFormatter()
+        txtNomeArquivo.textFormatter = getPathSanitizerFormatter()
+
         txtSeparadorPagina.isDisable = true
         txtSeparadorCapitulo.isDisable = true
 

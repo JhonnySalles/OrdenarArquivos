@@ -3,6 +3,13 @@ package com.fenix.ordenararquivos.model.entities
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
 import com.fenix.ordenararquivos.model.entities.comicinfo.Mal
 
+enum class HistoricoStatus {
+    PENDENTE,
+    PROCESSANDO,
+    CONCLUIDO,
+    ERRO
+}
+
 data class Historico(
     val nome: String,
     val pastaOrigem: String,
@@ -20,5 +27,7 @@ data class Historico(
     val caminhos: List<Caminhos>,
     val itens: List<String>,
     val capas: List<Capa>,
-    val mal: List<Mal>
+    val mal: List<Mal>,
+    var status: HistoricoStatus = HistoricoStatus.PENDENTE,
+    var errorMsg: String? = null
 )

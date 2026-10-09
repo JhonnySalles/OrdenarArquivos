@@ -243,6 +243,9 @@ class TelaInicialController : Initializable {
 
     fun setLog(texto: String, isError: Boolean = false) {
         Platform.runLater {
+            if (lblProgresso.textProperty().isBound) {
+                lblProgresso.textProperty().unbind()
+            }
             lblProgresso.text = texto
             if (isError) {
                 // Aqui poderíamos adicionar uma lógica visual para erro no lblProgresso se necessário

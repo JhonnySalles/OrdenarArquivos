@@ -35,6 +35,9 @@ import java.util.*
 class ComicInfoServices {
 
     private val mLOG = LoggerFactory.getLogger(ComicInfoServices::class.java)
+    private val mHttpClient: HttpClient = HttpClient.newBuilder()
+        .connectTimeout(java.time.Duration.ofSeconds(10))
+        .build()
 
     private val mUPDATE_COMIC_INFO = "UPDATE ComicInfo SET comic = ?, idMal = ?, series = ?, title = ?, publisher = ?, genre = ?, imprint = ?, seriesGroup = ?, storyArc = ?, maturityRating = ?, alternativeSeries = ?, language = ?,  atualizacao = ? WHERE id = ?"
     private val mINSERT_COMIC_INFO = "INSERT INTO ComicInfo (id, comic, idMal, series, title, publisher, genre, imprint, seriesGroup, storyArc, maturityRating, alternativeSeries, language, criacao, atualizacao) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
@@ -420,17 +423,41 @@ class ComicInfoServices {
         comic.notes = notes.substring(0, notes.lastIndexOf("; "))
 
         try {
-            val reqBuilder: HttpRequest.Builder = HttpRequest.newBuilder()
-            val request: HttpRequest = reqBuilder
-                .uri(URI(String.format("https://api.jikan.moe/v4/manga/%s/characters", dados.id)))
-                .GET()
-                .build()
-            val response: HttpResponse<String> = HttpClient.newBuilder()
-                .build()
-                .send(request, HttpResponse.BodyHandlers.ofString())
+            var responseBody: String? = null
+            var attempts = 0
+            val maxAttempts = 3
 
-            val responseBody: String = response.body()
-            if (responseBody.contains("character")) {
+            while (attempts < maxAttempts) {
+                attempts++
+                try {
+                    val reqBuilder: HttpRequest.Builder = HttpRequest.newBuilder()
+                    val request: HttpRequest = reqBuilder
+                        .uri(URI(String.format("https://api.jikan.moe/v4/manga/%s/characters", dados.id)))
+                        .timeout(java.time.Duration.ofSeconds(10))
+                        .GET()
+                        .build()
+
+                    val response: HttpResponse<String> = mHttpClient.send(request, HttpResponse.BodyHandlers.ofString())
+                    if (response.statusCode() == 200) {
+                        responseBody = response.body()
+                        break
+                    } else if (response.statusCode() == 429) {
+                        mLOG.warn("Limite de requisições do Jikan atingido (429). Tentativa $attempts/$maxAttempts. Aguardando...")
+                        Thread.sleep(1500L * attempts)
+                    } else {
+                        mLOG.warn("Falha ao consultar personagens no Jikan. Status: ${response.statusCode()}")
+                        break
+                    }
+                } catch (e: Exception) {
+                    if (attempts >= maxAttempts) {
+                        throw e
+                    }
+                    mLOG.warn("Erro temporário ao consultar personagens no Jikan (tentativa $attempts/$maxAttempts): ${e.message}")
+                    Thread.sleep(1000L * attempts)
+                }
+            }
+
+            if (responseBody != null && responseBody.contains("character")) {
                 val gson = Gson()
                 val element: JsonElement = gson.fromJson(responseBody, JsonElement::class.java)
                 val jsonObject: JsonObject = element.asJsonObject
