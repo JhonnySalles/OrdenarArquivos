@@ -56,6 +56,7 @@
         <io.grpc.version>1.62.2</io.grpc.version>
         <google.api.version>v3-rev20230822-2.0.0</google.api.version>
         <google.auth.version>1.24.0</google.auth.version>
+        <twelvemonkeys.version>3.12.0</twelvemonkeys.version>
     </properties>
 
     <repositories>
@@ -351,6 +352,13 @@
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>${ocr.json.version}</version>
+        </dependency>
+
+        <!-- TwelveMonkeys ImageIO WebP -->
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-webp</artifactId>
+            <version>${twelvemonkeys.version}</version>
         </dependency>
 
         <!-- XML -->

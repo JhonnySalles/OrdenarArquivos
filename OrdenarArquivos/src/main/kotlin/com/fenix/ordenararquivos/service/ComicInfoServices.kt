@@ -377,10 +377,21 @@ class ComicInfoServices {
 
         val futureAniList = CompletableFuture.supplyAsync({
             if (offset == 0) { // AniList simple search does not paginate in current implementation
-                if (idAnilist != null) {
-                    AniListTracker.search(idAnilist, "")
-                } else if (nome.isNotBlank()) {
-                    AniListTracker.search(null, nome)
+                val searchId = if (idMal != null) null else idAnilist
+                var searchNome = nome
+                if (searchNome.isBlank() && idMal != null) {
+                    try {
+                        val malResults = futureMal.get()
+                        searchNome = malResults.firstOrNull()?.nome ?: ""
+                    } catch (e: Exception) {
+                        searchNome = ""
+                    }
+                }
+
+                if (searchId != null) {
+                    AniListTracker.search(searchId, "")
+                } else if (searchNome.isNotBlank()) {
+                    AniListTracker.search(null, searchNome)
                 } else emptyList()
             } else emptyList()
         }, executor)

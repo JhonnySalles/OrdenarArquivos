@@ -890,41 +890,42 @@ class AbaPastasController : Initializable {
         }
     }
 
-    private fun converterWebpParaJpg(origem: File, destino: File): Boolean {
-        try {
-            val fxImage = Image(origem.toURI().toString())
-            if (!fxImage.isError && fxImage.width > 0) {
-                val width = fxImage.width.toInt()
-                val height = fxImage.height.toInt()
-                val reader = fxImage.pixelReader
-                if (reader != null) {
-                    val rgbImage = java.awt.image.BufferedImage(width, height, java.awt.image.BufferedImage.TYPE_INT_RGB)
-                    for (y in 0 until height) {
-                        for (x in 0 until width) {
-                            val argb = reader.getArgb(x, y)
-                            rgbImage.setRGB(x, y, argb)
-                        }
-                    }
-                    return javax.imageio.ImageIO.write(rgbImage, "jpg", destino)
-                }
-            }
-        } catch (e: Throwable) {
-            mLOG.warn("Falha ao converter com JavaFX Image: ${e.message}")
-        }
-
+    internal fun converterWebpParaJpg(origem: File, destino: File): Boolean {
         try {
             val buffered = javax.imageio.ImageIO.read(origem)
             if (buffered != null) {
                 val rgbImage = java.awt.image.BufferedImage(buffered.width, buffered.height, java.awt.image.BufferedImage.TYPE_INT_RGB)
                 val g = rgbImage.createGraphics()
-                g.color = java.awt.Color.WHITE
-                g.fillRect(0, 0, buffered.width, buffered.height)
-                g.drawImage(buffered, 0, 0, null)
-                g.dispose()
-                return javax.imageio.ImageIO.write(rgbImage, "jpg", destino)
+                try {
+                    g.color = java.awt.Color.WHITE
+                    g.fillRect(0, 0, buffered.width, buffered.height)
+                    g.drawImage(buffered, 0, 0, null)
+                } finally {
+                    g.dispose()
+                }
+
+                val writers = javax.imageio.ImageIO.getImageWritersByFormatName("jpg")
+                if (writers.hasNext()) {
+                    val writer = writers.next()
+                    javax.imageio.ImageIO.createImageOutputStream(destino).use { ios ->
+                        writer.output = ios
+                        val param = writer.defaultWriteParam
+                        if (param.canWriteCompressed()) {
+                            param.compressionMode = javax.imageio.ImageWriteParam.MODE_EXPLICIT
+                            param.compressionQuality = 1.0f // 100% máxima qualidade
+                        }
+                        writer.write(null, javax.imageio.IIOImage(rgbImage, null, null), param)
+                    }
+                    writer.dispose()
+                    return true
+                } else {
+                    return javax.imageio.ImageIO.write(rgbImage, "jpg", destino)
+                }
+            } else {
+                mLOG.warn("Não foi possível decodificar a imagem WebP (ImageIO retornou null): ${origem.absolutePath}")
             }
         } catch (e: Throwable) {
-            mLOG.warn("Falha ao converter com ImageIO: ${e.message}")
+            mLOG.error("Falha ao converter WebP para JPG (${origem.name}): ${e.message}", e)
         }
         return false
     }

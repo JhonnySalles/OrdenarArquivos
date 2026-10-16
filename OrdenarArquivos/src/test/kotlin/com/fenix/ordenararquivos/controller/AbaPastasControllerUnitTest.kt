@@ -6,6 +6,7 @@ import com.fenix.ordenararquivos.service.ComicInfoServices
 import com.fenix.ordenararquivos.service.MangaServices
 import com.fenix.ordenararquivos.service.WinrarServices
 import com.jfoenix.controls.JFXButton
+import com.jfoenix.controls.JFXCheckBox
 import com.jfoenix.controls.JFXComboBox
 import com.jfoenix.controls.JFXTextField
 import com.fenix.ordenararquivos.model.enums.Linguagem
@@ -51,6 +52,11 @@ class AbaPastasControllerUnitTest : BaseJfxTest() {
         setField("btnCompactar", JFXButton())
         setField("btnAjustarPastas", JFXButton())
         setField("btnCapitulos", JFXButton())
+        setField("btnSubstituir", JFXButton())
+        setField("btnConverterWebp", JFXButton())
+        setField("btnRemoverXml", JFXButton())
+        setField("ckbSelecionarTodos", JFXCheckBox())
+        setField("cbApagarArquivo", JFXCheckBox())
         setField("tbViewProcessar", TableView<Pasta>())
         setField("cbManga", JFXComboBox<String>().apply { items = FXCollections.observableArrayList() })
         setField("txtMalId", JFXTextField())
@@ -175,5 +181,51 @@ class AbaPastasControllerUnitTest : BaseJfxTest() {
         pasta.titulo = "[Scan] Cap. 15 - Teste"
         method.invoke(controller, false)
         assertEquals("Teste", pasta.titulo)
+    }
+
+    @Test
+    fun testWebpReaderRegistradoNoImageIO() {
+        val readers = javax.imageio.ImageIO.getImageReadersByFormatName("webp")
+        assertTrue(readers.hasNext(), "Deveria haver pelo menos um ImageReader registrado para o formato 'webp'")
+    }
+
+    @Test
+    fun testConverterWebpParaJpgSucesso() {
+        val tempDir = Files.createTempDirectory("test_webp").toFile()
+        val webpFile = File(tempDir, "imagem_teste.webp")
+        val jpgFile = File(tempDir, "imagem_teste.jpg")
+
+        // 1x1 pixel WebP válido codificado em Base64
+        val webpBase64 = "UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAQAcJaQAA3AA/v3AgAA="
+        val bytes = java.util.Base64.getDecoder().decode(webpBase64)
+        webpFile.writeBytes(bytes)
+
+        val resultado = controller.converterWebpParaJpg(webpFile, jpgFile)
+
+        assertTrue(resultado, "A conversão de WebP para JPG deveria retornar true")
+        assertTrue(jpgFile.exists(), "O arquivo JPG de destino deveria ter sido criado")
+        assertTrue(jpgFile.length() > 0, "O arquivo JPG não deveria estar vazio")
+
+        val imagemConvertida = javax.imageio.ImageIO.read(jpgFile)
+        assertNotNull(imagemConvertida, "A imagem JPG gerada deve ser legível pelo ImageIO")
+        assertEquals(1, imagemConvertida.width)
+        assertEquals(1, imagemConvertida.height)
+
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun testConverterWebpParaJpgArquivoInvalidoRetornaFalse() {
+        val tempDir = Files.createTempDirectory("test_webp_inv").toFile()
+        val webpFile = File(tempDir, "corrompido.webp")
+        val jpgFile = File(tempDir, "corrompido.jpg")
+
+        webpFile.writeText("arquivo de texto fingindo ser webp")
+
+        val resultado = controller.converterWebpParaJpg(webpFile, jpgFile)
+        assertFalse(resultado, "Conversão de arquivo corrompido/inválido deve retornar false")
+        assertFalse(jpgFile.exists(), "Não deve criar arquivo JPG quando a conversão falha")
+
+        tempDir.deleteRecursively()
     }
 }

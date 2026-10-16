@@ -150,4 +150,84 @@ class AbaComicInfoControllerUnitTest : BaseJfxTest() {
         assertTrue(item.tags.contains("3${Utils.SEPARADOR_IMAGEM}Capítulo 010"))
         assertEquals("Capítulo 010", item.comicInfo?.pages?.first()?.bookmark)
     }
+
+    @Test
+    fun testSortedNaturallyHierarchicalCapitulosDecimais() {
+        val files = listOf(
+            File("temp/Capítulo 003.5/01.jpg"),
+            File("temp/Capítulo 003/01.jpg"),
+            File("temp/Capítulo 003.2/01.jpg"),
+            File("temp/Capítulo 003.4/01.jpg"),
+            File("temp/Capítulo 004/01.jpg"),
+            File("temp/cover.jpg")
+        )
+
+        val method = controller.javaClass.getDeclaredMethod("sortedNaturally", List::class.java)
+        method.isAccessible = true
+
+        @Suppress("UNCHECKED_CAST")
+        val sorted = method.invoke(controller, files) as List<File>
+
+        assertEquals(
+            listOf(
+                File("temp/cover.jpg"),
+                File("temp/Capítulo 003/01.jpg"),
+                File("temp/Capítulo 003.2/01.jpg"),
+                File("temp/Capítulo 003.4/01.jpg"),
+                File("temp/Capítulo 003.5/01.jpg"),
+                File("temp/Capítulo 004/01.jpg")
+            ),
+            sorted
+        )
+    }
+
+    @Test
+    fun testSortedNaturallyPastasPuramenteNumericas() {
+        val files = listOf(
+            File("temp/003.5/01.jpg"),
+            File("temp/003/01.jpg"),
+            File("temp/003.2/01.jpg"),
+            File("temp/004/01.jpg")
+        )
+
+        val method = controller.javaClass.getDeclaredMethod("sortedNaturally", List::class.java)
+        method.isAccessible = true
+
+        @Suppress("UNCHECKED_CAST")
+        val sorted = method.invoke(controller, files) as List<File>
+
+        assertEquals(
+            listOf(
+                File("temp/003/01.jpg"),
+                File("temp/003.2/01.jpg"),
+                File("temp/003.5/01.jpg"),
+                File("temp/004/01.jpg")
+            ),
+            sorted
+        )
+    }
+
+    @Test
+    fun testSortedNaturallyStringPaths() {
+        val paths = listOf(
+            "Capítulo 003.5/01.jpg",
+            "Capítulo 003/01.jpg",
+            "Capítulo 003.2/01.jpg"
+        )
+
+        val method = controller.javaClass.getDeclaredMethod("sortedNaturally", List::class.java)
+        method.isAccessible = true
+
+        @Suppress("UNCHECKED_CAST")
+        val sorted = method.invoke(controller, paths) as List<String>
+
+        assertEquals(
+            listOf(
+                "Capítulo 003/01.jpg",
+                "Capítulo 003.2/01.jpg",
+                "Capítulo 003.5/01.jpg"
+            ),
+            sorted
+        )
+    }
 }

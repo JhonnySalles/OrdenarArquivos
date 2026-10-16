@@ -2453,26 +2453,28 @@ class AbaComicInfoController : Initializable {
 
                 if (tag == null) {
                     // Identificar capítulos por pastas (primeira imagem da pasta)
-                    if (!foldersProcessed.contains(folderPath)) {
-                        val regexCap = Regex("(?i)(capítulo|chapter|第|ch)\\s*([\\d.]+)", RegexOption.IGNORE_CASE)
-                        val match = regexCap.find(fileImg.parentFile.name)
-                        if (match != null) {
-                            val numeroStr = match.groupValues[2]
-                            val numero = Utils.getNumber(numeroStr)
-                            if (numero != null) {
-                                val formatado = mDecimal.format(numero)
-                                chaptersFoundInFile.add(formatado)
-                                val prefix = when (language) {
-                                    Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(formatado)}話"
-                                    Linguagem.ENGLISH -> "Chapter $formatado"
-                                    else -> "Capítulo $formatado"
-                                }
-                                val titulo = mapCapitulos[formatado]
-                                tag = if (titulo != null) {
-                                    "$prefix ${Utils.SEPARADOR_IMPORTACAO} $formatado${Utils.SEPARADOR_CAPITULO}$titulo"
-                                } else {
-                                    prefix
-                                }
+                    if (fileImg.parentFile.absolutePath != extractDir.absolutePath && !foldersProcessed.contains(folderPath)) {
+                        val folderName = fileImg.parentFile.name
+                        val regexCap = Regex("(?i)(capitulo|capítulo|chapter|chap|ch\\.?|cap\\.?|c\\.?|第)\\s*([\\d.]+)", RegexOption.IGNORE_CASE)
+                        val match = regexCap.find(folderName)
+                        val numero = if (match != null) {
+                            Utils.getNumber(match.groupValues[2])
+                        } else {
+                            Utils.getNumber(folderName)
+                        }
+                        if (numero != null) {
+                            val formatado = mDecimal.format(numero)
+                            chaptersFoundInFile.add(formatado)
+                            val prefix = when (language) {
+                                Linguagem.JAPANESE -> "第${Utils.toNumberJapanese(formatado)}話"
+                                Linguagem.ENGLISH -> "Chapter $formatado"
+                                else -> "Capítulo $formatado"
+                            }
+                            val titulo = mapCapitulos[formatado]
+                            tag = if (titulo != null) {
+                                "$prefix ${Utils.SEPARADOR_IMPORTACAO} $formatado${Utils.SEPARADOR_CAPITULO}$titulo"
+                            } else {
+                                prefix
                             }
                         }
                         foldersProcessed.add(folderPath)
@@ -2576,7 +2578,7 @@ class AbaComicInfoController : Initializable {
                     val capInfo = if (tagText.contains(Utils.SEPARADOR_IMPORTACAO)) {
                         tagText.substringAfter(Utils.SEPARADOR_IMPORTACAO).trim().substringBefore(Utils.SEPARADOR_CAPITULO).trim()
                     } else {
-                        val match = Regex("(?i)(capítulo|chapter|第|ch)\\s*([\\d.]+)").find(tagText)
+                        val match = Regex("(?i)(capitulo|capítulo|chapter|chap|ch\\.?|cap\\.?|c\\.?|第)\\s*([\\d.]+)").find(tagText)
                         if (match != null) {
                             val num = Utils.getNumber(match.groupValues[2])
                             if (num != null) mDecimal.format(num) else null
@@ -2587,10 +2589,14 @@ class AbaComicInfoController : Initializable {
                         val num = Utils.getNumber(capInfo)
                         if (num != null) {
                             val formatado = mDecimal.format(num)
-                            // Procura a primeira página de uma pasta que contenha o número do capítulo
+                            val regexFolder = Regex("(?i)(capitulo|capítulo|chapter|chap|ch\\.?|cap\\.?|c\\.?|第)\\s*([\\d.]+)", RegexOption.IGNORE_CASE)
+                            // Procura a primeira página de uma pasta que corresponda ao número do capítulo
                             foundIndex = imagensFisicas.indexOfFirst { fileImg ->
-                                val folderName = fileImg.parentFile.name.lowercase()
-                                folderName.contains(formatado) || folderName.contains(num.toInt().toString())
+                                if (fileImg.parentFile.absolutePath == extractDir.absolutePath) return@indexOfFirst false
+                                val folderName = fileImg.parentFile.name
+                                val matchFolder = regexFolder.find(folderName)
+                                val fNum = if (matchFolder != null) Utils.getNumber(matchFolder.groupValues[2]) else Utils.getNumber(folderName)
+                                fNum != null && (fNum == num || mDecimal.format(fNum) == formatado)
                             }
                         }
                     }
@@ -2619,26 +2625,49 @@ class AbaComicInfoController : Initializable {
         }
     }
 
-    private fun <T> List<T>.sortedNaturally(): List<T> {
+    private fun compareNaturalStrings(s1: String, s2: String): Int {
         val regex = "(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)".toRegex()
-        return this.sortedWith { o1, o2 ->
-            val s1 = if (o1 is File) o1.absolutePath else o1.toString()
-            val s2 = if (o2 is File) o2.absolutePath else o2.toString()
-
-            val chunks1 = s1.split(regex)
-            val chunks2 = s2.split(regex)
-            var result = 0
-            for (i in 0 until minOf(chunks1.size, chunks2.size)) {
-                val c1 = chunks1[i]
-                val c2 = chunks2[i]
-                if (c1 != c2) {
-                    val n1 = c1.toLongOrNull()
-                    val n2 = c2.toLongOrNull()
-                    result = if (n1 != null && n2 != null) n1.compareTo(n2) else c1.compareTo(c2, ignoreCase = true)
-                    if (result != 0) break
-                }
+        val chunks1 = s1.split(regex)
+        val chunks2 = s2.split(regex)
+        for (i in 0 until minOf(chunks1.size, chunks2.size)) {
+            val c1 = chunks1[i]
+            val c2 = chunks2[i]
+            if (c1 != c2) {
+                val n1 = c1.toLongOrNull()
+                val n2 = c2.toLongOrNull()
+                val result = if (n1 != null && n2 != null) n1.compareTo(n2) else c1.compareTo(c2, ignoreCase = true)
+                if (result != 0) return result
             }
-            if (result == 0) chunks1.size.compareTo(chunks2.size) else result
+        }
+        return chunks1.size.compareTo(chunks2.size)
+    }
+
+    private fun <T> List<T>.sortedNaturally(): List<T> {
+        return this.sortedWith { o1, o2 ->
+            val isPath1 = o1 is File || (o1 is String && (o1.contains('/') || o1.contains('\\')))
+            val isPath2 = o2 is File || (o2 is String && (o2.contains('/') || o2.contains('\\')))
+
+            if (isPath1 && isPath2) {
+                val path1 = if (o1 is File) o1.path else o1.toString()
+                val path2 = if (o2 is File) o2.path else o2.toString()
+                val segs1 = path1.split('/', '\\').filter { it.isNotEmpty() }
+                val segs2 = path2.split('/', '\\').filter { it.isNotEmpty() }
+
+                val minSegs = minOf(segs1.size, segs2.size)
+                for (i in 0 until minSegs) {
+                    val isLast1 = i == segs1.size - 1
+                    val isLast2 = i == segs2.size - 1
+
+                    if (isLast1 && !isLast2) return@sortedWith -1
+                    if (!isLast1 && isLast2) return@sortedWith 1
+
+                    val cmp = compareNaturalStrings(segs1[i], segs2[i])
+                    if (cmp != 0) return@sortedWith cmp
+                }
+                segs1.size.compareTo(segs2.size)
+            } else {
+                compareNaturalStrings(o1.toString(), o2.toString())
+            }
         }
     }
 

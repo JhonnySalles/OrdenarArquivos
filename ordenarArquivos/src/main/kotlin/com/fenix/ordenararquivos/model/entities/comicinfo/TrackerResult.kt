@@ -65,10 +65,8 @@ class TrackerResult(
         if (site != null) {
             box.children.add(site)
         }
-        val badgesBox = HBox(3.0)
-        badgesBox.alignment = Pos.CENTER
-        badgesBox.children.addAll(mediaTypeBadge, trackerBadgeLabel)
-        box.children.add(badgesBox)
+        box.children.add(mediaTypeBadge)
+        box.children.add(trackerBadgeLabel)
         return box
     }
 
