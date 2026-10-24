@@ -323,6 +323,9 @@ class AbaArquivoController : Initializable {
     private lateinit var btnAmazonConsultar: JFXButton
 
     @FXML
+    private lateinit var btnApiConsultar: JFXButton
+
+    @FXML
     private lateinit var btnMalAplicar: JFXButton
 
     @FXML
@@ -722,6 +725,24 @@ class AbaArquivoController : Initializable {
             null
         }
         PopupAmazonController.abreTelaAmazon(controllerPai.rootStack, controllerPai.rootTab, callback, mComicInfo, cbLinguagem.value)
+    }
+
+    @FXML
+    private fun onBtnApiConsultar() {
+        val callback: Callback<ComicInfo, Boolean> = Callback<ComicInfo, Boolean> { param ->
+            val localPages = mComicInfo.pages
+            val localPageCount = mComicInfo.pageCount
+            param.pages = localPages
+            param.pageCount = localPageCount
+            mComicInfo = param
+
+            val selecionado = if (mComicInfo.idMal != null || mComicInfo.idAnilist != null || mComicInfo.series.isNotBlank()) Selecionado.SELECIONADO else Selecionado.SELECIONAR
+            Selecionado.setTabColor(tbTabArquivo_ComicInfo, selecionado)
+            tbTabArquivo_ComicInfo.text = "Comic Info" + (if (selecionado == Selecionado.SELECIONADO) " (" + param.comic.ifBlank { param.series } + ")" else "")
+            null
+        }
+        val termoInicial = mComicInfo.series.ifBlank { null } ?: mComicInfo.title.ifBlank { null } ?: txtNomeArquivo.text.substringBeforeLast(".")
+        PopupBuscaApiController.abreTelaBuscaApi(controllerPai.rootStack, controllerPai.rootTab, callback, termoInicial)
     }
 
     private fun desabilita() {

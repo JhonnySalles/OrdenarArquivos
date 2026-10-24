@@ -433,6 +433,13 @@
             <artifactId>google-auth-library-oauth2-http</artifactId>
             <version>${google.auth.version}</version>
         </dependency>
+
+        <!-- Descoberta mDNS na rede local -->
+        <dependency>
+            <groupId>org.jmdns</groupId>
+            <artifactId>jmdns</artifactId>
+            <version>3.5.9</version>
+        </dependency>
     </dependencies>
 
     <build>

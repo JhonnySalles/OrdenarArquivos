@@ -65,6 +65,12 @@ class TelaInicialController : Initializable {
     private lateinit var btnAtualizar: JFXButton
 
     @FXML
+    private lateinit var btnApi: JFXButton
+
+    @FXML
+    private lateinit var imgApi: ImageView
+
+    @FXML
     private lateinit var btnCompartilhamento: JFXButton
 
     @FXML
@@ -104,6 +110,32 @@ class TelaInicialController : Initializable {
     private val imgAnimaCompartilhaEspera = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamentoEspera_48.png"))
     private val imgAnimaCompartilhaErro = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamentoErro_48.png"))
     private val imgAnimaCompartilhaEnvio = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoCompartilhamentoEnvio_48.png"))
+
+    private val imgApiDesconectado = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoApiDesconectado_48.png"))
+    private val imgApiConectado = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoApiConectado_48.png"))
+    private val imgApiErro = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoApiErro_48.png"))
+    private val imgApiEspera = Image(TelaInicialController::class.java.getResourceAsStream("/images/icoApiEspera_48.png"))
+
+    @FXML
+    private fun onBtnApi() {
+        val statusAtual = com.fenix.ordenararquivos.service.ReaderApiServices.status
+        val url = com.fenix.ordenararquivos.service.ReaderApiServices.baseUrl
+        if (statusAtual == com.fenix.ordenararquivos.service.ReaderApiServices.ApiStatus.CONECTADO) {
+            Notificacoes.notificacao(Notificacao.SUCESSO, "ReaderServer API", "API online e conectada em $url")
+        } else {
+            setLog("Tentando reconectar à ReaderServer API...")
+            Thread {
+                val ok = com.fenix.ordenararquivos.service.ReaderApiServices.descobrirEConectar(forcar = true)
+                Platform.runLater {
+                    if (ok) {
+                        Notificacoes.notificacao(Notificacao.SUCESSO, "ReaderServer API", "Conectado à API em ${com.fenix.ordenararquivos.service.ReaderApiServices.baseUrl}")
+                    } else {
+                        Notificacoes.notificacao(Notificacao.ALERTA, "ReaderServer API", "Não foi possível conectar à ReaderServer API.")
+                    }
+                }
+            }.start()
+        }
+    }
 
     @FXML
     private fun onSelectChanged(event: Event) {
@@ -273,6 +305,41 @@ class TelaInicialController : Initializable {
         // em seus cabeçalhos e mude de aba ao pressionar as setas direcionais enquanto o usuário interage
         // com elementos internos (como a Grid ou botões de ação).
         tpGlobal.isFocusTraversable = false
+
+        // Configuração e Descoberta da ReaderServer API na rede local
+        configurarStatusApi()
+        Thread {
+            com.fenix.ordenararquivos.service.ReaderApiServices.descobrirEConectar()
+        }.start()
+    }
+
+    private fun configurarStatusApi() {
+        com.fenix.ordenararquivos.service.ReaderApiServices.addStatusListener { status, url ->
+            Platform.runLater {
+                when (status) {
+                    com.fenix.ordenararquivos.service.ReaderApiServices.ApiStatus.CONECTADO -> {
+                        imgApi.image = imgApiConectado
+                        btnApi.tooltip = javafx.scene.control.Tooltip("ReaderServer API: Conectado ($url)")
+                    }
+                    com.fenix.ordenararquivos.service.ReaderApiServices.ApiStatus.PROCURANDO -> {
+                        imgApi.image = imgApiEspera
+                        btnApi.tooltip = javafx.scene.control.Tooltip("ReaderServer API: Procurando na rede...")
+                    }
+                    com.fenix.ordenararquivos.service.ReaderApiServices.ApiStatus.ERRO_AUTENTICACAO -> {
+                        imgApi.image = imgApiErro
+                        btnApi.tooltip = javafx.scene.control.Tooltip("ReaderServer API: Falha de autenticação em $url")
+                    }
+                    com.fenix.ordenararquivos.service.ReaderApiServices.ApiStatus.INDISPONIVEL -> {
+                        imgApi.image = imgApiErro
+                        btnApi.tooltip = javafx.scene.control.Tooltip("ReaderServer API: Não localizada na rede")
+                    }
+                    com.fenix.ordenararquivos.service.ReaderApiServices.ApiStatus.DESCONECTADO -> {
+                        imgApi.image = imgApiDesconectado
+                        btnApi.tooltip = javafx.scene.control.Tooltip("ReaderServer API: Desconectado")
+                    }
+                }
+            }
+        }
     }
 
     companion object {

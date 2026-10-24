@@ -113,6 +113,9 @@ class AbaComicInfoController : Initializable {
     private lateinit var btnSumario: JFXButton
 
     @FXML
+    private lateinit var btnBuscarApi: JFXButton
+
+    @FXML
     private lateinit var btnProcessar: JFXButton
 
     @FXML
@@ -222,6 +225,16 @@ class AbaComicInfoController : Initializable {
         }
 
         PopupSumarioController.abreTelaSumario(controllerPai.rootStack, controllerPai.rootTab,selected.toList(), callback)
+    }
+
+    @FXML
+    private fun onBtnBuscarApi() {
+        val selected = tbViewProcessar.selectionModel.selectedItem
+        if (selected == null) {
+            AlertasModal.alerta("Alerta", "Selecione um item da lista para buscar na API.")
+            return
+        }
+        popupApi(selected)
     }
 
     @FXML
@@ -1523,6 +1536,20 @@ class AbaComicInfoController : Initializable {
         PopupAmazonController.abreTelaAmazon(controllerPai.rootStack, controllerPai.rootTab, callback, item.comicInfo, cbLinguagem.value)
     }
 
+    private fun popupApi(item: Processar) {
+        val callback: Callback<ComicInfo, Boolean> = Callback<ComicInfo, Boolean> { param ->
+            val localPages = item.comicInfo?.pages
+            val localPageCount = item.comicInfo?.pageCount
+            param.pages = localPages
+            param.pageCount = localPageCount
+            item.comicInfo = param
+            tbViewProcessar.refresh()
+            null
+        }
+        val termoInicial = item.comicInfo?.series?.ifBlank { null } ?: item.comicInfo?.title?.ifBlank { null } ?: item.arquivo.substringBeforeLast(".")
+        PopupBuscaApiController.abreTelaBuscaApi(controllerPai.rootStack, controllerPai.rootTab, callback, termoInicial)
+    }
+
     private fun editaColunas() {
         clTitulo.cellFactory = TextAreaTableCell.forTableColumn()
         clTitulo.setOnEditStart { e ->
@@ -1680,6 +1707,11 @@ class AbaComicInfoController : Initializable {
                     textFill = Color.WHITE
                     setOnAction { popupAmazon(tableView.items[index]) }
                 }
+                private val btnApi = JFXButton("API").apply {
+                    styleClass.add("background-Blue3")
+                    textFill = Color.WHITE
+                    setOnAction { popupApi(tableView.items[index]) }
+                }
                 private val btnEditar = JFXButton("Editar").apply {
                     styleClass.add("background-Black2")
                     textFill = Color.WHITE
@@ -1717,7 +1749,7 @@ class AbaComicInfoController : Initializable {
                 private val hbox1 = HBox(5.0, btnAplicar, btnAjustar, btnNormalizar, btnTitulo).apply {
                     alignment = Pos.CENTER
                 }
-                private val hbox2 = HBox(5.0, btnAmazon, btnEditar, btnProcessar).apply {
+                private val hbox2 = HBox(5.0, btnAmazon, btnApi, btnEditar, btnProcessar).apply {
                     alignment = Pos.CENTER
                 }
                 private val hbox3 = HBox(5.0, btnDeletar, btnOcr, btnSalvar).apply {
@@ -1943,6 +1975,10 @@ class AbaComicInfoController : Initializable {
             setOnAction { popupAmazon(tbViewProcessar.selectionModel.selectedItem) }
         }
 
+        val chamarApi = MenuItem("Buscar na API").apply {
+            setOnAction { popupApi(tbViewProcessar.selectionModel.selectedItem) }
+        }
+
         val chamarImportarSumario = MenuItem("Importar Sumário").apply {
             setOnAction {
                 val selected = tbViewProcessar.selectionModel.selectedItems
@@ -1956,6 +1992,7 @@ class AbaComicInfoController : Initializable {
             chamarCapitulos,
             chamarImportarSumario,
             chamarAmazon,
+            chamarApi,
             SeparatorMenuItem(),
             tagsAplicar,
             atualizarPaginaTag,

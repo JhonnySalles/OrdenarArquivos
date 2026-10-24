@@ -216,6 +216,9 @@ class AbaPastasController : Initializable {
     private lateinit var btnAmazonConsultar: JFXButton
 
     @FXML
+    private lateinit var btnApiConsultar: JFXButton
+
+    @FXML
     private lateinit var btnMalAplicar: JFXButton
 
     @FXML
@@ -525,6 +528,21 @@ class AbaPastasController : Initializable {
             null
         }
         PopupAmazonController.abreTelaAmazon(controllerPai.rootStack, controllerPai.rootTab, callback, mComicInfo, cbLinguagem.value)
+    }
+
+    @FXML
+    private fun onBtnApiConsultar() {
+        tbTabRootPastas.selectionModel.select(tbTabPastas_ComicInfo)
+        val callback: Callback<ComicInfo, Boolean> = Callback<ComicInfo, Boolean> { param ->
+            val localPages = mComicInfo.pages
+            val localPageCount = mComicInfo.pageCount
+            param.pages = localPages
+            param.pageCount = localPageCount
+            mComicInfo = param
+            null
+        }
+        val termoInicial = mComicInfo.series.ifBlank { null } ?: mComicInfo.title.ifBlank { null }
+        PopupBuscaApiController.abreTelaBuscaApi(controllerPai.rootStack, controllerPai.rootTab, callback, termoInicial)
     }
 
     @FXML

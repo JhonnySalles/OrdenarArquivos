@@ -190,6 +190,20 @@ object Configuracao {
         }
         get() = properties.getProperty("ocr.openrouter.model", "")
 
+    var readerApiUrl: String = ""
+        set(value) {
+            properties["reader.api.url"] = value
+            field = value
+        }
+        get() = properties.getProperty("reader.api.url", "")
+
+    var readerApiTimeout: Int = 5000
+        set(value) {
+            properties["reader.api.timeout"] = value.toString()
+            field = value
+        }
+        get() = properties.getProperty("reader.api.timeout", "5000").toIntOrNull() ?: 5000
+
     val geminiKey1: String get() = secrets.getProperty("gemini_api_key_1", "")
     val geminiKey2: String get() = secrets.getProperty("gemini_api_key_2", "")
     val openrouterApiKey: String get() = secrets.getProperty("openrouter_api_key", "")
@@ -198,4 +212,28 @@ object Configuracao {
     val googleDriveApiKey: String get() = secrets.getProperty("google_drive_api_key", "")
     val googleDriveRefreshToken: String get() = secrets.getProperty("google_drive_refresh_token", "")
     val googleDriveFolderId: String get() = secrets.getProperty("google_drive_folder_id", "")
+
+    var readerApiUsername: String
+        get() = secrets.getProperty("reader_api_username", "admin")
+        set(value) {
+            secrets.setProperty("reader_api_username", value)
+            saveSecrets()
+        }
+
+    var readerApiPassword: String
+        get() = secrets.getProperty("reader_api_password", "admin123")
+        set(value) {
+            secrets.setProperty("reader_api_password", value)
+            saveSecrets()
+        }
+
+    fun saveSecrets() {
+        try {
+            FileOutputStream("secrets.properties").use { os ->
+                secrets.store(os, "")
+            }
+        } catch (e: IOException) {
+            mLOG.error(e.message, e)
+        }
+    }
 }

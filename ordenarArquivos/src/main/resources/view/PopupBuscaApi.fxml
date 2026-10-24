@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.jfoenix.controls.JFXButton?>
+<?import com.jfoenix.controls.JFXTextField?>
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane prefHeight="500.0" prefWidth="780.0" styleClass="background-Black2" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.fenix.ordenararquivos.controller.PopupBuscaApiController">
+   <children>
+      <VBox spacing="10.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <children>
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+               <children>
+                  <JFXTextField fx:id="txtPesquisa" focusColor="#71afe5" labelFloat="true" prefHeight="30.0" promptText="Pesquisar manga / série na API..." styleClass="texto-stilo-1" unFocusColor="#106ebe" HBox.hgrow="ALWAYS" />
+                  <JFXButton fx:id="btnPesquisar" onAction="#onBtnPesquisar" prefHeight="32.0" prefWidth="110.0" styleClass="background-Blue3" text="Pesquisar" textFill="WHITE" />
+               </children>
+               <VBox.margin>
+                  <Insets left="5.0" right="5.0" top="5.0" />
+               </VBox.margin>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+               <children>
+                  <Label fx:id="lblStatus" maxWidth="1.7976931348623157E308" styleClass="texto-stilo-1" text="Pronto para pesquisar" textFill="#b0b0b0" HBox.hgrow="ALWAYS">
+                     <font>
+                        <Font size="11.0" />
+                     </font>
+                  </Label>
+                  <ProgressBar fx:id="pbCarregando" prefHeight="8.0" prefWidth="150.0" progress="0.0" visible="false" />
+               </children>
+               <VBox.margin>
+                  <Insets left="5.0" right="5.0" />
+               </VBox.margin>
+            </HBox>
+            <StackPane VBox.vgrow="ALWAYS">
+               <children>
+                  <TableView fx:id="tbViewResultados" prefHeight="350.0" prefWidth="760.0" styleClass="table-view-dark">
+                     <columns>
+                        <TableColumn fx:id="clVolume" prefWidth="75.0" text="Volume" />
+                        <TableColumn fx:id="clNumero" prefWidth="70.0" text="Número" />
+                        <TableColumn fx:id="clSerie" prefWidth="220.0" text="Série" />
+                        <TableColumn fx:id="clTitulo" prefWidth="210.0" text="Título" />
+                        <TableColumn fx:id="clIdioma" prefWidth="65.0" text="Idioma" />
+                        <TableColumn fx:id="clEditora" prefWidth="110.0" text="Editora" />
+                     </columns>
+                  </TableView>
+               </children>
+               <VBox.margin>
+                  <Insets bottom="5.0" left="5.0" right="5.0" />
+               </VBox.margin>
+            </StackPane>
+         </children>
+         <padding>
+            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+         </padding>
+      </VBox>
+   </children>
+   <stylesheets>
+      <URL value="@../css/Paleta_Cores.css" />
+      <URL value="@../css/Dark_TelaInicial.css" />
+   </stylesheets>
+</AnchorPane>

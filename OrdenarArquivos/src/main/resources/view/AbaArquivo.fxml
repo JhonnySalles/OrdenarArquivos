@@ -458,6 +458,7 @@
                                                       <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" spacing="10.0">
                                                          <children>
                                                             <JFXButton fx:id="btnAmazonConsultar" onAction="#onBtnAmazonConsultar" prefHeight="30.0" prefWidth="100.0" styleClass="background-White1" text="Amazon" />
+                                                            <JFXButton fx:id="btnApiConsultar" onAction="#onBtnApiConsultar" prefHeight="30.0" prefWidth="100.0" styleClass="background-Blue3" text="API" textFill="WHITE" />
                                                             <JFXButton fx:id="btnMalAplicar" onAction="#onBtnMalAplicar" prefHeight="30.0" prefWidth="100.0" styleClass="background-Green2" text="Aplicar" textFill="WHITE" />
                                                             <JFXButton fx:id="btnMalConsultar" onAction="#onBtnMalConsultar" prefHeight="25.0" prefWidth="100.0" styleClass="background-Blue3" text="Consultar" textFill="WHITE">
                                                                <tooltip>
