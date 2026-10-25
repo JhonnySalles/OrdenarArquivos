@@ -306,6 +306,11 @@ class TelaInicialController : Initializable {
         // com elementos internos (como a Grid ou botões de ação).
         tpGlobal.isFocusTraversable = false
 
+        // Tooltips dos botões da barra superior
+        btnConfiguracao.tooltip = javafx.scene.control.Tooltip("Configurações")
+        btnCompartilhamento.tooltip = javafx.scene.control.Tooltip("Sincronização Cloud")
+        btnAtualizar.tooltip = javafx.scene.control.Tooltip("Verificar atualizações do aplicativo")
+
         // Configuração e Descoberta da ReaderServer API na rede local
         configurarStatusApi()
         Thread {
@@ -319,7 +324,8 @@ class TelaInicialController : Initializable {
                 when (status) {
                     com.fenix.ordenararquivos.service.ReaderApiServices.ApiStatus.CONECTADO -> {
                         imgApi.image = imgApiConectado
-                        btnApi.tooltip = javafx.scene.control.Tooltip("ReaderServer API: Conectado ($url)")
+                        val versao = com.fenix.ordenararquivos.service.ReaderApiServices.serverVersion?.let { " (v$it)" } ?: ""
+                        btnApi.tooltip = javafx.scene.control.Tooltip("ReaderServer API$versao: Conectado ($url)")
                     }
                     com.fenix.ordenararquivos.service.ReaderApiServices.ApiStatus.PROCURANDO -> {
                         imgApi.image = imgApiEspera

@@ -8,6 +8,8 @@
 <?import javafx.scene.control.ProgressBar?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
@@ -21,7 +23,15 @@
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                <children>
                   <JFXTextField fx:id="txtPesquisa" focusColor="#71afe5" labelFloat="true" prefHeight="30.0" promptText="Pesquisar manga / série na API..." styleClass="texto-stilo-1" unFocusColor="#106ebe" HBox.hgrow="ALWAYS" />
-                  <JFXButton fx:id="btnPesquisar" onAction="#onBtnPesquisar" prefHeight="32.0" prefWidth="110.0" styleClass="background-Blue3" text="Pesquisar" textFill="WHITE" />
+                  <JFXButton fx:id="btnPesquisar" onAction="#onBtnPesquisar" prefHeight="32.0" prefWidth="120.0" styleClass="background-Blue3" text="Pesquisar" textFill="WHITE">
+                     <graphic>
+                        <ImageView fitHeight="16.0" fitWidth="16.0" pickOnBounds="true" preserveRatio="true">
+                           <image>
+                              <Image url="@../images/icoPesquisar_48.png" />
+                           </image>
+                        </ImageView>
+                     </graphic>
+                  </JFXButton>
                </children>
                <VBox.margin>
                   <Insets left="5.0" right="5.0" top="5.0" />

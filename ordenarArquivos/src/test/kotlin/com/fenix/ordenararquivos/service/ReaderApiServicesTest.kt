@@ -19,6 +19,7 @@ class ReaderApiServicesTest {
         private var serverSocket: ServerSocket? = null
         private var running = true
         private var serverPort = 0
+        var lastSearchRequestLine: String? = null
         val sampleComicId: UUID = UUID.fromString("11111111-1111-1111-1111-111111111111")
 
         @BeforeAll
@@ -62,7 +63,7 @@ class ReaderApiServicesTest {
 
                 when {
                     requestLine.startsWith("GET /health") -> {
-                        val body = """{"status":"UP","service":"ReaderServer API"}"""
+                        val body = """{"status":"UP","service":"ReaderServer API","version":"1.0.0"}"""
                         sendResponse(out, 200, "application/json", body)
                     }
                     requestLine.startsWith("POST /auth/signin") -> {
@@ -76,6 +77,7 @@ class ReaderApiServicesTest {
                         sendResponse(out, 200, "application/json", body)
                     }
                     requestLine.startsWith("GET /api/comicinfo/search/advanced") -> {
+                        lastSearchRequestLine = requestLine
                         val auth = headers["authorization"]
                         if (auth != "Bearer mock-token-xyz") {
                             sendResponse(out, 401, "application/json", """{"error":"unauthorized"}""")
@@ -182,12 +184,18 @@ class ReaderApiServicesTest {
         assertTrue(conectado)
         assertEquals(ReaderApiServices.ApiStatus.CONECTADO, ReaderApiServices.status)
         assertEquals("http://127.0.0.1:$serverPort", ReaderApiServices.baseUrl)
+        assertEquals("1.0.0", ReaderApiServices.serverVersion)
     }
 
     @Test
     fun testPesquisarOrdenadoPorVolumeDecrescente() {
         ReaderApiServices.descobrirEConectar(forcar = true)
         val resultados = ReaderApiServices.pesquisar("One Piece")
+
+        // Valida parâmetros enviados na requisição HTTP da API
+        assertNotNull(lastSearchRequestLine)
+        assertTrue(lastSearchRequestLine!!.contains("sortField=volume"))
+        assertTrue(lastSearchRequestLine!!.contains("direction=desc"))
 
         assertEquals(3, resultados.size)
         // Deve vir ordenado pelo volume mais recente para o menor: 100 -> 20 -> 1

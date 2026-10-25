@@ -1,7 +1,23 @@
---add-exports javafx.controls/com.sun.javafx.scene.control.behavior=com.jfoenix
---add-exports javafx.controls/com.sun.javafx.scene.control=com.jfoenix
---add-exports javafx.base/com.sun.javafx.binding=com.jfoenix
---add-exports javafx.graphics/com.sun.javafx.stage=com.jfoenix
---add-exports javafx.base/com.sun.javafx.event=com.jfoenix
---add-opens java.base/java.lang.reflect=com.jfoenix
---add-reads kotlin.stdlib=kotlinx.coroutines.core
+--add-exports=javafx.controls/com.sun.javafx.scene.control.behavior=com.jfoenix
+--add-exports=javafx.controls/com.sun.javafx.scene.control=com.jfoenix
+--add-exports=javafx.base/com.sun.javafx.binding=com.jfoenix
+--add-exports=javafx.graphics/com.sun.javafx.stage=com.jfoenix
+--add-exports=javafx.base/com.sun.javafx.event=com.jfoenix
+--add-exports=javafx.graphics/com.sun.glass.ui=com.jfoenix
+--add-exports=javafx.graphics/com.sun.glass.ui=nativejavafx.taskbar
+--add-exports=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED
+--add-opens=java.base/java.lang.reflect=com.jfoenix
+--add-opens=java.base/java.lang=com.jfoenix
+--add-opens=javafx.controls/javafx.scene.control.skin=com.jfoenix
+--add-opens=javafx.graphics/com.sun.javafx.scene=com.jfoenix
+--add-opens=javafx.graphics/com.sun.javafx.stage=com.jfoenix
+--add-opens=javafx.base/com.sun.javafx.binding=com.jfoenix
+--add-opens=javafx.controls/com.sun.javafx.scene.control.behavior=com.jfoenix
+--add-opens=javafx.controls/com.sun.javafx.scene.control=com.jfoenix
+--add-opens=javafx.base/com.sun.javafx.event=com.jfoenix
+--add-opens=javafx.graphics/com.sun.glass.ui=com.jfoenix
+--add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED
+--add-reads=kotlin.stdlib=kotlinx.coroutines.core
+-Dcom.jfoenix.disableAnimations=true
+-Xms512m
+-Xmx1024m

@@ -45,6 +45,9 @@ object ReaderApiServices {
     var baseUrl: String? = null
         private set
 
+    var serverVersion: String? = null
+        private set
+
     private var accessToken: String? = null
     private var refreshToken: String? = null
     private var tokenExpiration: Date? = null
@@ -115,6 +118,7 @@ object ReaderApiServices {
         if (urlEncontrada == null) {
             mLOG.warn("Não foi possível localizar a ReaderServer API na rede.")
             baseUrl = null
+            serverVersion = null
             status = ApiStatus.INDISPONIVEL
             return false
         }
@@ -125,7 +129,7 @@ object ReaderApiServices {
         val autenticado = autenticar()
         if (autenticado) {
             status = ApiStatus.CONECTADO
-            mLOG.info("ReaderServer API conectada e autenticada com sucesso em $baseUrl")
+            mLOG.info("ReaderServer API conectada e autenticada com sucesso em $baseUrl (versão: ${serverVersion ?: "desconhecida"})")
             return true
         } else {
             status = ApiStatus.ERRO_AUTENTICACAO
@@ -137,6 +141,7 @@ object ReaderApiServices {
     private fun descobrirViaMdns(): String? {
         val timeoutMs = Configuracao.readerApiTimeout.toLong().coerceIn(1000L, 10000L)
         val interfaces = NetworkInterface.getNetworkInterfaces()
+        val serviceTypes = listOf("_readerserver._tcp.local.", "_http._tcp.local.")
 
         while (interfaces.hasMoreElements()) {
             val netIf = interfaces.nextElement()
@@ -149,17 +154,25 @@ object ReaderApiServices {
                     var jmdns: JmDNS? = null
                     try {
                         jmdns = JmDNS.create(addr)
-                        val services: Array<ServiceInfo> = jmdns.list("_http._tcp.local.", timeoutMs)
-                        for (info in services) {
-                            if (info.name.contains("ReaderServer", ignoreCase = true) ||
-                                (info.application != null && info.application.contains("ReaderServer", ignoreCase = true))
-                            ) {
-                                val port = info.port
-                                val host = info.hostAddresses.firstOrNull() ?: addr.hostAddress
-                                val candidateUrl = "http://$host:$port"
-                                if (testarHealthCheck(candidateUrl)) {
-                                    mLOG.info("Serviço mDNS encontrado: ${info.name} em $candidateUrl")
-                                    return candidateUrl
+                        for (serviceType in serviceTypes) {
+                            val services: Array<ServiceInfo> = jmdns.list(serviceType, timeoutMs)
+                            for (info in services) {
+                                val isReader = serviceType == "_readerserver._tcp.local." ||
+                                    info.name.contains("ReaderServer", ignoreCase = true) ||
+                                    (info.application != null && info.application.contains("ReaderServer", ignoreCase = true))
+
+                                if (isReader) {
+                                    val port = info.port
+                                    val host = info.hostAddresses.firstOrNull() ?: addr.hostAddress
+                                    val candidateUrl = "http://$host:$port"
+                                    val versaoTxt = info.getPropertyString("version")
+                                    if (!versaoTxt.isNullOrBlank()) {
+                                        serverVersion = versaoTxt
+                                    }
+                                    if (testarHealthCheck(candidateUrl)) {
+                                        mLOG.info("Serviço mDNS encontrado: ${info.name} em $candidateUrl (versão: $serverVersion)")
+                                        return candidateUrl
+                                    }
                                 }
                             }
                         }
@@ -187,7 +200,14 @@ object ReaderApiServices {
             val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
             if (response.statusCode() in 200..299) {
                 val json = JSONObject(response.body() as String)
-                json.optString("status").equals("UP", ignoreCase = true)
+                val isUp = json.optString("status").equals("UP", ignoreCase = true)
+                if (isUp) {
+                    val ver = json.optString("version")
+                    if (ver.isNotBlank()) {
+                        serverVersion = ver
+                    }
+                }
+                isUp
             } else {
                 false
             }
@@ -282,14 +302,19 @@ object ReaderApiServices {
         return autenticar()
     }
 
-    fun pesquisar(query: String, maxResults: Int = 100): List<ApiComicInfoResumo> {
+    fun pesquisar(
+        query: String,
+        maxResults: Int = 100,
+        sortField: String = "volume",
+        direction: String = "desc"
+    ): List<ApiComicInfoResumo> {
         val url = baseUrl ?: throw IllegalStateException("ReaderServer API não conectada.")
         if (!garantirAutenticacao()) {
             throw IllegalStateException("Falha na autenticação com a ReaderServer API.")
         }
 
         val encodedQuery = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8.name())
-        val searchUrl = "$url/api/comicinfo/search/advanced?query=$encodedQuery&page=0&size=$maxResults"
+        val searchUrl = "$url/api/comicinfo/search/advanced?query=$encodedQuery&page=0&size=$maxResults&sortField=$sortField&direction=$direction"
 
         val request = HttpRequest.newBuilder()
             .uri(URI.create(searchUrl))
@@ -302,7 +327,7 @@ object ReaderApiServices {
 
         if (response.statusCode() == 401 || response.statusCode() == 403) {
             if (autenticar()) {
-                return pesquisar(query, maxResults)
+                return pesquisar(query, maxResults, sortField, direction)
             }
             throw IllegalStateException("Acesso não autorizado na ReaderServer API (401/403).")
         }

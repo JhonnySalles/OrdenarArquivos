@@ -95,7 +95,7 @@
                         </VBox>
                      </children>
                   </VBox>
-                  <JFXButton fx:id="btnAtualizar" buttonType="RAISED" minHeight="45.0" minWidth="110.0" onAction="#onBtnAtualizar" text="Atualizar" textFill="WHITE" AnchorPane.rightAnchor="135.0" AnchorPane.topAnchor="0.0">
+                  <JFXButton fx:id="btnAtualizar" buttonType="RAISED" graphicTextGap="8.0" minHeight="45.0" minWidth="110.0" onAction="#onBtnAtualizar" text="Atualizar" textFill="WHITE" AnchorPane.rightAnchor="135.0" AnchorPane.topAnchor="0.0">
                      <font>
                         <Font name="System Bold" size="14.0" />
                      </font>
@@ -122,7 +122,7 @@
                      <graphic>
                         <ImageView fx:id="imgConfiguracao" fitHeight="30.0" fitWidth="30.0" pickOnBounds="true" preserveRatio="true" translateY="2.0">
                            <image>
-                              <Image url="@../images/icoBtnImportar_48.png" />
+                              <Image url="@../images/icoConfiguracao_48.png" />
                            </image>
                         </ImageView>
                      </graphic>

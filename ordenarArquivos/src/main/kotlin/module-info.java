@@ -53,6 +53,7 @@ module com.fenix.ordenararquivos {
     requires sentry;
     requires junrar;
     requires org.apache.commons.compress;
+    requires javax.jmdns;
 
     opens com.fenix.ordenararquivos.controller to javafx.fxml, javafx.graphics;
     opens com.fenix.ordenararquivos.model.firebase to javafx.base, google.cloud.firestore, com.google.gson;
