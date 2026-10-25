@@ -2,10 +2,12 @@ package com.fenix.ordenararquivos.controller
 
 import com.fenix.ordenararquivos.model.entities.api.ApiComicInfoResumo
 import com.fenix.ordenararquivos.model.entities.comicinfo.ComicInfo
+import com.fenix.ordenararquivos.model.enums.Linguagem
 import com.fenix.ordenararquivos.model.enums.Notificacao
 import com.fenix.ordenararquivos.notification.Notificacoes
 import com.fenix.ordenararquivos.service.ReaderApiServices
 import com.jfoenix.controls.JFXButton
+import com.jfoenix.controls.JFXComboBox
 import com.jfoenix.controls.JFXDialog
 import com.jfoenix.controls.JFXDialogLayout
 import com.jfoenix.controls.JFXTextField
@@ -22,6 +24,7 @@ import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.Parent
 import javafx.scene.control.Label
+import javafx.scene.control.ListCell
 import javafx.scene.control.ProgressBar
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableRow
@@ -30,6 +33,7 @@ import javafx.scene.effect.BoxBlur
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseButton
+import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
@@ -46,7 +50,13 @@ class PopupBuscaApiController : Initializable {
     private val mLOG: Logger = LoggerFactory.getLogger(PopupBuscaApiController::class.java)
 
     @FXML
+    lateinit var apRoot: AnchorPane
+
+    @FXML
     lateinit var txtPesquisa: JFXTextField
+
+    @FXML
+    lateinit var cbLinguagem: JFXComboBox<Linguagem>
 
     @FXML
     lateinit var btnPesquisar: JFXButton
@@ -79,17 +89,77 @@ class PopupBuscaApiController : Initializable {
     lateinit var clEditora: TableColumn<ApiComicInfoResumo, String>
 
     private val listaResultados: ObservableList<ApiComicInfoResumo> = FXCollections.observableArrayList()
+    private val listaCompletaApi: MutableList<ApiComicInfoResumo> = mutableListOf()
     private var callbackSucesso: Callback<ComicInfo, Boolean>? = null
 
     val itemSelecionado: ApiComicInfoResumo?
         get() = tbViewResultados.selectionModel.selectedItem
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
+        configurarComboLinguagem()
         configurarTabela()
 
         txtPesquisa.setOnKeyPressed { ke ->
             if (ke.code == KeyCode.ENTER) {
                 onBtnPesquisar()
+            }
+        }
+    }
+
+    private fun configurarComboLinguagem() {
+        val linguagens = FXCollections.observableArrayList(
+            Linguagem.TODOS,
+            Linguagem.PORTUGUESE,
+            Linguagem.ENGLISH,
+            Linguagem.JAPANESE
+        )
+        cbLinguagem.items = linguagens
+        cbLinguagem.cellFactory = Callback {
+            object : ListCell<Linguagem>() {
+                override fun updateItem(item: Linguagem?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    text = if (empty || item == null) null else formatarNomeLinguagem(item)
+                }
+            }
+        }
+        cbLinguagem.buttonCell = object : ListCell<Linguagem>() {
+            override fun updateItem(item: Linguagem?, empty: Boolean) {
+                super.updateItem(item, empty)
+                text = if (empty || item == null) null else formatarNomeLinguagem(item)
+            }
+        }
+        cbLinguagem.value = Linguagem.PORTUGUESE
+
+        cbLinguagem.selectionModel.selectedItemProperty().addListener { _, _, _ ->
+            aplicarFiltroIdioma()
+        }
+    }
+
+    private fun formatarNomeLinguagem(item: Linguagem): String = when (item) {
+        Linguagem.TODOS -> "Todos os idiomas"
+        Linguagem.PORTUGUESE -> "Português (pt)"
+        Linguagem.ENGLISH -> "Inglês (en)"
+        Linguagem.JAPANESE -> "Japonês (ja)"
+        else -> item.name
+    }
+
+    private fun aplicarFiltroIdioma() {
+        val idiomaSelecionado = if (::cbLinguagem.isInitialized) cbLinguagem.value ?: Linguagem.TODOS else Linguagem.TODOS
+        val filtrados = if (idiomaSelecionado == Linguagem.TODOS) {
+            listaCompletaApi
+        } else {
+            listaCompletaApi.filter {
+                !it.languageISO.isNullOrBlank() && it.languageISO.equals(idiomaSelecionado.sigla, ignoreCase = true)
+            }
+        }
+        listaResultados.setAll(filtrados)
+
+        if (listaCompletaApi.isNotEmpty()) {
+            if (listaResultados.isEmpty()) {
+                lblStatus.text = "Nenhum resultado para o idioma '${formatarNomeLinguagem(idiomaSelecionado)}'."
+            } else {
+                lblStatus.text = "${listaResultados.size} de ${listaCompletaApi.size} resultados encontrados (ordenados por volume)."
+                tbViewResultados.selectionModel.selectFirst()
             }
         }
     }
@@ -119,7 +189,10 @@ class PopupBuscaApiController : Initializable {
         }
     }
 
-    fun setPesquisaInicial(termo: String?) {
+    fun setPesquisaInicial(termo: String?, linguagem: Linguagem? = null) {
+        if (linguagem != null && cbLinguagem.items.contains(linguagem)) {
+            cbLinguagem.value = linguagem
+        }
         if (!termo.isNullOrBlank()) {
             txtPesquisa.text = termo
             pesquisar(termo)
@@ -154,13 +227,12 @@ class PopupBuscaApiController : Initializable {
             override fun succeeded() {
                 btnPesquisar.isDisable = false
                 pbCarregando.isVisible = false
-                listaResultados.setAll(value)
+                listaCompletaApi.clear()
+                listaCompletaApi.addAll(value)
+                aplicarFiltroIdioma()
 
                 if (value.isEmpty()) {
                     lblStatus.text = "Nenhum resultado encontrado para '$termo'."
-                } else {
-                    lblStatus.text = "${value.size} resultados encontrados (ordenados por volume mais recente)."
-                    tbViewResultados.selectionModel.selectFirst()
                 }
             }
 
@@ -197,7 +269,15 @@ class PopupBuscaApiController : Initializable {
             override fun succeeded() {
                 btnPesquisar.isDisable = false
                 pbCarregando.isVisible = false
-                callbackSucesso?.call(value)
+                if (callbackSucesso != null) {
+                    callbackSucesso?.call(value)
+                } else {
+                    Notificacoes.notificacao(
+                        Notificacao.SUCESSO,
+                        "ReaderServer API",
+                        "ComicInfo baixado: ${value.series.ifBlank { value.title }}"
+                    )
+                }
                 fecharDialog()
             }
 
@@ -223,16 +303,34 @@ class PopupBuscaApiController : Initializable {
         private val STYLE_SHEET: String = PopupBuscaApiController::class.java.getResource("/css/Dark_TelaInicial.css").toExternalForm()
         private var dialog: JFXDialog? = null
 
+        val isAberto: Boolean
+            get() = dialog != null
+
         @JvmStatic
         fun abreTelaBuscaApi(
             rootStackPane: StackPane,
             nodeBlur: Node,
-            callback: Callback<ComicInfo, Boolean>,
-            termoInicial: String? = null
+            callback: Callback<ComicInfo, Boolean>?,
+            termoInicial: String? = null,
+            linguagemPadrao: Linguagem? = null
         ) {
             try {
+                if (dialog != null) {
+                    dialog?.close()
+                }
+
                 val blur = BoxBlur(3.0, 3.0, 3)
                 val dialogLayout = JFXDialogLayout()
+
+                // Vincula responsividade com base no tamanho do rootStackPane / janela
+                dialogLayout.prefWidthProperty().bind(rootStackPane.widthProperty().multiply(0.92))
+                dialogLayout.maxWidthProperty().bind(rootStackPane.widthProperty().multiply(0.95))
+                dialogLayout.minWidth = 750.0
+
+                dialogLayout.prefHeightProperty().bind(rootStackPane.heightProperty().multiply(0.88))
+                dialogLayout.maxHeightProperty().bind(rootStackPane.heightProperty().multiply(0.92))
+                dialogLayout.minHeight = 480.0
+
                 dialog = JFXDialog(rootStackPane, dialogLayout, JFXDialog.DialogTransition.CENTER)
                 dialog?.addEventHandler(KeyEvent.KEY_PRESSED) { event ->
                     if (event.code == KeyCode.ESCAPE) {
@@ -272,6 +370,7 @@ class PopupBuscaApiController : Initializable {
                 dialog?.stylesheets?.add(STYLE_SHEET)
                 dialog?.padding = Insets(0.0)
                 dialog?.setOnDialogClosed {
+                    dialog = null
                     nodeBlur.effect = null
                     nodeBlur.isDisable = false
                 }
@@ -281,7 +380,7 @@ class PopupBuscaApiController : Initializable {
                 dialog?.show()
 
                 Platform.runLater {
-                    controller.setPesquisaInicial(termoInicial)
+                    controller.setPesquisaInicial(termoInicial, linguagemPadrao)
                 }
             } catch (e: IOException) {
                 mLOG.error("Erro ao abrir PopupBuscaApi", e)

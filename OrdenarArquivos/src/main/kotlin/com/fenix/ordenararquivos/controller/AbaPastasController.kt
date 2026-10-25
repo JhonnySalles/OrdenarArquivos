@@ -542,7 +542,7 @@ class AbaPastasController : Initializable {
             null
         }
         val termoInicial = mComicInfo.series.ifBlank { null } ?: mComicInfo.title.ifBlank { null }
-        PopupBuscaApiController.abreTelaBuscaApi(controllerPai.rootStack, controllerPai.rootTab, callback, termoInicial)
+        PopupBuscaApiController.abreTelaBuscaApi(controllerPai.rootStack, controllerPai.rootTab, callback, termoInicial, cbLinguagem.value)
     }
 
     @FXML

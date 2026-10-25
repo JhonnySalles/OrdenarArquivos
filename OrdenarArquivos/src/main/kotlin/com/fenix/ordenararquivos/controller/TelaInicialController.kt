@@ -21,6 +21,10 @@ import javafx.scene.control.ProgressBar
 import javafx.scene.control.Tab
 import javafx.scene.image.Image
 import javafx.scene.image.ImageView
+import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyCodeCombination
+import javafx.scene.input.KeyCombination
+import javafx.scene.input.KeyEvent
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.StackPane
 import org.slf4j.LoggerFactory
@@ -167,6 +171,15 @@ class TelaInicialController : Initializable {
     fun configurarAtalhos(scene: Scene) {
         arquivoController.configurarAtalhos(scene)
         pastasController.configurarAtalhos(scene)
+
+        val kcBuscaApi = KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN)
+        scene.addEventFilter(KeyEvent.KEY_PRESSED) { ke ->
+            if (kcBuscaApi.match(ke)) {
+                ke.consume()
+                tpGlobal.selectionModel.select(tbTabComicInfo)
+                comicinfoController.abrirBuscaApiAtalho()
+            }
+        }
     }
 
     @FXML

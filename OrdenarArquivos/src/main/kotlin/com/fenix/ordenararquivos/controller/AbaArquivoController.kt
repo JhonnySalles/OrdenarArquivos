@@ -653,68 +653,148 @@ class AbaArquivoController : Initializable {
 
     @FXML
     private fun onBtnGravarComicInfo() {
-        mServiceComicInfo.save(mComicInfo)
-
-        try {
-            mLOG.info("Salvando xml do ComicInfo.")
-
-            val comicInfo = File(mCaminhoDestino!!.path.trim { it <= ' ' }, "ComicInfo.xml")
-            if (comicInfo.exists()) {
-                try {
-                    val unmarshaller = JAXBContext.newInstance(ComicInfo::class.java).createUnmarshaller()
-                    val oldInfo = unmarshaller.unmarshal(comicInfo) as ComicInfo
-                    mComicInfo.pages = oldInfo.pages
-                    mComicInfo.pageCount = oldInfo.pageCount
-                } catch (e: Exception) {
-                    mLOG.error("Erro ao realizar merge do ComicInfo existente.", e)
-                }
-                comicInfo.delete()
-            }
-
-            val marshaller = JAXBContext.newInstance(ComicInfo::class.java).createMarshaller()
-            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
-            val out = FileOutputStream(comicInfo)
-            marshaller.marshal(mComicInfo, out)
-            out.close()
-
-            val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }
-            if (mRarService.insereArquivo(File(arquivoZip), comicInfo))
-                Notificacoes.notificacao(Notificacao.SUCESSO, "ComicInfo", "ComicInfo gerado e compactado.")
-            else {
-                txtSimularPasta.text = "Erro ao compactar o ComicInfo, necessário compacta-lo manualmente."
-                Notificacoes.notificacao(Notificacao.ALERTA, "ComicInfo", "Erro ao compactar o ComicInfo, necessário compacta-lo manualmente.")
-            }
-        } catch (e: Exception) {
-            mLOG.error("Erro ao gerar o xml do ComicInfo.", e)
+        val caminhoDestino = mCaminhoDestino
+        val nomeArquivo = txtNomeArquivo.text?.trim() ?: ""
+        if (caminhoDestino == null || !caminhoDestino.exists() || nomeArquivo.isEmpty()) {
+            Notificacoes.notificacao(Notificacao.ALERTA, "ComicInfo", "Pasta de destino ou nome de arquivo não informados.")
+            return
         }
 
+        val arquivoZip = File(caminhoDestino, nomeArquivo)
+        if (!arquivoZip.exists()) {
+            Notificacoes.notificacao(Notificacao.ALERTA, "ComicInfo", "Arquivo compactado não encontrado em: ${arquivoZip.absolutePath}")
+            return
+        }
+
+        atualizaComicInfo(mComicInfo)
+
+        val tempDir = Files.createTempDirectory("gravar_comicinfo_").toFile()
         try {
-            mLOG.info("Salvando xml do CoMet.")
+            mLOG.info("Atualizando metadados do ComicInfo no arquivo compactado: ${arquivoZip.name}")
 
-            val file = File(mCaminhoDestino!!.path.trim { it <= ' ' }, "CoMet.xml")
-            val comet: CoMet = if (file.exists()) {
+            val conteudo = mRarService.listarConteudo(arquivoZip)
+            val comicInfoPath = conteudo.firstOrNull { it.endsWith("ComicInfo.xml", ignoreCase = true) }
+            val cometPath = conteudo.firstOrNull { it.endsWith("CoMet.xml", ignoreCase = true) }
+
+            val itensExtrair = mutableListOf<String>()
+            if (comicInfoPath != null) itensExtrair.add(comicInfoPath)
+            if (cometPath != null) itensExtrair.add(cometPath)
+
+            if (itensExtrair.isNotEmpty()) {
+                mRarService.extrairItens(arquivoZip, itensExtrair, tempDir)
+            }
+
+            val extractedComicFile = tempDir.walk().firstOrNull { it.isFile && it.name.equals("ComicInfo.xml", ignoreCase = true) }
+            var infoBase: ComicInfo? = null
+            if (extractedComicFile != null && extractedComicFile.length() > 0) {
                 try {
-                    val unmarshaller: Unmarshaller = JAXBContext.newInstance(CoMet::class.java).createUnmarshaller()
-                    unmarshaller.unmarshal(file) as CoMet
+                    val unmarshaller = JAXBContext.newInstance(ComicInfo::class.java).createUnmarshaller()
+                    infoBase = unmarshaller.unmarshal(extractedComicFile) as ComicInfo
                 } catch (e: Exception) {
-                    mLOG.error(e.message, e)
-                    CoMet(mComicInfo)
+                    mLOG.error("Erro ao desserializar ComicInfo.xml existente do RAR.", e)
                 }
-            } else
-                CoMet(mComicInfo)
+            }
 
-            comet.toCoMet(mComicInfo)
+            val volumeFinal: Int
+            val numberFinal: Float
+            val countFinal: Int
 
-            val marshaller = JAXBContext.newInstance(CoMet::class.java).createMarshaller()
-            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
-            val out = FileOutputStream(file)
-            marshaller.marshal(comet, out)
-            out.close()
+            if (infoBase != null && infoBase.volume != null && infoBase.volume!! > 0) {
+                volumeFinal = infoBase.volume!!
+                numberFinal = if (infoBase.number > 0f) infoBase.number else volumeFinal.toFloat()
+                countFinal = if (infoBase.count != null && infoBase.count!! > 0) infoBase.count!! else volumeFinal
+            } else {
+                val volNum = txtVolume.text.replace(Regex("\\D"), "").toIntOrNull() ?: 1
+                volumeFinal = volNum
+                numberFinal = volNum.toFloat()
+                countFinal = volNum
+            }
 
-            val arquivoZip = mCaminhoDestino!!.path.trim { it <= ' ' } + "\\" + txtNomeArquivo.text.trim { it <= ' ' }
-            mRarService.insereArquivo(File(arquivoZip), file)
+            val comicParaSalvar = if (infoBase != null) {
+                infoBase.apply {
+                    volume = volumeFinal
+                    number = numberFinal
+                    count = countFinal
+
+                    idMal = mComicInfo.idMal
+                    idAnilist = mComicInfo.idAnilist
+                    ageRating = mComicInfo.ageRating
+                    languageISO = mComicInfo.languageISO
+                    title = mComicInfo.title
+                    series = mComicInfo.series
+                    comic = mComicInfo.comic.ifBlank { mComicInfo.series }
+                    alternateSeries = mComicInfo.alternateSeries
+                    seriesGroup = mComicInfo.seriesGroup
+                    publisher = mComicInfo.publisher
+                    storyArc = mComicInfo.storyArc
+                    imprint = mComicInfo.imprint
+                    genre = mComicInfo.genre
+                    notes = mComicInfo.notes
+                    if (!mComicInfo.summary.isNullOrBlank()) {
+                        summary = mComicInfo.summary
+                    }
+                }
+            } else {
+                mComicInfo.apply {
+                    volume = volumeFinal
+                    number = numberFinal
+                    count = countFinal
+                }
+            }
+
+            mComicInfo.volume = volumeFinal
+            mComicInfo.number = numberFinal
+            mComicInfo.count = countFinal
+            if (infoBase != null) {
+                mComicInfo.pages = infoBase.pages
+                mComicInfo.pageCount = infoBase.pageCount
+            }
+
+            val comicXmlFile = File(tempDir, "ComicInfo.xml")
+            val marshallerComic = JAXBContext.newInstance(ComicInfo::class.java).createMarshaller()
+            marshallerComic.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
+            FileOutputStream(comicXmlFile).use { out ->
+                marshallerComic.marshal(comicParaSalvar, out)
+            }
+
+            val inseriuComic = mRarService.insereComicInfo(arquivoZip, comicXmlFile)
+
+            val extractedCometFile = tempDir.walk().firstOrNull { it.isFile && it.name.equals("CoMet.xml", ignoreCase = true) }
+            val comet: CoMet = if (extractedCometFile != null && extractedCometFile.length() > 0) {
+                try {
+                    val unmarshaller = JAXBContext.newInstance(CoMet::class.java).createUnmarshaller()
+                    unmarshaller.unmarshal(extractedCometFile) as CoMet
+                } catch (e: Exception) {
+                    mLOG.error("Erro ao desserializar CoMet.xml existente do RAR.", e)
+                    CoMet(comicParaSalvar)
+                }
+            } else {
+                CoMet(comicParaSalvar)
+            }
+
+            comet.toCoMet(comicParaSalvar)
+
+            val cometXmlFile = File(tempDir, "CoMet.xml")
+            val marshallerComet = JAXBContext.newInstance(CoMet::class.java).createMarshaller()
+            marshallerComet.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
+            FileOutputStream(cometXmlFile).use { out ->
+                marshallerComet.marshal(comet, out)
+            }
+
+            mRarService.insereArquivo(arquivoZip, cometXmlFile)
+
+            mServiceComicInfo.save(comicParaSalvar)
+
+            if (inseriuComic) {
+                Notificacoes.notificacao(Notificacao.SUCESSO, "ComicInfo", "ComicInfo e CoMet atualizados com sucesso (Volume $volumeFinal).")
+            } else {
+                Notificacoes.notificacao(Notificacao.ALERTA, "ComicInfo", "Erro ao compactar o ComicInfo no arquivo compactado.")
+            }
         } catch (e: Exception) {
-            mLOG.error("Erro ao gerar o xml do CoMet.", e)
+            mLOG.error("Erro ao gravar ComicInfo no arquivo compactado.", e)
+            Notificacoes.notificacao(Notificacao.ERRO, "ComicInfo", "Erro ao gravar ComicInfo: ${e.message}")
+        } finally {
+            tempDir.deleteRecursively()
         }
     }
 
@@ -742,7 +822,7 @@ class AbaArquivoController : Initializable {
             null
         }
         val termoInicial = mComicInfo.series.ifBlank { null } ?: mComicInfo.title.ifBlank { null } ?: txtNomeArquivo.text.substringBeforeLast(".")
-        PopupBuscaApiController.abreTelaBuscaApi(controllerPai.rootStack, controllerPai.rootTab, callback, termoInicial)
+        PopupBuscaApiController.abreTelaBuscaApi(controllerPai.rootStack, controllerPai.rootTab, callback, termoInicial, cbLinguagem.value)
     }
 
     private fun desabilita() {

@@ -1547,7 +1547,45 @@ class AbaComicInfoController : Initializable {
             null
         }
         val termoInicial = item.comicInfo?.series?.ifBlank { null } ?: item.comicInfo?.title?.ifBlank { null } ?: item.arquivo.substringBeforeLast(".")
-        PopupBuscaApiController.abreTelaBuscaApi(controllerPai.rootStack, controllerPai.rootTab, callback, termoInicial)
+        PopupBuscaApiController.abreTelaBuscaApi(controllerPai.rootStack, controllerPai.rootTab, callback, termoInicial, cbLinguagem.value)
+    }
+
+    fun abrirBuscaApiAtalho() {
+        val itemSelecionado = tbViewProcessar.selectionModel.selectedItem
+        if (itemSelecionado != null) {
+            popupApi(itemSelecionado)
+        } else {
+            val callback: Callback<ComicInfo, Boolean> = Callback<ComicInfo, Boolean> { param ->
+                val itemAlvo = tbViewProcessar.selectionModel.selectedItem ?: mObsListaProcessar.firstOrNull()
+                if (itemAlvo != null) {
+                    val localPages = itemAlvo.comicInfo?.pages
+                    val localPageCount = itemAlvo.comicInfo?.pageCount
+                    param.pages = localPages
+                    param.pageCount = localPageCount
+                    itemAlvo.comicInfo = param
+                    tbViewProcessar.refresh()
+                    Notificacoes.notificacao(
+                        Notificacao.SUCESSO,
+                        "ReaderServer API",
+                        "ComicInfo aplicado em: ${itemAlvo.arquivo}"
+                    )
+                } else {
+                    Notificacoes.notificacao(
+                        Notificacao.SUCESSO,
+                        "ReaderServer API",
+                        "ComicInfo baixado: ${param.series.ifBlank { param.title }}"
+                    )
+                }
+                null
+            }
+            PopupBuscaApiController.abreTelaBuscaApi(
+                controllerPai.rootStack,
+                controllerPai.rootTab,
+                callback,
+                termoInicial = null,
+                linguagemPadrao = cbLinguagem.value
+            )
+        }
     }
 
     private fun editaColunas() {
